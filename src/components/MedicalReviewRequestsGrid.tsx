@@ -199,6 +199,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [downloadPacket, setDownloadPacket] = useState<MedicalReviewGroup | null>(null);
   const [downloadIncludeSubmitted, setDownloadIncludeSubmitted] = useState(false);
   const [downloadLanguage, setDownloadLanguage] = useState<'original' | 'en'>('original');
+  const [notifyingSubmissionId, setNotifyingSubmissionId] = useState('');
 
   // PPVC-692: the client's name + display ID, clickable through to their
   // medical-context profile when we can resolve a client id.
@@ -220,6 +221,33 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const whatsappAction = (request: EnrichedReviewRequest) => canManageRequests && (
     <button type="button" onClick={() => setWhatsappRequest(request)} className="rounded-md border border-purple-200 bg-purple-50 px-2 py-2 text-xs font-semibold text-purple-800">
       {request.reviewChannel === 'whatsapp' ? (request.whatsappStatus === 'responded' ? 'Handled via WhatsApp' : 'WhatsApp: awaiting answer') : 'Handle via WhatsApp'}
+    </button>
+  );
+
+  // PPVC-700: resend the localized "submitted for review" email on demand,
+  // without going through the full editor page.
+  const notifyClientSubmission = async (requestId: string) => {
+    if (!requestId) return;
+    try {
+      setNotifyingSubmissionId(requestId);
+      const response = await medicalReviewRequestsApi.notifySubmission(requestId);
+      window.alert(response.data.message || 'Client notified that their document was submitted for review.');
+    } catch (requestError: any) {
+      window.alert(requestError?.response?.data?.message || 'Unable to notify the client.');
+    } finally {
+      setNotifyingSubmissionId('');
+    }
+  };
+
+  const notifyAction = (request: EnrichedReviewRequest) => canManageRequests && (
+    <button
+      type="button"
+      onClick={() => void notifyClientSubmission(request._id || '')}
+      disabled={notifyingSubmissionId === request._id}
+      className="rounded-md border border-blue-200 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50"
+      title="Email the client that their document was submitted for review"
+    >
+      {notifyingSubmissionId === request._id ? 'Notifying…' : 'Notify client'}
     </button>
   );
 
@@ -1273,6 +1301,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                                 Open review
                               </button>
                               {whatsappAction(request)}
+                              {notifyAction(request)}
                             {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && (
                                 <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100" title="Mark as sent to medical advisor"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>
                               )}
@@ -1388,6 +1417,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               Open review
                             </button>
                             {whatsappAction(request)}
+                            {notifyAction(request)}
                             {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>}
                             {canDeleteRequests && (
                               <button
@@ -1586,6 +1616,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         <Icon icon={FiEye} />
                       </button>
                       {whatsappAction(request)}
+                      {notifyAction(request)}
                       {canManageRequests && (
                         <button
                           onClick={() => navigate(`${basePath}/${request._id}/edit`)}
