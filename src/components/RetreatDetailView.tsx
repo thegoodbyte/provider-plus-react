@@ -1364,12 +1364,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.bookingType === 'booster' ? (
-                          <span className="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800">
-                            Booster · Ceremony {client.ceremonyNumber || '—'}
+                          <span className="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800" title={`Booster · Ceremony ${client.ceremonyNumber || '—'}`}>
+                            B{client.ceremonyNumber ? client.ceremonyNumber : ''}
                           </span>
                         ) : (
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                            Full retreat
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700" title="Full retreat">
+                            F
                           </span>
                         )}
                       </td>
