@@ -103,6 +103,17 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     createdBy: paymentRequest?.createdBy || '',
   });
 
+  // PPVC-716: the 40% deposit auto-calc below was unconditionally
+  // overwriting requestedAmount on every recompute, so admin edits (and
+  // even a stored custom amount when opening an existing request) never
+  // stuck. Once the admin types into the field, stop recalculating it;
+  // an existing request that already has an amount stored starts "already
+  // decided" so loading it doesn't silently reset it to 40%.
+  const [depositAmountManuallyEdited, setDepositAmountManuallyEdited] = useState(() => Boolean(paymentRequest?.requestedAmount));
+  useEffect(() => {
+    setDepositAmountManuallyEdited(Boolean(paymentRequest?.requestedAmount));
+  }, [formData.requestType]);
+
   const createsBalance = !isEdit && Boolean(formData.bookingId) && (formData.requestType === 'balance' || (formData.requestType === 'deposit' && createFinalPaymentRequest));
   const findExistingBalance = (requests: PaymentRequest[]) => requests.find(request =>
     resolveId(request.bookingId) === formData.bookingId && request.requestType === 'balance' && ['pending', 'sent', 'overdue'].includes(request.status || ''),
@@ -268,9 +279,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     const total = formData.requestType === 'deposit'
       ? calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, recalculated) * 0.4
       : calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount) + (['payment', 'full_payment'].includes(formData.requestType) ? recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0) : 0);
-    if (formData.requestType !== 'balance') setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
+    if (formData.requestType !== 'balance' && !(formData.requestType === 'deposit' && depositAmountManuallyEdited)) {
+      setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
+    }
     if (changed) setLineItems(recalculated);
-  }, [itemized, lineItems, formData.requestType, formData.fullPriceQuote, formData.roomAdjustmentType, formData.roomAdjustmentAmount]);
+  }, [itemized, lineItems, formData.requestType, formData.fullPriceQuote, formData.roomAdjustmentType, formData.roomAdjustmentAmount, depositAmountManuallyEdited]);
 
   useEffect(() => {
     const fullPrice = calculateBookingTotal(Number(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : []);
@@ -278,6 +291,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     if (!Number.isFinite(fullPrice) || fullPrice <= 0) return;
 
     if (formData.requestType === 'deposit') {
+      if (depositAmountManuallyEdited) return;
       const depositAmount = String(Math.round(fullPrice * 0.4 * 100) / 100);
       if (formData.requestedAmount !== depositAmount) {
         setFormData(prev => ({ ...prev, requestedAmount: depositAmount }));
@@ -285,7 +299,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     } else if (formData.requestType === 'full_payment' && formData.requestedAmount !== String(fullPrice)) {
       setFormData(prev => ({ ...prev, requestedAmount: String(fullPrice) }));
     }
-  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized, lineItems]);
+  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized, lineItems, depositAmountManuallyEdited]);
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -659,13 +673,25 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 min="0"
                 step="0.01"
                 value={formData.requestedAmount}
-                onChange={(e) => handleChange('requestedAmount', e.target.value)}
+                onChange={(e) => {
+                  handleChange('requestedAmount', e.target.value);
+                  if (formData.requestType === 'deposit') setDepositAmountManuallyEdited(true);
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
                 required
               />
               {formData.requestType === 'deposit' && (
-                <p className="mt-1 text-xs text-gray-500">Auto-calculated as 40% of the full price.</p>
+                depositAmountManuallyEdited ? (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Overridden manually.{' '}
+                    <button type="button" className="text-blue-600 underline" onClick={() => setDepositAmountManuallyEdited(false)}>
+                      Reset to 40% of the full price
+                    </button>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-500">Auto-calculated as 40% of the full price. Edit it to set a custom amount.</p>
+                )
               )}
               {formData.requestType === 'payment' && itemized && (
                 <p className="mt-1 text-xs text-gray-500">Calculated as full booking price plus charges and minus discounts.</p>
