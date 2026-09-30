@@ -8,6 +8,14 @@ export const getHouseIdValue = (houseId?: string | House) => {
 export const getHouseTown = (house?: House | null) =>
   String(house?.generalTown || house?.general_town || house?.city || house?.name || '').trim();
 
+// PPVC-703: retreatsApi.getOne returns houseId populated as a full House
+// object (not just an id), so its bedrooms are already available on the
+// retreat -- no separate house fetch needed for the room-allocation dropdown.
+export const getRetreatHouseBedrooms = (retreat?: { houseId?: string | House } | null): Array<{ name: string; hasBathroom?: boolean; allowsSharing?: boolean }> => {
+  const house = retreat?.houseId && typeof retreat.houseId === 'object' ? retreat.houseId as House : undefined;
+  return Array.isArray(house?.bedrooms) ? house.bedrooms as Array<{ name: string; hasBathroom?: boolean; allowsSharing?: boolean }> : [];
+};
+
 export const getRetreatTown = (retreat?: Partial<Retreat> | null, houses: House[] = []) => {
   const explicitTown = String(retreat?.location_town || retreat?.locationTown || retreat?.location || '').trim();
   if (explicitTown && explicitTown !== 'Default Location') return explicitTown;
