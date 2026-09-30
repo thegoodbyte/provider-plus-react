@@ -1,7 +1,7 @@
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Edit, Eye, Plus, Save, Trash2, Upload, Zap } from 'lucide-react';
+import { ArrowLeft, Camera, Download, Edit, Eye, Plus, Save, Trash2, Upload, Zap } from 'lucide-react';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, RetreatClient } from '../types';
@@ -259,6 +259,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [translating, setTranslating] = useState(false);
   const [assessing, setAssessing] = useState(false);
   const [translationLanguage, setTranslationLanguage] = useState('pl');
+  const [downloading, setDownloading] = useState(false);
+  const [downloadFileLanguage, setDownloadFileLanguage] = useState<'original' | 'en'>('original');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [quickMrrOpen, setQuickMrrOpen] = useState(false);
@@ -477,6 +479,20 @@ const MedicalArtifactDetailPage: React.FC = () => {
       setError(translationError?.response?.data?.message || translationError?.message || 'English translation could not be generated.');
     } finally {
       setTranslating(false);
+    }
+  };
+
+  const handleDownloadArtifact = async () => {
+    if (!id) return;
+    setDownloading(true);
+    setError(null);
+    try {
+      const response = await medicalArtifactsApi.download(id, downloadFileLanguage);
+      window.location.assign(response.data.url);
+    } catch (downloadError: any) {
+      setError(downloadError?.response?.data?.message || downloadError?.message || 'Unable to download this medical artifact.');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -867,6 +883,21 @@ const MedicalArtifactDetailPage: React.FC = () => {
             <Camera className="h-4 w-4" />
             {captureMode ? 'Exit capture mode' : 'Capture full page'}
           </button>
+          <div className="flex items-center gap-1">
+            <select
+              value={downloadFileLanguage}
+              onChange={(event) => setDownloadFileLanguage(event.target.value as 'original' | 'en')}
+              aria-label="Download language"
+              className="rounded-md border border-gray-300 bg-white px-2 py-2 text-sm text-gray-700"
+            >
+              <option value="original">Original</option>
+              <option value="en">English</option>
+            </select>
+            <button type="button" onClick={handleDownloadArtifact} disabled={downloading} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+              <Download className="h-4 w-4" />
+              {downloading ? 'Preparing…' : 'Download'}
+            </button>
+          </div>
           {!isEditMode && (
             <button onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/edit`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
               <Edit className="h-4 w-4" />

@@ -184,6 +184,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [downloadingPacketId, setDownloadingPacketId] = useState('');
   const [downloadPacket, setDownloadPacket] = useState<MedicalReviewGroup | null>(null);
   const [downloadIncludeSubmitted, setDownloadIncludeSubmitted] = useState(false);
+  const [downloadLanguage, setDownloadLanguage] = useState<'original' | 'en'>('original');
 
   const whatsappAction = (request: EnrichedReviewRequest) => canManageRequests && (
     <button type="button" onClick={() => setWhatsappRequest(request)} className="rounded-md border border-purple-200 bg-purple-50 px-2 py-2 text-xs font-semibold text-purple-800">
@@ -511,12 +512,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     }
   };
 
-  const downloadPendingArtifacts = async (group: MedicalReviewGroup, includeSubmitted = false) => {
+  const downloadPendingArtifacts = async (group: MedicalReviewGroup, includeSubmitted = false, language: 'original' | 'en' = 'original') => {
     const groupId = group._id || '';
     if (!groupId) return;
     try {
       setDownloadingPacketId(groupId);
-      const response = await medicalReviewRequestsApi.downloadPendingArtifacts(groupId, !includeSubmitted);
+      const response = await medicalReviewRequestsApi.downloadPendingArtifacts(groupId, !includeSubmitted, language);
       // The S3 response supplies Content-Disposition with the packet filename.
       // Navigating directly avoids browsers blocking a synthetic cross-origin
       // anchor click after the asynchronous API request has completed.
@@ -1885,9 +1886,20 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             />
             <span>Include already submitted or sent reviews</span>
           </label>
+          <label className="block text-sm text-gray-700">
+            <span className="font-medium">Language</span>
+            <select
+              value={downloadLanguage}
+              onChange={(event) => setDownloadLanguage(event.target.value as 'original' | 'en')}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="original">Original (as uploaded)</option>
+              <option value="en">English (AI translation, generated if missing)</option>
+            </select>
+          </label>
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => setDownloadPacket(null)} disabled={Boolean(downloadingPacketId)} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700">Cancel</button>
-            <button type="button" onClick={() => downloadPacket && void downloadPendingArtifacts(downloadPacket, downloadIncludeSubmitted)} disabled={Boolean(downloadingPacketId)} className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => downloadPacket && void downloadPendingArtifacts(downloadPacket, downloadIncludeSubmitted, downloadLanguage)} disabled={Boolean(downloadingPacketId)} className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
               {downloadingPacketId ? 'Preparing…' : 'Download files'}
             </button>
           </div>
