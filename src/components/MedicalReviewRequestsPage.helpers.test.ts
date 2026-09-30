@@ -1,4 +1,5 @@
 import {
+  findReviewerTranslation,
   getAssociatedMedicalReviewRequests,
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
@@ -6,6 +7,7 @@ import {
   getQuestionnaireLanguageLabel,
   getQuestionnaireSourceLanguage,
   getQuestionnaireTranslationDisplayState,
+  getReviewerTranslationDisplayState,
   normalizeMedicalReviewDecision,
   sortMedicalReviewRequestsNewestFirst,
   splitMedicalReviewRequestsByTimeline,
@@ -175,5 +177,39 @@ describe('PPVC-621 questionnaire translation helpers', () => {
     expect(getArtifactSourceLanguage({ data: { sourceLanguage: 'PL' } })).toBe('pl');
     expect(getArtifactSourceLanguage(null)).toBe('en');
     expect(getArtifactSourceLanguage({})).toBe('en');
+  });
+});
+
+describe('PPVC-643 reviewer-language translation helpers', () => {
+  it('findReviewerTranslation reads the legacy English-only translation field for target=en', () => {
+    const artifact = { translation: { sourceLanguage: 'pl', status: 'ready', items: [{ key: 'a', label: 'A', value: 'one' }], disclaimer: 'note' } };
+    expect(findReviewerTranslation(artifact, 'en')).toEqual({ targetLanguage: 'en', sourceLanguage: 'pl', status: 'ready', sourceVersion: undefined, items: [{ key: 'a', label: 'A', value: 'one' }], disclaimer: 'note' });
+  });
+
+  it('findReviewerTranslation ignores the legacy field for a non-English target and reads reviewerTranslations instead', () => {
+    const artifact = { translation: { sourceLanguage: 'pl', status: 'ready', items: [] }, reviewerTranslations: [{ targetLanguage: 'cs', sourceLanguage: 'pl', status: 'ready', items: [{ key: 'b', label: 'B', value: 'dva' }] }] };
+    expect(findReviewerTranslation(artifact, 'cs')?.items).toEqual([{ key: 'b', label: 'B', value: 'dva' }]);
+    expect(findReviewerTranslation(artifact, 'de')).toBeUndefined();
+  });
+
+  it('findReviewerTranslation returns undefined for a missing artifact or no cached entry', () => {
+    expect(findReviewerTranslation(undefined, 'en')).toBeUndefined();
+    expect(findReviewerTranslation({}, 'cs')).toBeUndefined();
+  });
+
+  it('getReviewerTranslationDisplayState needs no translation when the reviewer already understands the source language', () => {
+    expect(getReviewerTranslationDisplayState('cs', 'cs', undefined, false)).toBe('not_needed');
+    expect(getReviewerTranslationDisplayState('en', 'en', { targetLanguage: 'en', sourceLanguage: 'en', status: 'failed' }, false)).toBe('not_needed');
+  });
+
+  it('getReviewerTranslationDisplayState mirrors the same ready/translating/failed/not_started states as the legacy helper, per target language', () => {
+    const ready = { targetLanguage: 'cs', sourceLanguage: 'pl', status: 'ready' as const };
+    const translating = { targetLanguage: 'cs', sourceLanguage: 'pl', status: 'translating' as const };
+    const failed = { targetLanguage: 'cs', sourceLanguage: 'pl', status: 'failed' as const };
+    expect(getReviewerTranslationDisplayState('pl', 'cs', ready, false)).toBe('ready');
+    expect(getReviewerTranslationDisplayState('pl', 'cs', undefined, true)).toBe('translating');
+    expect(getReviewerTranslationDisplayState('pl', 'cs', translating, false)).toBe('translating');
+    expect(getReviewerTranslationDisplayState('pl', 'cs', failed, false)).toBe('failed');
+    expect(getReviewerTranslationDisplayState('pl', 'cs', undefined, false)).toBe('not_started');
   });
 });

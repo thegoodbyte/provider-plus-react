@@ -968,6 +968,10 @@ export const medicalArtifactsApi = {
     cacheService.clearPattern('medical-artifacts:');
     return api.post<MedicalArtifact>(`/medical-artifacts/${id}/english-translation`, { sourceLanguage, force });
   },
+  generateReviewerTranslation: (id: string, targetLanguage: string, force = false) => {
+    cacheService.clearPattern('medical-artifacts:');
+    return api.post<MedicalArtifact>(`/medical-artifacts/${id}/reviewer-translation`, { targetLanguage, force });
+  },
   generateAiAssessment: (id: string, force = false) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.post<MedicalArtifact>(`/medical-artifacts/${id}/ai-assessment`, { force });
