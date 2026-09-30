@@ -200,6 +200,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [downloadIncludeSubmitted, setDownloadIncludeSubmitted] = useState(false);
   const [downloadLanguage, setDownloadLanguage] = useState<'original' | 'en'>('original');
   const [notifyingSubmissionId, setNotifyingSubmissionId] = useState('');
+  const [needsInfoRequest, setNeedsInfoRequest] = useState<EnrichedReviewRequest | null>(null);
+  const [needsInfoNote, setNeedsInfoNote] = useState('');
+  const [needsInfoSaving, setNeedsInfoSaving] = useState(false);
+  const [needsInfoError, setNeedsInfoError] = useState('');
 
   // PPVC-692: the client's name + display ID, clickable through to their
   // medical-context profile when we can resolve a client id.
@@ -239,16 +243,52 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     }
   };
 
+  // PPVC-686: the "needs info" template reuses the client-visible admin
+  // note that's already emailed to the client -- so the advisor's own
+  // wording goes out verbatim, rather than a generic boilerplate message.
+  const openNeedsInfoModal = (request: EnrichedReviewRequest) => {
+    setNeedsInfoRequest(request);
+    setNeedsInfoNote(request.clientVisibleAdminNote || '');
+    setNeedsInfoError('');
+  };
+  const sendNeedsInfo = async () => {
+    if (!needsInfoRequest?._id) return;
+    if (!needsInfoNote.trim()) { setNeedsInfoError('Write the message to send the client first.'); return; }
+    try {
+      setNeedsInfoSaving(true);
+      setNeedsInfoError('');
+      await medicalReviewRequestsApi.updateClientVisibleAdminNote(needsInfoRequest._id, needsInfoNote.trim());
+      const response = await medicalReviewRequestsApi.emailClientVisibleAdminNote(needsInfoRequest._id);
+      window.alert(response.data.message || 'Client emailed.');
+      setNeedsInfoRequest(null);
+      await loadData();
+    } catch (requestError: any) {
+      setNeedsInfoError(requestError?.response?.data?.message || 'Unable to email the client.');
+    } finally {
+      setNeedsInfoSaving(false);
+    }
+  };
+
   const notifyAction = (request: EnrichedReviewRequest) => canManageRequests && (
-    <button
-      type="button"
-      onClick={() => void notifyClientSubmission(request._id || '')}
-      disabled={notifyingSubmissionId === request._id}
-      className="rounded-md border border-blue-200 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50"
-      title="Email the client that their document was submitted for review"
-    >
-      {notifyingSubmissionId === request._id ? 'Notifying…' : 'Notify client'}
-    </button>
+    <span className="inline-flex gap-1">
+      <button
+        type="button"
+        onClick={() => void notifyClientSubmission(request._id || '')}
+        disabled={notifyingSubmissionId === request._id}
+        className="rounded-md border border-blue-200 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50"
+        title="Email the client that their document was submitted for review"
+      >
+        {notifyingSubmissionId === request._id ? 'Notifying…' : 'Notify client'}
+      </button>
+      <button
+        type="button"
+        onClick={() => openNeedsInfoModal(request)}
+        className="rounded-md border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-semibold text-amber-800"
+        title="Email the client that the medical advisor needs more information"
+      >
+        Needs info
+      </button>
+    </span>
   );
 
   const loadData = useCallback(async () => {
@@ -1657,6 +1697,27 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             setWhatsappRequest(null);
           }}
         />
+      )}
+
+      {needsInfoRequest && (
+        <ResponsiveModal isOpen onClose={() => { if (!needsInfoSaving) setNeedsInfoRequest(null); }} title={`Needs info · MRR #${needsInfoRequest.display_id || '—'}`} size="md">
+          <div className="space-y-4 p-4">
+            <p className="text-sm text-gray-600">This is sent to the client as the client-visible message on this MRR, then emailed to them right away.</p>
+            <textarea
+              value={needsInfoNote}
+              onChange={(event) => setNeedsInfoNote(event.target.value)}
+              rows={5}
+              placeholder="e.g. The EKG photo you sent is too blurry to review -- please retake it in good lighting and resubmit."
+              disabled={needsInfoSaving}
+              className="block w-full rounded-md border border-gray-300 px-3 py-2"
+            />
+            {needsInfoError && <p role="alert" className="text-sm text-red-700">{needsInfoError}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={needsInfoSaving} onClick={() => setNeedsInfoRequest(null)} className="rounded-md border px-3 py-2">Cancel</button>
+              <button type="button" disabled={needsInfoSaving} onClick={() => void sendNeedsInfo()} className="rounded-md bg-amber-700 px-4 py-2 font-semibold text-white disabled:opacity-50">{needsInfoSaving ? 'Sending…' : 'Save and email client'}</button>
+            </div>
+          </div>
+        </ResponsiveModal>
       )}
 
       {groupModalOpen && (
