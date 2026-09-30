@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { bookingFlowApi, housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
-import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel } from './BookingConfirmationPDF.helpers';
+import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, roomTypeLabel } from './BookingConfirmationPDF.helpers';
 
 interface BookingConfirmationPDFProps {
   booking: any;
@@ -321,6 +321,10 @@ const translations = {
     dates: 'Data',
     checkIn: 'Przyjazd',
     checkOut: 'Wyjazd',
+    roomType: 'Rodzaj pokoju',
+    roomTypeShared: 'Pokój dzielony',
+    roomTypePrivate: 'Pokój prywatny',
+    roomTypePrivateEnsuite: 'Pokój prywatny z łazienką',
     addressLabel: 'Adres',
     googleMaps: 'Google maps',
     // Table headers
@@ -374,6 +378,10 @@ const translations = {
     dates: 'Datum',
     checkIn: 'Příjezd',
     checkOut: 'Odjezd',
+    roomType: 'Typ pokoje',
+    roomTypeShared: 'Sdílený pokoj',
+    roomTypePrivate: 'Soukromý pokoj',
+    roomTypePrivateEnsuite: 'Soukromý pokoj s vlastní koupelnou',
     addressLabel: 'Adresa',
     googleMaps: 'Google mapy',
     // Table headers
@@ -427,6 +435,10 @@ const translations = {
     dates: 'Dates',
     checkIn: 'Check-in',
     checkOut: 'Check-out',
+    roomType: 'Room type',
+    roomTypeShared: 'Shared room',
+    roomTypePrivate: 'Private room',
+    roomTypePrivateEnsuite: 'Private room with private bathroom',
     addressLabel: 'Address',
     googleMaps: 'Google maps',
     // Table headers
@@ -653,6 +665,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const retreatCheckOut = formatRetreatDateTime(retreatEndDate, isBoosterBooking
     ? (booking.checkOutTime || booking.check_out_time || booking.boosterEndTime || booking.booster_end_time || booking.departureTime || booking.departure_time || booking.endTime || booking.ceremonyId?.endTime)
     : getRetreatEndTime(retreat));
+  const roomTypeText = roomTypeLabel(booking.roomType, t);
   const retreatDateRangeCompact = [
     retreatStartDate ? retreatStartDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit' }) : null,
     retreatEndDate ? retreatEndDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
@@ -807,6 +820,10 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             <td style="padding: 0 10px 0 0; vertical-align: top;">${t.dates}:</td>
             <td style="padding: 0; font-weight: bold;">${escapeHtml(retreatDateRange)}</td>
           </tr>
+          ${roomTypeText ? `<tr>
+            <td style="padding: 0 10px 0 0; vertical-align: top;">${t.roomType}:</td>
+            <td style="padding: 0; font-weight: bold;">${escapeHtml(roomTypeText)}</td>
+          </tr>` : ''}
           <tr>
             <td style="padding: 0 10px 0 0; vertical-align: top;">${t.checkIn}:</td>
             <td style="padding: 0; font-weight: bold;">${escapeHtml(retreatCheckIn)}</td>

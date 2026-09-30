@@ -109,6 +109,21 @@ export const formatPaymentRequestDisplayLabel = (
   return String(paymentRequest.invoiceNumber || paymentRequest.display_id || paymentRequest._id || '').trim();
 };
 
+// PPVC-701: a booking's room type (shared/private/private_ensuite) previously
+// only surfaced inside a price-adjustment line item, so it was invisible on the
+// PDF whenever there was no room-price surcharge/discount to list.
+export const roomTypeLabel = (
+  roomType: string | undefined,
+  t: { roomTypeShared: string; roomTypePrivate: string; roomTypePrivateEnsuite: string },
+): string => {
+  switch (roomType) {
+    case 'shared': return t.roomTypeShared;
+    case 'private': return t.roomTypePrivate;
+    case 'private_ensuite': return t.roomTypePrivateEnsuite;
+    default: return '';
+  }
+};
+
 export const buildBookingPriceRows = (booking: any) => {
   const summary = booking?.pricingSummary;
   if (summary?.basePrice == null && booking?.totalAmount == null) return [];

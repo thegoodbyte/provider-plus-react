@@ -1,4 +1,4 @@
-import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, fulfilledBookingFlowStatuses } from './BookingConfirmationPDF.helpers';
+import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, fulfilledBookingFlowStatuses, roomTypeLabel } from './BookingConfirmationPDF.helpers';
 import { getBookingConfirmationPolicy } from './BookingConfirmationPDF';
 
 describe('BookingConfirmationPDF helpers', () => {
@@ -79,5 +79,14 @@ describe('BookingConfirmationPDF helpers', () => {
   it('uses a distinct optional-requirements policy for booster bookings', () => {
     expect(getBookingConfirmationPolicy('booster')).toEqual({ booster: true, contractRequired: false, ekgRequired: false, liverRequired: false });
     expect(getBookingConfirmationPolicy('full_retreat')).toEqual({ booster: false, contractRequired: true, ekgRequired: true, liverRequired: true });
+  });
+
+  it('maps a booking room type to its translated label, even with no price adjustment to hang it on (PPVC-701)', () => {
+    const t = { roomTypeShared: 'Shared room', roomTypePrivate: 'Private room', roomTypePrivateEnsuite: 'Private room with private bathroom' };
+    expect(roomTypeLabel('shared', t)).toBe('Shared room');
+    expect(roomTypeLabel('private', t)).toBe('Private room');
+    expect(roomTypeLabel('private_ensuite', t)).toBe('Private room with private bathroom');
+    expect(roomTypeLabel('unspecified', t)).toBe('');
+    expect(roomTypeLabel(undefined, t)).toBe('');
   });
 });
