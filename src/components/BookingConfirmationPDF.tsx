@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { bookingFlowApi, housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
-import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, roomTypeLabel } from './BookingConfirmationPDF.helpers';
+import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, resolveRoomTypeDisplay } from './BookingConfirmationPDF.helpers';
 
 interface BookingConfirmationPDFProps {
   booking: any;
@@ -325,6 +325,7 @@ const translations = {
     roomTypeShared: 'Pokój dzielony',
     roomTypePrivate: 'Pokój prywatny',
     roomTypePrivateEnsuite: 'Pokój prywatny z łazienką',
+    privateBathroomSuffix: ' (z łazienką)',
     addressLabel: 'Adres',
     googleMaps: 'Google maps',
     // Table headers
@@ -382,6 +383,7 @@ const translations = {
     roomTypeShared: 'Sdílený pokoj',
     roomTypePrivate: 'Soukromý pokoj',
     roomTypePrivateEnsuite: 'Soukromý pokoj s vlastní koupelnou',
+    privateBathroomSuffix: ' (s koupelnou)',
     addressLabel: 'Adresa',
     googleMaps: 'Google mapy',
     // Table headers
@@ -439,6 +441,7 @@ const translations = {
     roomTypeShared: 'Shared room',
     roomTypePrivate: 'Private room',
     roomTypePrivateEnsuite: 'Private room with private bathroom',
+    privateBathroomSuffix: ' (private bathroom)',
     addressLabel: 'Address',
     googleMaps: 'Google maps',
     // Table headers
@@ -665,7 +668,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const retreatCheckOut = formatRetreatDateTime(retreatEndDate, isBoosterBooking
     ? (booking.checkOutTime || booking.check_out_time || booking.boosterEndTime || booking.booster_end_time || booking.departureTime || booking.departure_time || booking.endTime || booking.ceremonyId?.endTime)
     : getRetreatEndTime(retreat));
-  const roomTypeText = roomTypeLabel(booking.roomType, t);
+  const houseBedrooms = Array.isArray(house?.bedrooms) ? house.bedrooms as Array<{ name: string; hasBathroom?: boolean }> : [];
+  const roomTypeText = resolveRoomTypeDisplay(booking, houseBedrooms, t);
   const retreatDateRangeCompact = [
     retreatStartDate ? retreatStartDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit' }) : null,
     retreatEndDate ? retreatEndDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : null,

@@ -1,4 +1,4 @@
-import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, fulfilledBookingFlowStatuses, roomTypeLabel } from './BookingConfirmationPDF.helpers';
+import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, fulfilledBookingFlowStatuses, resolveRoomTypeDisplay, roomTypeLabel } from './BookingConfirmationPDF.helpers';
 import { getBookingConfirmationPolicy } from './BookingConfirmationPDF';
 
 describe('BookingConfirmationPDF helpers', () => {
@@ -88,5 +88,16 @@ describe('BookingConfirmationPDF helpers', () => {
     expect(roomTypeLabel('private_ensuite', t)).toBe('Private room with private bathroom');
     expect(roomTypeLabel('unspecified', t)).toBe('');
     expect(roomTypeLabel(undefined, t)).toBe('');
+  });
+
+  it('falls back to the assigned bedroom when roomType was never set (PPVC-701 follow-up)', () => {
+    const t = { roomTypeShared: 'Shared room', roomTypePrivate: 'Private room', roomTypePrivateEnsuite: 'Private room with private bathroom', privateBathroomSuffix: ' (private bathroom)' };
+    const houseBedrooms = [{ name: 'Room A', hasBathroom: true }, { name: 'Room B' }];
+
+    expect(resolveRoomTypeDisplay({ roomType: 'shared', roomNumber: 'Room A' }, houseBedrooms, t)).toBe('Shared room');
+    expect(resolveRoomTypeDisplay({ roomType: 'unspecified', roomNumber: 'Room A' }, houseBedrooms, t)).toBe('Room A (private bathroom)');
+    expect(resolveRoomTypeDisplay({ roomType: undefined, roomNumber: 'Room B' }, houseBedrooms, t)).toBe('Room B');
+    expect(resolveRoomTypeDisplay({ roomType: undefined, roomNumber: undefined }, houseBedrooms, t)).toBe('');
+    expect(resolveRoomTypeDisplay({ roomType: undefined, roomNumber: 'Unknown Room' }, houseBedrooms, t)).toBe('Unknown Room');
   });
 });

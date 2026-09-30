@@ -124,6 +124,24 @@ export const roomTypeLabel = (
   }
 };
 
+// PPVC-701 follow-up: roomType is an explicit enum that's rarely set on real
+// bookings (it defaults to 'unspecified' and requires a dedicated admin
+// action). A specific bedroom assignment (roomNumber, set via the booking
+// editor or the retreat holistic view's Room allocation dropdown) is far
+// more commonly known, so fall back to the assigned bedroom's own name --
+// and its hasBathroom flag -- when there's no explicit roomType to show.
+export const resolveRoomTypeDisplay = (
+  booking: { roomType?: string; roomNumber?: string },
+  houseBedrooms: Array<{ name: string; hasBathroom?: boolean }>,
+  t: { roomTypeShared: string; roomTypePrivate: string; roomTypePrivateEnsuite: string; privateBathroomSuffix: string },
+): string => {
+  const fromRoomType = roomTypeLabel(booking.roomType, t);
+  if (fromRoomType) return fromRoomType;
+  if (!booking.roomNumber) return '';
+  const bedroom = houseBedrooms.find((item) => item.name === booking.roomNumber);
+  return bedroom?.hasBathroom ? `${booking.roomNumber}${t.privateBathroomSuffix}` : booking.roomNumber;
+};
+
 export const buildBookingPriceRows = (booking: any) => {
   const summary = booking?.pricingSummary;
   if (summary?.basePrice == null && booking?.totalAmount == null) return [];
