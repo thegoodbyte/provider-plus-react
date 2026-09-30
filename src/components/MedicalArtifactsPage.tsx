@@ -1184,8 +1184,9 @@ const MedicalArtifactsPage: React.FC = () => {
                             <div className={`inline-flex max-w-full items-center rounded px-2 py-1 text-sm font-medium ring-1 ring-inset ${clientNameClass}`}>
                               <span className="truncate">{row.clientName}</span>
                             </div>
+                            {/* PPVC-713: never show a raw ID hash as a stand-in for the client number. */}
                             <div className="text-xs text-gray-500">
-                              {row.clientDisplayId ? `Client #${row.clientDisplayId}` : row.clientId.slice(-6)}{row.clientEmail ? ` · ${row.clientEmail}` : ''}
+                              {row.clientDisplayId ? `Client #${row.clientDisplayId}` : ''}{row.clientEmail ? ` · ${row.clientEmail}` : ''}
                             </div>
                           </div>
                         </div>

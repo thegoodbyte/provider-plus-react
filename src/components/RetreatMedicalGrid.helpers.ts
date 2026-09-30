@@ -118,10 +118,13 @@ const getDateValue = (value?: Date | string | null) => {
   return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 };
 
+// PPVC-713: never fall back to a raw ID hash -- it was even the booking's
+// id, not the client's, making it doubly meaningless. Match the backend's
+// own convention (MedicalArtifactsService.getClientName) of "Unknown client".
 const getClientName = (booking: RetreatClient): string => {
   const client = booking.clientId as any;
   const name = [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
-  return name || client?.email || `Client ${getObjectId(booking).slice(-6)}`;
+  return name || client?.email || 'Unknown client';
 };
 
 const getBookingNumber = (booking: RetreatClient): string => {
