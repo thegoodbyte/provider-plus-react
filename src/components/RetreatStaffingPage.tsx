@@ -41,7 +41,7 @@ export default function RetreatStaffingPage() {
       const people = (retreat.retreatStaff || []).filter(person => (person.role || 'helper') === role.key);
       return <td className={`p-4 ${people.length ? 'text-slate-800' : 'text-amber-700'}`} key={role.key}>{people.length ? <div className="space-y-3">{people.map((person, index) => <div key={`${person.contactId || person.name || 'staff'}-${index}`}><div className="font-medium">{person.name?.trim() || (typeof person.contactId === 'object' ? person.contactId?.name : '') || 'Assigned person — name unavailable'}</div><div className="mt-1 text-xs leading-5 text-slate-500">{formatStaffAssignmentDates(person, retreat, language)}</div></div>)}</div> : 'Not assigned'}</td>;
     })}
-    <td className="p-4"><Link className="font-medium text-teal-700 underline" to={`/${prefix}/retreats/${retreat._id}?panel=helpers`}>Manage team</Link></td>
+    <td className="p-4"><Link className="font-medium text-teal-700 underline" to={`/${prefix}/retreats/${retreat._id}/helpers`}>Manage team</Link></td>
   </tr>);
 
   return <main className="mx-auto max-w-[1500px] p-4 sm:p-6">

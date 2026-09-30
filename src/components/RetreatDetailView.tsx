@@ -48,7 +48,7 @@ import { getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { bookingFinancialSummary } from './bookingFinancialSummary';
 import { filterRetreatEmailTemplates, normalizeTemplateLanguage, retreatEmailTemplateSearchText, RetreatEmailTemplateLanguage } from './retreatEmailTemplateFilters';
 import { activeRetreatClients, isCancelledBookingStatus } from './retreatClientVisibility';
-import { formatDateForInput, formatStaffRole, getHouseIdValue, getHouseTown, getRetreatTown, staffRoleOptions } from './retreatDetailUtils';
+import { formatDateForInput, getHouseIdValue, getHouseTown, getRetreatTown, staffRoleOptions } from './retreatDetailUtils';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -195,9 +195,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
   const [excludedRetreatEmailClientIds, setExcludedRetreatEmailClientIds] = useState<string[]>([]);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
-  const [helperAssignmentsCollapsed, setHelperAssignmentsCollapsed] = useState(true);
   useEffect(() => {
-    if (new URLSearchParams(location.search).get('panel') === 'helpers') setHelperAssignmentsCollapsed(false);
+    if (new URLSearchParams(location.search).get('panel') === 'helpers') navigate(`/${routePrefix}/retreats/${retreatId}/helpers`, { replace: true });
   }, [location.search]);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
   const [houses] = useState<House[]>([]);
@@ -968,9 +967,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           </button>
           <button
             type="button"
-            onClick={() => setHelperAssignmentsCollapsed(false)}
+            onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/helpers`)}
             className="edit-retreat-btn retreat-icon-action"
-            title="View helper assignments"
+            title="Manage cooks and helpers"
           >
             <PeopleAltRoundedIcon className="w-4 h-4" />
             <span className="retreat-action-label">Helpers</span>
@@ -997,58 +996,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <span>{retreatDateText}</span>
         </div>
       </div>
-
-      <Modal
-        title="Helper Assignments"
-        open={!helperAssignmentsCollapsed}
-        onCancel={() => setHelperAssignmentsCollapsed(true)}
-        footer={null}
-        width={900}
-        destroyOnClose
-      >
-          <div className="mb-3 flex justify-end">
-          <button
-            type="button"
-            onClick={async () => {
-              setHelperAssignmentsCollapsed(true);
-              navigate(`/${routePrefix}/retreats/${retreatId}/edit?panel=helpers`);
-            }}
-            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Edit assignments
-          </button>
-          </div>
-
-          {Boolean(retreat.retreatStaff?.length) ? (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {(retreat.retreatStaff || []).map((assignment, index) => (
-              <div key={`${assignment.contactId || assignment.name || 'staff'}-${index}`} className="rounded-md border border-gray-100 bg-gray-50 p-3">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">{assignment.name || 'Unnamed person'}</div>
-                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{formatStaffRole(assignment.role)}</div>
-                  </div>
-                  {assignment.plannedSalary !== undefined && assignment.plannedSalary !== null && (
-                    <div className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-gray-700">
-                      {Number(assignment.plannedSalary).toLocaleString()} {assignment.salaryCurrency || 'CZK'}
-                    </div>
-                  )}
-                </div>
-                <div className="mt-2 space-y-1 text-sm text-gray-700">
-                  <div>{formatDate(assignment.startDate || '')} {assignment.startTime || ''} - {formatDate(assignment.endDate || '')} {assignment.endTime || ''}</div>
-                  {assignment.phone && <a className="block hover:underline" href={`tel:${assignment.phone}`}>{assignment.phone}</a>}
-                  {assignment.email && <a className="block hover:underline" href={`mailto:${assignment.email}`}>{assignment.email}</a>}
-                  {assignment.notes && <div className="text-gray-500">{assignment.notes}</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-          ) : (
-          <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500">
-            No helpers or cooks assigned yet.
-          </div>
-          )}
-      </Modal>
 
       <Modal
         title="Financial Metrics"

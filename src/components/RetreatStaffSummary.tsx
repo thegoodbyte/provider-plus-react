@@ -12,6 +12,6 @@ export default function RetreatStaffSummary({ assignments = [], retreatId, route
       const names = people.map(person => person.name?.trim() || (typeof person.contactId === 'object' ? person.contactId?.name : '') || 'Assigned person — name unavailable');
       return <div key={role.key}><dt>{role.label}</dt><dd className={people.length ? '' : 'holistic-staff-unassigned'}>{names.length ? names.join(', ') : 'Not assigned'}</dd></div>;
     })}</dl>
-    <Link to={`/${routePrefix}/retreats/${retreatId}?panel=helpers`}>Manage retreat team</Link>
+    <Link to={`/${routePrefix}/retreats/${retreatId}/helpers`}>Manage retreat team</Link>
   </div>;
 }
