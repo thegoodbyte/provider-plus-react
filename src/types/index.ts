@@ -227,6 +227,7 @@ export interface Client {
   referralClientId?: string | Client;
   referralPersonName?: string;
   referralCommissionPercentage?: number | null;
+  referralAttributionType?: 'direct' | 'self_identified' | 'na';
   rejectionReason?: string;
   tags?: string[];
   notes?: string;

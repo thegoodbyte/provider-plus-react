@@ -535,6 +535,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                     <strong>Referral:</strong> {(typeof client.referralId === 'object' ? client.referralId?.name : '') || client.source || 'N/A'}
                     {client.referralPersonType === 'existing_client' && client.referralClientId && <> · Friend: {typeof client.referralClientId === 'object' ? `${client.referralClientId.firstName} ${client.referralClientId.lastName}` : 'Existing client'}</>}
                     {client.referralPersonType === 'someone_else' && client.referralPersonName && <> · Friend: {client.referralPersonName}</>}
+                    {client.referralAttributionType && client.referralAttributionType !== 'na' && <> · {client.referralAttributionType === 'direct' ? 'Direct' : 'Self-identified'}</>}
                   </div>
                   <div className="info-row">
                     <strong>Date of Birth:</strong> {client.dateOfBirth ? new Date(client.dateOfBirth).toLocaleDateString() : 'N/A'} {(client as any)?.dateOfBirthSource === 'AI' && <span className="ml-1 text-xs text-blue-600">(AI)</span>}

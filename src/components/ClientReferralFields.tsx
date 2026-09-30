@@ -82,6 +82,17 @@ const ClientReferralFields: React.FC<Props> = ({ value, referrals, onChange, cur
         {(value.referralPersonName || '').length === 1 && <p className="mt-1 text-xs text-gray-500">Name must contain at least 2 characters.</p>}
       </div>}
     </div>}
+
+    {/* PPVC-711: independent of the referral-partner/commission fields
+        above -- a general classification kept even with no partner involved. */}
+    <div>
+      <label htmlFor="referral-attribution-type" className="mb-1 block text-sm font-medium text-gray-700">Attribution type</label>
+      <select id="referral-attribution-type" value={value.referralAttributionType || 'na'} onChange={(event) => onChange({ referralAttributionType: event.target.value as Client['referralAttributionType'] })} className={field}>
+        <option value="na">N/A</option>
+        <option value="direct">Direct</option>
+        <option value="self_identified">Self-identified</option>
+      </select>
+    </div>
   </div>;
 };
 

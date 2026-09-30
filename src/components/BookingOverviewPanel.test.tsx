@@ -48,4 +48,16 @@ describe('BookingOverviewPanel', () => {
     expect(screen.getAllByText('$1,950.00')).toHaveLength(2);
     expect(screen.queryByText(/Overpaid/)).not.toBeInTheDocument();
   });
+
+  it('reads the client\'s referral through to the booking rail, including attribution type (PPVC-711)', async () => {
+    render(<BookingOverviewPanel {...base} client={{ ...base.client, referralId: { _id: 'friend', name: 'Friend' }, referralAttributionType: 'self_identified' }} />);
+    await waitFor(() => expect(screen.getByText('$30.00')).toBeInTheDocument());
+    expect(screen.getByText('Friend · Self-identified')).toBeInTheDocument();
+  });
+
+  it('falls back to N/A when the client has no referral on file', async () => {
+    render(<BookingOverviewPanel {...base} />);
+    await waitFor(() => expect(screen.getByText('$30.00')).toBeInTheDocument());
+    expect(screen.getByText('N/A')).toBeInTheDocument();
+  });
 });
