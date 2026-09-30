@@ -387,6 +387,25 @@
   color: #9ca3af;
 }
 
+.medical-cell-request {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.medical-cell-request button.medical-cell-mini-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.medical-cell-request button.medical-cell-mini-link:disabled {
+  color: #9ca3af;
+  cursor: default;
+}
+
 .medical-grid-empty {
   border: 1px dashed #d1d5db;
   border-radius: 12px;

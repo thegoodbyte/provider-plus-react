@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { Modal } from 'antd';
-import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingFlowApi, bookingsApi, documentRequestsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import {
@@ -62,6 +62,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [historyView, setHistoryView] = useState<{ cell: RetreatMedicalCell; clientName: string; stage: string } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [requestingKey, setRequestingKey] = useState('');
 
   useEffect(() => {
     if (!isFullscreen) return undefined;
@@ -80,10 +81,11 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   const fetchGridData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [bookingsResponse, artifactsResponse, reviewsResponse] = await Promise.all([
+      const [bookingsResponse, artifactsResponse, reviewsResponse, bookingFlowItemsResponse] = await Promise.all([
         bookingsApi.getByRetreatWithDetails(retreatId),
         medicalArtifactsApi.getAll({ retreatId }),
         medicalReviewRequestsApi.getAll({ retreatId }),
+        bookingFlowApi.getItems({ retreatId }),
       ]);
       const artifactIds = (artifactsResponse.data || []).map((artifact: any) => artifact._id).filter(Boolean);
       const artifactReviewsResponse = await medicalReviewRequestsApi.getByArtifacts(artifactIds);
@@ -101,6 +103,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
           artifactsResponse.data || [],
           reviews,
           retreatFromBookings || { retreatCode: retreatId, code: retreatId, name: retreatId },
+          bookingFlowItemsResponse.data || [],
         ),
       );
     } catch (error) {
@@ -111,6 +114,22 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
       setIsLoading(false);
     }
   }, [retreatId]);
+
+  // PPVC-687: ask the client for a missing EKG/liver panel/medications form
+  // directly from the grid, and record that we already asked.
+  const requestMissingDocument = async (bookingId: string, stageKey: RetreatMedicalRow['key']) => {
+    const key = `${bookingId}:${stageKey}`;
+    try {
+      setRequestingKey(key);
+      const response = await documentRequestsApi.requestMissingDocument(bookingId, stageKey);
+      window.alert(response.data.message || 'Client notified that their document is missing.');
+      await fetchGridData();
+    } catch (error: any) {
+      window.alert(error?.response?.data?.message || 'Unable to notify the client.');
+    } finally {
+      setRequestingKey('');
+    }
+  };
 
   useEffect(() => {
     fetchGridData();
@@ -174,6 +193,18 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
             <Link to={`/${routePrefix}/medical-artifacts/${artifactId}`} className="medical-cell-mini-link">
               Artifact #{cell.artifact?.display_id || artifactId.slice(-6)}
             </Link>
+          ) : cell.status === 'missing' && cell.bookingId ? (
+            <div className="medical-cell-request">
+              <button
+                type="button"
+                className="medical-cell-mini-link"
+                disabled={requestingKey === `${cell.bookingId}:${stageKey}`}
+                onClick={() => void requestMissingDocument(cell.bookingId!, stageKey)}
+              >
+                {requestingKey === `${cell.bookingId}:${stageKey}` ? 'Requesting…' : 'Request from client'}
+              </button>
+              {cell.documentRequestedAt && <span className="medical-cell-mini-muted">Requested {cell.documentRequestedAt}</span>}
+            </div>
           ) : (
             <span className="medical-cell-mini-muted">Upload an artifact before creating an MRR</span>
           )}

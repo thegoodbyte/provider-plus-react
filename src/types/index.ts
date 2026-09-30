@@ -1595,6 +1595,7 @@ export interface BookingFlowItem {
   sentAt?: Date | string;
   emailSentAt?: Date | string;
   receivedAt?: Date | string;
+  documentRequestedAt?: Date | string;
   reviewedAt?: Date | string;
   reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | 'WONT_DO';
   reviewNotes?: string;

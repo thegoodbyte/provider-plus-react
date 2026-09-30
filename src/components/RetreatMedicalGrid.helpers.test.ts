@@ -1,4 +1,4 @@
-import { buildRetreatMedicalGridData, mergeMedicalReviewRequests } from './RetreatMedicalGrid.helpers';
+import { buildRetreatMedicalGridData, mergeMedicalReviewRequests, stageBookingFlowItemKey } from './RetreatMedicalGrid.helpers';
 
 describe('RetreatMedicalGrid helpers', () => {
   it('merges retreat and artifact-linked MRR results without duplicates', () => {
@@ -16,6 +16,23 @@ describe('RetreatMedicalGrid helpers', () => {
     expect(data.clients.map((client) => client.bookingId)).toEqual(['active-booking']);
     expect(data.totals.clients).toBe(1);
     expect(data.rows.every((row) => row.cells.length === 1)).toBe(true);
+  });
+
+  it('surfaces documentRequestedAt from the matching booking-flow item per stage (PPVC-687)', () => {
+    const data = buildRetreatMedicalGridData(
+      [{ _id: 'booking-1', bookingNumber: 1, status: 'confirmed', clientId: { _id: 'client-1', firstName: 'Ana' } }] as any,
+      [], [], { retreatCode: 'TEST' },
+      [
+        { bookingId: 'booking-1', key: stageBookingFlowItemKey.ekg, documentRequestedAt: '2026-09-30T10:00:00.000Z' },
+        { bookingId: 'booking-1', key: stageBookingFlowItemKey.liver, documentRequestedAt: undefined },
+      ] as any,
+    );
+
+    const ekgCell = data.rows.find((row) => row.key === 'ekg')!.cells[0];
+    const liverCell = data.rows.find((row) => row.key === 'liver')!.cells[0];
+    expect(ekgCell.bookingId).toBe('booking-1');
+    expect(ekgCell.documentRequestedAt).toBeTruthy();
+    expect(liverCell.documentRequestedAt).toBeUndefined();
   });
 
   it('never shows a raw id hash for an unpopulated client -- falls back to "Unknown client" (PPVC-713)', () => {

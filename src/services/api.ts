@@ -1642,6 +1642,15 @@ export const bookingFlowApi = {
   },
 };
 
+// PPVC-687: ask a client for a missing EKG/liver panel/medications form
+// directly from the Medical Grid.
+export const documentRequestsApi = {
+  requestMissingDocument: (bookingId: string, documentType: 'ekg' | 'liver' | 'medications') => {
+    cacheService.clearPattern('booking-flow:items:');
+    return api.post<{ emailSent: boolean; documentRequestedAt: string; message: string }>('/document-requests/missing-document', { bookingId, documentType });
+  },
+};
+
 export const bookingDocumentsApi = {
   getTypes: (includeInactive = false) => cachedGet<BookingDocumentType[]>(
     `booking-documents:types:${includeInactive}`,

@@ -1,13 +1,15 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
-import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingFlowApi, bookingsApi, documentRequestsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
   bookingsApi: { getByRetreatWithDetails: jest.fn() },
   medicalArtifactsApi: { getAll: jest.fn() },
   medicalReviewRequestsApi: { getAll: jest.fn(), getByArtifacts: jest.fn() },
+  bookingFlowApi: { getItems: jest.fn() },
+  documentRequestsApi: { requestMissingDocument: jest.fn() },
 }));
 jest.mock('antd', () => ({ Modal: ({ open, children }: any) => open ? <div>{children}</div> : null }));
 
@@ -28,6 +30,7 @@ describe('RetreatTrackingGrid MRR actions', () => {
       requestType: 'ekg_review', status: 'pending',
     }] });
     (medicalReviewRequestsApi.getByArtifacts as jest.Mock).mockResolvedValue({ data: [] });
+    (bookingFlowApi.getItems as jest.Mock).mockResolvedValue({ data: [] });
   });
 
   it('shows the MRR number or a create action linked to the source artifact', async () => {
@@ -51,5 +54,19 @@ describe('RetreatTrackingGrid MRR actions', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(container.querySelector('.retreat-medical-grid')).not.toHaveClass('medical-grid-fullscreen');
+  });
+
+  it('requests a missing document from the client and refreshes once sent (PPVC-687)', async () => {
+    (documentRequestsApi.requestMissingDocument as jest.Mock).mockResolvedValue({ data: { emailSent: true, message: 'Client notified.' } });
+    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => undefined);
+    render(<MemoryRouter initialEntries={['/admin/retreats/retreat-1']}><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
+
+    const requestButtons = await screen.findAllByRole('button', { name: 'Request from client' });
+    fireEvent.click(requestButtons[0]);
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Client notified.'));
+    expect(documentRequestsApi.requestMissingDocument).toHaveBeenCalledWith('booking-1', 'medications');
+    await waitFor(() => expect(bookingFlowApi.getItems).toHaveBeenCalledTimes(2));
+    alertSpy.mockRestore();
   });
 });

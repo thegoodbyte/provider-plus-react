@@ -1,7 +1,15 @@
-import { MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
+import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
 
 export type RetreatMedicalStageKey = 'ekg' | 'liver' | 'medications';
+
+// PPVC-687: which BookingFlowItem key tracks each stage's "received"
+// step -- must match BOOKING_FLOW_ITEM_KEY in the API's DocumentRequestsService.
+export const stageBookingFlowItemKey: Record<RetreatMedicalStageKey, string> = {
+  ekg: 'ekg_received',
+  liver: 'liver_received',
+  medications: 'medications_form_initial_received',
+};
 
 export type RetreatMedicalDecisionTone = 'green' | 'yellow' | 'red' | 'neutral';
 
@@ -38,6 +46,8 @@ export interface RetreatMedicalCell {
   notes?: string;
   artifacts: MedicalArtifact[];
   reviews: MedicalReviewRequest[];
+  bookingId?: string;
+  documentRequestedAt?: string;
 }
 
 export interface RetreatMedicalRow {
@@ -254,6 +264,7 @@ export const buildRetreatMedicalGridData = (
   artifacts: MedicalArtifact[],
   reviews: MedicalReviewRequest[],
   retreat?: { name?: string; code?: string; retreatCode?: string } | null,
+  bookingFlowItems: BookingFlowItem[] = [],
 ): RetreatMedicalGridData => {
   const activeBookings = bookings.filter((booking) => String(booking.status || '').trim().toLowerCase() !== 'cancelled');
   const clients = [...activeBookings]
@@ -308,6 +319,9 @@ export const buildRetreatMedicalGridData = (
         status = 'pending';
       }
 
+      const flowItemKey = stageBookingFlowItemKey[stage.key];
+      const flowItem = bookingId ? bookingFlowItems.find((item) => getObjectId(item.bookingId) === bookingId && item.key === flowItemKey) : undefined;
+
       return {
         status,
         artifact,
@@ -320,6 +334,8 @@ export const buildRetreatMedicalGridData = (
         notes,
         artifacts: matchingArtifacts,
         reviews: matchingReviews,
+        bookingId,
+        documentRequestedAt: flowItem?.documentRequestedAt ? formatCalendarDate(flowItem.documentRequestedAt) : undefined,
       };
     }),
   }));
