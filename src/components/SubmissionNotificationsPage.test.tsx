@@ -66,7 +66,42 @@ describe('SubmissionNotificationsPage', () => {
 
     await waitFor(() => expect(mockedApi.patch).toHaveBeenCalledWith('/submission-notifications/purge-past-retreats'));
     expect(await screen.findByText(/3 past-retreat notification/i)).toBeInTheDocument();
-    await waitFor(() => expect(mockedApi.get).toHaveBeenCalledTimes(2));
+    // 2 calls on mount (main list + the PPVC-685 archived-section fetch),
+    // plus 1 more from purgePastRetreats's own reload of the main list.
+    await waitFor(() => expect(mockedApi.get).toHaveBeenCalledTimes(3));
+  });
+
+  describe('archiving (PPVC-685)', () => {
+    const archived = [{ _id: 'n3', name: 'Old contract', status: 'pending', sourceId: 'contract:3', createdAt: '2026-07-01T10:00:00Z', notificationReadAt: '2026-07-02T10:00:00Z', notificationArchivedAt: '2026-07-02T10:00:00Z', retreatId: { _id: 'r3', name: 'July retreat' }, clientId: { _id: 'c3', firstName: 'Eva', lastName: 'Dvorak' } }];
+
+    beforeEach(() => {
+      mockedApi.get.mockImplementation((_url: string, options?: any) => Promise.resolve({ data: options?.params?.archived ? archived : notices } as any));
+    });
+
+    it('archives the selected notifications, marks them read, and removes them from the main list', async () => {
+      renderPage();
+      await screen.findByText('Review EKG');
+      fireEvent.click(screen.getByLabelText('Select Review EKG'));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Archive selected' }));
+
+      await waitFor(() => expect(mockedApi.patch).toHaveBeenCalledWith('/submission-notifications/archive', { ids: ['n1'] }));
+      await waitFor(() => expect(screen.queryByText('Review EKG')).not.toBeInTheDocument());
+      expect(screen.getByText('Review medications')).toBeInTheDocument();
+    });
+
+    it('shows archived notifications in the collapsible Archived section and can unarchive them', async () => {
+      renderPage();
+      await screen.findByText('Review EKG');
+
+      fireEvent.click(screen.getByRole('button', { name: /Archived/i }));
+      expect(await screen.findByText('Old contract')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Unarchive' }));
+
+      await waitFor(() => expect(mockedApi.patch).toHaveBeenCalledWith('/submission-notifications/n3/unarchive'));
+      await waitFor(() => expect(screen.queryByText('Old contract')).not.toBeInTheDocument());
+    });
   });
 });
 
