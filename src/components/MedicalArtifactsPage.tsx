@@ -1,10 +1,11 @@
 import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronDown, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
+import { parseCalendarDate } from '../utils/dateFormat';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
 
@@ -109,6 +110,15 @@ const getRetreatSearchText = (retreat?: string | Retreat) => {
     retreat.name,
     getObjectId(retreat),
   ].filter(Boolean).join(' ');
+};
+
+export const isRetreatFuture = (retreat?: Retreat, now = new Date()) => {
+  if (!retreat) return true;
+  const end = parseCalendarDate(retreat.endDate || retreat.dates?.endDate || retreat.startDate || retreat.dates?.startDate || null);
+  if (!end) return true;
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  return end.getTime() >= startOfToday.getTime();
 };
 
 const getCompactDocumentType = (artifact: MedicalArtifact) => getMedicalDocumentType(artifact.artifactType, artifact.documentType);
@@ -279,6 +289,9 @@ const MedicalArtifactsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | NonNullable<MedicalArtifact['status']>>('all');
   const [reviewFilter, setReviewFilter] = useState<'all' | 'has_review' | 'no_review'>('all');
   const [outcomeFilter, setOutcomeFilter] = useState<'all' | 'declined' | 'needs_info' | 'pending'>('all');
+  const [futureRetreatsOnly, setFutureRetreatsOnly] = useState(true);
+  const [artifactSortKey, setArtifactSortKey] = useState<'id' | 'client' | 'stage' | 'documentType' | 'source' | 'retreat' | 'received' | 'files'>('received');
+  const [artifactSortDirection, setArtifactSortDirection] = useState<'asc' | 'desc'>('desc');
   const [activeView, setActiveView] = useState<'artifacts' | 'retreat_submissions'>('artifacts');
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [submissionRetreatFilter, setSubmissionRetreatFilter] = useState('');
@@ -379,6 +392,21 @@ const MedicalArtifactsPage: React.FC = () => {
     return grouped;
   }, [reviewRequests]);
 
+  const retreatsById = useMemo(() => {
+    const map = new Map<string, Retreat>();
+    retreats.forEach((retreat) => {
+      const id = String(retreat._id || '').trim();
+      if (id) map.set(id, retreat);
+    });
+    return map;
+  }, [retreats]);
+
+  const resolveArtifactRetreat = useCallback((retreatValue?: string | Retreat): Retreat | undefined => {
+    if (!retreatValue) return undefined;
+    if (typeof retreatValue === 'object') return retreatValue;
+    return retreatsById.get(retreatValue);
+  }, [retreatsById]);
+
   const filteredArtifacts = useMemo(() => {
     const search = searchFilter.trim().toLowerCase();
     const bookingId = bookingIdFilter.trim().toLowerCase();
@@ -403,9 +431,10 @@ const MedicalArtifactsPage: React.FC = () => {
       if (reviewFilter === 'has_review' && artifactReviews.length === 0) return false;
       if (reviewFilter === 'no_review' && artifactReviews.length > 0) return false;
       if (outcomeFilter !== 'all' && outcome !== outcomeFilter) return false;
+      if (futureRetreatsOnly && !isRetreatFuture(resolveArtifactRetreat(artifact.retreatId))) return false;
       return true;
     });
-  }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, outcomeFilter, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
+  }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, futureRetreatsOnly, outcomeFilter, resolveArtifactRetreat, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
 
   useEffect(() => {
     setSelectedArtifactIds((prev) => {
@@ -509,6 +538,7 @@ const MedicalArtifactsPage: React.FC = () => {
   const retreatOptions = useMemo(() => {
     const map = new Map<string, { value: string; label: string }>();
     retreats.forEach((retreat) => {
+      if (futureRetreatsOnly && !isRetreatFuture(retreat)) return;
       const value = String(retreat._id || '').trim();
       if (!value) return;
       const label = getRetreatCode(retreat) || retreat.name || value;
@@ -518,6 +548,7 @@ const MedicalArtifactsPage: React.FC = () => {
     artifacts.forEach((artifact) => {
       const retreat = artifact.retreatId;
       if (!retreat) return;
+      if (futureRetreatsOnly && !isRetreatFuture(resolveArtifactRetreat(retreat))) return;
       if (typeof retreat === 'string') {
         const value = retreat.trim();
         if (value && !map.has(value)) {
@@ -532,7 +563,60 @@ const MedicalArtifactsPage: React.FC = () => {
     });
 
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [artifacts, retreats]);
+  }, [artifacts, futureRetreatsOnly, resolveArtifactRetreat, retreats]);
+
+  const getArtifactSortValue = (artifact: MedicalArtifact, key: typeof artifactSortKey) => {
+    switch (key) {
+      case 'id':
+        return Number(artifact.display_id) || 0;
+      case 'client':
+        return getClientName(artifact.clientId).toLowerCase();
+      case 'stage':
+        return getDocumentStageLabel(artifact.documentStage).toLowerCase();
+      case 'documentType':
+        return getDocumentTypeLabel(artifact.documentType, artifact.artifactType).toLowerCase();
+      case 'source':
+        return getSourceLabel(artifact.source).toLowerCase();
+      case 'retreat':
+        return (getRetreatCode(artifact.retreatId as any) || getRetreatLabel(artifact.retreatId)).toLowerCase();
+      case 'received':
+        return artifact.receivedAt ? new Date(artifact.receivedAt).getTime() : 0;
+      case 'files':
+        return artifact.files?.filter((file) => file.variant !== 'english_translation').length || 0;
+      default:
+        return '';
+    }
+  };
+
+  const sortedArtifacts = useMemo(() => {
+    return [...filteredArtifacts].sort((a, b) => {
+      const aValue = getArtifactSortValue(a, artifactSortKey);
+      const bValue = getArtifactSortValue(b, artifactSortKey);
+      const direction = artifactSortDirection === 'asc' ? 1 : -1;
+      if (typeof aValue === 'number' && typeof bValue === 'number') return (aValue - bValue) * direction;
+      return String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: 'base' }) * direction;
+    });
+  }, [artifactSortDirection, artifactSortKey, filteredArtifacts]);
+
+  const handleArtifactSort = (key: typeof artifactSortKey) => {
+    if (artifactSortKey === key) {
+      setArtifactSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setArtifactSortKey(key);
+    setArtifactSortDirection(key === 'received' || key === 'id' || key === 'files' ? 'desc' : 'asc');
+  };
+
+  const renderArtifactSortableHeader = (key: typeof artifactSortKey, label: string) => (
+    <button
+      type="button"
+      onClick={() => handleArtifactSort(key)}
+      className="inline-flex items-center gap-1 text-xs font-semibold uppercase text-gray-500 hover:text-gray-900"
+    >
+      {label}
+      <ChevronDown className={`h-3 w-3 transition-transform ${artifactSortKey === key && artifactSortDirection === 'asc' ? 'rotate-180' : ''} ${artifactSortKey === key ? 'opacity-100' : 'opacity-35'}`} />
+    </button>
+  );
 
   const sortedSubmissionRows = useMemo(() => {
     const rows = [...filterRetreatSubmissionRowsByMrr(submissionData?.rows || [], submissionMrrFilter)];
@@ -673,7 +757,8 @@ const MedicalArtifactsPage: React.FC = () => {
           <select value={retreatIdFilter} onChange={(event) => setRetreatIdFilter(event.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="">All retreats</option>{retreatOptions.map((retreat) => <option key={retreat.value} value={retreat.value}>{retreat.label}</option>)}</select>
           <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="all">All document types</option>{Object.entries(documentTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
           <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="all">All stages</option>{Object.entries(documentStageLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-          <button type="button" onClick={() => { setSearchFilter(''); setRetreatIdFilter(''); setDocumentTypeFilter('all'); setStageFilter('all'); setOutcomeFilter('all'); }} className="text-left text-sm font-semibold text-cyan-700">Clear filters</button>
+          <label className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm"><input type="checkbox" checked={futureRetreatsOnly} onChange={(event) => setFutureRetreatsOnly(event.target.checked)} /> Future retreats only</label>
+          <button type="button" onClick={() => { setSearchFilter(''); setRetreatIdFilter(''); setDocumentTypeFilter('all'); setStageFilter('all'); setOutcomeFilter('all'); setFutureRetreatsOnly(false); }} className="text-left text-sm font-semibold text-cyan-700">Clear filters</button>
         </div>}
       </div>
       <div className="mb-4 hidden rounded-md border border-gray-200 bg-white p-3 md:block">
@@ -731,6 +816,10 @@ const MedicalArtifactsPage: React.FC = () => {
             <option value="has_review">Has MRR</option>
             <option value="no_review">No MRR</option>
           </select>
+          <label className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700">
+            <input type="checkbox" checked={futureRetreatsOnly} onChange={(event) => setFutureRetreatsOnly(event.target.checked)} />
+            Future retreats only
+          </label>
           <button
             type="button"
             onClick={() => {
@@ -744,6 +833,7 @@ const MedicalArtifactsPage: React.FC = () => {
               setStatusFilter('all');
               setReviewFilter('all');
               setOutcomeFilter('all');
+              setFutureRetreatsOnly(false);
             }}
             className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
@@ -780,21 +870,21 @@ const MedicalArtifactsPage: React.FC = () => {
                   className="h-4 w-4 rounded border-gray-300"
                 />
               </th>
-              <th className="px-4 py-3">ID</th>
+              <th className="px-4 py-3">{renderArtifactSortableHeader('id', 'ID')}</th>
               <th className="min-w-[170px] px-4 py-3">MRR</th>
               <th className="sticky right-0 z-20 min-w-[184px] border-l border-gray-200 bg-gray-50 px-4 py-3">Actions</th>
               <th className="px-4 py-3">Preview</th>
-              <th className="hidden px-4 py-3 sm:table-cell">Stage</th>
-              <th className="px-4 py-3">Document Type</th>
-              <th className="px-4 py-3">Source</th>
-              <th className="px-4 py-3">Client</th>
-              <th className="px-4 py-3">Booking / Retreat</th>
-              <th className="px-4 py-3">Received</th>
-              <th className="px-4 py-3">Files</th>
+              <th className="hidden px-4 py-3 sm:table-cell">{renderArtifactSortableHeader('stage', 'Stage')}</th>
+              <th className="px-4 py-3">{renderArtifactSortableHeader('documentType', 'Document Type')}</th>
+              <th className="px-4 py-3">{renderArtifactSortableHeader('source', 'Source')}</th>
+              <th className="px-4 py-3">{renderArtifactSortableHeader('client', 'Client')}</th>
+              <th className="px-4 py-3">{renderArtifactSortableHeader('retreat', 'Booking / Retreat')}</th>
+              <th className="px-4 py-3">{renderArtifactSortableHeader('received', 'Received')}</th>
+              <th className="px-4 py-3">{renderArtifactSortableHeader('files', 'Files')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
-            {filteredArtifacts.map((artifact) => {
+            {sortedArtifacts.map((artifact) => {
               const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
               const latestReview = artifactReviews[0];
               const compactDocumentType = getCompactDocumentType(artifact);
@@ -971,7 +1061,7 @@ const MedicalArtifactsPage: React.FC = () => {
       </div>
       <div className="space-y-3 md:hidden">
         <div className="border-t-4 border-slate-900 bg-white px-3 py-3 text-sm text-slate-500">{filteredArtifacts.length} of {artifacts.length} artifacts</div>
-        {filteredArtifacts.map((artifact) => {
+        {sortedArtifacts.map((artifact) => {
           const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
           const latestReview = artifactReviews[0];
           const outcome = getArtifactOutcome(artifact, latestReview);
