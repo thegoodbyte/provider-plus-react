@@ -346,9 +346,8 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-name">
                   {client.clientName}
                 </Link>
-                <span className="medical-client-id">
-                  {client.clientDisplayId ? `Client #${client.clientDisplayId}` : client.clientId.slice(-6)}
-                </span>
+                {/* PPVC-713: never show a raw ID hash as a stand-in for the client number. */}
+                {client.clientDisplayId && <span className="medical-client-id">Client #{client.clientDisplayId}</span>}
               </div>
             </div>
 

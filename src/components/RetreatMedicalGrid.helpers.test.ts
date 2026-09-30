@@ -18,6 +18,15 @@ describe('RetreatMedicalGrid helpers', () => {
     expect(data.rows.every((row) => row.cells.length === 1)).toBe(true);
   });
 
+  it('never shows a raw id hash for an unpopulated client -- falls back to "Unknown client" (PPVC-713)', () => {
+    const data = buildRetreatMedicalGridData([
+      { _id: 'booking-1', bookingNumber: 1, status: 'confirmed', clientId: 'raw-unpopulated-client-id' },
+    ] as any, [], [], { retreatCode: 'TEST' });
+
+    expect(data.clients[0].clientName).toBe('Unknown client');
+    expect(data.clients[0].clientName).not.toContain('raw-un');
+  });
+
   it('sorts clients by booking number and resolves the latest linked review per stage', () => {
     const bookings = [
       {
