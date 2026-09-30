@@ -187,7 +187,7 @@ describe('PPVC-643 reviewer-language translation helpers', () => {
   });
 
   it('findReviewerTranslation ignores the legacy field for a non-English target and reads reviewerTranslations instead', () => {
-    const artifact = { translation: { sourceLanguage: 'pl', status: 'ready', items: [] }, reviewerTranslations: [{ targetLanguage: 'cs', sourceLanguage: 'pl', status: 'ready', items: [{ key: 'b', label: 'B', value: 'dva' }] }] };
+    const artifact = { translation: { sourceLanguage: 'pl', status: 'ready' as const, items: [] }, reviewerTranslations: [{ targetLanguage: 'cs', sourceLanguage: 'pl', status: 'ready' as const, items: [{ key: 'b', label: 'B', value: 'dva' }] }] };
     expect(findReviewerTranslation(artifact, 'cs')?.items).toEqual([{ key: 'b', label: 'B', value: 'dva' }]);
     expect(findReviewerTranslation(artifact, 'de')).toBeUndefined();
   });
