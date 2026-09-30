@@ -60,4 +60,16 @@ describe('BookingOverviewPanel', () => {
     await waitFor(() => expect(screen.getByText('$30.00')).toBeInTheDocument());
     expect(screen.getByText('N/A')).toBeInTheDocument();
   });
+
+  it('shows the booking\'s room type and assigned bedroom in the rail (PPVC-712)', async () => {
+    render(<BookingOverviewPanel {...base} booking={{ ...base.booking, roomType: 'private_ensuite', roomNumber: 'Room 3' }} />);
+    await waitFor(() => expect(screen.getByText('$30.00')).toBeInTheDocument());
+    expect(screen.getByText('Private room, private bathroom · Room 3')).toBeInTheDocument();
+  });
+
+  it('shows "Not decided" when the booking has no room type set', async () => {
+    render(<BookingOverviewPanel {...base} />);
+    await waitFor(() => expect(screen.getByText('$30.00')).toBeInTheDocument());
+    expect(screen.getByText('Not decided')).toBeInTheDocument();
+  });
 });
