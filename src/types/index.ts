@@ -1387,6 +1387,7 @@ export interface MedicalReviewRequest {
   notifyClientOnSubmission?: boolean;
   clientSubmissionNotificationSentAt?: Date | string;
   clientSubmissionNotificationKey?: string;
+  clientNotificationCount?: number;
   requestedByUserId?: string | any;
   assignedTo?: string;
   assignedToUserId?: string | any;

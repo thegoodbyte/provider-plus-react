@@ -1066,6 +1066,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       setNotifySubmissionStatus('');
       const response = await medicalReviewRequestsApi.notifySubmission(selected._id);
       setNotifySubmissionStatus(response.data.message || 'Client notified that their document was submitted for review.');
+      if (response.data.emailSent) setSelected((current) => current ? { ...current, clientNotificationCount: (current.clientNotificationCount || 0) + 1 } : current);
     } catch (error: any) {
       setNotifySubmissionStatus(error?.response?.data?.message || 'Unable to notify the client.');
     } finally {
@@ -1682,9 +1683,21 @@ const MedicalReviewRequestsPage: React.FC = () => {
       </div>
     </details>
   ) : null;
+  // PPVC-710: visible count of every client-facing email actually sent for
+  // this MRR -- incremented server-side in one place, this is a readout.
+  const notifiedCount = selected?.clientNotificationCount || 0;
+  const notifiedCountBadge = (
+    <span
+      title={notifiedCount > 0 ? `Client notified ${notifiedCount} time${notifiedCount === 1 ? '' : 's'}` : 'Client has not been notified yet'}
+      className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${notifiedCount > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}
+    >
+      Notified {notifiedCount}
+    </span>
+  );
+
   const clientVisibleAdminNotePanel = isAdminUser ? (
     <section className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 pb-3"><span className="text-xs text-indigo-700">{notifySubmissionStatus || 'Resend the "submitted for review" email for this MRR.'}</span><button type="button" onClick={() => void handleNotifySubmission()} disabled={notifyingSubmission} className="rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">{notifyingSubmission ? 'Notifying...' : 'Notify client'}</button></div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 pb-3"><span className="flex flex-wrap items-center gap-2 text-xs text-indigo-700">{notifiedCountBadge}{notifySubmissionStatus || 'Resend the "submitted for review" email for this MRR.'}</span><button type="button" onClick={() => void handleNotifySubmission()} disabled={notifyingSubmission} className="rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">{notifyingSubmission ? 'Notifying...' : 'Notify client'}</button></div>
       <label htmlFor="mrr-client-visible-admin-note" className="block text-sm font-semibold text-indigo-950">Client-visible admin note</label>
       <p className="mt-1 text-xs leading-relaxed text-indigo-800">This message appears below the client’s submitted medical form in IbogaReady. Medical advisor notes remain private.</p>
       <textarea id="mrr-client-visible-admin-note" value={clientVisibleAdminNote} onChange={(event) => { setClientVisibleAdminNote(event.target.value); setClientVisibleAdminNoteSource(event.target.value); setClientVisibleAdminNoteStatus(''); }} rows={4} maxLength={5000} className="mt-3 w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Write the client-safe explanation here..." />
@@ -2682,7 +2695,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
               {user?.role === 'admin' && (
                 <section className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-indigo-200 pb-3">
-                    <span className="text-xs text-indigo-700">{notifySubmissionStatus || 'Resend the "submitted for review" email for this MRR.'}</span>
+                    <span className="flex flex-wrap items-center gap-2 text-xs text-indigo-700">{notifiedCountBadge}{notifySubmissionStatus || 'Resend the "submitted for review" email for this MRR.'}</span>
                     <button type="button" onClick={() => void handleNotifySubmission()} disabled={notifyingSubmission} className="rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">
                       {notifyingSubmission ? 'Notifying...' : 'Notify client'}
                     </button>

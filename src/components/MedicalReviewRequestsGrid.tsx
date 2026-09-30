@@ -241,6 +241,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setNotifyingSubmissionId(requestId);
       const response = await medicalReviewRequestsApi.notifySubmission(requestId);
       window.alert(response.data.message || 'Client notified that their document was submitted for review.');
+      if (response.data.emailSent) await loadData();
     } catch (requestError: any) {
       window.alert(requestError?.response?.data?.message || 'Unable to notify the client.');
     } finally {
@@ -274,8 +275,25 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     }
   };
 
+  // PPVC-710: visible count of every client-facing email actually sent for
+  // this MRR (automatic submission email + every manual notify/needs-info/
+  // decision email) -- incremented server-side in one place, so this is
+  // just a readout, not a separate tracked value.
+  const notifiedCountBadge = (request: EnrichedReviewRequest) => {
+    const count = request.clientNotificationCount || 0;
+    return (
+      <span
+        title={count > 0 ? `Client notified ${count} time${count === 1 ? '' : 's'}` : 'Client has not been notified yet'}
+        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${count > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}
+      >
+        Notified {count}
+      </span>
+    );
+  };
+
   const notifyAction = (request: EnrichedReviewRequest) => canManageRequests && (
-    <span className="inline-flex gap-1">
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {notifiedCountBadge(request)}
       <button
         type="button"
         onClick={() => void notifyClientSubmission(request._id || '')}
