@@ -219,7 +219,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   };
 
   const whatsappAction = (request: EnrichedReviewRequest) => canManageRequests && (
-    <button type="button" onClick={() => setWhatsappRequest(request)} className="rounded-md border border-purple-200 bg-purple-50 px-2 py-2 text-xs font-semibold text-purple-800">
+    <button
+      type="button"
+      onClick={() => request.reviewChannel === 'whatsapp' ? setWhatsappRequest(request) : void markWhatsappSent(request)}
+      title={request.reviewChannel === 'whatsapp' ? 'Record the advisor’s WhatsApp response' : 'Mark this MRR as sent via WhatsApp'}
+      className="rounded-md border border-purple-200 bg-purple-50 px-2 py-2 text-xs font-semibold text-purple-800"
+    >
       {request.reviewChannel === 'whatsapp' ? (request.whatsappStatus === 'responded' ? 'Handled via WhatsApp' : 'WhatsApp: awaiting answer') : 'Handle via WhatsApp'}
     </button>
   );
@@ -606,6 +611,27 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       await loadData();
     } catch (requestError: any) {
       window.alert(requestError?.response?.data?.message || 'Unable to mark this MRR as sent.');
+    }
+  };
+
+  // PPVC-696: the first "Handle via WhatsApp" click should just record that
+  // it was sent -- one click, no form. Advisor/date/result only get asked
+  // for later, when the advisor has actually answered (via the existing
+  // MedicalReviewWhatsAppForm, opened by a second click once status has
+  // moved past "just sent").
+  const markWhatsappSent = async (request: EnrichedReviewRequest) => {
+    if (!request._id) return;
+    try {
+      const advisorId = typeof request.assignedToUserId === 'string' ? request.assignedToUserId : request.assignedToUserId?._id;
+      await medicalReviewRequestsApi.update(request._id, {
+        reviewChannel: 'whatsapp',
+        whatsappStatus: 'awaiting_response',
+        whatsappSentAt: new Date().toISOString(),
+        ...(advisorId ? { whatsappAdvisorUserId: advisorId } : {}),
+      });
+      await loadData();
+    } catch (requestError: any) {
+      window.alert(requestError?.response?.data?.message || 'Unable to mark this MRR as sent via WhatsApp.');
     }
   };
 
