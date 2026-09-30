@@ -885,7 +885,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       <div style="margin-top: 18px; font-size: 11px; line-height: 1.4; color: #4b5563;">
         <table style="width:100%;border-collapse:collapse;font-size:11px;line-height:1.35;font-style:italic;"><tbody><tr>
           <td style="width:50%;padding:0 12px 0 0;vertical-align:top;">${paidInFull ? t.balancePaidNote : t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}</td>
-          <td style="width:50%;padding:0 0 0 12px;vertical-align:top;">${requiredDeposit ? t.requiredDepositNote(formatAmount(requiredDeposit), requiredDepositUsd ? formatAmount(requiredDepositUsd, 'USD') : undefined) : ''}</td>
+          <td style="width:50%;padding:0 0 0 12px;vertical-align:top;">${!paidInFull && requiredDeposit ? t.requiredDepositNote(formatAmount(requiredDeposit), requiredDepositUsd ? formatAmount(requiredDepositUsd, 'USD') : undefined) : ''}</td>
         </tr></tbody></table>
 
         <div style="margin: 20px 0;">
