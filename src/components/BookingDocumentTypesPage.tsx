@@ -1,3 +1,4 @@
+import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
@@ -167,7 +168,7 @@ const BookingDocumentTypesPage: React.FC = () => {
           <div key={type._id || `new-${index}`} className="booking-document-type-row">
             <div className="booking-document-type-row-header">
               <div>
-                <div className="booking-document-type-title">{type.label || 'New document type'}</div>
+                <div className="booking-document-type-title flex items-center gap-3"><MedicalDocumentTypeIcon type={type.medicalArtifactType || type.key} fallbackType={type.medicalDocumentType} />{type.label || 'New document type'}</div>
                 <div className="booking-document-type-meta">
                   <span>{type.key || 'no key'}</span>
                   <span>Order {Number(type.order || 0)}</span>

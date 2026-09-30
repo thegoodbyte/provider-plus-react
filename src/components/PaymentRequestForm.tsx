@@ -1,3 +1,4 @@
+import AccommodationSelect from './AccommodationSelect';
 import React, { useEffect, useState } from 'react';
 import { PaymentRequest, PaymentRequestLineItem, Client, Retreat, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -59,6 +60,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [nextDisplayId, setNextDisplayId] = useState<number | null>(paymentRequest?.display_id || null);
   const [formError, setFormError] = useState('');
+  const [existingBalance, setExistingBalance] = useState<PaymentRequest | null>(null);
   const [revolutLinkMismatch, setRevolutLinkMismatch] = useState(false);
   const [bookingDefaultsLoading, setBookingDefaultsLoading] = useState(false);
   const [bookingDefaultsMessage, setBookingDefaultsMessage] = useState('');
@@ -77,6 +79,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     retreatId: resolveId(paymentRequest?.retreatId),
     bookingId: resolveId(paymentRequest?.bookingId),
     bookingType: paymentRequest?.bookingType || 'full_retreat',
+    accommodationKey: paymentRequest?.accommodationKey ?? (paymentRequest?.roomType && paymentRequest.roomType !== 'unspecified' ? paymentRequest.roomType : paymentRequest ? '' : undefined) as string | undefined,
     roomType: paymentRequest?.roomType || 'unspecified',
     roomAdjustmentType: paymentRequest?.roomAdjustmentType || 'none',
     roomAdjustmentAmount: paymentRequest?.roomAdjustmentAmount || 0,
@@ -99,6 +102,23 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     revolutPaymentLink: paymentRequest?.revolutPaymentLink || '',
     createdBy: paymentRequest?.createdBy || '',
   });
+
+  const createsBalance = !isEdit && Boolean(formData.bookingId) && (formData.requestType === 'balance' || (formData.requestType === 'deposit' && createFinalPaymentRequest));
+  const findExistingBalance = (requests: PaymentRequest[]) => requests.find(request =>
+    resolveId(request.bookingId) === formData.bookingId && request.requestType === 'balance' && ['pending', 'sent', 'overdue'].includes(request.status || ''),
+  );
+  const balanceConflict = createsBalance && existingBalance && resolveId(existingBalance.bookingId) === formData.bookingId ? existingBalance : null;
+
+  useEffect(() => {
+    let active = true;
+    setExistingBalance(null);
+    if (createsBalance) {
+      paymentRequestsApi.getAllFresh().then(({ data }) => {
+        if (active) setExistingBalance(findExistingBalance(data || []) || null);
+      }).catch(() => { /* The fresh pre-save check and API remain authoritative. */ });
+    }
+    return () => { active = false; };
+  }, [createsBalance, formData.bookingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -178,6 +198,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         ...prev,
         bookingId,
         retreatId: resolveId(booking.retreatId),
+        accommodationKey: prev.accommodationKey ?? booking.accommodationKey ?? (booking.roomType !== 'unspecified' ? booking.roomType : undefined),
         requestType: 'balance',
         fullPriceQuote: String(fullPrice),
         requestedAmount: String(remaining),
@@ -317,6 +338,13 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     setLoading(true);
     try {
       const existingRequests = await paymentRequestsApi.getAllFresh();
+      if (createsBalance) {
+        const activeBalance = findExistingBalance(existingRequests.data || []);
+        if (activeBalance) {
+          setExistingBalance(activeBalance);
+          return;
+        }
+      }
       const normalizedInvoice = invoiceNumber.toLowerCase();
       const duplicate = (existingRequests.data || []).find((request: PaymentRequest) => {
         const requestId = request._id || '';
@@ -346,6 +374,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         retreatId: formData.retreatId,
         bookingId: formData.bookingId || undefined,
         bookingType: formData.bookingType as PaymentRequest['bookingType'],
+        accommodationKey: formData.accommodationKey,
         roomType: formData.roomType as PaymentRequest['roomType'],
         roomAdjustmentType: formData.roomAdjustmentType as PaymentRequest['roomAdjustmentType'],
         roomAdjustmentAmount: Number(formData.roomAdjustmentAmount || 0),
@@ -410,6 +439,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        {balanceConflict && <div role="alert" className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p>This booking already has final payment request <strong>#{balanceConflict.invoiceNumber || balanceConflict.display_id}</strong> for {Number(balanceConflict.requestedAmount || 0).toLocaleString()} {balanceConflict.currency}{balanceConflict.dueDate ? `, due ${toDateInputValue(balanceConflict.dueDate)}` : ''}. Open it to review or edit the balance. Cancel the existing request first if it needs replacing.</p>
+          <a className="mt-2 inline-block font-semibold underline" href={`/admin/payment-requests/${balanceConflict._id}`}>Open existing final payment request</a>
+        </div>}
         {formError && (
           <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {formError}
@@ -471,6 +504,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                     // New requests may still inherit the booking's retreat/type.
                     ...(isEdit ? {} : {
                       retreatId: booking ? resolveId(booking.retreatId) : prev.retreatId,
+                      accommodationKey: prev.accommodationKey ?? booking?.accommodationKey ?? (booking?.roomType !== 'unspecified' ? booking?.roomType : undefined),
                       bookingType: booking?.bookingType || prev.bookingType,
                       fullPriceQuote: booking?.totalAmount ? String(booking.totalAmount) : prev.fullPriceQuote,
                     }),
@@ -533,7 +567,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <h3 className="font-semibold text-slate-900">Accommodation choice</h3>
               <p className="mt-1 text-xs text-slate-600">This choice is copied into the booking when you create it from this payment request.</p>
               <div className="mt-3 grid gap-4 md:grid-cols-3">
-                <label className="text-sm font-medium text-gray-700">Room type<select value={formData.roomType} onChange={event => handleChange('roomType', event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="unspecified">Not decided</option><option value="shared">Shared room</option><option value="private">Private room</option><option value="private_ensuite">Private room with private bathroom</option></select></label>
+                <AccommodationSelect clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as NonNullable<PaymentRequest['roomType']> }))} />
                 <label className="text-sm font-medium text-gray-700">Adjustment<select value={formData.roomAdjustmentType} onChange={event => handleChange('roomAdjustmentType', event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="none">No adjustment</option><option value="discount">Discount</option><option value="surcharge">Surcharge</option></select></label>
                 <label className="text-sm font-medium text-gray-700">Adjustment amount<input type="number" min="0" step="0.01" value={formData.roomAdjustmentAmount} onChange={event => handleChange('roomAdjustmentAmount', Number(event.target.value))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /></label>
               </div>
@@ -923,7 +957,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || Boolean(balanceConflict)}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icon icon={FiSave} className="w-4 h-4" />

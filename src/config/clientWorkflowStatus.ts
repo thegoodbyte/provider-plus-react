@@ -8,6 +8,7 @@ export const clientWorkflowStatusAliases: Record<string, string> = {
 };
 
 export const clientWorkflowStatusValues = [
+  'self_submit',
   'entered',
   'screening_scheduled',
   'screened_accepted',
@@ -24,6 +25,7 @@ export const clientWorkflowStatusLegacyValues = Object.keys(clientWorkflowStatus
 export type ClientWorkflowStatus = typeof clientWorkflowStatusValues[number];
 
 export const clientWorkflowStatusLabels: Record<ClientWorkflowStatus | keyof typeof clientWorkflowStatusAliases, string> = {
+  self_submit: 'Self-submit',
   entered: 'Entered',
   screening_scheduled: 'Screening scheduled',
   screened_accepted: 'Screened accepted',
@@ -42,6 +44,7 @@ export const clientWorkflowStatusLabels: Record<ClientWorkflowStatus | keyof typ
 };
 
 export const clientWorkflowStatusTone: Record<ClientWorkflowStatus, string> = {
+  self_submit: 'bg-orange-100 text-orange-800',
   entered: 'bg-blue-100 text-blue-800',
   screening_scheduled: 'bg-amber-100 text-amber-800',
   screened_accepted: 'bg-emerald-100 text-emerald-800',
@@ -54,6 +57,7 @@ export const clientWorkflowStatusTone: Record<ClientWorkflowStatus, string> = {
 };
 
 export const clientWorkflowStatusSelectOptions = [
+  'self_submit',
   'entered',
   'screening_scheduled',
   'screened_accepted',

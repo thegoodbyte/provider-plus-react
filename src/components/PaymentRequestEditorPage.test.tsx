@@ -20,6 +20,13 @@ jest.mock('../services/api', () => ({
   revolutPaymentLinksApi: { list: jest.fn() },
 }));
 
+jest.mock('../services/roomInventoryApi', () => ({
+  roomInventoryApi: {
+    options: () => Promise.resolve({ data: [] }),
+    preference: () => Promise.resolve({ data: null }),
+  },
+}));
+
 jest.mock('./SearchableClientSelect', () => (props: any) => (
   <select aria-label="Client" value={props.selectedClientId || ''} onChange={(event) => props.onClientSelect(event.target.value)}>
     <option value="">Select client</option>

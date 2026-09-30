@@ -154,10 +154,9 @@ describe('ReferralsPage payout workflow', () => {
     view();
     await screen.findAllByText('Eva Novak');
     fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Partners' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save portal access' })).toBeEnabled());
-    fireEvent.change(screen.getByLabelText('Initial password'), { target: { value: 'a long test password' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save portal access' }));
-    await waitFor(() => expect(api.put).toHaveBeenCalledWith('/referrals/r1/portal-account', { email: 'ada@example.com', password: 'a long test password', active: true }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create referral login and PIN' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Create referral login and PIN' }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith('/referrals/r1/portal-account', { email: 'ada@example.com', active: true, resetPin: true }));
     expect(referralsApi.update).not.toHaveBeenCalled();
   });
 

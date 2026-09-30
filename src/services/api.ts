@@ -672,6 +672,7 @@ export const communicationsApi = {
     fromEmail?: string;
     replyTo?: string;
     variables?: Record<string, any>;
+    languageVariants?: Record<string, { subject: string; bodyText: string; bodyHtml?: string }>;
     attachments?: Array<{
       fileName: string;
       mimeType?: string;
@@ -716,6 +717,7 @@ export const communicationsApi = {
     bookingFlowStatusOnSend?: string;
     excludedClientIds?: string[];
     variables?: Record<string, any>;
+    languageVariants?: Record<string, { subject: string; bodyText: string; bodyHtml?: string }>;
     attachments?: Array<{
       fileName: string;
       mimeType?: string;
@@ -1150,6 +1152,11 @@ export const auditLogsApi = {
   getOne: (id: string) => api.get(`/audit-logs/${id}`),
 };
 
+export const developmentRefreshApi = {
+  status: () => api.get('/development-refresh', { suppressGlobalError: true } as ReadOptions),
+  start: (confirmation: string) => api.post('/development-refresh', { confirmation }, { suppressGlobalError: true } as ReadOptions),
+};
+
 export const backupsApi = {
   exportBackup: (options: { redactEmails?: boolean; emailReplacement?: string; collections?: string } = {}) =>
     api.get('/backups/export', {
@@ -1190,7 +1197,7 @@ export const backupsApi = {
     prefix?: string;
     maxKeys?: number;
     continuationToken?: string;
-  } = {}) => api.get('/backups/s3/files', { params: options }),
+  } = {}) => api.get('/backups/s3/files', { params: options, suppressGlobalError: true } as ReadOptions),
   downloadS3File: (options: { bucket?: string; key: string }) =>
     api.get('/backups/s3/download', {
       params: options,
@@ -2050,6 +2057,7 @@ export const announcementsApi = {
     return ruleId ? api.patch(`${path}/${ruleId}`, body) : api.post(path, body);
   },
   applyDefaults: (retreatId: string) => api.post(`/announcements/retreats/${retreatId}/defaults`),
+  restoreDefaults: (retreatId: string) => api.post(`/announcements/retreats/${retreatId}/restore-defaults`),
   generate: (retreatId: string) => api.post(`/announcements/retreats/${retreatId}/generate`),
   setEnabled: (retreatId: string, enabled: boolean) => api.patch(`/announcements/retreats/${retreatId}/settings`, { enabled }),
   preview: (id: string, bookingId: string) => api.post(`/announcements/rules/${id}/preview`, { bookingId }),
@@ -2059,4 +2067,28 @@ export const announcementsApi = {
 export const emailSafetyApi = {
   get: () => api.get<{ enabled: boolean; recipient: string }>('/communications/email-safety'),
   save: (data: { enabled: boolean; recipient: string }) => api.patch<{ enabled: boolean; recipient: string }>('/communications/email-safety', data),
+};
+
+export interface ReviewSourceRule {
+  enabled: boolean;
+  source: 'ir' | 'website';
+  artifactType: string;
+  advisorUserId: string;
+  packetMode: 'match' | 'fixed';
+  packetId: string;
+  notifyAdvisor: boolean;
+  notifyAdmin: boolean;
+  adminEmails: string[];
+}
+export interface ArtifactTypeConfig { key: string; label: string; requestType: string }
+export interface ReviewAutomationSettings { artifactTypes: ArtifactTypeConfig[]; rules: ReviewSourceRule[] }
+export const medicalReviewAutomationApi = {
+  get: () => api.get<ReviewAutomationSettings>('/medical-review-automation'),
+  save: (settings: ReviewAutomationSettings) => api.patch<ReviewAutomationSettings>('/medical-review-automation', settings),
+};
+
+export const morningDigestApi = {
+  get: () => api.get('/morning-digest/settings'),
+  save: (settings: any) => api.put('/morning-digest/settings', settings),
+  preview: () => api.get('/morning-digest/preview'),
 };

@@ -1,3 +1,4 @@
+jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { options: async () => ({data:[]}), preference: async () => ({data:{key:''}}) } }));
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';

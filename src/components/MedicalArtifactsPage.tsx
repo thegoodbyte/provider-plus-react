@@ -1,6 +1,7 @@
+import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, Plus, RefreshCw, Send, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
@@ -110,17 +111,7 @@ const getRetreatSearchText = (retreat?: string | Retreat) => {
   ].filter(Boolean).join(' ');
 };
 
-const getCompactDocumentType = (artifact: MedicalArtifact) => {
-  const artifactType = artifact.artifactType;
-  const documentType = artifact.documentType;
-  if (artifactType === 'ekg' || artifactType === 'ceremony_ekg' || documentType === 'EKG') {
-    return { label: 'EKG', Icon: HeartPulse, className: 'bg-red-50 text-red-700' };
-  }
-  if (artifactType === 'liver_panel' || documentType === 'Liver') {
-    return { label: 'LVR', Icon: Leaf, className: 'bg-emerald-50 text-emerald-700' };
-  }
-  return { label: getDocumentTypeLabel(documentType, artifactType), Icon: FileText, className: 'bg-gray-100 text-gray-700' };
-};
+const getCompactDocumentType = (artifact: MedicalArtifact) => getMedicalDocumentType(artifact.artifactType, artifact.documentType);
 
 const getSearchText = (artifact: MedicalArtifact) => [
   artifact.display_id,
@@ -262,6 +253,17 @@ const SubmissionStatusBadge: React.FC<{ row: RetreatArtifactSubmissionRow }> = (
   );
 };
 
+export type RetreatSubmissionMrrFilter = 'all' | 'with_mrr' | 'without_mrr';
+
+export const filterRetreatSubmissionRowsByMrr = (
+  rows: RetreatArtifactSubmissionRow[],
+  filter: RetreatSubmissionMrrFilter,
+) => {
+  if (filter === 'with_mrr') return rows.filter((row) => Boolean(row.reviewRequestId));
+  if (filter === 'without_mrr') return rows.filter((row) => !row.reviewRequestId && Boolean(row.artifactId));
+  return rows;
+};
+
 const MedicalArtifactsPage: React.FC = () => {
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
@@ -283,6 +285,7 @@ const MedicalArtifactsPage: React.FC = () => {
   const [submissionArtifactTypeFilter, setSubmissionArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
   const [submissionStageFilter, setSubmissionStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
   const [submissionStatusFilter, setSubmissionStatusFilter] = useState<'all' | 'missing' | 'received'>('all');
+  const [submissionMrrFilter, setSubmissionMrrFilter] = useState<RetreatSubmissionMrrFilter>('all');
   const [submissionSearchFilter, setSubmissionSearchFilter] = useState('');
   const [submissionSort, setSubmissionSort] = useState<'client' | 'type' | 'stage' | 'status'>('client');
   const [submissionData, setSubmissionData] = useState<RetreatArtifactSubmissionsResponse | null>(null);
@@ -532,7 +535,7 @@ const MedicalArtifactsPage: React.FC = () => {
   }, [artifacts, retreats]);
 
   const sortedSubmissionRows = useMemo(() => {
-    const rows = [...(submissionData?.rows || [])];
+    const rows = [...filterRetreatSubmissionRowsByMrr(submissionData?.rows || [], submissionMrrFilter)];
     const compareText = (a = '', b = '') => a.localeCompare(b, undefined, { sensitivity: 'base' });
     return rows.sort((a, b) => {
       if (submissionSort === 'type') {
@@ -546,7 +549,7 @@ const MedicalArtifactsPage: React.FC = () => {
       }
       return compareText(a.clientName, b.clientName) || compareText(getArtifactTypeLabel(a.artifactType), getArtifactTypeLabel(b.artifactType));
     });
-  }, [submissionData, submissionSort]);
+  }, [submissionData, submissionMrrFilter, submissionSort]);
 
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
@@ -929,8 +932,8 @@ const MedicalArtifactsPage: React.FC = () => {
                     <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 sm:hidden">
                       {getDocumentStageLabel(artifact.documentStage)}
                     </span>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${compactDocumentType.className}`}>
-                      <compactDocumentType.Icon className="h-3.5 w-3.5" />
+                    <span className={`inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold ${compactDocumentType.className}`}>
+                      <compactDocumentType.Icon aria-hidden="true" className="h-6 w-6 shrink-0" />
                       {compactDocumentType.label}
                     </span>
                   </div>
@@ -978,7 +981,7 @@ const MedicalArtifactsPage: React.FC = () => {
             <div className={`flex items-center justify-between px-3 py-2 ${tone.split(' ').slice(1).join(' ')}`}><span className="font-bold">#{artifact.display_id} <span className="ml-1 text-sm uppercase">{outcomeLabel[outcome] || 'Stored'}</span></span><span className="rounded border border-current px-2 py-1 text-xs font-bold uppercase">{getDocumentStageLabel(artifact.documentStage)}</span></div>
             <div className="p-3">
               <div className="flex gap-3"><div className="flex h-16 w-14 shrink-0 items-center justify-center rounded border border-slate-200 text-xs font-bold text-slate-400">PDF</div><div className="min-w-0"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="text-left text-lg font-bold text-cyan-700">{getClientName(artifact.clientId)}</button><div className="text-sm text-slate-500">Client #{typeof artifact.clientId === 'object' ? artifact.clientId.display_id || String(getObjectId(artifact.clientId) || '').slice(-6) : String(getObjectId(artifact.clientId) || '').slice(-6)}</div><div className="text-sm text-slate-500">{getBookingLabel(artifact.bookingId) || 'No booking linked'}</div></div></div>
-              <div className="mt-3 border-t border-slate-100 pt-3"><div className="flex items-center gap-2 text-base font-semibold text-slate-800"><compactDocumentType.Icon className="h-4 w-4" />{getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}</div><div className="text-sm text-slate-500">{artifact.title || 'Medical artifact'} · {artifact.files?.length || 0} file(s)</div>{latestReview ? <div className="mt-2 text-sm text-slate-600">{latestReview.requestType?.replace(/_/g, ' ')} · {latestReview.status || 'pending'}</div> : <div className="mt-2 flex items-center gap-2"><button type="button" onClick={() => handleRequestReview(artifact)} className="text-sm font-semibold text-cyan-700">Create MRR</button><button type="button" title="Quick MRR" aria-label={`Quick MRR for artifact #${artifact.display_id}`} onClick={() => openQuickMrr(artifact)} disabled={!artifact._id} className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-amber-50 text-amber-800"><Zap className="h-3.5 w-3.5" /></button></div>}{latestReview?._id && <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)} className="mt-1 text-sm font-semibold text-cyan-700">Open {getReviewLabel(latestReview)}</button>}</div>
+              <div className="mt-3 border-t border-slate-100 pt-3"><div className="flex items-center gap-2 text-base font-semibold text-slate-800"><compactDocumentType.Icon aria-hidden="true" className="h-6 w-6 shrink-0" />{getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}</div><div className="text-sm text-slate-500">{artifact.title || 'Medical artifact'} · {artifact.files?.length || 0} file(s)</div>{latestReview ? <div className="mt-2 text-sm text-slate-600">{latestReview.requestType?.replace(/_/g, ' ')} · {latestReview.status || 'pending'}</div> : <div className="mt-2 flex items-center gap-2"><button type="button" onClick={() => handleRequestReview(artifact)} className="text-sm font-semibold text-cyan-700">Create MRR</button><button type="button" title="Quick MRR" aria-label={`Quick MRR for artifact #${artifact.display_id}`} onClick={() => openQuickMrr(artifact)} disabled={!artifact._id} className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-amber-50 text-amber-800"><Zap className="h-3.5 w-3.5" /></button></div>}{latestReview?._id && <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)} className="mt-1 text-sm font-semibold text-cyan-700">Open {getReviewLabel(latestReview)}</button>}</div>
               <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">View</button><button type="button" onClick={() => navigate(`${artifact._id}/edit`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">Edit</button></div>
             </div>
           </article>;
@@ -1014,6 +1017,11 @@ const MedicalArtifactsPage: React.FC = () => {
                 <option value="missing">Missing only</option>
                 <option value="received">Received only</option>
                 <option value="all">All submissions</option>
+              </select>
+              <select value={submissionMrrFilter} onChange={(event) => setSubmissionMrrFilter(event.target.value as RetreatSubmissionMrrFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="all">All MRR statuses</option>
+                <option value="without_mrr">Received without MRR</option>
+                <option value="with_mrr">With MRR</option>
               </select>
               <button
                 type="button"
@@ -1102,8 +1110,8 @@ const MedicalArtifactsPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${compactDocumentType.className}`}>
-                          <compactDocumentType.Icon className="h-3.5 w-3.5" />
+                        <span className={`inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold ${compactDocumentType.className}`}>
+                          <compactDocumentType.Icon aria-hidden="true" className="h-6 w-6 shrink-0" />
                           {compactDocumentType.label}
                         </span>
                         <div className="mt-1 text-xs text-gray-500">{row.label}</div>

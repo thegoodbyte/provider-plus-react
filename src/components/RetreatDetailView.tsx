@@ -65,6 +65,8 @@ interface RetreatDetailViewProps {
   onTabChange?: (tab: RetreatDetailTab) => void;
 }
 
+const IntegrationCalendar = lazy(() => import('./IntegrationCalendar'));
+const RetreatRoomsTab = lazy(() => import('./RetreatRoomsTab'));
 const AnnouncementsPage = lazy(() => import('./AnnouncementsPage'));
 const CeremonyAnalytics = lazy(() => import('./CeremonyAnalytics'));
 
@@ -72,7 +74,7 @@ const CeremonyAnalytics = lazy(() => import('./CeremonyAnalytics'));
 // the URL-routing allowlist in AppleLayout.tsx derive from this array, so a
 // new tab can't be added to the UI while staying invisible to deep-linking
 // (the bug that silently dropped 'reserveList' and 'foodMatrix' from URLs).
-export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks', 'announcements'] as const;
+export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks', 'announcements', 'rooms', 'integration'] as const;
 export type RetreatDetailTab = typeof RETREAT_DETAIL_TABS[number];
 
 interface QuickBookingFormData {
@@ -1102,6 +1104,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       {/* Tab Navigation */}
       <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
+        <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Rooms</button>
         {authService.getUser()?.role === 'admin' && <button className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'announcements'} onClick={() => handleTabChange('announcements')}>Announcements</button>}
         <button
           className={`tab-btn ${activeTab === 'drugScreening' ? 'active' : ''}`}
@@ -1211,10 +1214,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <TaskAltRoundedIcon className="retreat-tab-icon" />
           <span>Tasks</span>
         </button>
+        {['admin','facilitator'].includes(authService.getUser()?.role || '') && <button className={`tab-btn ${activeTab === 'integration' ? 'active' : ''}`} onClick={()=>handleTabChange('integration')} role="tab" aria-selected={activeTab === 'integration'}><SpaRoundedIcon className="retreat-tab-icon"/><span>Integration</span></button>}
       </div>
 
       {/* Tab Content */}
       <div className="retreat-detail-tab-content">
+        {activeTab === 'integration' && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <RouteContentBoundary><IntegrationCalendar retreatId={retreatId} /></RouteContentBoundary>}
+        {activeTab === 'rooms' && <RouteContentBoundary><RetreatRoomsTab retreatId={retreatId} /></RouteContentBoundary>}
         {activeTab === 'announcements' && authService.getUser()?.role === 'admin' && <RouteContentBoundary><AnnouncementsPage retreatId={retreatId} /></RouteContentBoundary>}
         {activeTab === 'clients' && (
         <div className="clients-section">

@@ -1,3 +1,4 @@
+import AccommodationSelect from '../components/AccommodationSelect';
 import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -136,6 +137,7 @@ interface ScreeningData {
   riskNotes: string;
   generalNotes: string;
   nextSteps: string;
+  desiredAccommodationKey: string;
   desiredRetreat: string;
   quotedPrice: string;
   screenedBy: string;
@@ -383,6 +385,7 @@ const ClientScreening: React.FC = () => {
     riskNotes: '',
     generalNotes: '',
     nextSteps: '',
+    desiredAccommodationKey: '',
     desiredRetreat: '',
     quotedPrice: '',
     screenedBy: user?.email || '',
@@ -550,6 +553,7 @@ const ClientScreening: React.FC = () => {
         },
         plantMedicineExperience: hasPlantMedicineExperience,
         generalNotes: existingValue('generalNotes', 'notes') ?? prev.generalNotes,
+        desiredAccommodationKey: existingValue('desiredAccommodationKey') ?? prev.desiredAccommodationKey,
         nextSteps: existingValue('nextSteps') ?? prev.nextSteps,
         handwritingImageUrl: existingValue('handwritingImageUrl', 'handwritingImageUrl') ?? prev.handwritingImageUrl,
         screeningDate: existingValue('screeningDate', 'screeningCompletedDate')
@@ -1948,6 +1952,7 @@ const ClientScreening: React.FC = () => {
         </div>
       </div>
 
+      <section className="rounded-lg border p-4"><AccommodationSelect preference value={formData.desiredAccommodationKey} onChange={key => setFormData(prev => ({ ...prev, desiredAccommodationKey: key }))} /></section>
       {/* Additional Notes */}
       <div className={sectionStyles.notes.container}>
         <h2 className={sectionStyles.notes.heading}>Additional Information</h2>

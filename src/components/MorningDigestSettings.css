@@ -1,0 +1,15 @@
+.morning-digest-settings { color: #334155; }
+.morning-digest-settings h3 { margin: 0 0 8px; font-size: 20px; font-weight: 650; color: #0f172a; }
+.morning-digest-settings h4, .morning-digest-settings legend { font-weight: 600; }
+.morning-digest-settings p { margin: 10px 0; line-height: 1.5; }
+.morning-digest-settings fieldset { min-width: 0; }
+.morning-digest-settings fieldset fieldset { display: grid; gap: 8px; margin: 16px 0; }
+.morning-digest-settings label:has(input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 8px; }
+.morning-digest-settings input[type="number"] { width: 88px; margin-left: 8px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
+.morning-digest-settings button { margin: 4px 8px 4px 0; padding: 9px 14px; border: 1px solid #cbd5e1; border-radius: 7px; font-weight: 600; background: #f8fafc; }
+.morning-digest-settings button[type="submit"] { background: #155e75; color: white; border-color: #155e75; }
+.morning-digest-settings button:disabled, .morning-digest-settings fieldset:disabled { opacity: .65; }
+.morning-digest-settings [role="alert"] { padding: 10px; border-radius: 6px; background: #fef2f2; color: #b91c1c; }
+.morning-digest-settings [role="status"] { color: #047857; }
+.morning-digest-settings [aria-label="Digest preview"] { margin-top: 16px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+.morning-digest-settings ul { padding-left: 20px; list-style: disc; margin: 8px 0; }

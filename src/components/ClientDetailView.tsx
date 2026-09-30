@@ -6,6 +6,8 @@ import MedicalTrackingTab from './MedicalTrackingTab';
 import ComprehensiveMedicalTrackingTab from './ComprehensiveMedicalTrackingTab';
 import ClientCeremoniesTab from './ClientCeremoniesTab';
 import { TasksWidget } from './Tasks/TasksWidget';
+import SubmissionNotificationsPage from './SubmissionNotificationsPage';
+import NotificationCountBadge, { useNotificationCount } from './NotificationCountBadge';
 import { generateBookingPDF } from './BookingConfirmationPDF';
 import { normalizeClientTag } from '../utils/clientTags';
 import './ClientsGrid.css';
@@ -58,6 +60,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     tags: [] as string[]
   });
+  const notificationCount = useNotificationCount({ clientId });
 
   useEffect(() => {
     fetchClientData();
@@ -476,6 +479,12 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
           onClick={() => setActiveTab('reminders')}
         >
           🔔 Reminders
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'notifications' ? 'active' : ''}`}
+          onClick={() => setActiveTab('notifications')}
+        >
+          🔔 Notifications <NotificationCountBadge count={notificationCount} />
         </button>
         <button
           className={`tab-btn ${activeTab === 'retreats' ? 'active' : ''}`}
@@ -1283,6 +1292,14 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'notifications' && (
+          <SubmissionNotificationsPage
+            clientId={clientId}
+            title="Client notifications"
+            subtitle="All notifications generated for this client, across their bookings."
+          />
         )}
 
         {activeTab === 'retreats' && (

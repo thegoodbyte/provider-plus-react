@@ -1,3 +1,4 @@
+import AnnouncementSchedules, { AnnouncementDateExample } from './AnnouncementSchedules';
 import EmailSafetySettings from './EmailSafetySettings';
 import React, {
   useCallback,
@@ -13,6 +14,9 @@ import "./AnnouncementsPage.css";
 
 type Rule = {
   _id?: string;
+  sourceRuleId?: string;
+  defaultRule?: Rule | null;
+  differsFromDefault?: boolean;
   scheduledFor?: string;
   schedulingError?: string;
   title: string;
@@ -72,6 +76,12 @@ const templateId = (rule: Rule) =>
   typeof rule.emailTemplateId === "string"
     ? rule.emailTemplateId
     : rule.emailTemplateId?._id || "";
+const templateLanguage = (template: EmailTemplate) => {
+  const language = (template.language || "en").trim().toLowerCase();
+  return language === "cs" ? "cz" : language;
+};
+const languageLabel = (language: string) =>
+  ({ en: "English", cz: "Czech", pl: "Polish" })[language] || language.toUpperCase();
 export const announcementTiming = (rule: Pick<Rule, "days" | "timing">) =>
   rule.timing === "before_start"
     ? rule.days === 0
@@ -80,6 +90,14 @@ export const announcementTiming = (rule: Pick<Rule, "days" | "timing">) =>
     : rule.days === 0
       ? "Departure day"
       : `${rule.days} ${rule.days === 1 ? "day" : "days"} after the retreat ends`;
+const ruleComparison = (rule: Rule, emailName?: string) =>
+  `${announcementTiming(rule)} at ${rule.sendTime}, “${rule.title}”, ${
+    emailName || "email template unavailable"
+  }, ${
+    rule.useRecipientLanguage
+      ? "recipient language"
+      : "fixed template language"
+  }, ${rule.active ? "active" : "paused"}`;
 const dateLabel = (value?: string) =>
   value
     ? new Intl.DateTimeFormat("en-GB", {
@@ -104,8 +122,11 @@ const statusLabel = (status: string) =>
   })[status] || status;
 
 const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
+  const [scheduledTab, setScheduledTab] = useState(false);
   const [data, setData] = useState<Data | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateLanguageFilter, setTemplateLanguageFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -187,6 +208,15 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
   const selectedTemplate = templates.find(
     (item) => item._id === (editor ? templateId(editor) : ""),
   );
+  const templateLanguages = Array.from(new Set(templates.map(templateLanguage))).sort();
+  const filteredTemplates = templates.filter((template) =>
+    (!templateLanguageFilter || templateLanguage(template) === templateLanguageFilter) &&
+    [template.name, template.subject].some((value) =>
+      value?.toLowerCase().includes(templateSearch.trim().toLowerCase()),
+    ),
+  );
+  const selectedTemplateOutsideFilter = selectedTemplate &&
+    !filteredTemplates.some((template) => template._id === selectedTemplate._id);
   const rules = useMemo(
     () =>
       [...(data?.rules || [])].sort((a, b) =>
@@ -212,8 +242,18 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
   );
   const edit = (rule = newRule()) => {
     setError("");
+    setTemplateSearch("");
+    setTemplateLanguageFilter("");
     setEditor({ ...rule, emailTemplateId: templateId(rule) });
     setStep(0);
+  };
+  const restoreDefaults = () => {
+    if (!retreatId) return;
+    const confirmed = window.confirm(
+      "Restore the global defaults for this retreat? This replaces customized copies of default announcements, adds missing defaults, keeps retreat-only announcements, and does not resend past emails.",
+    );
+    if (confirmed)
+      void mutate(() => announcementsApi.restoreDefaults(retreatId));
   };
   const save = () =>
     mutate(async () => {
@@ -302,6 +342,9 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
           + Add announcement
         </button>
       </header>
+      <nav className="announcement-tabs" aria-label="Announcement views"><button aria-pressed={!scheduledTab} onClick={() => setScheduledTab(false)}>Announcement rules</button><button aria-pressed={scheduledTab} onClick={() => setScheduledTab(true)}>Scheduled deliveries</button></nav>
+      {scheduledTab && <AnnouncementSchedules retreatId={retreatId} />}
+      <div hidden={scheduledTab}>
       <EmailSafetySettings compact />
       {testMessage && <p role="status" className="announcement-help">{testMessage}</p>}
       {error && (
@@ -388,7 +431,13 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                       mutate(() => announcementsApi.applyDefaults(retreatId))
                     }
                   >
-                    Use default schedule
+                    Add missing defaults
+                  </button>
+                  <button
+                    disabled={busy || loading}
+                    onClick={restoreDefaults}
+                  >
+                    Restore defaults
                   </button>
                   <button
                     disabled={busy || loading}
@@ -402,8 +451,9 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                     Edit default schedule ↗
                   </Link>
                   <p>
-                    Copies missing announcements only. Edits here affect this
-                    retreat.
+                    “Add missing defaults” leaves existing rules alone. “Restore
+                    defaults” replaces copied default rules with the current
+                    global values; retreat-only rules stay unchanged.
                   </p>
                 </div>
               )}
@@ -424,6 +474,12 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                   const template = templates.find(
                     (item) => item._id === templateId(rule),
                   );
+                  const defaultTemplate = rule.defaultRule
+                    ? templates.find(
+                        (item) =>
+                          item._id === templateId(rule.defaultRule!),
+                      )
+                    : undefined;
                   const deliveries = (data.deliveries || []).filter(
                     (row) => row.ruleId === rule._id,
                   );
@@ -471,6 +527,34 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                           · {template?.attachmentAssetIds?.length || 0}{" "}
                           attachments
                         </p>
+                        {retreatId && rule.defaultRule && (
+                          <div className="announcement-help" role="status">
+                            <strong>
+                              {rule.differsFromDefault
+                                ? "Customized from the global default"
+                                : "Matches the global default"}
+                            </strong>
+                            {rule.differsFromDefault && (
+                              <div>
+                                <div>
+                                  Retreat: {ruleComparison(rule, template?.name)}
+                                </div>
+                                <div>
+                                  Default: {ruleComparison(
+                                    rule.defaultRule,
+                                    defaultTemplate?.name ||
+                                      rule.defaultRule.emailTemplateId?.name,
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {retreatId && !rule.defaultRule && !rule.sourceRuleId && (
+                          <p className="announcement-help">
+                            Retreat-only announcement · no global default
+                          </p>
+                        )}
                         {retreatId && (
                           <p>
                             {`Send date: ${dateLabel(rule.scheduledFor || next?.scheduledFor)}`}{" "}
@@ -675,6 +759,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
           )}
         </>
       )}
+      </div>
       <dialog
         ref={dialogRef}
         className="announcement-dialog"
@@ -714,6 +799,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
               {announcementTiming(editor)} at {editor.sendTime}, send{" "}
               <strong>{selectedTemplate?.name || "your chosen email"}</strong>.
             </div>
+            <AnnouncementDateExample retreatId={retreatId} timing={editor.timing} days={editor.days} sendTime={editor.sendTime} />
             {step === 0 && (
               <div className="announcement-fields">
                 <label>
@@ -778,6 +864,27 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                   </select>
                 </label>
                 <label>
+                  Search email templates
+                  <input
+                    type="search"
+                    placeholder="Search by name or subject"
+                    value={templateSearch}
+                    onChange={(event) => setTemplateSearch(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Template language
+                  <select
+                    value={templateLanguageFilter}
+                    onChange={(event) => setTemplateLanguageFilter(event.target.value)}
+                  >
+                    <option value="">All languages</option>
+                    {templateLanguages.map((language) => (
+                      <option key={language} value={language}>{languageLabel(language)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
                   Email template
                   <select
                     value={templateId(editor)}
@@ -793,13 +900,24 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                     }}
                   >
                     <option value="">Choose an email template</option>
-                    {templates.map((template) => (
+                    {selectedTemplateOutsideFilter && (
+                      <option value={selectedTemplate._id}>
+                        {selectedTemplate.name} ({templateLanguage(selectedTemplate).toUpperCase()}) — current selection
+                      </option>
+                    )}
+                    {filteredTemplates.map((template) => (
                       <option value={template._id} key={template._id}>
                         {template.name} ({template.language?.toUpperCase()})
                       </option>
                     ))}
                   </select>
                 </label>
+                <p role="status">
+                  {filteredTemplates.length === 0
+                    ? "No email templates match. Try another search or language."
+                    : `${filteredTemplates.length} matching email ${filteredTemplates.length === 1 ? "template" : "templates"}.`}
+                  {selectedTemplateOutsideFilter && " Your selected template is kept even though it does not match these filters."}
+                </p>
                 <p>
                   <Link
                     to="/admin/communications"

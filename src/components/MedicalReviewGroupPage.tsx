@@ -1,7 +1,7 @@
+import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiEdit2, FiFileText, FiFolder, FiPlus, FiSliders, FiThumbsDown, FiThumbsUp, FiTrash2 } from 'react-icons/fi';
-import { Activity, Droplets, FileText } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import ResponsiveModal from './ResponsiveModal';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
@@ -43,24 +43,9 @@ const statusFilterLabels: Record<string, string> = {
 
 const DEFAULT_STATUS_FILTER = new Set<string>(medicalReviewStatuses.filter((status) => isPendingMedicalReviewStatus(status)));
 
-const mobileTypeTileConfig: Record<string, { Icon: any; tileClass: string; iconClass: string; label: string }> = {
-  ekg: { Icon: Activity, tileClass: 'bg-green-100', iconClass: 'text-green-600', label: 'EKG' },
-  ekg_review: { Icon: Activity, tileClass: 'bg-green-100', iconClass: 'text-green-600', label: 'EKG' },
-  ceremony_ekg_review: { Icon: Activity, tileClass: 'bg-green-100', iconClass: 'text-green-600', label: 'EKG' },
-  liver: { Icon: Droplets, tileClass: 'bg-red-100', iconClass: 'text-red-600', label: 'Liver panel tests' },
-  liver_panel: { Icon: Droplets, tileClass: 'bg-red-100', iconClass: 'text-red-600', label: 'Liver panel tests' },
-  liver_panel_review: { Icon: Droplets, tileClass: 'bg-red-100', iconClass: 'text-red-600', label: 'Liver panel tests' },
-  bp: { Icon: Activity, tileClass: 'bg-blue-100', iconClass: 'text-blue-600', label: 'Blood pressure' },
-  blood_pressure: { Icon: Activity, tileClass: 'bg-blue-100', iconClass: 'text-blue-600', label: 'Blood pressure' },
-  blood_pressure_review: { Icon: Activity, tileClass: 'bg-blue-100', iconClass: 'text-blue-600', label: 'Blood pressure' },
-  additional: { Icon: FileText, tileClass: 'bg-amber-100', iconClass: 'text-amber-700', label: 'Additional' },
-  medications_review: { Icon: FileText, tileClass: 'bg-amber-100', iconClass: 'text-amber-700', label: 'Medications' },
-};
-const getMobileTypeTile = (requestType?: string) => mobileTypeTileConfig[String(requestType || '').toLowerCase()] || {
-  Icon: FileText,
-  tileClass: 'bg-gray-100',
-  iconClass: 'text-gray-600',
-  label: requestType ? String(requestType).replace(/_/g, ' ') : 'Review',
+const getMobileTypeTile = (requestType?: string) => {
+  const config = getMedicalDocumentType(requestType);
+  return { ...config, tileClass: config.className, iconClass: '' };
 };
 
 const getShortClientName = (request: MedicalReviewRequest) => {
@@ -497,7 +482,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                         >
                           <span className="w-5 shrink-0 text-sm font-semibold text-gray-400">{rowNumber}</span>
                           <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${tile.tileClass}`}>
-                            <Icon icon={tile.Icon} className={`h-5 w-5 ${tile.iconClass}`} />
+                            <Icon icon={tile.Icon} className={`h-6 w-6 ${tile.iconClass}`} />
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[15px] font-bold text-gray-900">{tile.label}</span>

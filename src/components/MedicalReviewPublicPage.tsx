@@ -1,3 +1,4 @@
+import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { medicalReviewRequestsApi } from '../services/api';
@@ -50,7 +51,7 @@ const MedicalReviewPublicPage: React.FC = () => {
           artifacts.map((artifact) => (
             <div key={artifact._id} className="rounded-md border border-gray-200 p-4">
               <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifact.title}</div>
-              <div className="mt-1 text-sm capitalize text-gray-600">{artifact.artifactType?.replace(/_/g, ' ')}</div>
+              <div className="mt-1 flex items-center gap-3 text-sm capitalize text-gray-600"><MedicalDocumentTypeIcon type={artifact.artifactType} fallbackType={artifact.documentType} />{artifact.artifactType?.replace(/_/g, ' ')}</div>
               {artifact.textContent && <div className="mt-3 whitespace-pre-wrap text-sm text-gray-800">{artifact.textContent}</div>}
               {artifact.notes && <div className="mt-3 text-sm text-gray-600">Notes: {artifact.notes}</div>}
               {!!artifact.files?.length && (

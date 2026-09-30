@@ -2152,6 +2152,26 @@
 }
 
 .booking-next-action { margin: 0 20px 18px; padding: 18px 20px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; color: #334155; }
+.booking-next-action-title { min-width: 0; }
+.booking-next-action-title p { margin: 2px 0 0; color: #64748b; font-size: 12px; }
+.booking-next-action-button { display: inline-flex; align-items: center; gap: 7px; }
+.booking-next-action-main-icon { display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px; background: #dbeafe; color: #1d4ed8; font-size: 22px; }
+.booking-next-action-main.is-waiting .booking-next-action-main-icon { background: #fef3c7; color: #92400e; }
+.booking-next-action-complete { display: flex; align-items: center; gap: 8px; color: #166534; font-weight: 600; }
+.booking-next-action-waiting { margin-top: 14px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.booking-next-action-waiting > h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 12px; color: #475569; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+.booking-next-action-waiting-group { padding-top: 10px; border-top: 1px solid #f1f5f9; }
+.booking-next-action-waiting-group:first-of-type { padding-top: 0; border-top: 0; }
+.booking-next-action-waiting-group h4 { display: flex; align-items: center; gap: 7px; margin: 0 0 5px; color: #334155; font-size: 13px; }
+.booking-next-action-waiting-group h4 svg { color: #64748b; }
+.booking-next-action-waiting-group h4 span { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; margin-left: 2px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-size: 11px; }
+.booking-next-action-waiting-group ul { list-style: none; margin: 0; padding: 0; }
+.booking-next-action-waiting-group li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid #f8fafc; }
+.booking-next-action-waiting-group li > div { min-width: 0; }
+.booking-next-action-waiting-group li strong, .booking-next-action-waiting-group li small { display: block; }
+.booking-next-action-waiting-group li strong { color: #475569; font-size: 13px; }
+.booking-next-action-waiting-group li small { margin-top: 2px; color: #64748b; font-size: 12px; }
+.booking-next-action-more { display: block; margin-top: 4px; color: #64748b; font-size: 12px; }
 .booking-next-action-heading, .booking-next-action-main, .booking-next-action-blockers li { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .booking-next-action-heading { flex-wrap: wrap; }
 .booking-next-action-heading h2 { margin: 0; font-size: 17px; }

@@ -1,3 +1,4 @@
+import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import { MedicalReviewAuditTrail } from './MedicalReviewAuditTrail';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -6,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi, usersApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
-import { Activity, AlertTriangle, Ban, ChevronDown, CircleHelp, ClipboardList, Droplets, FileQuestion, FileText, HeartPulse, Pill, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { AlertTriangle, Ban, ChevronDown, CircleHelp, FileText, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
@@ -92,17 +93,6 @@ const formatTranslatedValue = (value: unknown): string => {
     return Object.entries(parsed).map(([key, item]) => `${key.replace(/_/g, ' ')}: ${formatTranslatedValue(item)}`).join('\n');
   }
   return String(parsed);
-};
-
-const relatedRecordIcon = (label: string) => {
-  const value = label.toLowerCase();
-  if (value.includes('ekg') || value.includes('heart')) return HeartPulse;
-  if (value.includes('liver')) return Droplets;
-  if (value.includes('blood pressure') || value.includes('pressure')) return Activity;
-  if (value.includes('medication')) return Pill;
-  if (value.includes('questionnaire') || value.includes('food')) return ClipboardList;
-  if (value.includes('question')) return FileQuestion;
-  return FileText;
 };
 
 const medicalReviewTypeFilters = [
@@ -934,9 +924,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
       if (whatsappStatus === 'responded' && (!whatsappRespondedAt || !whatsappDecision)) { setValidationError('Select the response date and the advisor’s result.'); return; }
       try {
         setSavingReview(true);
-        const resultStatus = whatsappDecision === 'OK' ? 'approved' : whatsappDecision === 'NOT OK' ? 'rejected' : whatsappDecision === 'caution' ? 'caution' : whatsappDecision === 'more_info_needed' ? 'needs_resubmission' : whatsappDecision === 'WONT_DO' ? 'wont_do' : 'awaiting_whatsapp';
+        const resultStatus = whatsappStatus !== 'responded' ? 'awaiting_whatsapp' : whatsappDecision === 'OK' ? 'approved' : whatsappDecision === 'NOT OK' ? 'rejected' : whatsappDecision === 'caution' ? 'caution' : whatsappDecision === 'more_info_needed' ? 'needs_resubmission' : whatsappDecision === 'WONT_DO' ? 'wont_do' : 'awaiting_whatsapp';
         await medicalReviewRequestsApi.update(selected._id, { reviewChannel: 'whatsapp', whatsappStatus, whatsappAdvisorUserId, whatsappSentAt, whatsappRespondedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, whatsappDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, status: resultStatus as any, reviewDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, reviewedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, reviewNotes: whatsappStatus === 'responded' ? `Advisor response received via WhatsApp${wontDoNote ? `: ${wontDoNote}` : ''}` : undefined });
         await loadRequests();
+      } catch (error: any) {
+        setValidationError(error?.response?.data?.message || 'Could not save WhatsApp status. Please try again.');
       } finally { setSavingReview(false); }
       return;
     }
@@ -1711,7 +1703,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     {profileHref ? <a href={profileHref} className="text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900">{selectedClientName}</a> : selectedClientName}
                     {getId(selected.clientId) && <span className="ml-2 text-xs font-normal text-gray-500">ID: {getId(selected.clientId)}</span>}
                   </div>
-                  <div className="text-sm text-gray-600">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
+                  <div className="flex items-center gap-3 text-sm text-gray-600"><MedicalDocumentTypeIcon type={selected.requestType} fallbackType={selected.documentType} />{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
                   {retreatStartDate && <div className="mt-1 text-xs font-medium text-gray-500">Retreat starts {retreatStartDate}</div>}
                   <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
                     <button type="button" className="mrr-related-mobile-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen} aria-controls="mrr-related-records">
@@ -1794,7 +1786,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 const item = record.item as any;
                 const shortLabel = record.label.replace(/\s+Panel$/i, '').replace(/\s+Review$/i, '');
                 return <button key={`${record.kind}-${record.id}`} type="button" className="mrr-related-record" onClick={() => record.kind === 'request' ? handleSelect(item) : navigate(`${artifactRoutePrefix}/medical-artifacts/${record.id}/edit`)} title={`${record.label}${record.date ? ` · ${formatDateTime(record.date)}` : ''}`}>
-                  <span className={`mrr-related-record-icon ${record.kind === 'request' ? 'request' : ''}`}>{React.createElement(relatedRecordIcon(record.label), { size: 20, strokeWidth: 2.1 })}</span>
+                  <MedicalDocumentTypeIcon type={record.kind === 'request' ? (record.item as MedicalReviewRequest).requestType : (record.item as MedicalArtifact).artifactType} fallbackType={record.item.documentType} />
                   <span className="mrr-related-record-text"><strong>{shortLabel}</strong><small>{record.date ? formatDateTime(record.date) : 'Date unavailable'}</small></span>
                 </button>;
               }) : <span className="mrr-related-empty">No previous or related records.</span>}
@@ -1922,6 +1914,20 @@ const MedicalReviewRequestsPage: React.FC = () => {
               {onBehalfOfAdvisor && <label className="mt-2 block">Reason for delegated approval<textarea value={delegationReason} onChange={event => setDelegationReason(event.target.value)} maxLength={1000} className="mt-1 block w-full rounded border p-2" required /></label>}
               {validationError && <p role="alert" className="mt-2 text-red-700">{validationError}</p>}
             </section>}
+              {(user?.role === 'admin' || user?.role === 'medical_staff') && (
+                <section className="mb-3 rounded-md border border-purple-200 bg-purple-50 p-3">
+                  <p className="mb-2 text-sm text-gray-600">Record a review handled via WhatsApp.</p>
+                  {validationError && <p role="alert" className="mb-2 text-sm text-red-700">{validationError}</p>}
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-900"><input type="checkbox" checked={reviewChannel === 'whatsapp'} onChange={(event) => setReviewChannel(event.target.checked ? 'whatsapp' : 'internal')} /> Handle this review via WhatsApp</label>
+                  {reviewChannel === 'whatsapp' && <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label className="text-sm">Medical advisor<select value={whatsappAdvisorUserId} onChange={(event) => setWhatsappAdvisorUserId(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select advisor</option>{medicalAdvisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}</option>)}</select></label>
+                    <label className="text-sm">Date sent<input type="date" value={whatsappSentAt} onChange={(event) => setWhatsappSentAt(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label>
+                    <label className="text-sm">WhatsApp status<select value={whatsappStatus} onChange={(event) => setWhatsappStatus(event.target.value as any)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="awaiting_response">Sent — waiting for answer</option><option value="responded">Advisor answered</option></select></label>
+                    {whatsappStatus === 'responded' && <><label className="text-sm">Date approved/answered<input type="date" value={whatsappRespondedAt} onChange={(event) => setWhatsappRespondedAt(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label><label className="text-sm">Advisor result<select value={whatsappDecision} onChange={(event) => setWhatsappDecision(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select result</option><option value="OK">OK</option><option value="caution">Caution</option><option value="more_info_needed">More information needed</option><option value="NOT OK">Declined</option><option value="WONT_DO">Won’t do</option></select></label></>}
+                    <button type="button" onClick={() => handleSaveReview()} disabled={savingReview} className="w-fit rounded-md bg-purple-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save WhatsApp status'}</button>
+                  </div>}
+                </section>
+              )}
             <MedicalReviewAuditTrail request={selected} />
             {isDetailView && (
               <div className="space-y-3 sm:hidden">
@@ -2538,19 +2544,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="text-sm font-semibold text-gray-900">Source snapshot</div>
                   <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs text-gray-600">{JSON.stringify(selected.sourceSnapshot, null, 2)}</pre>
                 </div>
-              )}
-
-              {!isReadOnlyView && (
-                <section className="mb-3 rounded-md border border-purple-200 bg-purple-50 p-3">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-900"><input type="checkbox" checked={reviewChannel === 'whatsapp'} onChange={(event) => setReviewChannel(event.target.checked ? 'whatsapp' : 'internal')} /> Handle this review via WhatsApp</label>
-                  {reviewChannel === 'whatsapp' && <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <label className="text-sm">Medical advisor<select value={whatsappAdvisorUserId} onChange={(event) => setWhatsappAdvisorUserId(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select advisor</option>{medicalAdvisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}</option>)}</select></label>
-                    <label className="text-sm">Date sent<input type="date" value={whatsappSentAt} onChange={(event) => setWhatsappSentAt(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label>
-                    <label className="text-sm">WhatsApp status<select value={whatsappStatus} onChange={(event) => setWhatsappStatus(event.target.value as any)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="awaiting_response">Sent — waiting for answer</option><option value="responded">Advisor answered</option></select></label>
-                    {whatsappStatus === 'responded' && <><label className="text-sm">Date approved/answered<input type="date" value={whatsappRespondedAt} onChange={(event) => setWhatsappRespondedAt(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label><label className="text-sm">Advisor result<select value={whatsappDecision} onChange={(event) => setWhatsappDecision(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select result</option><option value="OK">OK</option><option value="caution">Caution</option><option value="more_info_needed">More information needed</option><option value="NOT OK">Declined</option><option value="WONT_DO">Won’t do</option></select></label></>}
-                    <button type="button" onClick={() => handleSaveReview()} disabled={savingReview} className="w-fit rounded-md bg-purple-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save WhatsApp status'}</button>
-                  </div>}
-                </section>
               )}
 
               <div

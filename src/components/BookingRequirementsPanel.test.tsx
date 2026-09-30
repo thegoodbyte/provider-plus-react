@@ -19,10 +19,11 @@ describe('BookingRequirementsPanel', () => {
     const reload = jest.fn(); hook.mockReturnValue(state({ error: 'offline', reload })); view();
     expect(screen.getByText('offline')).toBeInTheDocument(); expect(screen.getByText('missing')).toBeInTheDocument(); fireEvent.click(screen.getByText('Refresh')); expect(reload).toHaveBeenCalled();
   });
-  it('navigates to linked records with the current role prefix', () => {
-    hook.mockReturnValue(state({ rows: [row({ uploaded: true, satisfied: true, reviewed: true, latestArtifact: { _id: 'a', display_id: 1 }, latestDocument: { _id: 'd', display_id: 2 }, latestReview: { _id: 'r', display_id: 3, status: 'approved' } })] })); view();
+  it.each(['admin', 'medical', 'staff', 'user', ''])('opens the exact linked records under the %s role prefix', (role) => {
+    const prefix = role ? `/${role}` : '';
+    hook.mockReturnValue(state({ rows: [row({ uploaded: true, satisfied: true, reviewed: true, latestArtifact: { _id: 'a', display_id: 1 }, latestDocument: { _id: 'd', display_id: 2 }, latestReview: { _id: 'r', display_id: 3, status: 'approved' } })] })); view(`${prefix}/bookings/1`);
     fireEvent.click(screen.getByText('Artifact #1')); fireEvent.click(screen.getByText('Document #2')); fireEvent.click(screen.getByText('Review #3'));
-    expect(mockNavigate.mock.calls.map(call => call[0])).toEqual(['/admin/medical-artifacts/a', '/admin/booking-documents', '/admin/medical-review-requests/r']);
+    expect(mockNavigate.mock.calls.map(call => call[0])).toEqual([`${prefix}/medical-artifacts/a`, `${prefix}/booking-documents?documentId=d`, `${prefix}/medical-review-requests/r`]);
   });
   it('opens, closes, filters, sorts, and links artifacts', async () => {
     const link = jest.fn().mockResolvedValue(true); hook.mockReturnValue(state({ rows: [row()], link, libraryArtifacts: [{ _id: 'old', artifactType: 'ekg', createdAt: '2026-01-01' }, { _id: 'new', artifactType: 'ekg', createdAt: '2026-02-01' }, { _id: 'other', artifactType: 'liver_panel' }] })); view();

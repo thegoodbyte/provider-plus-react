@@ -1,3 +1,4 @@
+import IntegrationCalendar from './IntegrationCalendar';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronDown, ChevronUp, HeartHandshake } from 'lucide-react';
@@ -13,6 +14,7 @@ const toDateTimeInputValue = (value?: string) => (value ? new Date(value).toISOS
 const IntegrationRetreatDetailPage: React.FC = () => {
   const { retreatId } = useParams();
   const navigate = useNavigate();
+  const [calendar, setCalendar] = useState(false);
   const [checkpointNumber, setCheckpointNumber] = useState(1);
   const [detail, setDetail] = useState<IntegrationCheckpointDetail | null>(null);
   // Tiles default to expanded -- typing the answers straight onto each
@@ -56,6 +58,9 @@ const IntegrationRetreatDetailPage: React.FC = () => {
         </div>
       </header>
 
+      <nav className="flex gap-3 my-4" aria-label="Integration views"><button type="button" aria-pressed={!calendar} onClick={()=>setCalendar(false)}>Checkpoint notes</button><button type="button" aria-pressed={calendar} onClick={()=>setCalendar(true)}>Six-week calendar</button></nav>
+      {calendar&&<IntegrationCalendar retreatId={retreatId} />}
+      <div hidden={calendar}>
       <div className="integration-checkpoint-tabs" role="tablist">
         {CHECKPOINT_NUMBERS.map((number) => (
           <button
@@ -172,6 +177,7 @@ const IntegrationRetreatDetailPage: React.FC = () => {
             </article>
           );
         })}
+      </div>
       </div>
     </section>
   );

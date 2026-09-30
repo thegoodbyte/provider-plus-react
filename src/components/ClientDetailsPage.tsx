@@ -1,3 +1,4 @@
+import ArtifactReviewStatus, { useArtifactReviews } from './ArtifactReviewStatus';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequestsApi, retreatsApi, medicalArtifactsApi } from '../services/api';
@@ -136,6 +137,7 @@ const ClientDetailsPage: React.FC = () => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
   const [medicalArtifacts, setMedicalArtifacts] = useState<MedicalArtifact[]>([]);
+  const artifactReviews = useArtifactReviews(medicalArtifacts.map(a => a._id), medicalArtifacts);
   const notificationCount = useNotificationCount({ clientId });
 
   const handleResetLoginPin = async () => {
@@ -519,6 +521,7 @@ const ClientDetailsPage: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusColors: any = {
+      self_submit: 'bg-orange-100 text-orange-800',
       active: 'bg-green-100 text-green-800',
       inactive: 'bg-gray-100 text-gray-800',
       potential: 'bg-yellow-100 text-yellow-800',
@@ -534,7 +537,7 @@ const ClientDetailsPage: React.FC = () => {
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
         statusColors[status] || 'bg-gray-100 text-gray-800'
       }`}>
-        {status || 'unknown'}
+        {status === 'self_submit' ? 'Self-submit — portal access disabled' : status || 'unknown'}
       </span>
     );
   };
@@ -1260,6 +1263,7 @@ const ClientDetailsPage: React.FC = () => {
               )}
 
               {renderScreeningGrid([
+                { label: 'Desired accommodation', value: getScreeningValue('desiredAccommodationLabel', 'desiredAccommodationKey') },
                 { label: 'Screening Date', value: getScreeningValue('screeningDate') ? formatDate(getScreeningValue('screeningDate')) : '' },
                 { label: 'Year of Birth', value: screeningYearOfBirth },
                 { label: 'Age', value: getScreeningValue('age') },
@@ -1472,6 +1476,7 @@ const ClientDetailsPage: React.FC = () => {
                             </div>
                             {latestEkg && (
                               <>
+                                <div><dt className="text-xs text-gray-600">Medical review:</dt><dd><ArtifactReviewStatus artifactId={latestEkg._id} state={artifactReviews} /></dd></div>
                                 <div className="flex justify-between">
                                   <dt className="text-xs text-gray-600">Received:</dt>
                                   <dd className="text-xs font-medium">
@@ -1565,6 +1570,7 @@ const ClientDetailsPage: React.FC = () => {
                             </div>
                             {latestLiver && (
                               <>
+                                <div><dt className="text-xs text-gray-600">Medical review:</dt><dd><ArtifactReviewStatus artifactId={latestLiver._id} state={artifactReviews} /></dd></div>
                                 <div className="flex justify-between">
                                   <dt className="text-xs text-gray-600">Received:</dt>
                                   <dd className="text-xs font-medium">

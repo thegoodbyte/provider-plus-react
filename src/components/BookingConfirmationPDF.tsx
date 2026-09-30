@@ -316,7 +316,7 @@ const translations = {
     medicalDeadline: 'EKG i panel wątroby należy dostarczyć w ciągu 21 dni od pierwszej płatności.',
     contractDeadline: 'Umowę uczestnika należy podpisać w ciągu 3 dni od pierwszej płatności.',
     deadlinePolicy: 'Jeśli terminy nie zostaną dotrzymane, rezerwacja może zostać przeniesiona na następny dostępny termin, aby miejsce mogło zostać zaoferowane osobom gotowym do kontynuowania.',
-    retreatDescription: 'Pobyt uzdrawiający psychoduchowo z dwiema ceremoniami Missoko Bwiti Iboga, zakwaterowaniem (pokój Aleksism) i wyżywieniem.',
+    retreatDescription: 'Pobyt uzdrawiający psychoduchowo z dwiema ceremoniami Missoko Bwiti Iboga, zakwaterowaniem i wyżywieniem.',
     location: 'Miejsce',
     dates: 'Data',
     checkIn: 'Przyjazd',
@@ -369,7 +369,7 @@ const translations = {
     medicalDeadline: 'EKG a jaterní panel musí být dodány do 21 dnů od první platby.',
     contractDeadline: 'Smlouva účastníka musí být podepsána do 3 dnů od první platby.',
     deadlinePolicy: 'Pokud termíny nebudou dodrženy, rezervace může být přesunuta na další dostupný termín, aby místo mohlo být nabídnuto lidem připraveným pokračovat.',
-    retreatDescription: 'Psychospiritualní léčebný pobyt se dvěma ceremoniemi Missoko Bwiti Iboga, ubytováním (pokoj Aleksism) a stravováním.',
+    retreatDescription: 'Psychospiritualní léčebný pobyt se dvěma ceremoniemi Missoko Bwiti Iboga, ubytováním a stravováním.',
     location: 'Místo',
     dates: 'Datum',
     checkIn: 'Příjezd',
@@ -422,7 +422,7 @@ const translations = {
     medicalDeadline: 'EKG and liver panel must be provided within 21 days of the initial payment.',
     contractDeadline: 'The participant agreement must be signed within 3 days of the initial payment.',
     deadlinePolicy: 'If these deadlines are missed, the reservation may be moved to the next available retreat date so the spot can be offered to people who are ready to proceed.',
-    retreatDescription: 'Psycho-spiritual healing retreat with two Missoko Bwiti Iboga ceremonies, accommodation (Aleksism room) and meals.',
+    retreatDescription: 'Psycho-spiritual healing retreat with two Missoko Bwiti Iboga ceremonies, accommodation and meals.',
     location: 'Location',
     dates: 'Dates',
     checkIn: 'Check-in',
@@ -793,6 +793,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       <!-- Info text -->
       <div style="margin: 25px 0 25px 0; font-size: 13px; line-height: 1.4;">
         <strong>${t.retreatDescription}</strong>
+        ${booking.accommodationLabel ? `<br>${escapeHtml(booking.accommodationLabel)}` : ''}
       </div>
 
       <!-- Location Details -->

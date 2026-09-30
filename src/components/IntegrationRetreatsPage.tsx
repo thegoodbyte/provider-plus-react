@@ -1,3 +1,4 @@
+import IntegrationCalendar from './IntegrationCalendar';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HeartHandshake } from 'lucide-react';
@@ -10,6 +11,7 @@ const formatDate = (value?: string) => (value ? new Date(value).toISOString().sl
 
 const IntegrationRetreatsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [calendar, setCalendar] = useState(false);
   const [retreats, setRetreats] = useState<IntegrationRetreatSummary[] | null>(null);
 
   useEffect(() => {
@@ -32,7 +34,8 @@ const IntegrationRetreatsPage: React.FC = () => {
         </div>
       </header>
 
-      {!retreats.length ? (
+      <nav aria-label="Integration views" className="flex gap-3 my-4"><button type="button" aria-pressed={!calendar} onClick={()=>setCalendar(false)}>Retreat checkpoints</button><button type="button" aria-pressed={calendar} onClick={()=>setCalendar(true)}>Calendar · all retreats</button></nav>
+      {calendar ? <IntegrationCalendar /> : !retreats.length ? (
         <div className="integration-retreats-empty">No retreats found yet.</div>
       ) : (
         <div className="integration-retreats-list">

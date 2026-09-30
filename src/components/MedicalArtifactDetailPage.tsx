@@ -1,3 +1,4 @@
+import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Edit, Eye, Plus, Save, Trash2, Upload, Zap } from 'lucide-react';
@@ -942,7 +943,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
       )}
       <div className="mb-5 space-y-2">
         <h1 className="text-2xl font-semibold text-gray-900">Medical Artifact #{artifact.display_id || '-'}</h1>
-        <p className="text-sm text-gray-600">{getArtifactTypeLabel(artifact.artifactType)} for {clientLabel}</p>
+        <div className="mt-2 flex items-center gap-3 text-sm text-gray-600"><MedicalDocumentTypeIcon type={artifact.artifactType} fallbackType={artifact.documentType} />{getArtifactTypeLabel(artifact.artifactType)} for {clientLabel}</div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

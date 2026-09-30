@@ -5,12 +5,14 @@ import { MemoryRouter } from "react-router-dom";
 import AnnouncementsPage, { announcementTiming } from "./AnnouncementsPage";
 import { announcementsApi, communicationsApi } from "../services/api";
 jest.mock("../services/api", () => ({
+  api: { post: jest.fn().mockResolvedValue({data:{retreat:null,message:'No upcoming retreat is available for an example.'}}) },
   announcementsApi: {
     get: jest.fn(),
     sendTest: jest.fn(),
     setRuleActive: jest.fn(),
     save: jest.fn(),
     applyDefaults: jest.fn(),
+    restoreDefaults: jest.fn(),
     generate: jest.fn(),
     setEnabled: jest.fn(),
     preview: jest.fn(),
@@ -136,6 +138,51 @@ it("shows the actual date even before any recipients exist", async () => {
   expect(await screen.findByText(/Send date: 10 Oct 2026/)).toBeInTheDocument();
   expect(screen.getByText(/Cron not enabled yet/)).toBeInTheDocument();
 });
+it("shows custom versus default timing and confirms before restoring defaults", async () => {
+  const customizedData = {
+    ...data,
+    rules: [
+      {
+        ...rule,
+        sendTime: "12:05",
+        sourceRuleId: "default-rule",
+        differsFromDefault: true,
+        defaultRule: {
+          ...rule,
+          title: "Global payment due",
+          sendTime: "13:05",
+        },
+      },
+    ],
+  };
+  (announcementsApi.get as jest.Mock).mockResolvedValue({
+    data: customizedData,
+  });
+  (announcementsApi.restoreDefaults as jest.Mock).mockResolvedValue({
+    data: {},
+  });
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(true);
+  mount("retreat");
+  expect(
+    await screen.findByText("Customized from the global default"),
+  ).toBeInTheDocument();
+  const difference = screen.getByText(
+    "Customized from the global default",
+  ).parentElement;
+  const comparisonText = difference?.textContent?.replace(/\s+/g, " ");
+  expect(comparisonText).toContain("Retreat: 3 days after the retreat ends at 12:05");
+  expect(comparisonText).toContain("Default: 3 days after the retreat ends at 13:05");
+  fireEvent.click(screen.getByRole("button", { name: "Add missing defaults" }));
+  await waitFor(() =>
+    expect(announcementsApi.applyDefaults).toHaveBeenCalledWith("retreat"),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Restore defaults" }));
+  expect(confirm).toHaveBeenCalled();
+  await waitFor(() =>
+    expect(announcementsApi.restoreDefaults).toHaveBeenCalledWith("retreat"),
+  );
+  confirm.mockRestore();
+});
 it("shows failures and safe retry controls, with no automatic retry for uncertain delivery", async () => {
   (announcementsApi.get as jest.Mock).mockResolvedValue({
     data: {
@@ -215,4 +262,40 @@ it('shows skipped recipients in setup and links to their history', async () => {
   expect(await screen.findByText(/1 skipped recipients/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'View skipped recipients' }));
   expect(screen.getByText('Scheduled time passed before this recipient was added.')).toBeInTheDocument();
+});
+
+it('combines template search and language filtering and preserves the saved choice', async () => {
+  (communicationsApi.getTemplates as jest.Mock).mockResolvedValue({ data: [
+    template,
+    { ...template, _id: 'english', language: 'en', name: 'Welcome', subject: 'Arrival details' },
+    { ...template, _id: 'czech', language: 'cs', name: 'Welcome CZ', subject: 'Arrival details' },
+    { ...template, _id: 'czech-alias', language: 'cz', name: 'Welcome CZ alias', subject: 'Arrival details' },
+    { ...template, _id: 'hidden', active: false, name: 'Hidden template' },
+  ] });
+  mount('retreat');
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit announcement' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.queryByRole('option', { name: /Hidden template/ })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Search email templates'), { target: { value: ' ARRIVAL ' } });
+  fireEvent.change(screen.getByLabelText('Template language'), { target: { value: 'cz' } });
+  expect(screen.getByRole('option', { name: 'Welcome CZ (CS)' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Welcome CZ alias (CZ)' })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Welcome (EN)' })).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Email template')).toHaveValue('template');
+  expect(screen.getByRole('status')).toHaveTextContent('2 matching email templates');
+  fireEvent.change(screen.getByLabelText('Email template'), { target: { value: 'czech' } });
+  fireEvent.change(screen.getByLabelText('Search email templates'), { target: { value: 'no such template' } });
+  expect(screen.getByRole('status')).toHaveTextContent('No email templates match');
+  expect(screen.getByLabelText('Email template')).toHaveValue('czech');
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save announcement' }));
+  await waitFor(() => expect(announcementsApi.save).toHaveBeenCalledWith('retreat', 'rule', expect.objectContaining({
+    emailTemplateId: 'czech', useRecipientLanguage: true,
+  })));
+  fireEvent.click(await screen.findByRole('button', { name: '+ Add announcement' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.getByLabelText('Search email templates')).toHaveValue('');
+  expect(screen.getByLabelText('Template language')).toHaveValue('');
+  fireEvent.change(screen.getByLabelText('Search email templates'), { target: { value: 'welcome cz alias' } });
+  expect(screen.getByRole('status')).toHaveTextContent('1 matching email template.');
 });

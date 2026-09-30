@@ -47,3 +47,19 @@ describe('NotificationCountBadge', () => {
     third.unmount();
   });
 });
+
+it('clears the previous scope count and ignores stale refresh responses', async () => {
+  get.mockResolvedValue({ data: { count: 4 } });
+  const { result, rerender } = renderHook(({ clientId }: { clientId?: string }) => useNotificationCount({ clientId }), { initialProps: { clientId: 'c1' } });
+  await waitFor(() => expect(result.current).toBe(4));
+  let resolveOld: (value: any) => void = () => {};
+  get.mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve; }));
+  act(() => window.dispatchEvent(new Event('notifications-updated')));
+  get.mockResolvedValueOnce({ data: { count: 2 } });
+  act(() => window.dispatchEvent(new Event('notifications-updated')));
+  await waitFor(() => expect(result.current).toBe(2));
+  await act(async () => { resolveOld({ data: { count: 9 } }); });
+  expect(result.current).toBe(2);
+  rerender({ clientId: undefined });
+  expect(result.current).toBe(0);
+});

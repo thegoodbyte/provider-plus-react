@@ -126,7 +126,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
                 <span>{artifact ? <span>Artifact #{artifact.display_id || artifact._id}</span> : 'Required document has not been uploaded'}</span>
               </div>
               {review ? (
-                <button type="button" className={`booking-medical-decision ${decisionClass}`} onClick={() => openReview(review)}>{reviewReferenceText(review)}</button>
+                <button type="button" className={`booking-medical-decision ${decisionClass}`} onClick={() => openReview(review)}>{reviewReferenceText(review)} · {review.status?.replace(/_/g, ' ')} · {reviewDecisionText(review)}</button>
               ) : (
                 <span className={`booking-medical-decision ${artifact ? 'medical-decision-pending' : 'medical-decision-declined'}`}>{artifact ? 'NO MRR' : 'Missing'}</span>
               )}

@@ -1,3 +1,4 @@
+import ArtifactReviewStatus, { useArtifactReviews } from './ArtifactReviewStatus';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   MedicalRecord,
@@ -162,6 +163,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
   refreshKey = 0,
 }) => {
   const [records, setRecords] = useState<MedicalRecord[]>([]);
+  const artifactReviews = useArtifactReviews(records.map(r => r._id), refreshKey);
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null);
@@ -395,6 +397,8 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
           )}
         </div>
       </div>
+
+      <ArtifactReviewStatus artifactId={record._id} state={artifactReviews} />
 
       {/* Results Display */}
       {record.results && (

@@ -36,3 +36,22 @@ test('closed bookings have no suggested preparation action', () => {
   expect(screen.getByRole('status')).toHaveTextContent('Booking closed');
   expect(screen.queryByText('Collect deposit')).not.toBeInTheDocument();
 });
+
+test('separates the next action from work waiting on the client and medical team', () => {
+  const sourceWithWaiting: BookingReadinessSource = {
+    ...source,
+    items: [
+      { ...source.items[0], title: 'Send booking confirmation', status: 'pending', category: 'message', isBlocking: true },
+      { ...source.items[0], _id: 'client-step', key: 'questionnaire_received', title: 'Questionnaire', status: 'sent', category: 'medical', isBlocking: true, assignedTo: undefined },
+      { ...source.items[0], _id: 'medical-step', key: 'ekg_review', title: 'Entry EKG review', status: 'sent_for_review', category: 'medical', isBlocking: true, assignedTo: undefined },
+    ],
+    requirements: [
+      { itemId: 'client-step', key: 'questionnaire', state: 'missing', reviewRequired: false, requiredFromClient: true },
+      { itemId: 'medical-step', key: 'ekg', state: 'pending_review', reviewRequired: true, requiredFromClient: true },
+    ],
+  };
+  render(<BookingNextActionSummary {...props} source={sourceWithWaiting} />);
+  expect(screen.getByRole('heading', { name: 'Next step from me' })).toBeInTheDocument();
+  expect(screen.getByText('Waiting on client')).toBeInTheDocument();
+  expect(screen.getByText('Waiting on medical team')).toBeInTheDocument();
+});

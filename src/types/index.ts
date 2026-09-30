@@ -70,7 +70,7 @@ export interface House {
   capacity?: number;
   numberOfRooms?: number;
   numberOfBathrooms?: number;
-  bedrooms?: number | Array<{ name: string; hasBathroom?: boolean; allowsSharing?: boolean }>;
+  bedrooms?: number | Array<{ _id?: string; name: string; floor?: string; beds?: number; bathroomName?: string; notes?: string; active?: boolean; hasBathroom?: boolean; allowsSharing?: boolean }>;
   allowsRoomSharing?: boolean;
   amenities?: string[];
   description?: string;
@@ -343,6 +343,8 @@ export interface RetreatClient {
   cancelledAt?: string | Date;
   cancelledBy?: string;
   roomAssignment?: string;
+  accommodationKey?: string;
+  accommodationLabel?: string;
   roomType?: 'shared' | 'private' | 'private_ensuite' | 'unspecified';
   roomNumber?: string;
   sharedWithBookingIds?: string[];
@@ -1335,7 +1337,8 @@ export interface MedicalReviewRequest {
     | 'caution'
     | 'needs_resubmission'
     | 'completed'
-    | 'awaiting_whatsapp';
+    | 'awaiting_whatsapp'
+    | 'wont_do';
 
   // Additional metadata
   priority?: 'low' | 'normal' | 'high' | 'urgent';
@@ -1725,6 +1728,8 @@ export interface PaymentRequest {
   clientId: string;
   retreatId: string;
   bookingType?: 'full_retreat' | 'booster';
+  accommodationKey?: string;
+  accommodationLabel?: string;
   roomType?: 'shared' | 'private' | 'private_ensuite' | 'unspecified';
   roomAdjustmentType?: 'none' | 'discount' | 'surcharge';
   roomAdjustmentAmount?: number;
