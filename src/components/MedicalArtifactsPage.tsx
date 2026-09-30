@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, Plus, RefreshCw, Send, Trash2, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, Plus, RefreshCw, Send, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
@@ -296,6 +296,15 @@ const MedicalArtifactsPage: React.FC = () => {
   const [quickMrrTypes, setQuickMrrTypes] = useState<Array<{ key: NonNullable<MedicalReviewRequest['requestType']>; label: string }>>([]);
   const [quickMrrForm, setQuickMrrForm] = useState({ requestType: 'general_clearance' as NonNullable<MedicalReviewRequest['requestType']>, advisorId: '', groupId: '', notifyClient: true });
   const [quickMrrSaving, setQuickMrrSaving] = useState(false);
+  const [selectedArtifactIds, setSelectedArtifactIds] = useState<Set<string>>(new Set());
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [bulkAssignAdvisors, setBulkAssignAdvisors] = useState<User[]>([]);
+  const [bulkAssignGroups, setBulkAssignGroups] = useState<any[]>([]);
+  const [bulkAssignTypes, setBulkAssignTypes] = useState<Array<{ key: NonNullable<MedicalReviewRequest['requestType']>; label: string }>>([]);
+  const [bulkAssignForm, setBulkAssignForm] = useState({ requestType: 'general_clearance' as NonNullable<MedicalReviewRequest['requestType']>, advisorId: '', groupId: '', notifyClient: true });
+  const [bulkAssignSaving, setBulkAssignSaving] = useState(false);
+  const [bulkAssignError, setBulkAssignError] = useState('');
+  const [bulkAssignProgress, setBulkAssignProgress] = useState<{ completed: number; total: number } | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -394,6 +403,95 @@ const MedicalArtifactsPage: React.FC = () => {
       return true;
     });
   }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, outcomeFilter, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
+
+  useEffect(() => {
+    setSelectedArtifactIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleIds = new Set(filteredArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[]);
+      const next = new Set(Array.from(prev).filter((id) => visibleIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filteredArtifacts]);
+
+  const toggleSelectArtifact = (artifactId: string) => {
+    setSelectedArtifactIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(artifactId)) next.delete(artifactId); else next.add(artifactId);
+      return next;
+    });
+  };
+
+  const allVisibleSelected = filteredArtifacts.length > 0 && filteredArtifacts.every((artifact) => artifact._id && selectedArtifactIds.has(artifact._id));
+
+  const toggleSelectAllVisible = () => {
+    setSelectedArtifactIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        filteredArtifacts.forEach((artifact) => { if (artifact._id) next.delete(artifact._id); });
+      } else {
+        filteredArtifacts.forEach((artifact) => { if (artifact._id) next.add(artifact._id); });
+      }
+      return next;
+    });
+  };
+
+  const openBulkAssign = async () => {
+    const selectedArtifacts = artifacts.filter((artifact) => artifact._id && selectedArtifactIds.has(artifact._id));
+    if (!selectedArtifacts.length) return;
+    const suggestedTypes = new Set(selectedArtifacts.map((artifact) => quickReviewTypeForArtifact(artifact.artifactType)));
+    const fallbackType = suggestedTypes.size === 1 ? (Array.from(suggestedTypes)[0] as NonNullable<MedicalReviewRequest['requestType']>) : 'general_clearance';
+    setBulkAssignForm({ requestType: fallbackType, advisorId: '', groupId: '', notifyClient: true });
+    setBulkAssignError('');
+    setBulkAssignOpen(true);
+    try {
+      const [users, groups, types] = await Promise.all([usersApi.getAll(), medicalReviewRequestsApi.getGroups(), medicalReviewRequestsApi.getRequestTypes()]);
+      const advisors = (users.data || []).filter((item) => item.role === 'medical_advisor' && item.isActive !== false);
+      const retreatIds = new Set(selectedArtifacts.map((artifact) => getObjectId(artifact.retreatId)).filter(Boolean));
+      const matchingGroup = retreatIds.size === 1
+        ? (groups.data || []).find((group: any) => getObjectId(group.retreatId) === Array.from(retreatIds)[0])
+        : undefined;
+      setBulkAssignAdvisors(advisors);
+      setBulkAssignGroups(groups.data || []);
+      setBulkAssignTypes(types.data || []);
+      setBulkAssignForm((prev) => ({ ...prev, advisorId: advisors[0]?._id || '', groupId: matchingGroup?._id || groups.data?.[0]?._id || '' }));
+    } catch (error: any) {
+      setBulkAssignError(error?.response?.data?.message || 'Unable to load the assignment form.');
+    }
+  };
+
+  const submitBulkAssign = async () => {
+    const ids = Array.from(selectedArtifactIds);
+    if (!ids.length || !bulkAssignForm.advisorId || !bulkAssignForm.groupId) return;
+    setBulkAssignSaving(true);
+    setBulkAssignError('');
+    setBulkAssignProgress({ completed: 0, total: ids.length });
+    const failures: string[] = [];
+    for (const artifactId of ids) {
+      const artifact = artifacts.find((item) => item._id === artifactId);
+      try {
+        await medicalReviewRequestsApi.createFromArtifact(artifactId, bulkAssignForm.requestType, {
+          assignedToUserId: bulkAssignForm.advisorId,
+          medicalReviewGroupId: bulkAssignForm.groupId,
+          documentStage: artifact?.documentStage,
+          sentForReviewAt: new Date().toISOString(),
+          notifyClientOnSubmission: bulkAssignForm.notifyClient,
+        });
+      } catch (error: any) {
+        failures.push(`#${artifact?.display_id || artifactId.slice(-6)}: ${error?.response?.data?.message || 'failed'}`);
+      } finally {
+        setBulkAssignProgress((prev) => (prev ? { ...prev, completed: prev.completed + 1 } : prev));
+      }
+    }
+    setBulkAssignSaving(false);
+    setBulkAssignProgress(null);
+    if (failures.length) {
+      setBulkAssignError(`Some artifacts could not be assigned: ${failures.join('; ')}`);
+    } else {
+      setBulkAssignOpen(false);
+      setSelectedArtifactIds(new Set());
+    }
+    await loadData();
+  };
 
   const outcomeCounts = useMemo(() => {
     const counts: Record<string, number> = { all: artifacts.length, declined: 0, needs_info: 0, pending: 0 };
@@ -654,10 +752,31 @@ const MedicalArtifactsPage: React.FC = () => {
         </div>
       </div>
 
+      {selectedArtifactIds.size > 0 && (
+        <div className="mb-4 hidden items-center justify-between gap-3 rounded-md border border-cyan-200 bg-cyan-50 px-4 py-3 md:flex">
+          <span className="text-sm font-semibold text-cyan-900">{selectedArtifactIds.size} artifact{selectedArtifactIds.size === 1 ? '' : 's'} selected</span>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setSelectedArtifactIds(new Set())} className="text-sm font-medium text-cyan-800 hover:underline">Clear selection</button>
+            <button type="button" onClick={openBulkAssign} className="inline-flex items-center gap-2 rounded-md bg-cyan-700 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-800">
+              <UserCheck className="h-4 w-4" />
+              Assign to reviewer
+            </button>
+          </div>
+        </div>
+      )}
       <div className="hidden max-w-full overflow-x-auto rounded-md border border-gray-200 md:block">
         <table className="min-w-[1280px] divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
+              <th className="px-4 py-3">
+                <input
+                  type="checkbox"
+                  aria-label="Select all visible artifacts"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectAllVisible}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+              </th>
               <th className="px-4 py-3">ID</th>
               <th className="min-w-[170px] px-4 py-3">MRR</th>
               <th className="sticky right-0 z-20 min-w-[184px] border-l border-gray-200 bg-gray-50 px-4 py-3">Actions</th>
@@ -679,6 +798,16 @@ const MedicalArtifactsPage: React.FC = () => {
               const retreatCode = getRetreatCode(artifact.retreatId as any);
               return (
               <tr key={artifact._id} className="hover:bg-gray-50">
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select artifact #${artifact.display_id}`}
+                    checked={artifact._id ? selectedArtifactIds.has(artifact._id) : false}
+                    onChange={() => artifact._id && toggleSelectArtifact(artifact._id)}
+                    disabled={!artifact._id}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </td>
                 <td className="px-4 py-3 font-medium text-gray-900">
                   {artifact._id ? (
                     <button
@@ -831,7 +960,7 @@ const MedicalArtifactsPage: React.FC = () => {
             })}
             {filteredArtifacts.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
+                <td colSpan={12} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
               </tr>
             )}
           </tbody>
@@ -1074,6 +1203,42 @@ const MedicalArtifactsPage: React.FC = () => {
               <label className="flex items-center gap-2 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-slate-700"><input type="checkbox" checked={quickMrrForm.notifyClient} onChange={(event) => setQuickMrrForm({ ...quickMrrForm, notifyClient: event.target.checked })} /> Notify client that the record was submitted for review</label>
             </div>
             <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setQuickMrrArtifact(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">Cancel</button><button type="button" onClick={createQuickMrr} disabled={quickMrrSaving || !quickMrrForm.advisorId || !quickMrrForm.groupId} className="rounded-md bg-cyan-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{quickMrrSaving ? 'Creating…' : 'Create MRR'}</button></div>
+          </div>
+        </div>
+      )}
+      {bulkAssignOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-label="Assign artifacts to reviewer">
+          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Assign to reviewer</h2>
+                <p className="mt-1 text-sm text-slate-500">{selectedArtifactIds.size} artifact{selectedArtifactIds.size === 1 ? '' : 's'} selected</p>
+              </div>
+              <button type="button" onClick={() => !bulkAssignSaving && setBulkAssignOpen(false)} className="text-2xl leading-none text-slate-400 hover:text-slate-700" aria-label="Close">×</button>
+            </div>
+            <div className="mt-3 flex max-h-24 flex-wrap gap-1 overflow-y-auto rounded-md border border-slate-200 bg-slate-50 p-2">
+              {Array.from(selectedArtifactIds).map((artifactId) => {
+                const artifact = artifacts.find((item) => item._id === artifactId);
+                return (
+                  <span key={artifactId} className="inline-block rounded bg-white px-2 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
+                    #{artifact?.display_id || artifactId.slice(-6)}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="mt-5 grid gap-4">
+              <label className="text-sm font-medium text-slate-700">Review type<select className="mt-1 w-full rounded-md border border-slate-300 p-2" value={bulkAssignForm.requestType} onChange={(event) => setBulkAssignForm({ ...bulkAssignForm, requestType: event.target.value as NonNullable<MedicalReviewRequest['requestType']> })}>{(bulkAssignTypes.length ? bulkAssignTypes : [{ key: 'general_clearance', label: 'General clearance' }]).map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}</select></label>
+              <label className="text-sm font-medium text-slate-700">Medical advisor<select className="mt-1 w-full rounded-md border border-slate-300 p-2" value={bulkAssignForm.advisorId} onChange={(event) => setBulkAssignForm({ ...bulkAssignForm, advisorId: event.target.value })}><option value="">Select advisor</option>{bulkAssignAdvisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}</option>)}</select></label>
+              <label className="text-sm font-medium text-slate-700">Review pocket<select className="mt-1 w-full rounded-md border border-slate-300 p-2" value={bulkAssignForm.groupId} onChange={(event) => setBulkAssignForm({ ...bulkAssignForm, groupId: event.target.value })}><option value="">Select pocket</option>{bulkAssignGroups.map((group) => <option key={group._id} value={group._id}>{group.title}</option>)}</select></label>
+              <label className="flex items-center gap-2 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-slate-700"><input type="checkbox" checked={bulkAssignForm.notifyClient} onChange={(event) => setBulkAssignForm({ ...bulkAssignForm, notifyClient: event.target.checked })} /> Notify clients that their records were submitted for review</label>
+            </div>
+            {bulkAssignError && <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{bulkAssignError}</div>}
+            <div className="mt-6 flex justify-end gap-2">
+              <button type="button" onClick={() => setBulkAssignOpen(false)} disabled={bulkAssignSaving} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={submitBulkAssign} disabled={bulkAssignSaving || !bulkAssignForm.advisorId || !bulkAssignForm.groupId} className="rounded-md bg-cyan-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                {bulkAssignSaving ? `Assigning ${bulkAssignProgress?.completed ?? 0}/${bulkAssignProgress?.total ?? selectedArtifactIds.size}…` : `Assign ${selectedArtifactIds.size} artifact${selectedArtifactIds.size === 1 ? '' : 's'}`}
+              </button>
+            </div>
           </div>
         </div>
       )}
