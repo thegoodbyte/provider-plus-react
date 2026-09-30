@@ -972,6 +972,7 @@ export const medicalArtifactsApi = {
     cacheService.clearPattern('medical-artifacts:');
     return api.post<MedicalArtifact>(`/medical-artifacts/${id}/ai-assessment`, { force });
   },
+  download: (id: string, language?: 'en' | 'original') => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-artifacts/${id}/download`, { params: language ? { language } : {} }),
   getNextDisplayId: () => api.get<number>('/medical-artifacts/next-display-id'),
   getUploadTargetPreview: (artifactType: NonNullable<MedicalArtifact['artifactType']>, fileName?: string) => api.get<{
     storage: string;
@@ -1247,7 +1248,7 @@ export const medicalReviewRequestsApi = {
     return readGet<MedicalReviewRequest[]>(`medical-review-requests:${suffix || 'all'}`, `/medical-review-requests${suffix}`, options);
   },
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
-  downloadPendingArtifacts: (groupId: string, unsentOnly = true) => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-review-requests/groups/${encodeURIComponent(groupId)}/pending-artifacts/download`, { params: { unsentOnly: unsentOnly ? 'true' : 'false' } }),
+  downloadPendingArtifacts: (groupId: string, unsentOnly = true, language?: 'en' | 'original') => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-review-requests/groups/${encodeURIComponent(groupId)}/pending-artifacts/download`, { params: { unsentOnly: unsentOnly ? 'true' : 'false', ...(language ? { language } : {}) } }),
   markAdvisorSent: (requestIds: string[]) => api.post<{ updated: number }>('/medical-review-requests/groups/mark-advisor-sent', { requestIds }),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
   getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
