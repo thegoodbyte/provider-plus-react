@@ -32,4 +32,12 @@ describe('ClientReferralFields', () => {
     expect(screen.getByPlaceholderText('Enter their name')).toBeInTheDocument();
     expect(screen.getByText('Name must contain at least 2 characters.')).toBeInTheDocument();
   });
+
+  it('defaults the attribution type to N/A and reports changes independently of the referral partner fields (PPVC-711)', () => {
+    const onChange = jest.fn();
+    render(<ClientReferralFields value={{}} referrals={referrals} onChange={onChange} />);
+    expect(screen.getByLabelText('Attribution type')).toHaveValue('na');
+    fireEvent.change(screen.getByLabelText('Attribution type'), { target: { value: 'direct' } });
+    expect(onChange).toHaveBeenCalledWith({ referralAttributionType: 'direct' });
+  });
 });

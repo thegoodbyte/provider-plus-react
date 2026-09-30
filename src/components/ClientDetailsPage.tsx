@@ -1114,6 +1114,7 @@ const ClientDetailsPage: React.FC = () => {
                       {(typeof client.referralId === 'object' ? client.referralId?.name : '') || client.source || 'N/A'}
                       {client.referralPersonType === 'existing_client' && client.referralClientId && <span className="block text-xs font-normal text-gray-500">Friend: {typeof client.referralClientId === 'object' ? `${client.referralClientId.firstName} ${client.referralClientId.lastName}` : 'Existing client'}</span>}
                       {client.referralPersonType === 'someone_else' && client.referralPersonName && <span className="block text-xs font-normal text-gray-500">Friend: {client.referralPersonName}</span>}
+                      {client.referralAttributionType && client.referralAttributionType !== 'na' && <span className="block text-xs font-normal text-gray-500">{client.referralAttributionType === 'direct' ? 'Direct' : 'Self-identified'}</span>}
                     </dd>
                   </div>
                   <div className="flex flex-wrap justify-between gap-2">
