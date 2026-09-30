@@ -10,7 +10,7 @@ import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi }
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
-import { MedicalReviewTypeFilter, editablePacketRequests, formatMedicalReviewCreatedAt, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
+import { MedicalReviewTypeFilter, editablePacketRequests, formatMedicalReviewCreatedAt, getReviewRequestFilterText, groupWhatsappHandledByRetreat, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 import ResponsiveModal from './ResponsiveModal';
 import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation } from './medicalReviewStatus';
 
@@ -103,6 +103,19 @@ const getClientGridLabel = (request: EnrichedReviewRequest) => (
   `${request.clientDisplayId ? `#${request.clientDisplayId} ` : ''}${request.clientName || 'Unknown client'}`
 );
 
+const whatsappAdvisorId = (request: MedicalReviewRequest): string => {
+  const value = request.whatsappAdvisorUserId;
+  return typeof value === 'string' ? value : value?._id || '';
+};
+
+const whatsappDecisionLabels: Record<string, string> = { OK: 'OK', caution: 'Caution', more_info_needed: 'More information needed', 'NOT OK': 'Declined', WONT_DO: 'Won’t do' };
+
+const noteExcerpt = (note?: string, maxLength = 80) => {
+  const trimmed = (note || '').trim();
+  if (!trimmed) return '—';
+  return trimmed.length > maxLength ? `${trimmed.slice(0, maxLength).trimEnd()}…` : trimmed;
+};
+
 const statusClass = Object.fromEntries(Object.entries(medicalReviewStatusPresentation).map(([status, value]) => [status, value.badgeClass]));
 
 const statusIcon: Record<string, any> = {
@@ -138,7 +151,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<'all' | MedicalReviewRequest['status']>('all');
   const [pendingOnly, setPendingOnly] = useState(false);
   const [filterAdvisorId, setFilterAdvisorId] = useState('all');
-  const [activeView, setActiveView] = useState<'grouped' | 'all'>('grouped');
+  const [activeView, setActiveView] = useState<'grouped' | 'all' | 'whatsapp'>('grouped');
   const [advisors, setAdvisors] = useState<User[]>([]);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState('');
@@ -281,6 +294,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         || Number(b.display_id || 0) - Number(a.display_id || 0);
     });
   }, [dateFrom, dateTo, filterAdvisorId, filterStatus, pendingOnly, requests, searchTerm, typeFilter]);
+
+  // PPVC-695: a holistic, per-retreat overview of every MRR handled via
+  // WhatsApp, so an admin can see at a glance how many were sent vs. still
+  // need a reviewed answer, retreat by retreat. Only the search/type/date
+  // filters from the shared filter bar apply here -- status/pending/advisor
+  // filters are for the queue-triage views, not this summary.
+  const whatsappHandledGroups = useMemo(
+    () => groupWhatsappHandledByRetreat(requests, retreatOptions, { searchTerm, typeFilter, dateFrom, dateTo }),
+    [dateFrom, dateTo, requests, retreatOptions, searchTerm, typeFilter],
+  );
 
   const groupedRequestIds = useMemo(() => {
     const ids = new Set<string>();
@@ -784,6 +807,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'all' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
             >
               All
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('whatsapp')}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'whatsapp' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              WhatsApp handled
             </button>
           </div>
         </div>
@@ -1361,6 +1391,72 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+      ) : activeView === 'whatsapp' ? (
+        <div className="space-y-6">
+          {whatsappHandledGroups.length === 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
+              No MRRs have been handled via WhatsApp yet.
+            </div>
+          )}
+          {whatsappHandledGroups.map((group) => {
+            const answered = group.requests.filter((request) => request.whatsappStatus === 'responded').length;
+            const awaiting = group.requests.length - answered;
+            return (
+              <div key={group.retreatId} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
+                  <div className="text-base font-semibold text-gray-900">{group.retreatName}</div>
+                  <div className="flex flex-wrap gap-2 text-xs font-medium">
+                    <span className="rounded-full bg-gray-100 px-2 py-1 text-gray-700">{group.requests.length} handled via WhatsApp</span>
+                    {awaiting > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{awaiting} awaiting answer</span>}
+                    {answered > 0 && <span className="rounded-full bg-green-100 px-2 py-1 text-green-800">{answered} answered</span>}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-[900px] w-full divide-y divide-gray-100 text-sm">
+                    <thead className="bg-white text-left text-xs font-semibold uppercase text-gray-500">
+                      <tr>
+                        <th className="px-4 py-2">MRR #</th>
+                        <th className="px-4 py-2">Type</th>
+                        <th className="px-4 py-2">Client</th>
+                        <th className="px-4 py-2">WhatsApp sent</th>
+                        <th className="px-4 py-2">Medical advisor</th>
+                        <th className="px-4 py-2">Answered date</th>
+                        <th className="px-4 py-2">Result</th>
+                        <th className="px-4 py-2">Note</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {group.requests.map((request) => {
+                        const advisor = advisors.find((item) => item._id === whatsappAdvisorId(request));
+                        const advisorLabel = advisor ? [advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email : '—';
+                        return (
+                          <tr key={request._id} className="hover:bg-gray-50">
+                            <td className="px-4 py-2">
+                              <button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="font-semibold text-blue-700 hover:underline">
+                                #{request.display_id}
+                              </button>
+                            </td>
+                            <td className="px-4 py-2"><MedicalReviewTypeBadge requestType={request.requestType} /></td>
+                            <td className="px-4 py-2">{getClientGridLabel(request)}</td>
+                            <td className="px-4 py-2">{formatMedicalReviewCreatedAt(request.whatsappSentAt)}</td>
+                            <td className="px-4 py-2">{advisorLabel}</td>
+                            <td className="px-4 py-2">{request.whatsappRespondedAt ? formatMedicalReviewCreatedAt(request.whatsappRespondedAt) : '—'}</td>
+                            <td className="px-4 py-2">
+                              {request.whatsappStatus === 'responded'
+                                ? <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass[normalizeReviewStatus(request.status)] || 'bg-gray-100 text-gray-700'}`}>{whatsappDecisionLabels[request.whatsappDecision || ''] || request.whatsappDecision || '—'}</span>
+                                : <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Awaiting answer</span>}
+                            </td>
+                            <td className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={request.reviewNotes || ''}>{noteExcerpt(request.reviewNotes)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <>

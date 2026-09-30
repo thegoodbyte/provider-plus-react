@@ -1,4 +1,4 @@
-import { MedicalReviewGroup, MedicalReviewRequest } from '../types';
+import { MedicalReviewGroup, MedicalReviewRequest, Retreat } from '../types';
 import { medicalReviewStatusPriority } from './medicalReviewStatus';
 
 export { medicalReviewStatusPriority } from './medicalReviewStatus';
@@ -165,4 +165,52 @@ export const editablePacketRequests = <T extends MedicalReviewRequest>(requests:
     const requestRetreatId = typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id;
     return !retreatId || requestRetreatId === retreatId;
   });
+};
+
+export type WhatsappHandledRetreatGroup<T> = {
+  retreatId: string;
+  retreatName: string;
+  startDate?: string;
+  requests: T[];
+};
+
+// PPVC-695: holistic per-retreat overview of every MRR handled via
+// WhatsApp -- retreats sorted soonest-first (undated retreats last),
+// each retreat's requests sorted most-recently-sent first.
+export const groupWhatsappHandledByRetreat = <T extends MedicalReviewRequest & { retreatName?: string }>(
+  requests: T[],
+  retreatOptions: Retreat[],
+  filters: { searchTerm?: string; typeFilter?: MedicalReviewTypeFilter; dateFrom?: string; dateTo?: string } = {},
+): Array<WhatsappHandledRetreatGroup<T>> => {
+  const retreatCode = (retreat?: Retreat) => retreat?.retreatCode || retreat?.code || retreat?.name || 'Unknown Retreat';
+  const retreatIdOf = (request: T) => (typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id) || 'unknown';
+
+  const handled = requests.filter((request) => request.reviewChannel === 'whatsapp' && matchesReviewRequestFilters(request, filters));
+  const byRetreat = new Map<string, WhatsappHandledRetreatGroup<T>>();
+  handled.forEach((request) => {
+    const retreatId = retreatIdOf(request);
+    const existing = byRetreat.get(retreatId);
+    if (existing) {
+      existing.requests.push(request);
+      return;
+    }
+    const retreatOption = retreatOptions.find((option) => option._id === retreatId);
+    byRetreat.set(retreatId, {
+      retreatId,
+      retreatName: request.retreatName || retreatCode(retreatOption),
+      startDate: retreatOption?.startDate ? String(retreatOption.startDate) : undefined,
+      requests: [request],
+    });
+  });
+
+  return Array.from(byRetreat.values())
+    .map((group) => ({
+      ...group,
+      requests: [...group.requests].sort((a, b) => new Date(b.whatsappSentAt || 0).getTime() - new Date(a.whatsappSentAt || 0).getTime()),
+    }))
+    .sort((a, b) => {
+      const aTime = a.startDate ? new Date(a.startDate).getTime() : Number.POSITIVE_INFINITY;
+      const bTime = b.startDate ? new Date(b.startDate).getTime() : Number.POSITIVE_INFINITY;
+      return aTime - bTime || a.retreatName.localeCompare(b.retreatName);
+    });
 };
