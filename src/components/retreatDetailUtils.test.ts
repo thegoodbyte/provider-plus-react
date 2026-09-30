@@ -1,4 +1,4 @@
-import { formatDateForInput, formatStaffRole, getHouseIdValue, getRetreatTown } from './retreatDetailUtils';
+import { formatDateForInput, formatStaffRole, getHouseIdValue, getRetreatHouseBedrooms, getRetreatTown } from './retreatDetailUtils';
 
 describe('retreat detail utilities', () => {
   it('resolves a house identifier from populated and plain values', () => {
@@ -21,5 +21,13 @@ describe('retreat detail utilities', () => {
   it('returns safe date-input values', () => {
     expect(formatDateForInput('2026-09-12T15:00:00.000Z')).toBe('2026-09-12');
     expect(formatDateForInput('invalid')).toBe('');
+  });
+
+  it('reads bedrooms off the retreat house when populated, for room-allocation assignment (PPVC-703)', () => {
+    const bedrooms = [{ name: 'Room A', hasBathroom: true }, { name: 'Room B' }];
+    expect(getRetreatHouseBedrooms({ houseId: { _id: 'house-1', bedrooms } as any })).toEqual(bedrooms);
+    expect(getRetreatHouseBedrooms({ houseId: 'house-1' } as any)).toEqual([]);
+    expect(getRetreatHouseBedrooms({ houseId: { _id: 'house-1' } as any })).toEqual([]);
+    expect(getRetreatHouseBedrooms(null)).toEqual([]);
   });
 });
