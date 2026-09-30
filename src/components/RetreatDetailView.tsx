@@ -811,6 +811,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       setAssigningRoomForClientId('');
     }
   };
+  // PPVC-705: click-to-edit room assignment in the main Retreat Clients grid.
+  const [editingRoomForClientId, setEditingRoomForClientId] = useState('');
 
   const sortedClients = React.useMemo(() => {
     if (!sortField) return visibleClients;
@@ -1270,7 +1272,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phone
+                      Room
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Booking Type
@@ -1331,11 +1333,34 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             >
                               {client.clientDisplayId ? `Client #${client.clientDisplayId}` : 'Client ID unavailable'}
                             </Link>
+                            {client.clientPhone && <div className="mt-0.5 truncate text-xs text-gray-500">{client.clientPhone}</div>}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {client.clientPhone}
+                        {editingRoomForClientId === client._id ? (
+                          <select
+                            autoFocus
+                            value={client.roomNumber || ''}
+                            disabled={assigningRoomForClientId === client._id}
+                            onChange={(event) => { void assignRoom(client._id, event.target.value); setEditingRoomForClientId(''); }}
+                            onBlur={() => setEditingRoomForClientId('')}
+                            className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                          >
+                            <option value="">Not assigned</option>
+                            {houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}
+                          </select>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => houseBedrooms.length > 0 && setEditingRoomForClientId(client._id)}
+                            disabled={houseBedrooms.length === 0}
+                            title={houseBedrooms.length === 0 ? "This retreat's house has no bedrooms configured yet" : 'Click to change room assignment'}
+                            className="rounded px-1 py-0.5 text-left hover:bg-gray-100 disabled:cursor-default disabled:hover:bg-transparent"
+                          >
+                            {client.roomNumber || <span className="text-gray-400">Not assigned</span>}
+                          </button>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.bookingType === 'booster' ? (
