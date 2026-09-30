@@ -1147,6 +1147,17 @@ export interface MedicalArtifact {
     disclaimer?: string;
     error?: string;
   };
+  reviewerTranslations?: Array<{
+    targetLanguage: string;
+    sourceLanguage: string;
+    status: 'translating' | 'ready' | 'failed';
+    sourceVersion?: number;
+    generatedAt?: Date | string;
+    model?: string;
+    items?: Array<{ key: string; label: string; value: string }>;
+    disclaimer?: string;
+    error?: string;
+  }>;
   // Advisory only -- an AI opinion on whether the uploaded file actually
   // looks like what the uploader claimed. Never authoritative.
   classification?: {

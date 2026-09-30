@@ -187,6 +187,51 @@ export const getQuestionnaireTranslationDisplayState = (
   return 'not_started';
 };
 
+export type ReviewerTranslationEntry = {
+  targetLanguage: string;
+  sourceLanguage: string;
+  status: 'translating' | 'ready' | 'failed';
+  sourceVersion?: number;
+  items?: Array<{ key: string; label: string; value: string }>;
+  disclaimer?: string;
+};
+
+// Resolves the cached translation for a reviewer's preferred language. For
+// 'en' this also accepts the older, English-only `translation` field (used
+// by the download/admin "Generate English" flows) as a valid cache hit, so
+// switching an advisor's review page onto reviewerTranslations doesn't throw
+// away translations that already exist from those other flows.
+export const findReviewerTranslation = (
+  artifact: { translation?: { sourceLanguage?: string; status?: string; sourceVersion?: number; items?: Array<{ key: string; label: string; value: string }>; disclaimer?: string } | null; reviewerTranslations?: ReviewerTranslationEntry[] } | null | undefined,
+  targetLanguage: string,
+): ReviewerTranslationEntry | undefined => {
+  if (!artifact) return undefined;
+  if (targetLanguage === 'en' && artifact.translation?.status) {
+    return {
+      targetLanguage: 'en',
+      sourceLanguage: artifact.translation.sourceLanguage || 'en',
+      status: artifact.translation.status as ReviewerTranslationEntry['status'],
+      sourceVersion: artifact.translation.sourceVersion,
+      items: artifact.translation.items,
+      disclaimer: artifact.translation.disclaimer,
+    };
+  }
+  return (artifact.reviewerTranslations || []).find((entry) => entry.targetLanguage === targetLanguage);
+};
+
+export const getReviewerTranslationDisplayState = (
+  sourceLanguage: string,
+  targetLanguage: string,
+  translation: ReviewerTranslationEntry | undefined,
+  isGenerating: boolean,
+): QuestionnaireTranslationDisplayState => {
+  if (sourceLanguage === targetLanguage) return 'not_needed';
+  if (translation?.status === 'ready') return 'ready';
+  if (isGenerating || translation?.status === 'translating') return 'translating';
+  if (translation?.status === 'failed') return 'failed';
+  return 'not_started';
+};
+
 export const splitMedicalReviewRequestsByTimeline = (
   currentRequest: MedicalReviewRequest | null | undefined,
   reviewHistory: MedicalReviewRequest[] = [],

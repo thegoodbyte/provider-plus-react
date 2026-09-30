@@ -9,13 +9,14 @@ import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
 import { AlertTriangle, Ban, ChevronDown, CircleHelp, FileText, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
+  findReviewerTranslation,
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
   getArtifactSourceLanguage,
   getAssociatedMedicalReviewRequests,
   getQuestionnaireLanguageLabel,
   getQuestionnaireSourceLanguage,
-  getQuestionnaireTranslationDisplayState,
+  getReviewerTranslationDisplayState,
   medicalReviewDecisionLabels,
   medicalReviewDecisionOptions,
   normalizeMedicalReviewDecision,
@@ -456,57 +457,62 @@ const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile;
   );
 };
 
-// PPVC-621: any artifact (questionnaire, medications, etc.) received in a
-// non-English language shows its AI-translated English answers first, with
-// the original document collapsed underneath -- everywhere an artifact's
-// file is previewed, not just the aggregated Client Medical Summary section.
+// PPVC-621/PPVC-643: any artifact (questionnaire, medications, etc.) whose
+// source language differs from the reviewing advisor's preferred review
+// language shows an AI-translated version of its answers alongside the
+// original document -- everywhere an artifact's file is previewed, not just
+// the aggregated Client Medical Summary section. Both copies are shown side
+// by side (clearly labeled), rather than collapsing one under the other.
 const ArtifactDocumentPreview: React.FC<{
   artifact: MedicalArtifact;
   file: ArtifactFile;
   index: number;
   frame?: boolean;
+  targetLanguage: string;
   isGenerating: boolean;
   onRetry: () => void;
-}> = ({ artifact, file, index, frame = true, isGenerating, onRetry }) => {
+}> = ({ artifact, file, index, frame = true, targetLanguage, isGenerating, onRetry }) => {
   const sourceLanguage = getArtifactSourceLanguage(artifact);
-  const displayState = getQuestionnaireTranslationDisplayState(sourceLanguage, artifact.translation, isGenerating);
+  const translation = findReviewerTranslation(artifact, targetLanguage);
+  const displayState = getReviewerTranslationDisplayState(sourceLanguage, targetLanguage, translation, isGenerating);
 
   if (displayState === 'not_needed') {
     return <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} frame={frame} />;
   }
 
-  const englishItems = artifact.translation?.items || [];
-  const languageLabel = getQuestionnaireLanguageLabel(sourceLanguage);
+  const translatedItems = translation?.items || [];
+  const sourceLanguageLabel = getQuestionnaireLanguageLabel(sourceLanguage);
+  const targetLanguageLabel = getQuestionnaireLanguageLabel(targetLanguage);
 
   return (
     <div className="space-y-2">
-      {displayState === 'ready' && englishItems.length > 0 && (
+      {displayState === 'ready' && translatedItems.length > 0 && (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">English (AI translation)</div>
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">{targetLanguageLabel} (AI translation)</div>
           <div className="space-y-2">
-            {englishItems.map((item, itemIndex) => (
+            {translatedItems.map((item, itemIndex) => (
               <div key={item.key || `${item.label}-${itemIndex}`} className="rounded-md bg-white px-3 py-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
                 <div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{formatTranslatedValue(item.value)}</div>
               </div>
             ))}
           </div>
-          <div className="mt-2 text-[11px] text-gray-500">{artifact.translation?.disclaimer || 'AI-generated translation. The original signed submission remains authoritative.'}</div>
+          <div className="mt-2 text-[11px] text-gray-500">{translation?.disclaimer || 'AI-generated translation. The original signed submission remains authoritative.'}</div>
         </div>
       )}
       {displayState === 'translating' && (
-        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Translating this {languageLabel} document to English…</div>
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Translating this {sourceLanguageLabel} document to {targetLanguageLabel}…</div>
       )}
       {displayState === 'failed' && (
         <div className="flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <span>English translation failed.</span>
+          <span>{targetLanguageLabel} translation failed.</span>
           <button type="button" onClick={onRetry} className="no-print rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800">Retry translation</button>
         </div>
       )}
-      <details open={displayState !== 'ready'}>
-        <summary className="no-print cursor-pointer text-xs font-semibold text-gray-600">Original document ({languageLabel})</summary>
+      <div>
+        <div className="mb-1 text-xs font-semibold text-gray-600">Original document ({sourceLanguageLabel})</div>
         <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} frame={frame} />
-      </details>
+      </div>
     </div>
   );
 };
@@ -522,6 +528,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isAdminUser = ['admin', 'administrator'].includes(String(user?.role || '').toLowerCase());
   const isMagicReviewSession = user?.accessType === 'medical_review_magic_link';
   const canManageAccessLinks = user?.role === 'admin';
+  // PPVC-643: the reviewing advisor's preferred language, defaulting to
+  // English when unset -- drives which language translated documents are
+  // shown/generated in below.
+  const reviewerLanguage = String(user?.preferredReviewLanguage || 'en').toLowerCase();
   const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
@@ -663,29 +673,31 @@ const MedicalReviewRequestsPage: React.FC = () => {
     loadRequests();
   }, [loadRequests]);
 
-  // PPVC-621: a non-English questionnaire should have its English translation
-  // generated automatically the moment an advisor views it, if one wasn't
-  // already produced at submission time (e.g. the auto-trigger failed, or
-  // this is a legacy record from before that existed). Only fires when no
-  // translation has ever been attempted -- a 'failed' or 'translating'
-  // status is left alone here so a broken translation doesn't get silently
-  // retried (and billed) on every page view; that's a manual "Retry" action.
+  // PPVC-621/PPVC-643: a questionnaire whose source language differs from
+  // the reviewing advisor's preferred review language should have that
+  // translation generated automatically the moment the advisor views it, if
+  // one wasn't already produced at submission time (e.g. the auto-trigger
+  // failed, or this is a legacy record from before that existed). Only fires
+  // when no translation into the advisor's language has ever been attempted
+  // -- a 'failed' or 'translating' status is left alone here so a broken
+  // translation doesn't get silently retried (and billed) on every page
+  // view; that's a manual "Retry" action.
   useEffect(() => {
     const artifact = reviewContext?.artifacts?.questionnaire?.[0];
     const questionnaire = reviewContext?.questionnaires?.[0];
     const artifactId = artifact?._id;
-    if (!artifactId || artifact.translation) {
+    if (!artifactId || findReviewerTranslation(artifact, reviewerLanguage)) {
       setQuestionnaireTranslationStatus('idle');
       return;
     }
     const sourceLanguage = String(questionnaire?.language || (artifact.data as any)?.sourceLanguage || 'en').toLowerCase();
-    if (sourceLanguage === 'en') {
+    if (sourceLanguage === reviewerLanguage) {
       setQuestionnaireTranslationStatus('idle');
       return;
     }
     let active = true;
     setQuestionnaireTranslationStatus('generating');
-    medicalArtifactsApi.generateEnglishTranslation(artifactId, sourceLanguage)
+    medicalArtifactsApi.generateReviewerTranslation(artifactId, reviewerLanguage)
       .then((response) => {
         if (!active) return;
         setQuestionnaireTranslationStatus('idle');
@@ -700,17 +712,17 @@ const MedicalReviewRequestsPage: React.FC = () => {
       })
       .catch(() => { if (active) setQuestionnaireTranslationStatus('error'); });
     return () => { active = false; };
-  }, [reviewContext?.artifacts?.questionnaire?.[0]?._id, Boolean(reviewContext?.artifacts?.questionnaire?.[0]?.translation)]);
+  }, [reviewContext?.artifacts?.questionnaire?.[0]?._id, reviewerLanguage, Boolean(findReviewerTranslation(reviewContext?.artifacts?.questionnaire?.[0], reviewerLanguage))]);
 
   const retryQuestionnaireTranslation = async () => {
     const artifact = reviewContext?.artifacts?.questionnaire?.[0];
     const questionnaire = reviewContext?.questionnaires?.[0];
     if (!artifact?._id) return;
     const sourceLanguage = String(questionnaire?.language || (artifact.data as any)?.sourceLanguage || artifact.translation?.sourceLanguage || '').toLowerCase();
-    if (!sourceLanguage || sourceLanguage === 'en') return;
+    if (!sourceLanguage || sourceLanguage === reviewerLanguage) return;
     setQuestionnaireTranslationStatus('generating');
     try {
-      const response = await medicalArtifactsApi.generateEnglishTranslation(artifact._id, sourceLanguage, true);
+      const response = await medicalArtifactsApi.generateReviewerTranslation(artifact._id, reviewerLanguage, true);
       setQuestionnaireTranslationStatus('idle');
       setReviewContext((current) => current ? {
         ...current,
@@ -808,12 +820,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
     });
   }, []);
 
-  // PPVC-621: auto-generate an English translation the moment an advisor
-  // opens a request containing a non-English artifact of any type (medication
-  // forms included, not just questionnaires) -- mirrors the dedicated
-  // questionnaire effect above but covers every artifact shown in the
-  // detail-view document preview. Only fires once per artifact (no
-  // translation attempted yet); a failed or in-flight one is left alone here.
+  // PPVC-621/PPVC-643: auto-generate a translation into the reviewing
+  // advisor's preferred language the moment they open a request containing
+  // an artifact whose source language differs from it, of any type
+  // (medication forms included, not just questionnaires) -- mirrors the
+  // dedicated questionnaire effect above but covers every artifact shown in
+  // the detail-view document preview. Only fires once per artifact (no
+  // translation into that language attempted yet); a failed or in-flight one
+  // is left alone here.
   useEffect(() => {
     // linkedArtifacts covers the detail-view document preview; reviewContext's
     // "all" bucket covers the Client Medical Summary section -- a medication
@@ -825,16 +839,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
     });
     const targets = Array.from(candidates.values()).filter((artifact) => (
       artifact._id
-      && !artifact.translation
+      && !findReviewerTranslation(artifact, reviewerLanguage)
       && !artifactTranslationStatus[artifact._id]
-      && getArtifactSourceLanguage(artifact) !== 'en'
+      && getArtifactSourceLanguage(artifact) !== reviewerLanguage
     ));
     if (!targets.length) return;
     let active = true;
     targets.forEach((artifact) => {
       const artifactId = artifact._id as string;
       setArtifactTranslationStatus((prev) => ({ ...prev, [artifactId]: 'generating' }));
-      medicalArtifactsApi.generateEnglishTranslation(artifactId, getArtifactSourceLanguage(artifact))
+      medicalArtifactsApi.generateReviewerTranslation(artifactId, reviewerLanguage)
         .then((response) => {
           if (!active) return;
           setArtifactTranslationStatus((prev) => {
@@ -849,16 +863,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
         });
     });
     return () => { active = false; };
-  }, [linkedArtifacts, reviewContext, artifactTranslationStatus, applyArtifactTranslation]);
+  }, [linkedArtifacts, reviewContext, artifactTranslationStatus, applyArtifactTranslation, reviewerLanguage]);
 
   const retryArtifactTranslation = async (artifact: MedicalArtifact) => {
     const artifactId = artifact._id;
     if (!artifactId) return;
     const sourceLanguage = getArtifactSourceLanguage(artifact);
-    if (sourceLanguage === 'en') return;
+    if (sourceLanguage === reviewerLanguage) return;
     setArtifactTranslationStatus((prev) => ({ ...prev, [artifactId]: 'generating' }));
     try {
-      const response = await medicalArtifactsApi.generateEnglishTranslation(artifactId, sourceLanguage, true);
+      const response = await medicalArtifactsApi.generateReviewerTranslation(artifactId, reviewerLanguage, true);
       setArtifactTranslationStatus((prev) => {
         const next = { ...prev };
         delete next[artifactId];
@@ -1155,6 +1169,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
             file={target.file}
             index={0}
             frame={false}
+            targetLanguage={reviewerLanguage}
             isGenerating={Boolean(artifact._id && artifactTranslationStatus[artifact._id] === 'generating')}
             onRetry={() => retryArtifactTranslation(artifact)}
           />
@@ -1366,6 +1381,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                       file={file}
                       index={index}
                       frame={false}
+                      targetLanguage={reviewerLanguage}
                       isGenerating={Boolean(artifact._id && artifactTranslationStatus[artifact._id] === 'generating')}
                       onRetry={() => retryArtifactTranslation(artifact)}
                     />
@@ -1454,10 +1470,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const questionnaireValues = flattenMedicalValues(questionnaire?.answers || {});
     const questionnaireArtifact = reviewContext?.artifacts?.questionnaire?.[0];
     const questionnaireSourceLanguage = getQuestionnaireSourceLanguage(questionnaire, questionnaireArtifact);
-    const questionnaireTranslation = questionnaireArtifact?.translation;
+    const questionnaireTranslation = findReviewerTranslation(questionnaireArtifact, reviewerLanguage);
     const questionnaireEnglishValues = (questionnaireTranslation?.items || []).map((item) => ({ label: item.label, value: item.value }));
-    const questionnaireTranslationDisplayState = getQuestionnaireTranslationDisplayState(
+    const questionnaireTranslationDisplayState = getReviewerTranslationDisplayState(
       questionnaireSourceLanguage,
+      reviewerLanguage,
       questionnaireTranslation,
       questionnaireTranslationStatus === 'generating',
     );
@@ -1484,12 +1501,12 @@ const MedicalReviewRequestsPage: React.FC = () => {
         {values.map((item, index) => <div key={`${item.label}-${index}`} className="rounded-md bg-gray-50 px-3 py-2"><div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div><div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{item.value}</div></div>)}
       </div>
     );
-    // PPVC-621: a non-English questionnaire shows its AI-translated English
-    // answers first (the version the advisor can actually read), with the
-    // original-language answers underneath in a collapsed section -- the
-    // original submission stays available and is never replaced by the
-    // translation, just reordered. Branching lives in
-    // getQuestionnaireTranslationDisplayState (MedicalReviewRequestsPage.helpers.ts).
+    // PPVC-621/PPVC-643: a questionnaire whose source language differs from
+    // the reviewing advisor's preferred review language shows its AI
+    // translation alongside the original-language answers -- the original
+    // submission stays available and is never replaced by the translation,
+    // just shown next to it. Branching lives in
+    // getReviewerTranslationDisplayState (MedicalReviewRequestsPage.helpers.ts).
     const questionnaireContent = !questionnaire ? missing('Initial questionnaire') : (
       <>
         {sourceHeader('Initial questionnaire', questionnaire.submitted_at || questionnaire.createdAt, questionnaire.display_id)}
@@ -1501,24 +1518,24 @@ const MedicalReviewRequestsPage: React.FC = () => {
           <div className="space-y-3">
             {questionnaireTranslationDisplayState === 'ready' && questionnaireEnglishValues.length ? (
               <div>
-                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">English (AI translation)</div>
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">{getQuestionnaireLanguageLabel(reviewerLanguage)} (AI translation)</div>
                 {valuesGrid(questionnaireEnglishValues)}
                 <div className="mt-2 text-[11px] text-gray-500">{questionnaireTranslation?.disclaimer || 'AI-generated translation. The original signed submission remains authoritative.'}</div>
               </div>
             ) : questionnaireTranslationDisplayState === 'translating' ? (
-              <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-800">Translating to English…</div>
+              <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-800">Translating to {getQuestionnaireLanguageLabel(reviewerLanguage)}…</div>
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
-                <span>{questionnaireTranslationDisplayState === 'failed' ? 'English translation failed.' : 'No English translation yet.'}</span>
+                <span>{questionnaireTranslationDisplayState === 'failed' ? `${getQuestionnaireLanguageLabel(reviewerLanguage)} translation failed.` : `No ${getQuestionnaireLanguageLabel(reviewerLanguage)} translation yet.`}</span>
                 <button type="button" onClick={retryQuestionnaireTranslation} className="no-print rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800 disabled:opacity-60">
-                  {questionnaireTranslationDisplayState === 'failed' ? 'Retry translation' : 'Generate English translation'}
+                  {questionnaireTranslationDisplayState === 'failed' ? 'Retry translation' : `Generate ${getQuestionnaireLanguageLabel(reviewerLanguage)} translation`}
                 </button>
               </div>
             )}
-            <details>
-              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500">Original ({getQuestionnaireLanguageLabel(questionnaireSourceLanguage)})</summary>
-              <div className="mt-2">{valuesGrid(questionnaireValues)}</div>
-            </details>
+            <div>
+              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Original ({getQuestionnaireLanguageLabel(questionnaireSourceLanguage)})</div>
+              {valuesGrid(questionnaireValues)}
+            </div>
           </div>
         )}
       </>
@@ -1531,24 +1548,25 @@ const MedicalReviewRequestsPage: React.FC = () => {
       const medicationArtifact = getMedicationArtifact(medication);
       const sourceLanguage = getArtifactSourceLanguage(medicationArtifact);
       const isGenerating = Boolean(medicationArtifact?._id && artifactTranslationStatus[medicationArtifact._id] === 'generating');
-      const translationDisplayState = getQuestionnaireTranslationDisplayState(sourceLanguage, medicationArtifact?.translation, isGenerating);
-      const englishValues = (medicationArtifact?.translation?.items || []).map((item) => ({ label: item.label, value: formatTranslatedValue(item.value) }));
+      const medicationTranslation = findReviewerTranslation(medicationArtifact, reviewerLanguage);
+      const translationDisplayState = getReviewerTranslationDisplayState(sourceLanguage, reviewerLanguage, medicationTranslation, isGenerating);
+      const translatedValues = (medicationTranslation?.items || []).map((item) => ({ label: item.label, value: formatTranslatedValue(item.value) }));
       return (
         <div key={medication._id} className="rounded-md bg-gray-50 p-3">
           {sourceHeader('Medication form', medication.date_collected || medication.createdAt, medication.display_id)}
-          {translationDisplayState === 'ready' && englishValues.length > 0 && (
+          {translationDisplayState === 'ready' && translatedValues.length > 0 && (
             <div className="mb-2">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">English (AI translation)</div>
-              {valuesGrid(englishValues)}
-              <div className="mt-2 text-[11px] text-gray-500">{medicationArtifact?.translation?.disclaimer || 'AI-generated translation. The original signed submission remains authoritative.'}</div>
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">{getQuestionnaireLanguageLabel(reviewerLanguage)} (AI translation)</div>
+              {valuesGrid(translatedValues)}
+              <div className="mt-2 text-[11px] text-gray-500">{medicationTranslation?.disclaimer || 'AI-generated translation. The original signed submission remains authoritative.'}</div>
             </div>
           )}
           {translationDisplayState === 'translating' && (
-            <div className="mb-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">Translating to English…</div>
+            <div className="mb-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">Translating to {getQuestionnaireLanguageLabel(reviewerLanguage)}…</div>
           )}
           {translationDisplayState === 'failed' && (
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              <span>English translation failed.</span>
+              <span>{getQuestionnaireLanguageLabel(reviewerLanguage)} translation failed.</span>
               <button type="button" onClick={() => medicationArtifact && retryArtifactTranslation(medicationArtifact)} className="no-print rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800">Retry translation</button>
             </div>
           )}
@@ -1951,6 +1969,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                               file={file}
                               index={index}
                               frame={false}
+                              targetLanguage={reviewerLanguage}
                               isGenerating={Boolean(artifact._id && artifactTranslationStatus[artifact._id] === 'generating')}
                               onRetry={() => retryArtifactTranslation(artifact)}
                             />
@@ -2095,6 +2114,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         file={linkedArtifacts[0].files[0]}
                         index={0}
                         frame={false}
+                        targetLanguage={reviewerLanguage}
                         isGenerating={Boolean(linkedArtifacts[0]._id && artifactTranslationStatus[linkedArtifacts[0]._id as string] === 'generating')}
                         onRetry={() => retryArtifactTranslation(linkedArtifacts[0])}
                       />
@@ -2474,6 +2494,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                               file={file}
                               index={index}
                               frame={false}
+                              targetLanguage={reviewerLanguage}
                               isGenerating={Boolean(artifact._id && artifactTranslationStatus[artifact._id] === 'generating')}
                               onRetry={() => retryArtifactTranslation(artifact)}
                             />
