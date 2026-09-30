@@ -10,7 +10,7 @@ import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi }
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
-import { MedicalReviewTypeFilter, editablePacketRequests, formatMedicalReviewCreatedAt, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
+import { MedicalReviewTypeFilter, editablePacketRequests, formatMedicalReviewCreatedAt, getClientProfileHref, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 import ResponsiveModal from './ResponsiveModal';
 import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation } from './medicalReviewStatus';
 
@@ -124,7 +124,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const basePath = location.pathname.startsWith('/medical') ? '/medical/review-requests' : '/admin/medical-review-requests';
+  const isMedicalRoute = location.pathname.startsWith('/medical');
+  const basePath = isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests';
   const canManageRequests = user?.role === 'admin' || user?.role === 'medical_staff';
   const canDeleteRequests = user?.role === 'admin';
   const [whatsappRequest, setWhatsappRequest] = useState<EnrichedReviewRequest | null>(null);
@@ -185,6 +186,23 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [downloadPacket, setDownloadPacket] = useState<MedicalReviewGroup | null>(null);
   const [downloadIncludeSubmitted, setDownloadIncludeSubmitted] = useState(false);
   const [downloadLanguage, setDownloadLanguage] = useState<'original' | 'en'>('original');
+
+  // PPVC-692: the client's name + display ID, clickable through to their
+  // medical-context profile when we can resolve a client id.
+  const clientCell = (request: EnrichedReviewRequest) => {
+    const href = getClientProfileHref(request, isMedicalRoute);
+    const label = getClientGridLabel(request);
+    if (!href) return <>{label}</>;
+    return (
+      <button
+        type="button"
+        onClick={(event) => { event.stopPropagation(); navigate(href); }}
+        className="text-left text-blue-700 hover:underline"
+      >
+        {label}
+      </button>
+    );
+  };
 
   const whatsappAction = (request: EnrichedReviewRequest) => canManageRequests && (
     <button type="button" onClick={() => setWhatsappRequest(request)} className="rounded-md border border-purple-200 bg-purple-50 px-2 py-2 text-xs font-semibold text-purple-800">
@@ -1202,7 +1220,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             <div className="mt-1 text-xs text-gray-500">Received {request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'} · {request.artifactReceivedVia || 'Unknown'}</div>
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-gray-900">{getClientGridLabel(request)}</div>
+                            <div className="truncate text-sm font-medium text-gray-900">{clientCell(request)}</div>
                             <div className="truncate text-xs text-gray-500">{request.retreatName}</div>
                           </div>
                           <div className="min-w-0">
@@ -1317,7 +1335,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           <div className="mt-1 text-xs text-gray-500">Received {request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'} · {request.artifactReceivedVia || 'Unknown'}</div>
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-gray-900">{getClientGridLabel(request)}</div>
+                          <div className="truncate text-sm font-medium text-gray-900">{clientCell(request)}</div>
                           <div className="truncate text-xs text-gray-500">{request.retreatName}</div>
                         </div>
                         <div className="min-w-0">
@@ -1385,7 +1403,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <ClientAvatar client={request.clientRecord} name={request.clientName || ''} />
-                    <div className="min-w-0 truncate text-base font-semibold text-gray-900">{getClientGridLabel(request)}</div>
+                    <div className="min-w-0 truncate text-base font-semibold text-gray-900">{clientCell(request)}</div>
                   </div>
                   <div className="truncate text-sm text-gray-500">{retreatLabel}</div>
                 </div>
@@ -1432,11 +1450,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             <tbody className="divide-y divide-gray-200 bg-white">
               {filteredRequests.map((request) => (
                 <tr key={request._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-blue-600">#{request.display_id || '—'}</td>
+                  <td className="px-6 py-4 text-sm font-semibold text-blue-600">
+                    <button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="hover:underline">#{request.display_id || '—'}</button>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="flex items-center gap-2">
                       <ClientAvatar client={request.clientRecord} name={request.clientName || ''} />
-                      <span>{getClientGridLabel(request)}</span>
+                      <span>{clientCell(request)}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.retreatName}</td>

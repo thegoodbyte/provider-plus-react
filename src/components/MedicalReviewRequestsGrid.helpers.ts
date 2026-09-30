@@ -166,3 +166,17 @@ export const editablePacketRequests = <T extends MedicalReviewRequest>(requests:
     return !retreatId || requestRetreatId === retreatId;
   });
 };
+
+export const getClientId = (request: Pick<MedicalReviewRequest, 'clientId'>): string => (
+  typeof request.clientId === 'string' ? request.clientId : request.clientId?._id || ''
+);
+
+// PPVC-692: link to the medical-context client view (not the full admin
+// client record) when in the advisor-facing /medical/... route, mirroring
+// profileHref in MedicalReviewRequestsPage.tsx -- an advisor can't open
+// /admin/medical/clients/:id.
+export const getClientProfileHref = (request: Pick<MedicalReviewRequest, 'clientId'>, isMedicalRoute: boolean): string | undefined => {
+  const clientId = getClientId(request);
+  if (!clientId) return undefined;
+  return `${isMedicalRoute ? '/medical/client' : '/admin/medical'}/${clientId}`;
+};

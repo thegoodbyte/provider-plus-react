@@ -1,4 +1,4 @@
-import { formatMedicalReviewCreatedAt, matchesReviewRequestFilters, getReviewRequestFilterText, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
+import { formatMedicalReviewCreatedAt, getClientProfileHref, matchesReviewRequestFilters, getReviewRequestFilterText, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 
 describe('MedicalReviewRequestsGrid helpers', () => {
   const request: any = {
@@ -46,5 +46,21 @@ describe('MedicalReviewRequestsGrid helpers', () => {
     expect(formatMedicalReviewCreatedAt('2026-09-02T16:15:00.000Z', 'en-US', 'UTC')).toMatch(/Sep 2, 2026.*4:15 PM/);
     expect(formatMedicalReviewCreatedAt(undefined, 'en-US', 'UTC')).toBe('—');
     expect(formatMedicalReviewCreatedAt('not-a-date', 'en-US', 'UTC')).toBe('—');
+  });
+});
+
+describe('getClientProfileHref (PPVC-692)', () => {
+  it('links to the admin medical client view from the admin route', () => {
+    expect(getClientProfileHref({ clientId: 'client-1' }, false)).toBe('/admin/medical/client-1');
+    expect(getClientProfileHref({ clientId: { _id: 'client-2' } as any }, false)).toBe('/admin/medical/client-2');
+  });
+
+  it('links to the medical-context client view from the advisor /medical route', () => {
+    expect(getClientProfileHref({ clientId: 'client-1' }, true)).toBe('/medical/client/client-1');
+  });
+
+  it('returns undefined when there is no resolvable client id', () => {
+    expect(getClientProfileHref({ clientId: undefined }, false)).toBeUndefined();
+    expect(getClientProfileHref({ clientId: {} as any }, false)).toBeUndefined();
   });
 });
