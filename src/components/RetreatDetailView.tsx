@@ -1350,13 +1350,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             <option value="">Not assigned</option>
                             {houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}
                           </select>
+                        ) : houseBedrooms.length === 0 ? (
+                          <Link
+                            to={`/${routePrefix}/houses`}
+                            className="text-xs font-medium text-amber-700 underline decoration-dotted hover:text-amber-900"
+                            title="This retreat's house has no bedrooms configured yet -- click to set them up"
+                          >
+                            Set up rooms →
+                          </Link>
                         ) : (
                           <button
                             type="button"
-                            onClick={() => houseBedrooms.length > 0 && setEditingRoomForClientId(client._id)}
-                            disabled={houseBedrooms.length === 0}
-                            title={houseBedrooms.length === 0 ? "This retreat's house has no bedrooms configured yet" : 'Click to change room assignment'}
-                            className="rounded px-1 py-0.5 text-left hover:bg-gray-100 disabled:cursor-default disabled:hover:bg-transparent"
+                            onClick={() => setEditingRoomForClientId(client._id)}
+                            title="Click to change room assignment"
+                            className="rounded border border-dashed border-gray-300 px-2 py-0.5 text-left hover:border-solid hover:bg-gray-100"
                           >
                             {client.roomNumber || <span className="text-gray-400">Not assigned</span>}
                           </button>
@@ -1455,7 +1462,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4"><h2 className="text-xl font-semibold text-slate-900">Room allocation</h2><p className="mt-1 text-sm text-slate-600">Review who is sharing each bedroom, private-room choices, and any accommodation adjustment.</p></div>
             <div className="grid gap-3 md:grid-cols-2">{roomGroups.map(([room, occupants]) => <div className="rounded-lg border border-slate-200 bg-slate-50 p-4" key={room}><div className="font-semibold text-slate-900">{room}</div><div className="mt-2 space-y-2 text-sm text-slate-700">{occupants.map((client) => <div className="flex flex-wrap items-center justify-between gap-2" key={client._id}><span>Guest {client.bookingNumber || '—'} · {client.clientName}{client.roomType === 'private_ensuite' ? ' · private bathroom' : ''}{client.roomAdjustmentType && client.roomAdjustmentType !== 'none' ? ` · ${client.roomAdjustmentType} ${client.roomAdjustmentAmount || 0} ${client.currency}` : ''}</span>{houseBedrooms.length > 0 && <select value={client.roomNumber || ''} onChange={(event) => void assignRoom(client._id, event.target.value)} disabled={assigningRoomForClientId === client._id} className="rounded-md border border-slate-300 px-2 py-1 text-xs disabled:opacity-50"><option value="">Not assigned</option>{houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}</select>}</div>)}</div></div>)}</div>
-            {houseBedrooms.length === 0 && <p className="mt-2 text-xs text-slate-500">This retreat's house has no bedrooms configured yet — room assignment is read-only until bedrooms are added.</p>}
+            {houseBedrooms.length === 0 && <p className="mt-2 text-xs text-slate-500">This retreat's house has no bedrooms configured yet — <Link to={`/${routePrefix}/houses`} className="font-medium text-amber-700 underline decoration-dotted hover:text-amber-900">set them up</Link> before room assignment is available.</p>}
             {!roomGroups.length && <p className="text-sm text-slate-500">No active bookings.</p>}
           </section>
           <BookingStepsMatrix retreatId={retreatId} />
