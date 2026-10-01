@@ -172,6 +172,35 @@ describe('PaymentRequestForm', () => {
     await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
   });
 
+  it('lets the admin override the auto-calculated deposit amount and keeps their value (PPVC-716)', async () => {
+    view();
+    await screen.findByLabelText('Client');
+
+    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+    await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
+
+    fireEvent.change(screen.getByLabelText('Requested Amount *'), { target: { value: '250' } });
+    expect(screen.getByLabelText('Requested Amount *')).toHaveValue(250);
+
+    // Changing something that feeds the auto-calc (e.g. the full price)
+    // must not silently reset the admin's manual override back to 40%.
+    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1200' } });
+    await waitFor(() => expect(screen.getByLabelText('Full Booking Price *')).toHaveValue(1200));
+    expect(screen.getByLabelText('Requested Amount *')).toHaveValue(250);
+    expect(screen.getByText(/Overridden manually/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Reset to 40% of the full price'));
+    await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(480));
+  });
+
+  it('does not reset an existing deposit request\'s stored custom amount back to 40% on load (PPVC-716)', async () => {
+    view({ isEdit: true, paymentRequest: { _id: 'pr-1', display_id: 500, invoiceNumber: '500', requestType: 'deposit', fullPriceQuote: 1000, requestedAmount: 300, clientId: 'client-1', retreatId: 'retreat-1' } });
+    await screen.findByLabelText('Client');
+
+    expect(screen.getByLabelText('Requested Amount *')).toHaveValue(300);
+    await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(300));
+  });
+
   it('blocks saving when another payment request already uses the same invoice number', async () => {
     setUp({ existingRequests: [{ _id: 'other', invoiceNumber: '2001' }] });
     const { onSave } = view();
