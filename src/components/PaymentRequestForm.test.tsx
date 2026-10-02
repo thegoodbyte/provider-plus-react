@@ -163,6 +163,52 @@ describe('PaymentRequestForm', () => {
     });
   });
 
+  describe('booking type / ceremony / retreat date summary (PPVC-?)', () => {
+    const retreatWithDates = { _id: 'retreat-1', name: 'JNO-01', ceremonyCount: 2, startDate: '2026-12-01', endDate: '2026-12-10' };
+    const ceremonies = [
+      { _id: 'cer-1', ceremonyNumber: 1, date: '2026-12-02', startTime: '19:00', endTime: '23:00' },
+      { _id: 'cer-2', ceremonyNumber: 2, date: '2026-12-07', startTime: '19:00', endTime: '23:00' },
+    ];
+
+    it('shows the booster ceremony number and date, plus the retreat date range, for an existing booster request', async () => {
+      setUp({ retreats: [retreatWithDates], ceremonies });
+      view({
+        isEdit: true,
+        paymentRequest: {
+          _id: 'pr-booster', display_id: 700, invoiceNumber: '700',
+          retreatId: 'retreat-1', bookingType: 'booster', ceremonyId: 'cer-2', ceremonyNumber: 2, requestType: 'payment',
+        },
+      });
+
+      expect(await screen.findByText(/Booster — Ceremony 2/)).toBeInTheDocument();
+      expect(screen.getByText(/Ceremony date: Dec 7, 2026/)).toBeInTheDocument();
+      expect(screen.getByText(/Retreat dates: Dec 1, 2026 – Dec 10, 2026/)).toBeInTheDocument();
+    });
+
+    it('shows "Full retreat" and the retreat date range, with no ceremony mention, for a non-booster request', async () => {
+      setUp({ retreats: [retreatWithDates], ceremonies });
+      view({
+        isEdit: true,
+        paymentRequest: { _id: 'pr-full', display_id: 701, invoiceNumber: '701', retreatId: 'retreat-1', bookingType: 'full_retreat', requestType: 'balance' },
+      });
+
+      expect(await screen.findByText('Full retreat')).toBeInTheDocument();
+      expect(screen.getByText(/Retreat dates: Dec 1, 2026 – Dec 10, 2026/)).toBeInTheDocument();
+      expect(screen.queryByText(/Ceremony date/)).not.toBeInTheDocument();
+    });
+
+    it('flags a missing ceremony selection on a booster request instead of silently showing nothing', async () => {
+      setUp({ retreats: [retreatWithDates], ceremonies });
+      view({
+        isEdit: true,
+        paymentRequest: { _id: 'pr-booster-unset', display_id: 702, invoiceNumber: '702', retreatId: 'retreat-1', bookingType: 'booster', requestType: 'payment' },
+      });
+
+      expect(await screen.findByText(/Booster — ceremony not selected/)).toBeInTheDocument();
+      expect(screen.getByText(/Ceremony date not set/)).toBeInTheDocument();
+    });
+  });
+
   it('auto-calculates the requested amount as 40% of the full price for a deposit', async () => {
     view();
     await screen.findByLabelText('Client');

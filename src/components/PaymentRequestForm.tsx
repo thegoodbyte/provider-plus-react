@@ -6,7 +6,7 @@ import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchableBookingSelect from './SearchableBookingSelect';
 import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi, PaymentRequestTypeSetting, paymentsApi, retreatsApi } from '../services/api';
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
-import { parseCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
+import { formatCalendarDate, parseCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
 import RevolutPaymentLinkPicker from './RevolutPaymentLinkPicker';
 
@@ -428,6 +428,14 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const bookingTotal = calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : []);
   const remainingBalance = Math.max(0, bookingTotal - Number(formData.requestedAmount || 0));
   const roomLabel = formData.roomType === 'private_ensuite' ? 'Private room with private bathroom' : formData.roomType === 'private' ? 'Private room' : formData.roomType === 'shared' ? 'Shared room' : 'Room choice';
+  const selectedRetreat = retreats.find((item) => item._id === formData.retreatId);
+  const selectedCeremony = ceremonies[(Number(formData.ceremonyNumber) || 0) - 1];
+  const retreatDateRange = selectedRetreat
+    ? `${formatCalendarDate(selectedRetreat.startDate, 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })} – ${formatCalendarDate(selectedRetreat.endDate, 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`
+    : '';
+  const ceremonyDate = selectedCeremony?.date
+    ? `${formatCalendarDate(selectedCeremony.date, 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}${selectedCeremony.startTime ? ` · ${selectedCeremony.startTime}` : ''}`
+    : '';
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -501,6 +509,22 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 className="w-full"
               />
             </div>
+
+            {selectedRetreat && (
+              <div className="md:col-span-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+                <span className="font-semibold">
+                  {formData.bookingType === 'booster'
+                    ? `Booster${formData.ceremonyNumber ? ` — Ceremony ${formData.ceremonyNumber}` : ' — ceremony not selected'}`
+                    : 'Full retreat'}
+                </span>
+                {formData.bookingType === 'booster' && (
+                  <span className="ml-2">{ceremonyDate ? `· Ceremony date: ${ceremonyDate}` : '· Ceremony date not set'}</span>
+                )}
+                <div className="mt-1 text-xs text-indigo-700">
+                  {selectedRetreat.name}{retreatDateRange ? ` · Retreat dates: ${retreatDateRange}` : ' · Retreat dates not set'}
+                </div>
+              </div>
+            )}
 
             <div className="md:col-span-2">
               <label htmlFor="bookingId" className="block text-sm font-medium text-gray-700 mb-2">Link existing booking</label>
