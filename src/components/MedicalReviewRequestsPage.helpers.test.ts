@@ -1,4 +1,6 @@
 import {
+  composeWhatsappReviewNotes,
+  extractWhatsappNotes,
   findReviewerTranslation,
   getAssociatedMedicalReviewRequests,
   formatMedicalReviewDecisionLabel,
@@ -211,5 +213,42 @@ describe('PPVC-643 reviewer-language translation helpers', () => {
     expect(getReviewerTranslationDisplayState('pl', 'cs', translating, false)).toBe('translating');
     expect(getReviewerTranslationDisplayState('pl', 'cs', failed, false)).toBe('failed');
     expect(getReviewerTranslationDisplayState('pl', 'cs', undefined, false)).toBe('not_started');
+  });
+});
+
+// PPVC-697: the WhatsApp MRR save form had a "Date approved/answered" and "Advisor
+// result" (stage 2) but no notes input -- the admin's typed note only ever reached the
+// record via a different field (wontDoNote) that belongs to the unrelated "Won't do"
+// flow, so it leaked across flows and wasn't actually rendered as a WhatsApp notes box.
+describe('composeWhatsappReviewNotes', () => {
+  it('appends the admin-entered note to the auto-generated sentence', () => {
+    expect(composeWhatsappReviewNotes('Advisor approved by voice note, will confirm in writing tomorrow.'))
+      .toBe('Advisor response received via WhatsApp: Advisor approved by voice note, will confirm in writing tomorrow.');
+  });
+
+  it('falls back to the plain sentence when no note was entered', () => {
+    expect(composeWhatsappReviewNotes('')).toBe('Advisor response received via WhatsApp');
+    expect(composeWhatsappReviewNotes('   ')).toBe('Advisor response received via WhatsApp');
+  });
+});
+
+describe('extractWhatsappNotes', () => {
+  it('round-trips a previously saved WhatsApp note back out of reviewNotes', () => {
+    const request = makeRequest({ reviewChannel: 'whatsapp', reviewNotes: composeWhatsappReviewNotes('Approved, client cleared to proceed.') });
+    expect(extractWhatsappNotes(request)).toBe('Approved, client cleared to proceed.');
+  });
+
+  it('returns empty when no note was entered', () => {
+    const request = makeRequest({ reviewChannel: 'whatsapp', reviewNotes: composeWhatsappReviewNotes('') });
+    expect(extractWhatsappNotes(request)).toBe('');
+  });
+
+  it('does not mistake an internal-flow reviewNotes for a WhatsApp note, even with a similar prefix', () => {
+    const request = makeRequest({ reviewChannel: 'internal', reviewNotes: 'Advisor response received via WhatsApp: stale text from a previous channel switch' });
+    expect(extractWhatsappNotes(request)).toBe('');
+  });
+
+  it('returns empty when the request has never been handled via WhatsApp', () => {
+    expect(extractWhatsappNotes(makeRequest({ reviewChannel: undefined, reviewNotes: 'OK' }))).toBe('');
   });
 });

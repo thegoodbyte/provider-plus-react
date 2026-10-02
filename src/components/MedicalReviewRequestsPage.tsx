@@ -9,6 +9,8 @@ import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
 import { AlertTriangle, Ban, ChevronDown, CircleHelp, FileText, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
+  composeWhatsappReviewNotes,
+  extractWhatsappNotes,
   findReviewerTranslation,
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
@@ -547,6 +549,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [whatsappSentAt, setWhatsappSentAt] = useState('');
   const [whatsappRespondedAt, setWhatsappRespondedAt] = useState('');
   const [whatsappDecision, setWhatsappDecision] = useState('');
+  const [whatsappNotes, setWhatsappNotes] = useState('');
   const [medicalAdvisors, setMedicalAdvisors] = useState<any[]>([]);
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [onBehalfOfAdvisor, setOnBehalfOfAdvisor] = useState(false);
@@ -644,6 +647,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         setWhatsappSentAt(selectedItem.whatsappSentAt ? new Date(selectedItem.whatsappSentAt).toISOString().slice(0, 10) : '');
         setWhatsappRespondedAt(selectedItem.whatsappRespondedAt ? new Date(selectedItem.whatsappRespondedAt).toISOString().slice(0, 10) : '');
         setWhatsappDecision(selectedItem.whatsappDecision || '');
+        setWhatsappNotes(extractWhatsappNotes(selectedItem));
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
         setClientVisibleAdminNote(selectedItem.clientVisibleAdminNote || '');
         setClientVisibleAdminNoteSource(selectedItem.clientVisibleAdminNote || '');
@@ -941,7 +945,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       try {
         setSavingReview(true);
         const resultStatus = whatsappStatus !== 'responded' ? 'awaiting_whatsapp' : whatsappDecision === 'OK' ? 'approved' : whatsappDecision === 'NOT OK' ? 'rejected' : whatsappDecision === 'caution' ? 'caution' : whatsappDecision === 'more_info_needed' ? 'needs_resubmission' : whatsappDecision === 'WONT_DO' ? 'wont_do' : 'awaiting_whatsapp';
-        await medicalReviewRequestsApi.update(selected._id, { reviewChannel: 'whatsapp', whatsappStatus, whatsappAdvisorUserId, whatsappSentAt, whatsappRespondedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, whatsappDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, status: resultStatus as any, reviewDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, reviewedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, reviewNotes: whatsappStatus === 'responded' ? `Advisor response received via WhatsApp${wontDoNote ? `: ${wontDoNote}` : ''}` : undefined });
+        await medicalReviewRequestsApi.update(selected._id, { reviewChannel: 'whatsapp', whatsappStatus, whatsappAdvisorUserId, whatsappSentAt, whatsappRespondedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, whatsappDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, status: resultStatus as any, reviewDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, reviewedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, reviewNotes: whatsappStatus === 'responded' ? composeWhatsappReviewNotes(whatsappNotes) : undefined });
         await loadRequests();
       } catch (error: any) {
         setValidationError(error?.response?.data?.message || 'Could not save WhatsApp status. Please try again.');
@@ -1972,7 +1976,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     <label className="text-sm">Medical advisor<select value={whatsappAdvisorUserId} onChange={(event) => setWhatsappAdvisorUserId(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select advisor</option>{medicalAdvisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}</option>)}</select></label>
                     <label className="text-sm">Date sent<input type="date" value={whatsappSentAt} onChange={(event) => setWhatsappSentAt(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label>
                     <label className="text-sm">WhatsApp status<select value={whatsappStatus} onChange={(event) => setWhatsappStatus(event.target.value as any)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="awaiting_response">Sent — waiting for answer</option><option value="responded">Advisor answered</option></select></label>
-                    {whatsappStatus === 'responded' && <><label className="text-sm">Date approved/answered<input type="date" value={whatsappRespondedAt} onChange={(event) => setWhatsappRespondedAt(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label><label className="text-sm">Advisor result<select value={whatsappDecision} onChange={(event) => setWhatsappDecision(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select result</option><option value="OK">OK</option><option value="caution">Caution</option><option value="more_info_needed">More information needed</option><option value="NOT OK">Declined</option><option value="WONT_DO">Won’t do</option></select></label></>}
+                    {whatsappStatus === 'responded' && <><label className="text-sm">Date approved/answered<input type="date" value={whatsappRespondedAt} onChange={(event) => setWhatsappRespondedAt(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label><label className="text-sm">Advisor result<select value={whatsappDecision} onChange={(event) => setWhatsappDecision(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select result</option><option value="OK">OK</option><option value="caution">Caution</option><option value="more_info_needed">More information needed</option><option value="NOT OK">Declined</option><option value="WONT_DO">Won’t do</option></select></label><label className="text-sm sm:col-span-2">Notes<textarea value={whatsappNotes} onChange={(event) => setWhatsappNotes(event.target.value)} rows={2} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" placeholder="What the advisor said over WhatsApp (optional)" /></label></>}
                     <button type="button" onClick={() => handleSaveReview()} disabled={savingReview} className="w-fit rounded-md bg-purple-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save WhatsApp status'}</button>
                   </div>}
                 </section>

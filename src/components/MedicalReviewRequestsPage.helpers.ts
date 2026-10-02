@@ -20,6 +20,23 @@ const decisionAliases: Record<string, 'OK' | 'caution' | 'more_info_needed' | 'N
   wont_do: 'WONT_DO',
 };
 
+// PPVC-697: there is no dedicated whatsappNotes field on the backend -- the admin's
+// free-text note for the WhatsApp approval stage is appended to the auto-generated
+// reviewNotes under this prefix, and stripped back out on load so the notes textarea
+// round-trips instead of showing the whole auto-generated sentence.
+export const WHATSAPP_NOTES_PREFIX = 'Advisor response received via WhatsApp: ';
+const WHATSAPP_NOTES_NO_NOTES = 'Advisor response received via WhatsApp';
+
+export const composeWhatsappReviewNotes = (notes: string) => {
+  const trimmed = notes.trim();
+  return trimmed ? `${WHATSAPP_NOTES_PREFIX}${trimmed}` : WHATSAPP_NOTES_NO_NOTES;
+};
+
+export const extractWhatsappNotes = (request: Pick<MedicalReviewRequest, 'reviewChannel' | 'reviewNotes'>) =>
+  request.reviewChannel === 'whatsapp' && request.reviewNotes?.startsWith(WHATSAPP_NOTES_PREFIX)
+    ? request.reviewNotes.slice(WHATSAPP_NOTES_PREFIX.length)
+    : '';
+
 export const medicalReviewDecisionOptions = ['OK', 'caution', 'more_info_needed', 'NOT OK', 'WONT_DO'] as const;
 
 export const medicalReviewDecisionLabels: Record<typeof medicalReviewDecisionOptions[number], string> = {
