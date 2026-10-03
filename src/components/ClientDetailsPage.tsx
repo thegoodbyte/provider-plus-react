@@ -952,6 +952,11 @@ const ClientDetailsPage: React.FC = () => {
               </h1>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {getStatusBadge(client.workflowStatus || client.status)}
+                {((typeof client.referralId === 'object' ? client.referralId?.name : '') || client.source) && (
+                  <span className="text-sm text-gray-600">
+                    Ref: {(typeof client.referralId === 'object' ? client.referralId?.name : '') || client.source}
+                  </span>
+                )}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <button
