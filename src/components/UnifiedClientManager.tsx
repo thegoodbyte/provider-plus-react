@@ -10,6 +10,9 @@ import SearchableCountryNameSelector from './SearchableCountryNameSelector';
 import SearchableLanguageSelector from './SearchableLanguageSelector';
 import { detectPhoneLocaleAutofill } from '../utils/countries';
 import { useClientProfilePictureUrl } from './useClientProfilePictureUrl';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import {
   bookedWorkflowStatuses,
   clientWorkflowStatusLabels,
@@ -130,6 +133,7 @@ const UnifiedClientManager: React.FC = () => {
   const validClientStatuses = ['active', 'inactive', 'suspended'] as const;
   const isValidClientStatus = (value: unknown): value is Client['status'] =>
     typeof value === 'string' && validClientStatuses.includes(value as any);
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
@@ -327,7 +331,7 @@ const UnifiedClientManager: React.FC = () => {
     console.log('Original formData:', JSON.stringify(formData, null, 2));
 
     if (!formData.firstName?.trim() || !formData.lastName?.trim() || !formData.phone?.trim()) {
-      alert('First name, last name, and phone are required');
+      showError('First name, last name, and phone are required.');
       return;
     }
 
@@ -346,21 +350,21 @@ const UnifiedClientManager: React.FC = () => {
       const selectedReferral = referrals.find((item) => item._id === selectedReferralId);
       if (String(selectedReferral?.name || '').trim().toLowerCase() === 'friend') {
         if (!formData.referralPersonType) {
-          alert('Choose whether the referring friend is an existing client or someone else');
+          showError('Choose whether the referring friend is an existing client or someone else.');
           return;
         }
         if (formData.referralPersonType === 'existing_client' && !getObjectId(formData.referralClientId)) {
-          alert('Select the existing client who made the referral');
+          showError('Select the existing client who made the referral.');
           return;
         }
         if (formData.referralPersonType === 'someone_else' && String(formData.referralPersonName || '').trim().length < 2) {
-          alert('Enter at least 2 characters for the referring person’s name');
+          showError('Enter at least 2 characters for the referring person’s name.');
           return;
         }
       }
 
       if (formData.loginPin && !/^\d{6}$/.test(formData.loginPin)) {
-        alert('Client portal PIN must be 6 digits');
+        showError('Client portal PIN must be 6 digits.');
         return;
       }
 
@@ -423,6 +427,7 @@ const UnifiedClientManager: React.FC = () => {
       fetchClients();
       setShowForm(false);
       resetForm();
+      showSuccess(selectedClient?._id ? 'Client updated successfully.' : 'Client created successfully.');
     } catch (error: any) {
       console.error('=== SAVE ERROR ===');
       console.error('Error object:', error);
@@ -430,8 +435,7 @@ const UnifiedClientManager: React.FC = () => {
       console.error('Error response status:', error?.response?.status);
       console.error('Error message:', error?.message);
 
-      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
-      alert(`Failed to save client: ${errorMessage}\n\nCheck console for details.`);
+      showError(apiErrorMessage(error, 'Could not save this client.'));
     }
   };
 
@@ -439,9 +443,10 @@ const UnifiedClientManager: React.FC = () => {
     try {
       await clientsApi.updateWorkflowStatus(clientId, status, reason);
       fetchClients();
+      showSuccess('Status updated.');
     } catch (error) {
       console.error('Error updating workflow status:', error);
-      alert('Error updating status. Please try again.');
+      showError(apiErrorMessage(error, 'Could not update the status.'));
     }
   };
 
@@ -485,7 +490,7 @@ const UnifiedClientManager: React.FC = () => {
       setShowForm(true);
     } catch (error) {
       console.error('Error opening client editor:', error);
-      alert('Could not open the client editor. Check the console for details.');
+      showError(apiErrorMessage(error, 'Could not open the client editor.'));
     }
   };
 
@@ -494,9 +499,10 @@ const UnifiedClientManager: React.FC = () => {
       try {
         await clientsApi.delete(clientId);
         fetchClients();
+        showSuccess('Client deleted.');
       } catch (error) {
         console.error('Error deleting client:', error);
-        alert('Error deleting client. Please try again.');
+        showError(apiErrorMessage(error, 'Could not delete this client.'));
       }
     }
   };
@@ -515,7 +521,7 @@ const UnifiedClientManager: React.FC = () => {
     } catch (error) {
       console.error('Error loading next client ID:', error);
       setShowForm(true);
-      alert('The next Client ID could not be loaded. The server will assign it when the client is saved.');
+      showError('The next Client ID could not be loaded. The server will assign it when the client is saved.');
     }
   };
 
@@ -529,7 +535,7 @@ const UnifiedClientManager: React.FC = () => {
     event.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Please choose an image file.');
+      showError('Please choose an image file.');
       return;
     }
 
@@ -540,7 +546,7 @@ const UnifiedClientManager: React.FC = () => {
       setProfilePicturePreviewUrl(URL.createObjectURL(croppedFile));
     } catch (error: any) {
       console.error('Error preparing profile picture:', error);
-      alert(error?.message || 'Could not prepare profile picture.');
+      showError(apiErrorMessage(error, 'Could not prepare profile picture.'));
     }
   };
 
@@ -579,6 +585,7 @@ const UnifiedClientManager: React.FC = () => {
 
   return (
     <div className="p-3 max-w-full">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {/* Header */}
       <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 className="text-2xl font-bold text-apple-gray-900">Clients</h1>
