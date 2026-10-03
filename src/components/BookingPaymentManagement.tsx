@@ -8,6 +8,9 @@ import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../ut
 import './BookingPaymentManagement.css';
 import { bookingPaymentSummary, bookingSettlementSummary } from './bookingStatusSelectors';
 import { loadBookingPayments } from './loadBookingPayments';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'ECB reference rate';
 
@@ -40,6 +43,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -113,9 +117,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
   const saveBookingPrice = async () => {
     const amount = Number(priceDraft);
-    if (!Number.isFinite(amount) || amount < 0) return alert('Enter a valid basic booking price.');
-    if (priceAdjustments.some(item => !String(item.label || '').trim() || !Number.isFinite(Number(item.amount)) || Number(item.amount) <= 0)) return alert('Every discount or add-on needs a description and an amount greater than zero.');
-    if (priceReason.trim().length < 3) return alert('Add a short reason so this accounting change is auditable.');
+    if (!Number.isFinite(amount) || amount < 0) return showError('Enter a valid basic booking price.');
+    if (priceAdjustments.some(item => !String(item.label || '').trim() || !Number.isFinite(Number(item.amount)) || Number(item.amount) <= 0)) return showError('Every discount or add-on needs a description and an amount greater than zero.');
+    if (priceReason.trim().length < 3) return showError('Add a short reason so this accounting change is auditable.');
     try {
       setPriceSaving(true);
       await paymentsApi.updateBookingPrice(bookingId, { basePrice: amount, currency: priceCurrency, reason: priceReason.trim(), adjustments: priceAdjustments.map(item => ({ ...item, amount: Math.abs(Number(item.amount)) })) });
@@ -123,8 +127,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setPriceReason('');
       await syncPaymentPlan();
       onPaymentUpdate?.();
+      showSuccess('Booking price updated.');
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Unable to change the booking price.');
+      showError(apiErrorMessage(error, 'Unable to change the booking price.'));
     } finally { setPriceSaving(false); }
   };
 
@@ -149,7 +154,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setPaymentPlan(response.data);
       setPaymentPlanDueDate(toDateInputValue(response.data?.dueDate));
       onPaymentUpdate?.();
-    } catch (error: any) { alert(error?.response?.data?.message || 'Unable to save the payment plan.'); }
+      showSuccess(enabled ? 'Payment plan saved.' : 'Payment plan disabled.');
+    } catch (error: any) { showError(apiErrorMessage(error, 'Unable to save the payment plan.')); }
     finally { setPaymentPlanSaving(false); }
   };
 
@@ -161,8 +167,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setPaymentPlanSaving(true);
       await paymentRequestsApi.sendReminder(request._id);
       await syncPaymentPlan();
+      showSuccess(`Payment request ${verb === 'Resend' ? 'resent' : 'sent'} to the client.`);
     } catch (error: any) {
-      alert(error?.response?.data?.message || `Unable to ${verb.toLowerCase()} the payment request.`);
+      showError(apiErrorMessage(error, `Unable to ${verb.toLowerCase()} the payment request.`));
     } finally { setPaymentPlanSaving(false); }
   };
 
@@ -171,7 +178,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     try {
       await navigator.clipboard.writeText(`https://www.ibogaready.com/payment/${request.publicHash}`);
       setAutoLinkMessage('Payment request link copied.');
-    } catch { alert('Unable to copy the payment request link.'); }
+    } catch { showError('Unable to copy the payment request link.'); }
   };
 
   useEffect(() => { void syncPaymentPlan(); }, [syncPaymentPlan]);
@@ -447,8 +454,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       });
       await fetchPayments();
       onPaymentUpdate?.();
+      showSuccess('Currency adjustment created.');
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Could not create the currency adjustment.');
+      showError(apiErrorMessage(error, 'Could not create the currency adjustment.'));
     } finally {
       setCurrencyAdjustmentLoading(false);
     }
@@ -512,9 +520,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       if (onPaymentUpdate) {
         onPaymentUpdate();
       }
+      showSuccess('Payment added.');
     } catch (error) {
       console.error('Error adding payment:', error);
-      alert('Error adding payment. Please try again.');
+      showError(apiErrorMessage(error, 'Error adding payment.'));
     }
   };
 
@@ -573,9 +582,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       if (onPaymentUpdate) {
         onPaymentUpdate();
       }
+      showSuccess('Refund processed.');
     } catch (error) {
       console.error('Error refunding payment:', error);
-      alert('Error processing refund. Please try again.');
+      showError(apiErrorMessage(error, 'Error processing refund.'));
     }
   };
 
@@ -586,9 +596,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       await paymentsApi.delete(payment._id!);
       await fetchPayments();
       if (onPaymentUpdate) onPaymentUpdate();
+      showSuccess('Payment deleted.');
     } catch (error: any) {
       console.error('Error deleting payment:', error);
-      alert(error?.response?.data?.message || 'Unable to delete the payment.');
+      showError(apiErrorMessage(error, 'Unable to delete the payment.'));
     }
   };
 
@@ -699,6 +710,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
   return (
     <div className="booking-payment-management">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="payment-summary-header">
         <div className="payment-summary-title">
           <span>Booking #{bookingNumber || bookingHash || bookingId.slice(-6)}{clientName ? ` · ${clientName}` : ''}</span>

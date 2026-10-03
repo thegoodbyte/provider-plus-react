@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckSquare, Clock, GripVertical, Plus, Search, Trash2, Users } from 'lucide-react';
 import { clientsApi, waitingListApi } from '../services/api';
 import { formatCalendarDate } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 type ClientSearchResult = {
   _id: string;
@@ -54,6 +57,7 @@ const getClientLabel = (client?: WaitingListClient | string | null) => {
 const formatDate = (value?: string) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? '-' : formatted; };
 
 const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retreatId, retreatName }) => {
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const [entries, setEntries] = useState<WaitingListEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ClientSearchResult[]>([]);
@@ -124,7 +128,7 @@ const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retre
       await fetchEntries();
     } catch (error: any) {
       console.error('Error adding client to reserve list:', error);
-      alert(error?.response?.data?.message || 'Could not add the client to the reserve list.');
+      showError(apiErrorMessage(error, 'Could not add the client to the reserve list.'));
     } finally {
       setSavingId('');
     }
@@ -139,7 +143,7 @@ const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retre
       await fetchEntries();
     } catch (error: any) {
       console.error('Error removing reserve-list entry:', error);
-      alert(error?.response?.data?.message || 'Could not remove the client from the reserve list.');
+      showError(apiErrorMessage(error, 'Could not remove the client from the reserve list.'));
     } finally {
       setSavingId('');
     }
@@ -158,7 +162,7 @@ const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retre
       await fetchEntries();
     } catch (error: any) {
       console.error('Error reordering reserve list:', error);
-      alert(error?.response?.data?.message || 'Could not update the reserve-list position.');
+      showError(apiErrorMessage(error, 'Could not update the reserve-list position.'));
     } finally {
       setSavingId('');
     }
@@ -174,6 +178,7 @@ const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retre
 
   return (
     <div className="space-y-4">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

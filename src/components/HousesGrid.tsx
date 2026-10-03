@@ -5,6 +5,9 @@ import { House } from '../types';
 import { resolveNumberOfRooms } from './HousesGrid.helpers';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiHome, FiUsers, FiDollarSign } from 'react-icons/fi';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -70,6 +73,7 @@ const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<
 };
 
 const HousesGrid: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
@@ -157,7 +161,7 @@ const HousesGrid: React.FC = () => {
       setHeroImageUrl(response.data.heroImageUrl);
     } catch (error: any) {
       console.error('Error uploading house hero image:', error);
-      alert(error?.response?.data?.message || error?.message || 'Failed to upload house hero image.');
+      showError(apiErrorMessage(error, 'Failed to upload house hero image.'));
     } finally {
       setHeroImageUploading(false);
     }
@@ -173,7 +177,7 @@ const HousesGrid: React.FC = () => {
       setHeroImageUrl(null);
     } catch (error: any) {
       console.error('Error removing house hero image:', error);
-      alert(error?.response?.data?.message || error?.message || 'Failed to remove house hero image.');
+      showError(apiErrorMessage(error, 'Failed to remove house hero image.'));
     }
   };
 
@@ -182,8 +186,10 @@ const HousesGrid: React.FC = () => {
       try {
         await housesApi.delete(id);
         fetchHouses();
+        showSuccess('House deleted.');
       } catch (error: any) {
         console.error('Error deleting house:', error);
+        showError(apiErrorMessage(error, 'Failed to delete house.'));
       }
     }
   };
@@ -222,10 +228,11 @@ const HousesGrid: React.FC = () => {
       setFormData({});
       setEditingHouse(null);
       fetchHouses();
+      showSuccess(editingHouse ? 'House updated.' : 'House created.');
     } catch (error: any) {
       console.error('Error saving house:', error);
       console.error('Error response:', error.response?.data);
-      alert(error?.response?.data?.message || error?.message || 'Failed to save house.');
+      showError(apiErrorMessage(error, 'Failed to save house.'));
     }
   };
 
@@ -251,6 +258,7 @@ const HousesGrid: React.FC = () => {
 
   return (
     <div className="p-6 h-full">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Houses Management</h1>
         <AppleButton onClick={handleAdd} className="apple-button-primary">

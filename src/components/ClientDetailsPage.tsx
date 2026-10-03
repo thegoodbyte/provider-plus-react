@@ -18,6 +18,9 @@ import { TaskList } from './Tasks/TaskList';
 import { buildClientMedicalArtifactInput, getClientEntryMedicalArtifacts, getClientMedicalArtifactUploadContext, upsertMedicalArtifact } from './clientMedicalArtifactUpload';
 import { buildBookingCreateUrlFromPayment } from './bookingFromPayment.helpers';
 import { bookingFinancialSummary } from './bookingFinancialSummary';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import { clientPaymentCreatePath, clientPaymentEditPath } from './clientPaymentNavigation';
 import { loadClientCoreData } from '../services/clientCoreDataService';
 import './ClientsGrid.css';
@@ -95,6 +98,7 @@ const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
 const ClientDetailsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const location = useLocation();
 
   const [client, setClient] = useState<any>(null);
@@ -375,7 +379,7 @@ const ClientDetailsPage: React.FC = () => {
       await fetchClientData();
     } catch (paymentError) {
       console.error('Error deleting payment:', paymentError);
-      alert('Failed to delete payment');
+      showError(apiErrorMessage(paymentError, 'Failed to delete payment.'));
     }
   };
 
@@ -384,7 +388,7 @@ const ClientDetailsPage: React.FC = () => {
     event.target.value = '';
     if (!clientId || !file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Please choose an image file.');
+      showError('Please choose an image file.');
       return;
     }
 
@@ -395,7 +399,7 @@ const ClientDetailsPage: React.FC = () => {
       setClient(response.data.client);
     } catch (uploadError: any) {
       console.error('Error uploading profile picture:', uploadError);
-      alert(uploadError?.response?.data?.message || uploadError?.message || 'Failed to upload profile picture.');
+      showError(apiErrorMessage(uploadError, 'Failed to upload profile picture.'));
     } finally {
       setUploadingProfilePicture(false);
     }
@@ -881,7 +885,7 @@ const ClientDetailsPage: React.FC = () => {
       }
     } catch (error) {
       console.error(`Error uploading ${artifactType} files:`, error);
-      alert('Error uploading files. Please try again.');
+      showError(apiErrorMessage(error, 'Error uploading files.'));
     } finally {
       setUploading(false);
     }
@@ -916,6 +920,7 @@ const ClientDetailsPage: React.FC = () => {
 
   return (
     <div className="p-4 sm:p-6 h-full overflow-auto">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {/* Header */}
       <div className="mb-6">
         <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1806,7 +1811,7 @@ const ClientDetailsPage: React.FC = () => {
                             <AppleButton
                               onClick={() => {
                                 navigator.clipboard.writeText(paymentUrl);
-                                alert('Payment request link copied.');
+                                showSuccess('Payment request link copied.');
                               }}
                               className="apple-button-primary w-auto flex-none px-3 py-2 whitespace-nowrap"
                             >

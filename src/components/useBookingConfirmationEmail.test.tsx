@@ -6,7 +6,7 @@ import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
 import * as workflow from './bookingConfirmationWorkflow';
 
-jest.mock('antd', () => ({ message: { error: jest.fn() } }));
+jest.mock('antd', () => ({ message: { error: jest.fn(), success: jest.fn() } }));
 jest.mock('../services/api', () => ({ bookingsApi: { recordConfirmationHistory: jest.fn(), prepareConfirmation: jest.fn(), getConfirmationPdf: jest.fn() }, communicationsApi: { sendEmail: jest.fn() } }));
 jest.mock('./bookingConfirmationComposer', () => ({ composeBookingConfirmationEmail: jest.fn() }));
 jest.mock('./BookingConfirmationPDF', () => ({ createBookingConfirmationPdf: jest.fn() }));
@@ -43,7 +43,6 @@ describe('useBookingConfirmationEmail', () => {
     (bookingsApi.prepareConfirmation as jest.Mock).mockResolvedValue({ data: booking });
     (bookingsApi.getConfirmationPdf as jest.Mock).mockRejectedValue({ response: { status: 404 } });
     (communicationsApi.sendEmail as jest.Mock).mockResolvedValue({ data: { _id: 'e', display_id: 4, status: 'sent' } });
-    jest.spyOn(window, 'alert').mockImplementation(() => undefined);
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -84,7 +83,7 @@ describe('useBookingConfirmationEmail', () => {
     (createBookingConfirmationPdf as jest.Mock).mockRejectedValue(new Error('pdf failed'));
     const { result } = view();
     await act(async () => result.current.prepareReview());
-    expect(window.alert).toHaveBeenCalledWith('Unable to prepare booking confirmation email.');
+    expect(message.error).toHaveBeenCalledWith('Unable to prepare booking confirmation email.');
     expect(result.current.preparing).toBe(false);
   });
 
@@ -100,7 +99,7 @@ describe('useBookingConfirmationEmail', () => {
     expect(bookingsApi.recordConfirmationHistory).toHaveBeenCalledWith('b', expect.objectContaining({ reason: 'Dates changed', language: 'en', sentEmailId: 'e' }));
     expect(onBookingUpdated).toHaveBeenCalledWith({ refreshed: true });
     expect(onSent).toHaveBeenCalled();
-    expect(window.alert).toHaveBeenCalledWith('sent receipt');
+    expect(message.success).toHaveBeenCalledWith('sent receipt');
     expect(result.current.sending).toBe(false);
   });
 
@@ -108,7 +107,7 @@ describe('useBookingConfirmationEmail', () => {
     (communicationsApi.sendEmail as jest.Mock).mockResolvedValue({ data: { status: 'failed', errorMessage: 'rejected' } });
     const { result } = view();
     await act(async () => result.current.sendQuick());
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('rejected'));
+    expect(message.error).toHaveBeenCalledWith(expect.stringContaining('rejected'));
     expect(bookingsApi.recordConfirmationHistory).not.toHaveBeenCalled();
     expect(onSent).not.toHaveBeenCalled();
   });
@@ -117,7 +116,7 @@ describe('useBookingConfirmationEmail', () => {
     (communicationsApi.sendEmail as jest.Mock).mockRejectedValueOnce(new Error('offline'));
     const { result } = view();
     await act(async () => result.current.sendQuick());
-    expect(window.alert).toHaveBeenCalledWith('offline');
+    expect(message.error).toHaveBeenCalledWith('offline');
     await act(async () => result.current.completeReviewedSend({ _id: 'reviewed' }));
     expect(bookingsApi.recordConfirmationHistory).toHaveBeenLastCalledWith('b', expect.objectContaining({ sentEmailId: 'reviewed' }));
     expect(onSent).toHaveBeenCalled();

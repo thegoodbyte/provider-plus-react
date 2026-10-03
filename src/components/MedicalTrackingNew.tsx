@@ -7,6 +7,9 @@ import AppleButton from './AppleButton';
 import SearchableClientDropdown from './SearchableClientDropdown';
 import { FiPlus, FiEdit2, FiTrash2, FiImage, FiFileText, FiHeart, FiActivity } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -118,6 +121,7 @@ const MedicalTrackingNew: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [medicalItems, setMedicalItems] = useState<MedicalItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -297,7 +301,7 @@ const MedicalTrackingNew: React.FC = () => {
       setIsImageModalOpen(true);
     } catch (error) {
       console.error('Error loading image URL:', error);
-      alert('Error loading image. Please try again.');
+      showError(apiErrorMessage(error, 'Could not load this image.'));
     }
   };
 
@@ -320,7 +324,7 @@ const MedicalTrackingNew: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading document URL:', error);
-      alert('Error loading document. Please try again.');
+      showError(apiErrorMessage(error, 'Could not load this document.'));
     }
   };
 
@@ -338,7 +342,7 @@ const MedicalTrackingNew: React.FC = () => {
     e.preventDefault();
     try {
       if (!formData.client_id || !formData.type) {
-        alert('Please select a client and type');
+        showError('Please select a client and type.');
         return;
       }
 
@@ -392,14 +396,11 @@ const MedicalTrackingNew: React.FC = () => {
       setEditingItem(null);
       setSelectedFile(null);
       setSelectedFiles([]);
+      showSuccess(editingItem ? 'Medical item updated.' : 'Medical item saved.');
     } catch (error: any) {
       console.error('Error saving medical item:', error);
-      if (error.response) {
-        console.error('Error response:', error.response.data);
-        alert(`Error saving medical item: ${error.response.data.message || 'Please try again.'}`);
-      } else {
-        alert('Error saving medical item. Please try again.');
-      }
+      if (error.response) console.error('Error response:', error.response.data);
+      showError(apiErrorMessage(error, 'Could not save this medical item.'));
     }
   };
 
@@ -413,6 +414,7 @@ const MedicalTrackingNew: React.FC = () => {
 
   return (
     <div className="p-3 sm:p-6 h-full">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center">

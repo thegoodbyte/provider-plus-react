@@ -3,6 +3,9 @@ import { FiLoader, FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi, communicationsApi } from '../services/api';
 import { EmailAsset, EmailTemplate, MailSettings } from '../types';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -123,6 +126,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   onClose,
   onSent,
 }) => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [emailAssets, setEmailAssets] = useState<EmailAsset[]>([]);
@@ -410,15 +414,15 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     const subject = formData.subject.trim();
 
     if (!to) {
-      alert('Recipient email is required.');
+      showError('Recipient email is required.');
       return;
     }
     if (!subject) {
-      alert('Subject is required.');
+      showError('Subject is required.');
       return;
     }
     if (isBookingConfirmationEmail && preparedAttachments.length === 0) {
-      alert(attachmentPreparationError || 'Booking confirmation PDF is not ready. Please close this window and open Send again.');
+      showError(attachmentPreparationError || 'Booking confirmation PDF is not ready. Please close this window and open Send again.');
       return;
     }
 
@@ -448,11 +452,11 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         attachments: preparedAttachments.length > 0 ? preparedAttachments : undefined,
       });
       await onSent?.(response.data);
-      alert(formatSentEmailReceipt(response.data));
-      onClose();
+      showSuccess(formatSentEmailReceipt(response.data));
+      setTimeout(onClose, 1200);
     } catch (error) {
       console.error('Error sending email:', error);
-      alert('Email send failed.');
+      showError(apiErrorMessage(error, 'Email send failed.'));
     } finally {
       setSending(false);
     }
@@ -460,6 +464,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {sending && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45" role="status" aria-live="polite" aria-label="Sending email"><div className="flex min-w-[220px] flex-col items-center gap-4 rounded-xl bg-white px-8 py-7 text-gray-900 shadow-2xl"><Icon icon={FiLoader} className="h-10 w-10 animate-spin text-blue-600" /><strong className="text-base">Sending email</strong><span className="text-center text-sm text-gray-500">Please keep this window open.</span></div></div>}
       <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">

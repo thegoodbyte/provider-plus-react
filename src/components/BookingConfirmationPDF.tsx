@@ -974,8 +974,11 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     const fileName = `Booking_Confirmation_${booking.bookingNumber || 'Unknown'}_${language.toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
     return { pdf, fileName, blob: pdf.output('blob') };
   } catch (error) {
+    // Callers already surface this failure to the user (e.g.
+    // useBookingConfirmationPdf's message.error, useBookingConfirmationEmail's
+    // and EmailComposeModal's own catch blocks) -- alerting here too produced
+    // a redundant double notification.
     console.error('Error generating PDF:', error);
-    alert('Error generating PDF. Please try again.');
     throw error;
   } finally {
     document.body.removeChild(pdfContent);

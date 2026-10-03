@@ -267,7 +267,7 @@ describe('PaymentRequestForm', () => {
 
     fireEvent.submit(screen.getByText('Create Request').closest('form')!);
 
-    expect(window.alert).toHaveBeenCalledWith('Please fill in all required fields');
+    expect(await screen.findByText('Please fill in all required fields.')).toBeInTheDocument();
   });
 
   it('blocks saving when the itemized total has a row missing a description or amount', async () => {
@@ -379,7 +379,7 @@ describe('PaymentRequestForm', () => {
       expect(await screen.findByText('Select a retreat with a start date to preview the final request.')).toBeInTheDocument();
 
       fireEvent.click(screen.getByText('Create Request'));
-      expect(window.alert).toHaveBeenCalledWith('Select a retreat with a start date to also create the final payment request.');
+      expect(await screen.findByText('Select a retreat with a start date to also create the final payment request.')).toBeInTheDocument();
     });
 
     it('includes the final payment request preview in the onSave payload when checked', async () => {

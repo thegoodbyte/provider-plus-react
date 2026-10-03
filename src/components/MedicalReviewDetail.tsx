@@ -6,6 +6,9 @@ import {
   Clock, Activity, Phone, Mail
 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api.config';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import './MedicalReviewDetail.css';
 
 interface ClientMedicalData {
@@ -55,6 +58,7 @@ interface ClientMedicalData {
 }
 
 const MedicalReviewDetail: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const { clientId, retreatId } = useParams();
   const navigate = useNavigate();
   const [clientData, setClientData] = useState<ClientMedicalData | null>(null);
@@ -133,7 +137,7 @@ const MedicalReviewDetail: React.FC = () => {
 
   const handleReviewSubmit = async () => {
     if (!reviewDecision || !reviewNotes.trim()) {
-      alert('Please select a decision and provide review notes.');
+      showError('Please select a decision and provide review notes.');
       return;
     }
 
@@ -157,12 +161,13 @@ const MedicalReviewDetail: React.FC = () => {
       );
 
       if (response.ok) {
-        alert('Review submitted successfully!');
         navigate('/medical-dashboard');
+      } else {
+        showError('Failed to submit review. Please try again.');
       }
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert('Failed to submit review. Please try again.');
+      showError(apiErrorMessage(error, 'Failed to submit review. Please try again.'));
     }
   };
 
@@ -215,6 +220,7 @@ const MedicalReviewDetail: React.FC = () => {
 
   return (
     <div className="medical-review-detail">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="detail-header">
         <button className="back-button" onClick={() => navigate('/medical-dashboard')}>
           <ArrowLeft size={20} />

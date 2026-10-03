@@ -32,8 +32,12 @@ import BookingStepsActionFilter from './BookingStepsActionFilter';
 import BookingStepActionCheckRow from './BookingStepActionCheckRow';
 import { BookingStepGroupHeader, BookingStepRowHeader } from './BookingStepRowHeaders';
 import { BookingStepTypeIcon } from './bookingStepTypes';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const defaultAdvisorStorageKey = 'provider-plus.default-medical-advisor';
   const location = useLocation();
   const navigate = useNavigate();
@@ -309,7 +313,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const receivedItem = itemMap.get(`${bookingId}:${config.receivedStepKey}`);
     const artifactId = getLinkedArtifactIdFromItem(item) || getLinkedArtifactIdFromItem(receivedItem);
     if (!artifactId) {
-      alert(`Upload or link the ${config.label} artifact before creating a medical review request.`);
+      showError(`Upload or link the ${config.label} artifact before creating a medical review request.`);
       return;
     }
 
@@ -349,7 +353,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       setReviewRequestModal(null);
       await loadData(false);
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to create medical review request.');
+      showError(apiErrorMessage(error, 'Unable to create medical review request.'));
     } finally {
       setSaving('');
     }
@@ -360,7 +364,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const config = getReviewStepConfig(row);
     const candidates = getReviewRequestLinkCandidates(booking, reviewRequests, config, item._id);
     if (!candidates.length) {
-      alert(`No existing medical review requests were found for ${row.title}.`);
+      showError(`No existing medical review requests were found for ${row.title}.`);
       return;
     }
 
@@ -401,7 +405,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       await loadData(false);
     } catch (error: any) {
       console.error('Error linking existing medical review request:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to link existing medical review request.');
+      showError(apiErrorMessage(error, 'Unable to link existing medical review request.'));
     } finally {
       setSaving('');
     }
@@ -410,7 +414,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const openArtifactLinkModal = (booking: any, item: BookingFlowItem, row: MatrixRow, config: ArtifactLinkConfig) => {
     const candidates = getArtifactLinkCandidates(booking, medicalArtifacts, config);
     if (candidates.length === 0) {
-      alert(`No existing ${config.label} artifact was found for this booking.`);
+      showError(`No existing ${config.label} artifact was found for this booking.`);
       return;
     }
     setArtifactLinkModal({
@@ -452,7 +456,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       await loadData(false);
     } catch (error: any) {
       console.error('Error linking existing artifact to booking step:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to link existing artifact.');
+      showError(apiErrorMessage(error, 'Unable to link existing artifact.'));
     } finally {
       setSaving('');
     }
@@ -498,7 +502,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       await loadData(false);
     } catch (error: any) {
       console.error('Error running booking step action:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to run booking step action.');
+      showError(apiErrorMessage(error, 'Unable to run booking step action.'));
     } finally {
       setSaving('');
     }
@@ -515,7 +519,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const documentConfig = configuredDocumentType ? { documentType: configuredDocumentType, title: humanizeDocumentKey(configuredDocumentType) } : undefined;
     const uploadTarget = resolveBookingStepUploadTarget(artifactConfig, documentConfig);
     if (!bookingId || !clientId || !currentRetreatId) {
-      alert('This file cannot be uploaded because the booking, client, or retreat link is missing.');
+      showError('This file cannot be uploaded because the booking, client, or retreat link is missing.');
       return;
     }
 
@@ -594,7 +598,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       }
     } catch (error: any) {
       console.error('Error uploading booking step document:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to upload booking step document.');
+      showError(apiErrorMessage(error, 'Unable to upload booking step document.'));
     } finally {
       setSaving('');
     }
@@ -613,7 +617,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       const response = await bookingFlowApi.getItemReminderPreview(item._id);
       setReminderState({ item, ...response.data });
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to prepare reminder.');
+      showError(apiErrorMessage(error, 'Unable to prepare reminder.'));
     } finally {
       setSaving('');
     }
@@ -631,14 +635,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       const response = await bookingFlowApi.sendItemReminder(reminderState.item._id, buildBookingStepReminderPayload(reminderState, overrideDuplicate));
       const failure = getBookingStepReminderFailure(response);
       if (failure) {
-        alert(failure);
+        showError(failure);
         return;
       }
       setReminderState(null);
       await loadData(false);
-      alert('Reminder sent and recorded.');
+      showSuccess('Reminder sent and recorded.');
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to send reminder.');
+      showError(apiErrorMessage(error, 'Unable to send reminder.'));
     } finally {
       setSaving('');
     }
@@ -651,7 +655,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       const response = await bookingFlowApi.getItemReminderAutomation(item._id);
       setAutomationState({ item, ...response.data });
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to load reminder automation.');
+      showError(apiErrorMessage(error, 'Unable to load reminder automation.'));
     } finally {
       setSaving('');
     }
@@ -677,11 +681,11 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     setSaving(`row-email:${row.key}`);
     try {
       const response = await bookingFlowApi.sendTemplateEmailToRetreat(retreatId, row.templateId);
-      alert(formatBookingStepRowEmailSummary(response.data));
+      showSuccess(formatBookingStepRowEmailSummary(response.data));
       await loadData(false);
     } catch (error: any) {
       console.error('Error sending retreat step email:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to send retreat step email.');
+      showError(apiErrorMessage(error, 'Unable to send retreat step email.'));
     } finally {
       setSaving('');
     }
@@ -711,6 +715,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   return (
     <div className={isFullScreen ? 'fixed inset-0 z-[1000] flex flex-col gap-4 overflow-hidden bg-gray-100 p-4 sm:p-6' : 'space-y-4'}>
+      <Toast toast={toast} onDismiss={dismissToast} />
       <BookingStepsToolbar viewMode={viewMode} isEditing={isEditing} isFullScreen={isFullScreen} saving={saving} message={toolbarMessage} showRequirementsOnly={showRequirementsOnly} onShowRequirementsOnly={setShowRequirementsOnly} onViewMode={setViewMode} onUnlock={() => setIsEditing(true)} onSaveAndLock={() => saveAllChanges(true)} onFullScreen={() => setIsFullScreen((current) => !current)} onRefresh={() => loadData()} onGenerate={generateSteps} />
 
       <div className={`${isFullScreen ? 'min-h-0 flex-1' : 'max-h-[calc(100vh-220px)]'} overflow-auto rounded-lg border border-gray-300 bg-white`}>

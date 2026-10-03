@@ -406,7 +406,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         await fetchRetreatData(); // Refresh the data
       } catch (error) {
         console.error('Error deleting booking:', error);
-        alert('Error deleting booking. Please try again.');
+        message.error((error as any)?.response?.data?.message || 'Error deleting booking. Please try again.');
       }
     }
   }, [fetchRetreatData]);
@@ -455,7 +455,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       await fetchRetreatData(); // Refresh the data
     } catch (error) {
       console.error('Error updating booking:', error);
-      alert('Error updating booking. Please try again.');
+      message.error((error as any)?.response?.data?.message || 'Error updating booking. Please try again.');
     }
   }, [editingBookingId, editFormData, fetchRetreatData]);
 
@@ -505,7 +505,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       await fetchRetreatData(); // Refresh the data
     } catch (error: any) {
       console.error('Error updating retreat:', error);
-      alert('Error updating retreat. Please try again.');
+      message.error(error?.response?.data?.message || 'Error updating retreat. Please try again.');
     }
   };
 

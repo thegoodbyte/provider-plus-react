@@ -333,15 +333,15 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
     const invoiceNumber = String(formData.invoiceNumber || '').trim();
     if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.requestedAmount || (['deposit', 'payment', 'full_payment'].includes(formData.requestType) && !formData.fullPriceQuote)) {
-      alert('Please fill in all required fields');
+      setFormError('Please fill in all required fields.');
       return;
     }
     if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
-      alert('Please select the ceremony for this booster.');
+      setFormError('Please select the ceremony for this booster.');
       return;
     }
     if (showFinalPaymentRequestOption && createFinalPaymentRequest && !finalPaymentRequestPreview) {
-      alert('Select a retreat with a start date to also create the final payment request.');
+      setFormError('Select a retreat with a start date to also create the final payment request.');
       return;
     }
     if (revolutLinkMismatch) {

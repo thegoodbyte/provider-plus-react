@@ -3,6 +3,9 @@ import { remindersApi, clientsApi, retreatsApi, bookingsApi } from '../services/
 import { Reminder, Client, Retreat, RetreatClient } from '../types';
 import { AutoReminderTemplates } from './AutoReminderTemplates';
 import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiClock, FiUser, FiCalendar } from 'react-icons/fi';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -33,6 +36,7 @@ const getRetreatCode = (retreat?: Retreat) => {
 };
 
 const RemindersPage: React.FC = () => {
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const [reminders, setReminders] = useState<ReminderWithDetails[]>([]);
   const [filteredReminders, setFilteredReminders] = useState<ReminderWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -225,7 +229,7 @@ const RemindersPage: React.FC = () => {
         await fetchReminders();
       } catch (error) {
         console.error('Error deleting reminder:', error);
-        alert('Error deleting reminder');
+        showError(apiErrorMessage(error, 'Error deleting reminder.'));
       }
     }
   };
@@ -236,7 +240,7 @@ const RemindersPage: React.FC = () => {
       await fetchReminders();
     } catch (error) {
       console.error('Error completing reminder:', error);
-      alert('Error completing reminder');
+      showError(apiErrorMessage(error, 'Error completing reminder.'));
     }
   };
 
@@ -280,7 +284,7 @@ const RemindersPage: React.FC = () => {
       await fetchReminders();
     } catch (error) {
       console.error('Error saving reminder:', error);
-      alert('Error saving reminder');
+      showError(apiErrorMessage(error, 'Error saving reminder.'));
     }
   };
 
@@ -295,6 +299,7 @@ const RemindersPage: React.FC = () => {
 
   return (
     <div className="reminders-page-container">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="reminders-header">
         <h2>🔔 Reminders Management</h2>
 

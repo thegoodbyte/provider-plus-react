@@ -4,6 +4,9 @@ import { paymentsApi } from '../services/api';
 import { Payment, PaymentSummary } from '../types';
 import { FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
 import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -32,6 +35,7 @@ interface PaymentFormData {
 }
 
 const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -117,7 +121,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         await fetchData();
       } catch (error) {
         console.error('Error deleting payment:', error);
-        alert('Error deleting payment');
+        showError(apiErrorMessage(error, 'Could not delete this payment.'));
       }
     }
   }, [fetchData]);
@@ -153,7 +157,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         await fetchData();
       } catch (error) {
         console.error('Error processing refund:', error);
-        alert('Error processing refund');
+        showError(apiErrorMessage(error, 'Could not process this refund.'));
       }
     }
   };
@@ -194,9 +198,10 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
       setUsdPreview(null);
       setUsdPreviewError('');
       await fetchData();
+      showSuccess(editingPayment ? 'Payment updated.' : 'Payment created.');
     } catch (error) {
       console.error('Error saving payment:', error);
-      alert('Error saving payment');
+      showError(apiErrorMessage(error, 'Could not save this payment.'));
     }
   };
 
@@ -220,6 +225,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
 
   return (
     <div className="payments-tab">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {/* Summary Cards */}
       {summary && (
         <div className="payments-summary">

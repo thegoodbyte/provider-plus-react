@@ -6,6 +6,9 @@ import { Modal } from 'antd';
 import { bookingFlowApi, bookingsApi, documentRequestsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import {
   buildRetreatMedicalGridData,
   mergeMedicalReviewRequests,
@@ -63,6 +66,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   const [historyView, setHistoryView] = useState<{ cell: RetreatMedicalCell; clientName: string; stage: string } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [requestingKey, setRequestingKey] = useState('');
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
 
   useEffect(() => {
     if (!isFullscreen) return undefined;
@@ -122,10 +126,10 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
     try {
       setRequestingKey(key);
       const response = await documentRequestsApi.requestMissingDocument(bookingId, stageKey);
-      window.alert(response.data.message || 'Client notified that their document is missing.');
+      showSuccess(response.data.message || 'Client notified that their document is missing.');
       await fetchGridData();
     } catch (error: any) {
-      window.alert(error?.response?.data?.message || 'Unable to notify the client.');
+      showError(apiErrorMessage(error, 'Unable to notify the client.'));
     } finally {
       setRequestingKey('');
     }
@@ -263,6 +267,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
 
   return (
     <div className={`retreat-medical-grid${isFullscreen ? ' medical-grid-fullscreen' : ''}`}>
+      <Toast toast={toast} onDismiss={dismissToast} />
       <Modal
         title={historyView ? `${historyView.clientName} · ${historyView.stage} history` : 'Medical history'}
         open={Boolean(historyView)}

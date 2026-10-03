@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ClientMedical, MedicalArtifact } from '../types';
 import { clientMedicalApi, medicalArtifactsApi } from '../services/api';
 import { formatCalendarDate } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import './ClientsGrid.css';
 
 interface ComprehensiveMedicalTrackingTabProps {
@@ -28,6 +31,7 @@ interface MedicalAction {
 const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabProps> = ({ clientId, retreatId }) => {
   const [medicalData, setMedicalData] = useState<ClientMedical | null>(null);
   const [medicalArtifacts, setMedicalArtifacts] = useState<MedicalArtifact[]>([]);
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [uploading, setUploading] = useState<string>('');
 
@@ -322,7 +326,7 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
       await fetchMedicalData(); // Refresh data
     } catch (error) {
       console.error('Error updating medical status:', error);
-      alert('Error updating medical status. Please try again.');
+      showError(apiErrorMessage(error, 'Error updating medical status.'));
     }
   };
 
@@ -342,6 +346,7 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
 
   return (
     <div className="comprehensive-medical-tab">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="medical-header">
         <h3>🏥 Comprehensive Medical Tracking</h3>
         <div className="progress-summary">

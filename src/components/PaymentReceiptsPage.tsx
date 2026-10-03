@@ -6,11 +6,14 @@ import { Payment, PaymentReceipt, PaymentRequest } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import CurrencyDisplay from './CurrencyDisplay';
 import { formatCalendarDate } from '../utils/dateFormat';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any }> = ({ icon: Component }) => <Component className="h-4 w-4" />;
 
 const PaymentReceiptsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { toast, showSuccess, dismiss: dismissToast } = useToast();
   const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,9 +30,10 @@ const PaymentReceiptsPage: React.FC = () => {
   const openEdit = (receipt: PaymentReceipt) => { setEditing(receipt); setEditForm({ payerName: receipt.payerName || '', transactionReference: receipt.transactionReference || '', transactionId: receipt.transactionId || '', receivedDate: receipt.receivedDate ? new Date(receipt.receivedDate).toISOString().slice(0, 10) : '', paymentMethod: receipt.paymentMethod || 'bank_transfer', status: receipt.status || 'received', description: receipt.description || '', notes: receipt.notes || '' }); };
   const saveReceipt = async () => { if (!editing?._id) return; setBusy(`edit:${editing._id}`); setError(''); try { await paymentsApi.updateReceipt(editing._id, editForm as any); setEditing(null); await loadReceipts(); if (detail?._id === editing._id) setDetail((await paymentsApi.getReceipt(editing._id)).data); } catch (err: any) { setError(err?.response?.data?.message || 'Unable to update this receipt.'); } finally { setBusy(''); } };
   const deleteReceipt = async (receipt: PaymentReceipt) => { if (!receipt._id || !window.confirm(`Delete receipt ${receipt.transactionReference || receipt._id.slice(-8)}? Receipts with linked allocations cannot be deleted.`)) return; setBusy(`delete:${receipt._id}`); setError(''); try { await paymentsApi.deleteReceipt(receipt._id); if (detail?._id === receipt._id) setDetail(null); await loadReceipts(); } catch (err: any) { setError(err?.response?.data?.message || 'Unable to delete this receipt.'); } finally { setBusy(''); } };
-  const sendReceipt = async (receipt: PaymentReceipt, allocation: Payment) => { if (!receipt._id || !allocation._id) return; const client: any = allocation.clientId; const name = typeof client === 'object' ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : 'this client'; if (!window.confirm(`Email receipt #${receipt.display_id || ''} to ${name}? Attachments will follow your Payment settings.`)) return; setBusy(`send:${allocation._id}`); setError(''); try { const response = await paymentsApi.sendReceipt(receipt._id, { allocationId: allocation._id }); alert(`Receipt sent to ${response.data.to}.`); setDetail((await paymentsApi.getReceipt(receipt._id)).data); await loadReceipts(); } catch (err: any) { setError(err?.response?.data?.message || 'Unable to send this receipt.'); } finally { setBusy(''); } };
+  const sendReceipt = async (receipt: PaymentReceipt, allocation: Payment) => { if (!receipt._id || !allocation._id) return; const client: any = allocation.clientId; const name = typeof client === 'object' ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : 'this client'; if (!window.confirm(`Email receipt #${receipt.display_id || ''} to ${name}? Attachments will follow your Payment settings.`)) return; setBusy(`send:${allocation._id}`); setError(''); try { const response = await paymentsApi.sendReceipt(receipt._id, { allocationId: allocation._id }); showSuccess(`Receipt sent to ${response.data.to}.`); setDetail((await paymentsApi.getReceipt(receipt._id)).data); await loadReceipts(); } catch (err: any) { setError(err?.response?.data?.message || 'Unable to send this receipt.'); } finally { setBusy(''); } };
   if (loading) return <LoadingSpinner message="Loading payment receipts..." />;
   return <div className="h-full p-6">
+    <Toast toast={toast} onDismiss={dismissToast} />
     <div className="mb-6 flex items-center gap-4"><button onClick={() => navigate('/admin/payments')} className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"><Icon icon={FiArrowLeft} /> Back</button><div><h1 className="text-2xl font-semibold text-gray-900">Payment Receipts</h1><p className="text-sm text-gray-600">Actual received transactions and their booking allocation totals.</p></div></div>
     {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>}
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr>{['Receipt', 'Received', 'Payer / reference', 'Payment request', 'Total received', 'Allocated', 'Allocations', 'Status', 'Actions'].map((label) => <th key={label} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</th>)}</tr></thead><tbody className="divide-y divide-gray-100">{receipts.map((receipt) => {

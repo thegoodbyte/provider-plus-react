@@ -25,6 +25,9 @@ import {
   splitMedicalReviewRequestsByTimeline,
 } from './MedicalReviewRequestsPage.helpers';
 import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation, normalizeMedicalReviewStatus } from './medicalReviewStatus';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const reviewStatusStyle = Object.fromEntries(Object.entries(medicalReviewStatusPresentation).map(([status, value]) => [status, value.badgeClass]));
 
@@ -535,6 +538,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   // shown/generated in below.
   const reviewerLanguage = String(user?.preferredReviewLanguage || 'en').toLowerCase();
   const routeId = id === 'new' ? undefined : id;
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
   const [selected, setSelected] = useState<MedicalReviewRequest | null>(null);
@@ -1010,7 +1014,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       const linksResponse = await medicalReviewRequestsApi.getAccessLinks(selected._id);
       setAccessLinks(linksResponse.data || []);
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to generate medical review access link.');
+      showError(apiErrorMessage(error, 'Unable to generate medical review access link.'));
     } finally {
       setAccessLinkBusy(false);
     }
@@ -1021,7 +1025,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const reason = window.prompt('Why are you resetting this review result? This will be recorded in the audit log.');
     if (reason === null) return;
     if (reason.trim().length < 3) {
-      alert('Enter a reason of at least 3 characters.');
+      showError('Enter a reason of at least 3 characters.');
       return;
     }
     if (!window.confirm('Reset this medical review to Pending and remove its current result? The previous result remains in review history and the audit log.')) return;
@@ -1029,8 +1033,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
       setResettingReview(true);
       await medicalReviewRequestsApi.resetReview(selected._id, reason.trim());
       await loadRequests();
+      showSuccess('Review reset to Pending.');
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to reset the medical review.');
+      showError(apiErrorMessage(error, 'Unable to reset the medical review.'));
     } finally {
       setResettingReview(false);
     }
@@ -1105,7 +1110,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
   const handleCopyAccessLink = async (url: string) => {
     await navigator.clipboard.writeText(url);
-    alert('Medical review access link copied.');
+    showSuccess('Medical review access link copied.');
   };
 
   const handleRevokeAccessLink = async (accessLinkId: string) => {
@@ -1117,8 +1122,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
         const linksResponse = await medicalReviewRequestsApi.getAccessLinks(selected._id);
         setAccessLinks(linksResponse.data || []);
       }
+      showSuccess('Access link revoked.');
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to revoke access link.');
+      showError(apiErrorMessage(error, 'Unable to revoke access link.'));
     } finally {
       setAccessLinkBusy(false);
     }
@@ -1452,7 +1458,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     if (!content) return;
     const popup = window.open('', '_blank', 'noopener,noreferrer');
     if (!popup) {
-      alert('Allow pop-ups to print or save the medical summary as PDF.');
+      showError('Allow pop-ups to print or save the medical summary as PDF.');
       return;
     }
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map((node) => node.outerHTML).join('');
@@ -1469,7 +1475,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       const response = await medicalReviewRequestsApi.generateMedicalSummary(selected._id);
       setGeneratedMedicalSummary(response.data);
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to generate the medical summary.');
+      showError(apiErrorMessage(error, 'Unable to generate the medical summary.'));
     } finally {
       setGeneratingMedicalSummary(false);
     }
@@ -1727,6 +1733,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
   return (
     <div className={`medical-review-page overflow-x-hidden p-0 sm:p-6 ${!isDetailView ? 'mrr-index-page' : ''}`}>
+      <Toast toast={toast} onDismiss={dismissToast} />
       {nextReviewPrompt && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/30 px-4" role="dialog" aria-modal="true" aria-label="Review saved">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-2xl">

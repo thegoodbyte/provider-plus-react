@@ -87,7 +87,7 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
         relatedEntityType: 'booking', relatedEntityId: bookingId,
         attachments: [{ fileName, mimeType: 'application/pdf', contentBase64 }],
       });
-    } catch { alert('Unable to prepare booking confirmation email.'); }
+    } catch { message.error('Unable to prepare booking confirmation email.'); }
     finally { setPreparing(false); }
   }, [booking, bookingId, language, missingEmail, prepareAttachment, prepareBooking, reason, resolvedClient, resolvedRetreat]);
 
@@ -117,11 +117,11 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
       };
       payloadSize = new Blob([JSON.stringify(payload)]).size;
       const response = await communicationsApi.sendEmail(payload);
-      if (response.data.status === 'failed') { alert(`Email was logged but Gmail failed to send it: ${response.data.errorMessage || 'Unknown error'}`); return; }
+      if (response.data.status === 'failed') { message.error(`Email was logged but Gmail failed to send it: ${response.data.errorMessage || 'Unknown error'}`); return; }
       await recordHistory(response.data, reason);
       onSent();
-      alert(sentEmailReceipt(response.data));
-    } catch (error: any) { alert(sendFailureDetails(error, pdfSize, payloadSize)); }
+      message.success(sentEmailReceipt(response.data));
+    } catch (error: any) { message.error(sendFailureDetails(error, pdfSize, payloadSize)); }
     finally { setSending(false); }
   }, [bookingId, language, missingEmail, onSent, prepareAttachment, prepareBooking, reason, recordHistory, resolvedClient, resolvedRetreat]);
 

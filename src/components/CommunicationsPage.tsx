@@ -7,6 +7,9 @@ import { BookingFlowTemplate, Client, EmailAsset, EmailTemplate, EmailTemplateSe
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { buildTemplateBookingActionPayload, normalizeTemplateBookingStepKeys } from './emailTemplateBookingActions';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 type TabKey = 'settings' | 'templates' | 'compose' | 'sent' | 'inbound';
 type PortalGateSettings = {
@@ -86,6 +89,7 @@ const formatSentEmailReceipt = (sentEmail: SentEmail) => {
 };
 
 const CommunicationsPage: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [activeTab, setActiveTab] = useState<TabKey>('settings');
   const [settingsArea, setSettingsArea] = useState('safety');
   const location = useLocation();
@@ -391,7 +395,7 @@ const CommunicationsPage: React.FC = () => {
       };
 
       if (!payload.name || !payload.subject || !payload.bodyText) {
-        alert('Template name, subject, and body are required');
+        showError('Template name, subject, and body are required.');
         return;
       }
 
@@ -402,10 +406,10 @@ const CommunicationsPage: React.FC = () => {
       }
 
       await loadAll();
-      alert('Template saved');
+      showSuccess('Template saved.');
     } catch (error) {
       console.error('Error saving template:', error);
-      alert('Error saving template');
+      showError(apiErrorMessage(error, 'Could not save this template.'));
     } finally {
       setSavingTemplate(false);
     }
@@ -419,9 +423,10 @@ const CommunicationsPage: React.FC = () => {
       await loadAll();
       setSelectedTemplateId('');
       setTemplateForm(defaultTemplateForm);
+      showSuccess('Template deleted.');
     } catch (error) {
       console.error('Error deleting template:', error);
-      alert('Error deleting template');
+      showError(apiErrorMessage(error, 'Could not delete this template.'));
     }
   };
 
@@ -438,7 +443,7 @@ const CommunicationsPage: React.FC = () => {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Unable to export this template. Add a template key and save it first.');
+      showError(apiErrorMessage(error, 'Unable to export this template. Add a template key and save it first.'));
     }
   };
 
@@ -459,7 +464,7 @@ const CommunicationsPage: React.FC = () => {
   const handleSeedDefaultTemplates = async () => {
     const selectedOptions = seedOptions.filter((option) => selectedSeedKeys.includes(option.key));
     if (selectedOptions.length === 0) {
-      alert('Select at least one template to seed.');
+      showError('Select at least one template to seed.');
       return;
     }
     const confirmed = window.confirm(
@@ -476,10 +481,10 @@ const CommunicationsPage: React.FC = () => {
         })),
       });
       await loadAll();
-      alert(`Selected templates seeded. Created: ${response.data.created}. Updated: ${response.data.updated}. Skipped unchanged existing templates: ${response.data.skipped || 0}.`);
+      showSuccess(`Selected templates seeded. Created: ${response.data.created}. Updated: ${response.data.updated}. Skipped unchanged existing templates: ${response.data.skipped || 0}.`);
     } catch (error: any) {
       console.error('Error seeding default templates:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to seed default templates.');
+      showError(apiErrorMessage(error, 'Unable to seed default templates.'));
     } finally {
       setSeedingTemplates(false);
     }
@@ -503,10 +508,10 @@ const CommunicationsPage: React.FC = () => {
   };
 
   const handleFutureBroadcastSend = async () => {
-    if (!futureRetreatIds.length) return alert('Select at least one future retreat.');
+    if (!futureRetreatIds.length) return showError('Select at least one future retreat.');
     const { subjects, bodies } = futureBroadcast;
-    if (futureBroadcast.mode === 'template' && !futureBroadcast.templateId) return alert('Select a template.');
-    if (futureBroadcast.mode === 'custom' && (Object.values(subjects).some((value) => !value.trim()) || Object.values(bodies).some((value) => !value.trim()))) return alert('Complete the English, Czech, and Polish subject and message.');
+    if (futureBroadcast.mode === 'template' && !futureBroadcast.templateId) return showError('Select a template.');
+    if (futureBroadcast.mode === 'custom' && (Object.values(subjects).some((value) => !value.trim()) || Object.values(bodies).some((value) => !value.trim()))) return showError('Complete the English, Czech, and Polish subject and message.');
     if (!window.confirm(`Send this update to ${futureRetreatIds.length} future retreat(s), using each client’s saved language?`)) return;
     setSendingFutureBroadcast(true);
     try {
@@ -524,9 +529,9 @@ const CommunicationsPage: React.FC = () => {
         results.push(response.data);
       }
       const totals = results.reduce((sum, result) => ({ sent: sum.sent + (result.sent || 0), failed: sum.failed + (result.failed || 0), skipped: sum.skipped + (result.skipped || 0) }), { sent: 0, failed: 0, skipped: 0 });
-      alert(`Future retreat update complete. Sent: ${totals.sent}. Failed: ${totals.failed}. Skipped: ${totals.skipped}.`);
+      showSuccess(`Future retreat update complete. Sent: ${totals.sent}. Failed: ${totals.failed}. Skipped: ${totals.skipped}.`);
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'The future retreat update could not be sent.');
+      showError(apiErrorMessage(error, 'The future retreat update could not be sent.'));
     } finally {
       setSendingFutureBroadcast(false);
     }
@@ -572,17 +577,17 @@ const CommunicationsPage: React.FC = () => {
       };
 
       if (!payload.to) {
-        alert('A recipient email is required');
+        showError('A recipient email is required.');
         return;
       }
 
       const response = await communicationsApi.sendEmail(payload);
       await loadAll();
       setActiveTab('sent');
-      alert(formatSentEmailReceipt(response.data));
+      showSuccess(formatSentEmailReceipt(response.data));
     } catch (error) {
       console.error('Error sending email:', error);
-      alert('Email send failed');
+      showError(apiErrorMessage(error, 'Email send failed.'));
     } finally {
       setSendingEmail(false);
     }
@@ -611,24 +616,24 @@ const CommunicationsPage: React.FC = () => {
       });
       await contractGateApi.saveSettings(contractGate);
       setSettings(response.data);
-      alert('Settings saved');
+      showSuccess('Settings saved.');
     } catch (error) {
       console.error('Error saving communications settings:', error);
-      alert('Error saving settings');
+      showError(apiErrorMessage(error, 'Could not save settings.'));
     } finally {
       setSavingSettings(false);
     }
   };
 
   const handleAssetUpload = async () => {
-    if (!assetDraft.file) { alert('Choose a PDF or image file.'); return; }
+    if (!assetDraft.file) { showError('Choose a PDF or image file.'); return; }
     setUploadingAsset(true);
     try {
       await communicationsApi.uploadAsset(assetDraft.file, assetDraft);
       const response = await communicationsApi.getAssets();
       setEmailAssets(response.data || []);
       setAssetDraft((current) => ({ ...current, file: null }));
-    } catch (error: any) { alert(error?.response?.data?.message || 'Asset upload failed.'); }
+    } catch (error: any) { showError(apiErrorMessage(error, 'Asset upload failed.')); }
     finally { setUploadingAsset(false); }
   };
 
@@ -646,9 +651,10 @@ const CommunicationsPage: React.FC = () => {
       await communicationsApi.deleteSentEmail(id);
       setSelectedSentEmailId('');
       await loadAll();
+      showSuccess('Communication log entry deleted.');
     } catch (error) {
       console.error('Error deleting communication log:', error);
-      alert('Unable to delete communication log');
+      showError(apiErrorMessage(error, 'Unable to delete communication log.'));
     }
   };
 
@@ -658,7 +664,7 @@ const CommunicationsPage: React.FC = () => {
       window.open(response.data.authUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Error opening Gmail auth URL:', error);
-      alert('Unable to start Gmail authorization');
+      showError(apiErrorMessage(error, 'Unable to start Gmail authorization.'));
     }
   };
 
@@ -666,10 +672,10 @@ const CommunicationsPage: React.FC = () => {
     try {
       await communicationsApi.testConnection();
       await loadAll();
-      alert('Gmail connection verified');
+      showSuccess('Gmail connection verified.');
     } catch (error) {
       console.error('Error testing Gmail connection:', error);
-      alert('Gmail connection test failed');
+      showError(apiErrorMessage(error, 'Gmail connection test failed.'));
     }
   };
 
@@ -678,9 +684,10 @@ const CommunicationsPage: React.FC = () => {
     try {
       await communicationsApi.disconnect();
       await loadAll();
+      showSuccess('Gmail disconnected.');
     } catch (error) {
       console.error('Error disconnecting Gmail:', error);
-      alert('Unable to disconnect Gmail');
+      showError(apiErrorMessage(error, 'Unable to disconnect Gmail.'));
     }
   };
 
@@ -699,11 +706,11 @@ const CommunicationsPage: React.FC = () => {
   const handleSetupGmailWatch = async () => {
     try {
       const response = await communicationsApi.setupGmailWatch();
-      alert(`Gmail watch started. History ID: ${response.data?.gmailHistoryId || 'n/a'}`);
+      showSuccess(`Gmail watch started. History ID: ${response.data?.gmailHistoryId || 'n/a'}`);
       await loadAll();
     } catch (error: any) {
       console.error('Error starting Gmail watch:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to start Gmail watch');
+      showError(apiErrorMessage(error, 'Unable to start Gmail watch.'));
     }
   };
 
@@ -711,11 +718,11 @@ const CommunicationsPage: React.FC = () => {
     setProcessingInbound(true);
     try {
       const response = await communicationsApi.processInboundEmails(25);
-      alert(`Processed ${response.data?.processed || 0} inbound emails.`);
+      showSuccess(`Processed ${response.data?.processed || 0} inbound emails.`);
       await loadInboundEmails();
     } catch (error: any) {
       console.error('Error processing inbound emails:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to process inbound emails');
+      showError(apiErrorMessage(error, 'Unable to process inbound emails.'));
     } finally {
       setProcessingInbound(false);
     }
@@ -754,6 +761,7 @@ const CommunicationsPage: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Communications</h1>

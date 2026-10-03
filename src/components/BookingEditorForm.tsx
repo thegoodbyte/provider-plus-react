@@ -10,6 +10,9 @@ import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
 import { bookingPriceFromPaymentRequest, bookingPriceLinesForClient } from './bookingPaymentRequestPricing';
 import { parseCalendarDate } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 type BookingFormData = {
   clientId: string;
@@ -138,6 +141,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   submitLabel,
   showBackButton = false,
 }) => {
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
@@ -387,22 +391,22 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         if (!valid) return;
       }
       if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
-        alert('Please select the ceremony this booster guest will attend.');
+        showError('Please select the ceremony this booster guest will attend.');
         return;
       }
       if (formData.bookingType === 'booster' && formData.ceremonyNumber && !formData.ceremonyId) {
-        alert(`Ceremony ${formData.ceremonyNumber} does not have a ceremony record yet for this retreat. Add it on the Ceremonies tab before booking a booster guest for it.`);
+        showError(`Ceremony ${formData.ceremonyNumber} does not have a ceremony record yet for this retreat. Add it on the Ceremonies tab before booking a booster guest for it.`);
         return;
       }
       if (formData.checkInDate && formData.checkOutDate && new Date(formData.checkOutDate) <= new Date(formData.checkInDate)) {
-        alert('Check-out must be after check-in.');
+        showError('Check-out must be after check-in.');
         return;
       }
 
       if (mode === 'edit' && bookingId) {
         if (formData.status === 'cancelled' && booking?.status !== 'cancelled') {
           if (!cancellationReason.trim()) {
-            alert('Please enter a cancellation reason.');
+            showError('Please enter a cancellation reason.');
             return;
           }
           const { status: _status, ...bookingChanges } = payload;
@@ -429,8 +433,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       onSaved();
     } catch (error) {
       console.error('Error saving booking:', error);
-      const message = (error as any)?.response?.data?.message || (error as any)?.message || `Error ${mode === 'edit' ? 'updating' : 'creating'} booking`;
-      alert(Array.isArray(message) ? message.join(' ') : String(message));
+      showError(apiErrorMessage(error, `Error ${mode === 'edit' ? 'updating' : 'creating'} booking.`));
     } finally {
       setSaving(false);
     }
@@ -452,6 +455,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
   return (
     <div className="w-full">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div>

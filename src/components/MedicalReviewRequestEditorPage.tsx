@@ -8,6 +8,9 @@ import { useAuth } from '../context/AuthContext';
 import { Client, MedicalArtifact, MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Retreat } from '../types';
 import { groupMatchesRetreat } from './MedicalReviewRequestEditorPage.helpers';
 import './MedicalReviewRequestEditorPage.css';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 type FormState = {
   medicalTrackingId: string;
@@ -132,6 +135,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const { user } = useAuth();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const artifactId = new URLSearchParams(location.search).get('artifactId') || '';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -415,7 +419,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       navigate('/admin/medical-review-requests');
     } catch (error) {
       console.error('Error saving medical review request:', error);
-      alert(error instanceof Error ? error.message : 'Error saving medical review request');
+      showError(apiErrorMessage(error, 'Error saving medical review request.'));
     } finally {
       setSaving(false);
     }
@@ -430,6 +434,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
 
   return (
     <div className="mrr-editor-page">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mrr-editor-shell">
       <header className="mrr-editor-header">
         <div>

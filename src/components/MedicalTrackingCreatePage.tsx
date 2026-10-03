@@ -7,6 +7,9 @@ import SearchableClientDropdown from './SearchableClientDropdown';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { clientMedicalApi, clientsApi, retreatsApi } from '../services/api';
 import { Client, Retreat } from '../types';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -14,6 +17,7 @@ const MedicalTrackingCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
@@ -51,7 +55,7 @@ const MedicalTrackingCreatePage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId || !retreatId) {
-      alert('Select a client and retreat first');
+      showError('Select a client and retreat first.');
       return;
     }
 
@@ -70,8 +74,7 @@ const MedicalTrackingCreatePage: React.FC = () => {
       navigate(`${routePrefix}/medical-tracking/${response.data._id}/edit`);
     } catch (error: any) {
       console.error('Error creating medical tracking record:', error);
-      const message = error?.response?.data?.message || error?.message || 'Failed to create medical tracking record';
-      alert(Array.isArray(message) ? message.join(', ') : message);
+      showError(apiErrorMessage(error, 'Failed to create medical tracking record.'));
     } finally {
       setSaving(false);
     }
@@ -83,6 +86,7 @@ const MedicalTrackingCreatePage: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100vh-96px)] bg-white px-3 py-4 sm:px-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <button

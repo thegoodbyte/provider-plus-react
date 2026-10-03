@@ -58,15 +58,13 @@ describe('RetreatTrackingGrid MRR actions', () => {
 
   it('requests a missing document from the client and refreshes once sent (PPVC-687)', async () => {
     (documentRequestsApi.requestMissingDocument as jest.Mock).mockResolvedValue({ data: { emailSent: true, message: 'Client notified.' } });
-    const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => undefined);
     render(<MemoryRouter initialEntries={['/admin/retreats/retreat-1']}><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
 
     const requestButtons = await screen.findAllByRole('button', { name: 'Request from client' });
     fireEvent.click(requestButtons[0]);
 
-    await waitFor(() => expect(alertSpy).toHaveBeenCalledWith('Client notified.'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Client notified.'));
     expect(documentRequestsApi.requestMissingDocument).toHaveBeenCalledWith('booking-1', 'medications');
     await waitFor(() => expect(bookingFlowApi.getItems).toHaveBeenCalledTimes(2));
-    alertSpy.mockRestore();
   });
 });

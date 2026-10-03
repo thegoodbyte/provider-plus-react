@@ -10,6 +10,9 @@ import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModa
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 import { paymentRequestFinancialSummary } from './bookingFinancialSummary';
 import { getIbogaReadyPaymentUrl, getPolishWebsitePaymentUrl, getPreferredPaymentUrl } from './paymentRequestLinks';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -49,6 +52,7 @@ type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'paidDa
 type SortDirection = 'asc' | 'desc';
 
 const PaymentRequestsGrid: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const navigate = useNavigate();
   const [paymentRequests, setPaymentRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,13 +86,13 @@ const PaymentRequestsGrid: React.FC = () => {
       fetchPaymentRequests();
     } catch (error) {
       console.error('Error deleting payment request:', error);
-      alert('Failed to delete payment request');
+      showError(apiErrorMessage(error, 'Could not delete this payment request.'));
     }
   };
 
   const handleSendPaymentRequest = (request: any) => {
     if (!request.publicHash) {
-      alert('This payment request does not have a public hash yet. Open and save it once, then send it.');
+      showError('This payment request does not have a public hash yet. Open and save it once, then send it.');
       return;
     }
     setSelectedSendRequest(request);
@@ -96,7 +100,7 @@ const PaymentRequestsGrid: React.FC = () => {
 
   const copyToClipboard = async (value: string) => {
     await navigator.clipboard.writeText(value);
-    alert('Copied.');
+    showSuccess('Copied.');
   };
 
   const buildPaymentEmail = (request: any): EmailComposeInitialValues => {
@@ -256,6 +260,7 @@ const PaymentRequestsGrid: React.FC = () => {
 
   return (
     <div className="p-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex items-start gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['payment-requests'].label}</h1>

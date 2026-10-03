@@ -4,6 +4,9 @@ import { Retreat, ClientRequirement, Requirement } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { FiCheck, FiX, FiClock } from 'react-icons/fi';
 import './RetreatsGrid.css';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -26,6 +29,7 @@ const RetreatRequirementsGrid: React.FC = () => {
   const [clientRequirements, setClientRequirements] = useState<RetreatRequirementsOverview[]>([]);
   const [allRequirements, setAllRequirements] = useState<Requirement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast, showError, dismiss: dismissToast } = useToast();
 
   const fetchRetreats = useCallback(async () => {
     try {
@@ -164,13 +168,13 @@ const RetreatRequirementsGrid: React.FC = () => {
         setIsLoading(true);
         // This would require a backend endpoint to initialize requirements for all clients in a retreat
         // For now, we'll show a message
-        alert('This feature requires a backend endpoint to initialize requirements for all clients. Please implement the endpoint first.');
+        showError('This feature requires a backend endpoint to initialize requirements for all clients. Please implement the endpoint first.');
 
         // After implementation, refresh the data
         // await fetchRetreatRequirementsOverview(selectedRetreatId);
       } catch (error) {
         console.error('Error initializing requirements:', error);
-        alert('Error initializing requirements for all clients');
+        showError(apiErrorMessage(error, 'Could not initialize requirements for all clients.'));
       } finally {
         setIsLoading(false);
       }
@@ -179,6 +183,7 @@ const RetreatRequirementsGrid: React.FC = () => {
 
   return (
     <div className="retreats-container">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="retreats-header">
         <h2>📋 Retreat Requirements Overview</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>

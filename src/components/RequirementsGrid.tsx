@@ -4,6 +4,9 @@ import { Requirement } from '../types';
 import RetreatRequirementsGrid from './RetreatRequirementsGrid';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiPackage } from 'react-icons/fi';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -11,6 +14,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 const RequirementsGrid: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -95,10 +99,10 @@ const RequirementsGrid: React.FC = () => {
       try {
         await requirementsApi.seed();
         fetchRequirements();
-        alert('Default requirements created successfully!');
+        showSuccess('Default requirements created successfully!');
       } catch (error) {
         console.error('Error seeding requirements:', error);
-        alert('Error creating default requirements');
+        showError(apiErrorMessage(error, 'Error creating default requirements.'));
       }
     }
   };
@@ -135,7 +139,7 @@ const RequirementsGrid: React.FC = () => {
       fetchRequirements();
     } catch (error: any) {
       console.error('Error saving requirement:', error);
-      alert('Error saving requirement: ' + (error.response?.data?.message || error.message));
+      showError(apiErrorMessage(error, 'Error saving requirement.'));
     }
   };
 
@@ -159,6 +163,7 @@ const RequirementsGrid: React.FC = () => {
 
   return (
     <div className="p-6 h-full">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">📋 Requirements Management</h1>
         <div className="flex items-center gap-4">

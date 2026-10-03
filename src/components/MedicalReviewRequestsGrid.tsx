@@ -13,6 +13,9 @@ import { usersApi, User } from '../services/usersApi';
 import { MedicalReviewTypeFilter, editablePacketRequests, formatMedicalReviewCreatedAt, getClientProfileHref, getReviewRequestFilterText, groupWhatsappHandledByRetreat, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 import ResponsiveModal from './ResponsiveModal';
 import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation } from './medicalReviewStatus';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -141,6 +144,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const basePath = isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests';
   const canManageRequests = user?.role === 'admin' || user?.role === 'medical_staff';
   const canDeleteRequests = user?.role === 'admin';
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [whatsappRequest, setWhatsappRequest] = useState<EnrichedReviewRequest | null>(null);
   const [requests, setRequests] = useState<EnrichedReviewRequest[]>([]);
   const [groups, setGroups] = useState<MedicalReviewGroup[]>([]);
@@ -240,10 +244,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     try {
       setNotifyingSubmissionId(requestId);
       const response = await medicalReviewRequestsApi.notifySubmission(requestId);
-      window.alert(response.data.message || 'Client notified that their document was submitted for review.');
+      showSuccess(response.data.message || 'Client notified that their document was submitted for review.');
       if (response.data.emailSent) await loadData();
     } catch (requestError: any) {
-      window.alert(requestError?.response?.data?.message || 'Unable to notify the client.');
+      showError(apiErrorMessage(requestError, 'Unable to notify the client.'));
     } finally {
       setNotifyingSubmissionId('');
     }
@@ -265,7 +269,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setNeedsInfoError('');
       await medicalReviewRequestsApi.updateClientVisibleAdminNote(needsInfoRequest._id, needsInfoNote.trim());
       const response = await medicalReviewRequestsApi.emailClientVisibleAdminNote(needsInfoRequest._id);
-      window.alert(response.data.message || 'Client emailed.');
+      showSuccess(response.data.message || 'Client emailed.');
       setNeedsInfoRequest(null);
       await loadData();
     } catch (requestError: any) {
@@ -655,7 +659,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       // anchor click after the asynchronous API request has completed.
       window.location.assign(response.data.url);
     } catch (requestError: any) {
-      window.alert(requestError?.response?.data?.message || 'Unable to download pending MRR artifacts.');
+      showError(apiErrorMessage(requestError, 'Unable to download pending MRR artifacts.'));
     } finally {
       setDownloadingPacketId('');
       setDownloadPacket(null);
@@ -668,7 +672,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       await medicalReviewRequestsApi.markAdvisorSent([requestId]);
       await loadData();
     } catch (requestError: any) {
-      window.alert(requestError?.response?.data?.message || 'Unable to mark this MRR as sent.');
+      showError(apiErrorMessage(requestError, 'Unable to mark this MRR as sent.'));
     }
   };
 
@@ -689,7 +693,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       });
       await loadData();
     } catch (requestError: any) {
-      window.alert(requestError?.response?.data?.message || 'Unable to mark this MRR as sent via WhatsApp.');
+      showError(apiErrorMessage(requestError, 'Unable to mark this MRR as sent via WhatsApp.'));
     }
   };
 
@@ -919,6 +923,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
 
   return (
     <div className="h-full overflow-x-hidden p-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['medical-review-requests'].label}</h1>

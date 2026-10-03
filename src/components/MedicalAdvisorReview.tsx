@@ -5,12 +5,16 @@ import { MedicalItem, Client } from '../types';
 import AppleButton from './AppleButton';
 import { FiArrowLeft, FiSave, FiImage, FiUser, FiCalendar, FiFileText, FiCheck, FiX, FiAlertTriangle } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
 };
 
 const MedicalAdvisorReview: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -167,7 +171,7 @@ const MedicalAdvisorReview: React.FC = () => {
 
   const handleSaveReview = async () => {
     if (!item || !reviewStatus) {
-      alert('Please select a review status before saving.');
+      showError('Please select a review status before saving.');
       return;
     }
 
@@ -185,10 +189,10 @@ const MedicalAdvisorReview: React.FC = () => {
       // Refresh the item data
       await fetchItemDetails();
 
-      alert('Review saved successfully!');
+      showSuccess('Review saved successfully!');
     } catch (error) {
       console.error('Error saving review:', error);
-      alert('Error saving review. Please try again.');
+      showError(apiErrorMessage(error, 'Error saving review. Please try again.'));
     } finally {
       setIsSaving(false);
     }
@@ -216,6 +220,7 @@ const MedicalAdvisorReview: React.FC = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">

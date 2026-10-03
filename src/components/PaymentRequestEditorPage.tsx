@@ -7,6 +7,9 @@ import { PaymentReceipt, PaymentRequest } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
 import { getIbogaReadyPaymentUrl, getPolishWebsitePaymentUrl } from './paymentRequestLinks';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 
@@ -55,6 +58,7 @@ const PaymentRequestEditorPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isView = Boolean(id) && !location.pathname.endsWith('/edit');
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [loading, setLoading] = useState(Boolean(id));
   const [paymentRequest, setPaymentRequest] = useState<Partial<PaymentRequest> | undefined>(
     () => (id ? undefined : buildPaymentRequestFromSearch(location.search))
@@ -155,8 +159,9 @@ const PaymentRequestEditorPage: React.FC = () => {
       if (decision === 'approve') {
         setPaymentRequest((current: any) => ({ ...current, clientId: { ...(typeof current?.clientId === 'object' ? current.clientId : {}), firstName: response.data.current.firstName, lastName: response.data.current.lastName, email: response.data.current.email } }));
       }
+      showSuccess(decision === 'approve' ? 'Identity change approved.' : 'Identity change rejected.');
     } catch (error: any) {
-      window.alert(error?.response?.data?.message || 'Unable to review the identity change.');
+      showError(apiErrorMessage(error, 'Unable to review the identity change.'));
     } finally { setIdentityReviewLoading(false); }
   };
 
@@ -173,6 +178,7 @@ const PaymentRequestEditorPage: React.FC = () => {
       : null;
     return (
       <div className="p-6 max-w-5xl mx-auto">
+        <Toast toast={toast} onDismiss={dismissToast} />
         <div className="mb-6 flex items-center justify-between gap-4">
           <button
             type="button"

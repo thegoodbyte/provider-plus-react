@@ -15,6 +15,9 @@ import {
 } from '../utils/bookingStepColors';
 import BookingStepColorField from './BookingStepColorField';
 import { BOOKING_STEP_TYPES, BookingStepTypeIcon, getBookingStepType } from './bookingStepTypes';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -89,6 +92,7 @@ const RetreatFlowPage: React.FC = () => {
   const location = useLocation();
   const { retreatId } = useParams();
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [selectedRetreatId, setSelectedRetreatId] = useState<string>(retreatId || '');
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
@@ -252,7 +256,7 @@ const RetreatFlowPage: React.FC = () => {
       await loadFlow(selectedRetreatId);
     } catch (error) {
       console.error('Error saving flow template:', error);
-      alert('Error saving template');
+      showError(apiErrorMessage(error, 'Could not save this template.'));
     } finally {
       setSaving(false);
     }
@@ -282,7 +286,7 @@ const RetreatFlowPage: React.FC = () => {
       setForm((prev) => ({ ...prev, readinessGroupColor: color }));
     } catch (error) {
       console.error('Error applying color to retreat group:', error);
-      alert('Unable to apply this color to the whole section.');
+      showError(apiErrorMessage(error, 'Unable to apply this color to the whole section.'));
     } finally {
       setSaving(false);
     }
@@ -301,11 +305,11 @@ const RetreatFlowPage: React.FC = () => {
       setSendingTemplateId(template._id);
       const response = await bookingFlowApi.sendTemplateEmailToRetreat(selectedRetreatId, template._id);
       const { sent, failed, skipped } = response.data;
-      alert(`Email send finished. Sent: ${sent}. Failed: ${failed}. Skipped: ${skipped}.`);
+      showSuccess(`Email send finished. Sent: ${sent}. Failed: ${failed}. Skipped: ${skipped}.`);
       await loadFlow(selectedRetreatId);
     } catch (error: any) {
       console.error('Error sending step email:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to send email for this step.');
+      showError(apiErrorMessage(error, 'Unable to send email for this step.'));
     } finally {
       setSendingTemplateId('');
     }
@@ -546,6 +550,7 @@ const RetreatFlowPage: React.FC = () => {
 
   return (
     <div className="p-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['retreat-flow'].label}</h1>

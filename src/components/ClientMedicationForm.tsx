@@ -5,6 +5,9 @@ import { clientsApi, Client } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import AppleButton from './AppleButton';
 import { FiArrowLeft, FiUpload, FiFileText, FiSave, FiX } from 'react-icons/fi';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Icon wrapper to fix TypeScript issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -28,6 +31,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
 
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -61,8 +65,8 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
       setFormData(response.data);
     } catch (error) {
       console.error('Error fetching medication data:', error);
-      alert('Error loading medication data. Please try again.');
-      navigate('/admin/client-forms?tab=medications');
+      showError(apiErrorMessage(error, 'Error loading medication data.'));
+      setTimeout(() => navigate('/admin/client-forms?tab=medications'), 2500);
     } finally {
       setIsLoading(false);
     }
@@ -80,11 +84,11 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== 'application/pdf') {
-        alert('Please select a PDF file.');
+        showError('Please select a PDF file.');
         return;
       }
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        alert('File size must be less than 10MB.');
+        showError('File size must be less than 10MB.');
         return;
       }
       setSelectedFile(file);
@@ -126,11 +130,11 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
         setUploadProgress(100);
       }
 
-      alert(`Medication record ${isCreating ? 'created' : 'updated'} successfully!`);
-      navigate('/admin/client-forms?tab=medications');
+      showSuccess(`Medication record ${isCreating ? 'created' : 'updated'} successfully!`);
+      setTimeout(() => navigate('/admin/client-forms?tab=medications'), 1200);
     } catch (error) {
       console.error('Error saving medication:', error);
-      alert('Error saving medication record. Please try again.');
+      showError(apiErrorMessage(error, 'Error saving medication record.'));
     } finally {
       setIsSaving(false);
       setUploadProgress(0);
@@ -156,6 +160,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
   if (isLoading) {
     return (
       <div className="p-6">
+        <Toast toast={toast} onDismiss={dismissToast} />
         <div className="text-center">Loading medication data...</div>
       </div>
     );
@@ -163,6 +168,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
 
   return (
     <div className="p-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">

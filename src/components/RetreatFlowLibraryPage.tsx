@@ -15,6 +15,9 @@ import {
 } from '../utils/bookingStepColors';
 import BookingStepColorField from './BookingStepColorField';
 import { BOOKING_STEP_TYPES, BookingStepTypeIcon, getBookingStepType } from './bookingStepTypes';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -123,6 +126,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -337,7 +341,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       await loadData();
     } catch (error) {
       console.error('Error saving library template:', error);
-      alert('Error saving template');
+      showError(apiErrorMessage(error, 'Error saving template.'));
     } finally {
       setSaving(false);
     }
@@ -361,7 +365,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Unable to export booking-step backup.');
+      showError(apiErrorMessage(error, 'Unable to export booking-step backup.'));
     }
   };
 
@@ -382,7 +386,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
     } catch (error: any) {
       setImportBackup(null);
       setImportPreview(null);
-      alert(error?.response?.data?.message || error?.message || 'Unable to read or validate this backup file.');
+      showError(apiErrorMessage(error, 'Unable to read or validate this backup file.'));
     }
   };
 
@@ -396,12 +400,12 @@ const RetreatFlowLibraryPage: React.FC = () => {
     setImporting(true);
     try {
       const response = await bookingFlowApi.importLibraryBackup(importBackup, importMode);
-      alert(`Restore complete. Added ${response.data.added}, updated ${response.data.updated}, unchanged ${response.data.unchanged}. An automatic pre-import backup was saved to Audit Logs.`);
+      showSuccess(`Restore complete. Added ${response.data.added}, updated ${response.data.updated}, unchanged ${response.data.unchanged}. An automatic pre-import backup was saved to Audit Logs.`);
       setImportBackup(null);
       setImportPreview(null);
       await loadData();
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Unable to restore booking-step configuration.');
+      showError(apiErrorMessage(error, 'Unable to restore booking-step configuration.'));
     } finally {
       setImporting(false);
     }
@@ -424,7 +428,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       setForm((prev) => ({ ...prev, readinessGroupColor: color }));
     } catch (error) {
       console.error('Error applying color to library group:', error);
-      alert('Unable to apply this color to the whole section.');
+      showError('Unable to apply this color to the whole section.');
     } finally {
       setSaving(false);
     }
@@ -467,7 +471,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       await loadData();
     } catch (error) {
       console.error('Error reordering library templates:', error);
-      alert('Error reordering booking steps');
+      showError('Error reordering booking steps.');
       await loadData();
     }
   };
@@ -981,6 +985,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#e8e6e5] p-4 lg:p-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mx-auto max-w-[1500px] border border-gray-300 bg-[#fbfaf9] shadow-lg">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-900 px-7 py-5">
         <div>

@@ -6,6 +6,9 @@ import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiCalendar, FiFileText, FiSearch, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { generateBookingPDF } from './BookingConfirmationPDF';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -54,6 +57,7 @@ const BookingsGrid: React.FC = () => {
   const [selectedRetreatId, setSelectedRetreatId] = useState(queryRetreatId);
   const [sortField, setSortField] = useState<SortField>('bookingNumber');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
@@ -289,6 +293,7 @@ const BookingsGrid: React.FC = () => {
 
   return (
     <div className="p-6 h-full">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Bookings</h1>
         <div className="flex items-center gap-4">
@@ -475,7 +480,7 @@ const BookingsGrid: React.FC = () => {
                             });
                           } catch (error) {
                             console.error('Error generating PDF:', error);
-                            alert('Error generating PDF');
+                            showError(apiErrorMessage(error, 'Could not generate the PDF.'));
                             setGeneratingPDF(null);
                           }
                         }}

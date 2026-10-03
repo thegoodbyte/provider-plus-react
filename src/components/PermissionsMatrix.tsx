@@ -1,6 +1,8 @@
 import { NAVIGATION, SETTINGS_LABEL } from '../navigation/navigation';
 import React, { useState, useEffect } from 'react';
 import AppleButton from './AppleButton';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 interface Permission {
   route: string;
@@ -121,6 +123,7 @@ const getInitialPermissions = () => {
 };
 
 const PermissionsMatrix: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [permissions, setPermissions] = useState<RolePermissions>(getInitialPermissions);
   const [hasChanges, setHasChanges] = useState(false);
   const [groupedPermissions, setGroupedPermissions] = useState<Record<string, Permission[]>>({});
@@ -161,10 +164,10 @@ const PermissionsMatrix: React.FC = () => {
       localStorage.setItem(NAVIGATION_PERMISSIONS_STORAGE_KEY, JSON.stringify(permissions));
       window.dispatchEvent(new Event('navigationPermissionsChange'));
       setHasChanges(false);
-      alert('Permissions saved successfully!');
+      showSuccess('Permissions saved successfully!');
     } catch (error) {
       console.error('Error saving permissions:', error);
-      alert('Error saving permissions. Please try again.');
+      showError('Could not save permissions.');
     }
   };
 
@@ -183,6 +186,7 @@ const PermissionsMatrix: React.FC = () => {
 
   return (
     <div className="p-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Permission Management</h1>
         <p className="text-gray-600">

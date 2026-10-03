@@ -7,6 +7,9 @@ import CurrencyDisplay from './CurrencyDisplay';
 import ClientAvatar from './ClientAvatar';
 import LoadingSpinner from './LoadingSpinner';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -32,6 +35,7 @@ const getRetreatCode = (retreat?: Retreat) => {
 
 const PaymentsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sortKey, setSortKey] = useState<PaymentSortKey>('display');
@@ -107,9 +111,10 @@ const PaymentsPage: React.FC = () => {
     try {
       await paymentsApi.delete(id);
       fetchPayments();
+      showSuccess('Payment deleted.');
     } catch (error) {
       console.error('Error deleting payment:', error);
-      alert('Error deleting payment');
+      showError(apiErrorMessage(error, 'Error deleting payment.'));
     }
   };
 
@@ -218,6 +223,7 @@ const PaymentsPage: React.FC = () => {
 
   return (
     <div className="p-6 h-full">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex items-start gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-semibold text-gray-900">Payments</h1>

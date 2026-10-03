@@ -4,6 +4,9 @@ import { medicalTrackingApi, clientsApi } from '../services/api';
 import { MedicalItem, Client } from '../types';
 import AppleButton from './AppleButton';
 import { FiArrowLeft, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -58,6 +61,7 @@ const MedicalTrackingDetail: React.FC = () => {
   const navigate = useNavigate();
   const [item, setItem] = useState<MedicalItem | null>(null);
   const [client, setClient] = useState<Client | null>(null);
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
@@ -180,7 +184,7 @@ const MedicalTrackingDetail: React.FC = () => {
       navigate('/medical-tracking');
     } catch (error) {
       console.error('Error deleting medical item:', error);
-      alert('Error deleting item. Please try again.');
+      showError(apiErrorMessage(error, 'Error deleting item.'));
     }
   };
 
@@ -210,6 +214,7 @@ const MedicalTrackingDetail: React.FC = () => {
 
   return (
     <div className="p-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">

@@ -11,6 +11,9 @@ import {
   leadWorkflowStatuses,
   normalizeClientWorkflowStatus,
 } from '../utils/clientWorkflowStatus';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -23,6 +26,7 @@ const ScreeningClientsGrid: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
 
   const fetchScreeningClients = useCallback(async () => {
     try {
@@ -54,8 +58,10 @@ const ScreeningClientsGrid: React.FC = () => {
       try {
         await clientsApi.delete(id);
         fetchScreeningClients();
+        showSuccess('Screening client deleted.');
       } catch (error) {
         console.error('Error deleting screening client:', error);
+        showError(apiErrorMessage(error, 'Could not delete this screening client.'));
       }
     }
   };
@@ -65,11 +71,11 @@ const ScreeningClientsGrid: React.FC = () => {
       try {
         // Update the client's workflowStatus to 'active' to promote them
         await clientsApi.update(id, { workflowStatus: 'screened_accepted' } as any);
-        alert('Successfully promoted to active client!');
+        showSuccess('Successfully promoted to active client!');
         fetchScreeningClients();
       } catch (error: any) {
         console.error('Error promoting screening client:', error);
-        alert('Error promoting client: ' + (error.response?.data?.message || error.message));
+        showError(apiErrorMessage(error, 'Could not promote this client.'));
       }
     }
   };
@@ -87,6 +93,7 @@ const ScreeningClientsGrid: React.FC = () => {
 
   return (
     <div className="p-6 h-full">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Screening Clients</h1>
         <AppleButton onClick={() => navigate('/admin/clients/add?workflowStatus=screening_scheduled')} className="apple-button-primary">

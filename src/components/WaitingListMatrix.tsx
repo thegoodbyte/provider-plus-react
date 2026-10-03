@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, AlertCircle, Trash2, MoveUp, MoveDown } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { waitingListApi, clientsApi } from '../services/api';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import './WaitingListMatrix.css';
 
 interface Client {
@@ -53,6 +56,7 @@ const formatDate = (dateString: string) =>
 const sourceLabel = (source?: string) => (source === 'iboga_ready' ? 'Selected by guest in IR' : 'Added in RE');
 
 const WaitingListMatrix: React.FC = () => {
+  const { toast, showError, dismiss: dismissToast } = useToast();
   const [retreatColumns, setRetreatColumns] = useState<RetreatColumn[]>([]);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -116,7 +120,7 @@ const WaitingListMatrix: React.FC = () => {
       await fetchWaitingListMatrix();
     } catch (error) {
       console.error('Error adding client to waiting list:', error);
-      alert('Error adding client to waiting list. They may already be on the list.');
+      showError(apiErrorMessage(error, 'Error adding client to waiting list. They may already be on the list.'));
     }
   };
 
@@ -130,7 +134,7 @@ const WaitingListMatrix: React.FC = () => {
       await fetchWaitingListMatrix();
     } catch (error) {
       console.error('Error removing from waiting list:', error);
-      alert('Error removing from waiting list');
+      showError(apiErrorMessage(error, 'Error removing from waiting list.'));
     }
   };
 
@@ -155,7 +159,7 @@ const WaitingListMatrix: React.FC = () => {
       await fetchWaitingListMatrix();
     } catch (error) {
       console.error('Error updating position:', error);
-      alert('Error updating position');
+      showError(apiErrorMessage(error, 'Error updating position.'));
     }
   };
 
@@ -176,6 +180,7 @@ const WaitingListMatrix: React.FC = () => {
 
   return (
     <div className="holistic-view waiting-list-holistic">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="holistic-controls">
         <div className="holistic-total">
           <span>Waiting list — across every retreat</span>

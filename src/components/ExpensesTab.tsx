@@ -3,6 +3,9 @@ import { retreatExpensesApi, expenseTypesApi } from '../services/api';
 import { RetreatExpense, ExpenseType, ExpenseSummary } from '../types';
 import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiHome } from 'react-icons/fi';
 import './ClientsGrid.css';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -28,6 +31,7 @@ interface ExpenseFormData {
 }
 
 const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [expenses, setExpenses] = useState<RetreatExpense[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
@@ -144,12 +148,13 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
       try {
         await retreatExpensesApi.delete(expenseId);
         await fetchData();
+        showSuccess('Expense deleted.');
       } catch (error) {
         console.error('Error deleting expense:', error);
-        alert('Error deleting expense');
+        showError(apiErrorMessage(error, 'Could not delete this expense.'));
       }
     }
-  }, [fetchData]);
+  }, [fetchData, showSuccess, showError]);
 
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -192,9 +197,10 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
         status: 'pending'
       });
       await fetchData();
+      showSuccess(editingExpense ? 'Expense updated.' : 'Expense added.');
     } catch (error) {
       console.error('Error saving expense:', error);
-      alert('Error saving expense');
+      showError(apiErrorMessage(error, 'Could not save this expense.'));
     }
   };
 
@@ -202,9 +208,10 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
     try {
       await retreatExpensesApi.initializeRetreatExpenses(retreatId);
       await fetchData();
+      showSuccess('Planned expenses initialized.');
     } catch (error) {
       console.error('Error initializing planned expenses:', error);
-      alert('Error initializing planned expenses');
+      showError(apiErrorMessage(error, 'Could not initialize planned expenses.'));
     }
   };
 
@@ -223,6 +230,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
 
   return (
     <div className="expenses-tab">
+      <Toast toast={toast} onDismiss={dismissToast} />
       {/* Summary Cards */}
       {summary && (
         <div className="expenses-summary">

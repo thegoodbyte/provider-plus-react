@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ClientMedical } from '../types';
 import { clientMedicalApi } from '../services/api';
 import { formatCalendarDate } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import './ClientsGrid.css';
 
 interface MedicalTrackingTabProps {
@@ -10,6 +13,7 @@ interface MedicalTrackingTabProps {
 }
 
 const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retreatId }) => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [medicalData, setMedicalData] = useState<ClientMedical | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingLiver, setUploadingLiver] = useState(false);
@@ -59,7 +63,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
       await fetchMedicalData(); // Refresh data
     } catch (error) {
       console.error('Error uploading liver panel:', error);
-      alert('Error uploading liver panel. Please try again.');
+      showError(apiErrorMessage(error, 'Error uploading liver panel. Please try again.'));
     } finally {
       setUploadingLiver(false);
       event.target.value = ''; // Reset file input
@@ -81,7 +85,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
       await fetchMedicalData(); // Refresh data
     } catch (error) {
       console.error('Error uploading EKG:', error);
-      alert('Error uploading EKG. Please try again.');
+      showError(apiErrorMessage(error, 'Error uploading EKG. Please try again.'));
     } finally {
       setUploadingEkg(false);
       event.target.value = ''; // Reset file input
@@ -100,7 +104,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
       await fetchMedicalData(); // Refresh data
     } catch (error) {
       console.error(`Error updating ${type} review:`, error);
-      alert(`Error updating ${type} review. Please try again.`);
+      showError(apiErrorMessage(error, `Error updating ${type} review. Please try again.`));
     }
   };
 
@@ -117,7 +121,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
       await fetchMedicalData(); // Refresh data
     } catch (error) {
       console.error('Error updating medical clearance:', error);
-      alert('Error updating medical clearance. Please try again.');
+      showError(apiErrorMessage(error, 'Error updating medical clearance. Please try again.'));
     }
   };
 
@@ -129,6 +133,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
   if (isLoading) {
     return (
       <div className="loading-container">
+        <Toast toast={toast} onDismiss={dismissToast} />
         <div className="loading-spinner">🏥</div>
         <p>Loading medical tracking...</p>
       </div>
@@ -137,6 +142,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
 
   return (
     <div className="medical-tracking-container">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="form-grid">
         {/* Liver Panel Section */}
         <div className="form-section">

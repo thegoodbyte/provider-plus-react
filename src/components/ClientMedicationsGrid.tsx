@@ -5,6 +5,9 @@ import { clientsApi, Client } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiEye, FiTrash2, FiFileText, FiCalendar } from 'react-icons/fi';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 // Icon wrapper to fix TypeScript issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -17,6 +20,7 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
 
   useEffect(() => {
     fetchData();
@@ -60,9 +64,10 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
       try {
         await clientMedicationsApi.delete(id);
         await fetchData(); // Refresh the list
+        showSuccess('Medication record deleted.');
       } catch (error) {
         console.error('Error deleting medication:', error);
-        alert('Error deleting medication record. Please try again.');
+        showError(apiErrorMessage(error, 'Could not delete this medication record.'));
       }
     }
   };
@@ -112,6 +117,7 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
 
   return (
     <div className={embedded ? "" : "p-6"}>
+      <Toast toast={toast} onDismiss={dismissToast} />
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>

@@ -15,6 +15,9 @@ import { loadClientCoreData } from '../services/clientCoreDataService';
 import './ComprehensiveMedicalTrackingTab.css';
 import { bookingFinancialSummary } from './bookingFinancialSummary';
 import { formatCalendarDate } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 interface ClientDetailViewProps {
   clientId: string;
@@ -23,6 +26,7 @@ interface ClientDetailViewProps {
 
 const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack }) => {
   const navigate = useNavigate();
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
   const [medicalData, setMedicalData] = useState<ClientMedical[]>([]);
   const [requirements, setRequirements] = useState<ClientRequirement[]>([]);
@@ -156,7 +160,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       }
     } catch (error) {
       console.error('Error fetching client data:', error);
-      alert('Error loading client details. Please try again.');
+      showError(apiErrorMessage(error, 'Could not load this client’s details.'));
     } finally {
       setLoading(false);
     }
@@ -184,7 +188,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
     event.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Please choose an image file.');
+      showError('Please choose an image file.');
       return;
     }
 
@@ -192,9 +196,10 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       setUploadingProfilePicture(true);
       const response = await clientsApi.uploadProfilePicture(clientId, file);
       setClient(response.data.client);
+      showSuccess('Profile picture updated.');
     } catch (error: any) {
       console.error('Error uploading profile picture:', error);
-      alert(error?.response?.data?.message || error?.message || 'Failed to upload profile image.');
+      showError(apiErrorMessage(error, 'Failed to upload profile image.'));
     } finally {
       setUploadingProfilePicture(false);
     }
@@ -224,7 +229,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       setClientTagInput('');
     } catch (error) {
       console.error('Error adding client tag:', error);
-      alert('Unable to add the tag.');
+      showError(apiErrorMessage(error, 'Unable to add the tag.'));
     }
   };
 
@@ -236,7 +241,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       setClient(response.data || { ...client, tags: nextTags });
     } catch (error) {
       console.error('Error removing client tag:', error);
-      alert('Unable to remove the tag.');
+      showError(apiErrorMessage(error, 'Unable to remove the tag.'));
     }
   };
 
@@ -247,7 +252,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       setClient(response.data || { ...client, tags: [] });
     } catch (error) {
       console.error('Error clearing client tags:', error);
-      alert('Unable to clear tags.');
+      showError(apiErrorMessage(error, 'Unable to clear tags.'));
     }
   };
 
@@ -267,11 +272,11 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
     try {
       const response = await clientsApi.regenerateDepositHash(clientId);
-      alert(`New deposit hash generated: ${response.data.hash}`);
+      showSuccess(`New deposit hash generated: ${response.data.hash}`);
       fetchClientData(); // Refresh client data to show new hash
     } catch (error) {
       console.error('Error regenerating hash:', error);
-      alert('Error regenerating deposit hash. Please try again.');
+      showError(apiErrorMessage(error, 'Could not regenerate the deposit hash.'));
     }
   };
 
@@ -338,7 +343,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
         fetchClientData(); // Refresh data
       } catch (error) {
         console.error('Error deleting reminder:', error);
-        alert('Error deleting reminder');
+        showError(apiErrorMessage(error, 'Could not delete this reminder.'));
       }
     }
   };
@@ -373,7 +378,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       fetchClientData(); // Refresh data
     } catch (error) {
       console.error('Error saving reminder:', error);
-      alert('Error saving reminder');
+      showError(apiErrorMessage(error, 'Could not save this reminder.'));
     }
   };
 
@@ -401,6 +406,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   if (loading) {
     return (
       <div className="client-detail-loading">
+        <Toast toast={toast} onDismiss={dismissToast} />
         <div className="loading-spinner">⏳</div>
         <p>Loading client details...</p>
       </div>
@@ -410,6 +416,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   if (!client) {
     return (
       <div className="client-detail-error">
+        <Toast toast={toast} onDismiss={dismissToast} />
         <h2>❌ Client Not Found</h2>
         <button onClick={onBack} className="back-btn">← Back to Clients</button>
       </div>
@@ -421,6 +428,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
   return (
     <div className="client-detail-container">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="client-detail-header">
         <button onClick={onBack} className="back-btn">← Back to Clients</button>
         <div className="client-header-profile">
@@ -728,7 +736,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(`${window.location.origin}/api/clients/public/deposit-agreement/${client.depositFormHash}`);
-                          alert('Link copied to clipboard!');
+                          showSuccess('Link copied to clipboard!');
                         }}
                         style={{
                           padding: '8px 12px',
@@ -848,7 +856,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                           setRequirements(requirementsResponse.data || []);
                         } catch (error) {
                           console.error('Error initializing requirements:', error);
-                          alert('Error initializing requirements');
+                          showError(apiErrorMessage(error, 'Could not initialize requirements.'));
                         }
                       }}
                       className="add-btn"
@@ -991,7 +999,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                         fetchClientData();
                                       } catch (error) {
                                         console.error('Error uploading file:', error);
-                                        alert('Error uploading file');
+                                        showError(apiErrorMessage(error, 'Could not upload this file.'));
                                       }
                                     }
                                   }}
@@ -1012,7 +1020,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                       fetchClientData();
                                     } catch (error) {
                                       console.error('Error marking amount received:', error);
-                                      alert('Error marking amount received');
+                                      showError(apiErrorMessage(error, 'Could not mark the amount received.'));
                                     }
                                   }
                                 }}
@@ -1032,7 +1040,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                     fetchClientData();
                                   } catch (error) {
                                     console.error('Error marking received:', error);
-                                    alert('Error marking received');
+                                    showError(apiErrorMessage(error, 'Could not mark this received.'));
                                   }
                                 }}
                                 className="mark-received-btn"
@@ -1051,7 +1059,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                       fetchClientData();
                                     } catch (error) {
                                       console.error('Error marking reviewed:', error);
-                                      alert('Error marking reviewed');
+                                      showError(apiErrorMessage(error, 'Could not mark this reviewed.'));
                                     }
                                   }}
                                   className="review-btn"
@@ -1071,7 +1079,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                     fetchClientData();
                                   } catch (error) {
                                     console.error('Error approving:', error);
-                                    alert('Error approving requirement');
+                                    showError(apiErrorMessage(error, 'Could not approve this requirement.'));
                                   }
                                 }}
                                 className="approve-btn"
@@ -1091,7 +1099,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                       fetchClientData();
                                     } catch (error) {
                                       console.error('Error rejecting:', error);
-                                      alert('Error rejecting requirement');
+                                      showError(apiErrorMessage(error, 'Could not reject this requirement.'));
                                     }
                                   }
                                 }}
@@ -1187,7 +1195,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                             <button
                               onClick={() => {
                                 navigator.clipboard.writeText(paymentUrl);
-                                alert('Payment link copied to clipboard.');
+                                showSuccess('Payment link copied to clipboard.');
                               }}
                               style={{ padding: '8px 12px', backgroundColor: '#374151', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                             >
@@ -1425,7 +1433,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                           });
                         } catch (error) {
                           console.error('Error generating PDF:', error);
-                          alert('Error generating PDF');
+                          showError(apiErrorMessage(error, 'Could not generate the PDF.'));
                           setGeneratingPDF(null);
                         }
                       }}
@@ -1555,7 +1563,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                               fetchClientData();
                             } catch (error) {
                               console.error('Error deleting note:', error);
-                              alert('Error deleting note');
+                              showError(apiErrorMessage(error, 'Could not delete this note.'));
                             }
                           }
                         }}
@@ -1727,7 +1735,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                 fetchClientData();
               } catch (error) {
                 console.error('Error saving note:', error);
-                alert('Error saving note');
+                showError(apiErrorMessage(error, 'Could not save this note.'));
               }
             }}>
               <div className="note-form-grid">

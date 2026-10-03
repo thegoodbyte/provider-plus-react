@@ -6,6 +6,9 @@ import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../s
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import { parseCalendarDate } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
 
@@ -275,6 +278,7 @@ export const filterRetreatSubmissionRowsByMrr = (
 };
 
 const MedicalArtifactsPage: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
@@ -653,7 +657,7 @@ const MedicalArtifactsPage: React.FC = () => {
       setQuickMrrTypes(types.data || []);
       setQuickMrrForm({ requestType: quickReviewTypeForArtifact(artifact.artifactType), advisorId: advisors[0]?._id || '', groupId: matchingGroup?._id || '', notifyClient: true });
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Unable to load the Quick MRR form.');
+      showError(apiErrorMessage(error, 'Unable to load the Quick MRR form.'));
     }
   };
 
@@ -664,8 +668,9 @@ const MedicalArtifactsPage: React.FC = () => {
       await medicalReviewRequestsApi.createFromArtifact(quickMrrArtifact._id, quickMrrForm.requestType, { assignedToUserId: quickMrrForm.advisorId, medicalReviewGroupId: quickMrrForm.groupId, documentStage: quickMrrArtifact.documentStage, sentForReviewAt: new Date().toISOString(), notifyClientOnSubmission: quickMrrForm.notifyClient });
       setQuickMrrArtifact(null);
       await loadData();
+      showSuccess('Medical review request created.');
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Unable to create the medical review request.');
+      showError(apiErrorMessage(error, 'Unable to create the medical review request.'));
     } finally { setQuickMrrSaving(false); }
   };
 
@@ -681,8 +686,9 @@ const MedicalArtifactsPage: React.FC = () => {
       setArtifacts((current) => current.filter((item) => item._id !== artifact._id));
       const reviewsResponse = await medicalReviewRequestsApi.getAll().catch(() => ({ data: reviewRequests }));
       setReviewRequests(reviewsResponse.data || []);
+      showSuccess('Medical artifact deleted.');
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to delete this medical artifact.');
+      showError(apiErrorMessage(error, 'Unable to delete this medical artifact.'));
     } finally {
       setDeletingArtifactId('');
     }
@@ -706,6 +712,7 @@ const MedicalArtifactsPage: React.FC = () => {
 
   return (
     <div className="min-h-full bg-slate-50 p-3 md:p-6">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"><span className="rounded bg-rose-100 px-2 py-1 text-rose-700">Admin</span><span>Medical records</span></div>

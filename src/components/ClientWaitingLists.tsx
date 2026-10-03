@@ -3,6 +3,9 @@ import { Search, Calendar, MapPin, Users, Clock, CheckSquare, Square, Plus, Save
 import LoadingSpinner from './LoadingSpinner';
 import { waitingListApi, clientsApi, retreatsApi } from '../services/api';
 import './ClientWaitingLists.css';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 interface Client {
   _id: string;
@@ -42,6 +45,7 @@ interface RetreatOption {
 }
 
 const ClientWaitingLists: React.FC = () => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [clientSearchResults, setClientSearchResults] = useState<Client[]>([]);
@@ -179,9 +183,10 @@ const ClientWaitingLists: React.FC = () => {
       }
 
       await fetchRetreatOptions();
+      showSuccess('Waiting list selections saved.');
     } catch (error) {
       console.error('Error updating waiting list:', error);
-      alert('Error saving waiting list selections. One of the selected retreats may already have a duplicate waiting-list entry.');
+      showError(apiErrorMessage(error, 'Error saving waiting list selections. One of the selected retreats may already have a duplicate waiting-list entry.'));
     } finally {
       setUpdatingRetreat(null);
       setSavingSelections(false);
@@ -212,6 +217,7 @@ const ClientWaitingLists: React.FC = () => {
 
   return (
     <div className="client-waiting-lists">
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="page-header">
         <h1>Manage Client Waiting Lists</h1>
         <p className="page-subtitle">

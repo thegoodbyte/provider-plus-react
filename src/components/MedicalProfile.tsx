@@ -4,6 +4,8 @@ import { ArrowLeft, User, Calendar, Heart, FileText, AlertCircle, Download, Chec
 import { API_BASE_URL } from '../config/api.config';
 import { medicalArtifactsApi } from '../services/api';
 import { MedicalArtifact } from '../types';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import './MedicalProfile.css';
 
 interface MedicalData {
@@ -48,6 +50,7 @@ interface Retreat {
 const MedicalProfile: React.FC = () => {
   const { clientId } = useParams();
   const navigate = useNavigate();
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
   const [medicalData, setMedicalData] = useState<MedicalData | null>(null);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
@@ -223,7 +226,7 @@ const MedicalProfile: React.FC = () => {
 
   const handleEkgReviewSubmit = async () => {
     if (!ekgReviewDecision || !ekgReviewNotes.trim()) {
-      alert('Please select a decision and provide review notes.');
+      showError('Please select a decision and provide review notes.');
       return;
     }
 
@@ -247,20 +250,22 @@ const MedicalProfile: React.FC = () => {
       );
 
       if (response.ok) {
-        alert('EKG review submitted successfully!');
+        showSuccess('EKG review submitted successfully.');
         fetchClientData();
         setEkgReviewNotes('');
         setEkgReviewDecision('');
+      } else {
+        showError('Failed to submit EKG review.');
       }
     } catch (error) {
       console.error('Error submitting EKG review:', error);
-      alert('Failed to submit EKG review. Please try again.');
+      showError('Failed to submit EKG review.');
     }
   };
 
   const handleLiverPanelReviewSubmit = async () => {
     if (!liverPanelReviewDecision || !liverPanelReviewNotes.trim()) {
-      alert('Please select a decision and provide review notes.');
+      showError('Please select a decision and provide review notes.');
       return;
     }
 
@@ -284,20 +289,22 @@ const MedicalProfile: React.FC = () => {
       );
 
       if (response.ok) {
-        alert('Liver panel review submitted successfully!');
+        showSuccess('Liver panel review submitted successfully.');
         fetchClientData();
         setLiverPanelReviewNotes('');
         setLiverPanelReviewDecision('');
+      } else {
+        showError('Failed to submit liver panel review.');
       }
     } catch (error) {
       console.error('Error submitting liver panel review:', error);
-      alert('Failed to submit liver panel review. Please try again.');
+      showError('Failed to submit liver panel review.');
     }
   };
 
   const handleReviewSubmit = async () => {
     if (!reviewDecision || !reviewNotes.trim()) {
-      alert('Please select a decision and provide review notes.');
+      showError('Please select a decision and provide review notes.');
       return;
     }
 
@@ -322,14 +329,16 @@ const MedicalProfile: React.FC = () => {
       );
 
       if (response.ok) {
-        alert('Review submitted successfully!');
+        showSuccess('Review submitted successfully.');
         fetchClientData(); // Refresh data
         setReviewNotes('');
         setReviewDecision('');
+      } else {
+        showError('Failed to submit review.');
       }
     } catch (error) {
       console.error('Error submitting review:', error);
-      alert('Failed to submit review. Please try again.');
+      showError('Failed to submit review.');
     }
   };
 

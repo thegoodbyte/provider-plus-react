@@ -8,6 +8,9 @@ import { currencyService, ExchangeRates } from '../services/currencyService';
 import { configSummaryApi, paymentsApi } from '../services/api';
 import ExpenseTypesSettings from './ExpenseTypesSettings';
 import './CurrencySettings.css';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 
 interface CurrencySettingsProps {
   onClose: () => void;
@@ -19,6 +22,7 @@ type PaymentPlanSettings = { enabled: boolean; automaticallyCreateBalanceRequest
 const converterCurrencies: ConverterCurrency[] = ['PLN', 'USD', 'EUR', 'CZK'];
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
+  const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [rates, setRates] = useState<ExchangeRates | null>(null);
   const [configSummary, setConfigSummary] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('');
@@ -75,9 +79,9 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       setPaymentPlanSaving(true);
       const response = await paymentsApi.savePlanSettings(paymentPlan);
       setPaymentPlan(response.data);
-      alert('Payment plan settings saved. Booking updates will synchronize their payment requests automatically.');
+      showSuccess('Payment plan settings saved. Booking updates will synchronize their payment requests automatically.');
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Could not save payment plan settings.');
+      showError(apiErrorMessage(err, 'Could not save payment plan settings.'));
     } finally {
       setPaymentPlanSaving(false);
     }
@@ -89,8 +93,9 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       await paymentsApi.updateType(item.key, { label: item.label, active: item.active, sortOrder: item.sortOrder });
       const response = await paymentsApi.getTypes();
       setPaymentTypes(response.data || []);
+      showSuccess('Payment type saved.');
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Could not save the payment type.');
+      showError(apiErrorMessage(err, 'Could not save the payment type.'));
     } finally {
       setPaymentTypesSaving(false);
     }
@@ -103,8 +108,9 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       setNewPaymentType({ key: '', label: '' });
       const response = await paymentsApi.getTypes();
       setPaymentTypes(response.data || []);
+      showSuccess('Payment type created.');
     } catch (err: any) {
-      alert(err?.response?.data?.message || 'Could not create the payment type.');
+      showError(apiErrorMessage(err, 'Could not create the payment type.'));
     } finally {
       setPaymentTypesSaving(false);
     }
@@ -119,7 +125,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       const info = await currencyService.getExchangeRateInfo();
       setLastUpdated(info.lastUpdated);
       setNextUpdate(info.nextUpdate);
-      alert('Exchange rates updated successfully!');
+      showSuccess('Exchange rates updated successfully.');
     } catch (err) {
       setError('Failed to refresh exchange rates');
       console.error('Error refreshing exchange rates:', err);
@@ -161,14 +167,15 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const testConversion = async (amount: number, currency: 'EUR' | 'CZK' | 'PLN') => {
     try {
       const usdAmount = await currencyService.convertToUSD(amount, currency);
-      alert(`${amount} ${currency} = $${usdAmount.toFixed(2)} USD`);
+      showSuccess(`${amount} ${currency} = $${usdAmount.toFixed(2)} USD`);
     } catch (err) {
-      alert('Failed to convert currency');
+      showError('Failed to convert currency.');
     }
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
+      <Toast toast={toast} onDismiss={dismissToast} />
       <div className="currency-settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="currency-header">
           <h2>Settings</h2>
