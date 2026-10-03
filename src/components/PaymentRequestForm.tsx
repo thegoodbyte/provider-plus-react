@@ -224,6 +224,25 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     return () => { active = false; };
   }, [formData.clientId, isEdit]);
 
+  // PPVC-?: the active-booking-default fill above is silent and forceful --
+  // it auto-switches request type to "balance" and locks the price to the
+  // client's existing booking, with no way to back out of it. That's wrong
+  // when the admin is actually creating a second, separate booking (a
+  // booster) for a client who already has one -- give them an explicit way
+  // to discard the auto-fill and start a plain deposit request instead.
+  const clearBookingDefaults = () => {
+    setBookings([]);
+    setBookingDefaultsMessage('');
+    setFormData(prev => ({
+      ...prev,
+      bookingId: '',
+      requestType: 'deposit',
+      fullPriceQuote: '',
+      requestedAmount: '',
+    }));
+    setDepositAmountManuallyEdited(false);
+  };
+
   useEffect(() => {
     if (!formData.retreatId) {
       setCeremonies([]);
@@ -644,8 +663,17 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               </div>
             )}
             {!bookingDefaultsLoading && bookingDefaultsMessage && (
-              <div className="md:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                {bookingDefaultsMessage}
+              <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                <span>{bookingDefaultsMessage}</span>
+                {formData.bookingId && (
+                  <button
+                    type="button"
+                    onClick={clearBookingDefaults}
+                    className="whitespace-nowrap text-sm font-semibold text-blue-700 underline hover:text-blue-900"
+                  >
+                    Not a balance payment — making a new booking (e.g. a booster)? Clear this
+                  </button>
+                )}
               </div>
             )}
 

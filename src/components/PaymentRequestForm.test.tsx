@@ -115,6 +115,26 @@ describe('PaymentRequestForm', () => {
       expect(screen.getByText(/5,000 PLN/)).toBeInTheDocument();
     });
 
+    it('lets the admin discard the auto-filled balance defaults to start a separate booking, like a booster', async () => {
+      setUp({ bookings: [booking], retreats: [{ ...retreat1, _id: 'retreat-1' }] });
+      view();
+
+      fireEvent.change(await screen.findByLabelText('Client'), { target: { value: 'client-1' } });
+      await waitFor(() => expect(screen.getByDisplayValue('Balance')).toBeInTheDocument());
+      expect(screen.getByLabelText('Requested Amount *')).toHaveValue(3500);
+
+      fireEvent.click(screen.getByRole('button', { name: /Not a balance payment.*Clear this/ }));
+
+      expect(screen.getByDisplayValue('Deposit')).toBeInTheDocument();
+      expect((screen.getByLabelText('Requested Amount *') as HTMLInputElement).value).toBe('');
+      expect(screen.queryByText(/Active booking defaults loaded/)).not.toBeInTheDocument();
+      // Booking type is only editable while requestType is 'deposit' -- clearing
+      // the auto-fill must land there, or the admin is still stuck unable to
+      // pick "booster".
+      fireEvent.change(screen.getByLabelText('Booking type *'), { target: { value: 'booster' } });
+      expect((screen.getByLabelText('Booking type *') as HTMLSelectElement).value).toBe('booster');
+    });
+
     it('shows an existing final request before saving and links directly to it', async () => {
       setUp({ bookings: [booking], existingRequests: [{ _id: 'request-1332', bookingId: { _id: 'booking-1' }, requestType: 'balance', status: 'pending', invoiceNumber: '1332', requestedAmount: 3500, currency: 'PLN', dueDate: '2026-10-30' }] });
       const { onSave } = view();
