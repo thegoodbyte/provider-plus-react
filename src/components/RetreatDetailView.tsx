@@ -1,3 +1,4 @@
+import RoomAllocationBoard from './RoomAllocationBoard';
 import RouteContentBoundary from './RouteContentBoundary';
 import { authService } from '../services/authService';
 import React, { lazy, useState, useEffect, useCallback, useMemo } from 'react';
@@ -1069,7 +1070,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       {/* Tab Navigation */}
       <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
-        <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Rooms</button>
+        <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Room allocation</button>
         {authService.getUser()?.role === 'admin' && <button className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'announcements'} onClick={() => handleTabChange('announcements')}>Announcements</button>}
         <button
           className={`tab-btn ${activeTab === 'drugScreening' ? 'active' : ''}`}
@@ -1185,7 +1186,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       {/* Tab Content */}
       <div className="retreat-detail-tab-content">
         {activeTab === 'integration' && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <RouteContentBoundary><IntegrationCalendar retreatId={retreatId} /></RouteContentBoundary>}
-        {activeTab === 'rooms' && <RouteContentBoundary><RetreatRoomsTab retreatId={retreatId} /></RouteContentBoundary>}
+        {activeTab === 'rooms' && <details className="mb-4"><summary className="cursor-pointer">Accommodation rates and room settings</summary><RouteContentBoundary><RetreatRoomsTab retreatId={retreatId} /></RouteContentBoundary></details>}
         {activeTab === 'announcements' && authService.getUser()?.role === 'admin' && <RouteContentBoundary><AnnouncementsPage retreatId={retreatId} /></RouteContentBoundary>}
         {activeTab === 'clients' && (
         <div className="clients-section">
@@ -1448,6 +1449,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         </div>
         )}
 
+        {activeTab === 'rooms' && <RoomAllocationBoard retreatId={retreatId} />}
+
         {activeTab === 'reserveList' && (
         <div className="reserve-list-section">
           <RetreatReserveListPanel
@@ -1460,9 +1463,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'holisticView' && (
         <div className="booking-steps-section">
           <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4"><h2 className="text-xl font-semibold text-slate-900">Room allocation</h2><p className="mt-1 text-sm text-slate-600">Review who is sharing each bedroom, private-room choices, and any accommodation adjustment.</p></div>
-            <div className="grid gap-3 md:grid-cols-2">{roomGroups.map(([room, occupants]) => <div className="rounded-lg border border-slate-200 bg-slate-50 p-4" key={room}><div className="font-semibold text-slate-900">{room}</div><div className="mt-2 space-y-2 text-sm text-slate-700">{occupants.map((client) => <div className="flex flex-wrap items-center justify-between gap-2" key={client._id}><span>Guest {client.bookingNumber || '—'} · {client.clientName}{client.roomType === 'private_ensuite' ? ' · private bathroom' : ''}{client.roomAdjustmentType && client.roomAdjustmentType !== 'none' ? ` · ${client.roomAdjustmentType} ${client.roomAdjustmentAmount || 0} ${client.currency}` : ''}</span>{houseBedrooms.length > 0 && <select value={client.roomNumber || ''} onChange={(event) => void assignRoom(client._id, event.target.value)} disabled={assigningRoomForClientId === client._id} className="rounded-md border border-slate-300 px-2 py-1 text-xs disabled:opacity-50"><option value="">Not assigned</option>{houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}</select>}</div>)}</div></div>)}</div>
-            {houseBedrooms.length === 0 && <p className="mt-2 text-xs text-slate-500">This retreat's house has no bedrooms configured yet — <Link to={`/${routePrefix}/houses`} className="font-medium text-amber-700 underline decoration-dotted hover:text-amber-900">set them up</Link> before room assignment is available.</p>}
+            <div className="mb-4"><h2 className="text-xl font-semibold text-slate-900">Accommodation preferences</h2><p className="mt-1 text-sm text-slate-600">Booking room preferences and legacy room notes. Reserve physical beds in the Room allocation tab.</p><button type="button" onClick={() => handleTabChange('rooms')} className="mt-2 text-sm font-semibold text-indigo-700">Manage room allocations</button></div>
+            <div className="grid gap-3 md:grid-cols-2">{roomGroups.map(([room, occupants]) => <div className="rounded-lg border border-slate-200 bg-slate-50 p-4" key={room}><div className="font-semibold text-slate-900">{room}</div><div className="mt-2 space-y-1 text-sm text-slate-700">{occupants.map((client) => <div key={client._id}>Guest {client.bookingNumber || '—'} · {client.clientName}{client.roomType === 'private_ensuite' ? ' · private bathroom' : ''}{client.roomAdjustmentType && client.roomAdjustmentType !== 'none' ? ` · ${client.roomAdjustmentType} ${client.roomAdjustmentAmount || 0} ${client.currency}` : ''}</div>)}</div></div>)}</div>
             {!roomGroups.length && <p className="text-sm text-slate-500">No active bookings.</p>}
           </section>
           <BookingStepsMatrix retreatId={retreatId} />

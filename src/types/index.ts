@@ -70,7 +70,7 @@ export interface House {
   capacity?: number;
   numberOfRooms?: number;
   numberOfBathrooms?: number;
-  bedrooms?: number | Array<{ _id?: string; name: string; floor?: string; beds?: number; bathroomName?: string; notes?: string; active?: boolean; hasBathroom?: boolean; allowsSharing?: boolean }>;
+  bedrooms?: number | Array<{ _id?: string; name: string; floor?: string; beds?: number; bedCount?: number; bathroomName?: string; notes?: string; active?: boolean; hasBathroom?: boolean; allowsSharing?: boolean }>;
   allowsRoomSharing?: boolean;
   amenities?: string[];
   description?: string;

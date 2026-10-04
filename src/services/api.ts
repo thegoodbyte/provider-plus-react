@@ -1,3 +1,4 @@
+import type { AllocationBoard } from '../components/RoomAllocationBoard';
 import type { RetreatWorkflowSummary } from '../types/workflowSummary';
 import axios, { AxiosRequestConfig } from 'axios';
 import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, BookingDocumentContent, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
@@ -111,6 +112,11 @@ export const retreatsApi = {
 export const launcherConfigApi = {
   get: () => api.get<{ assignments: Array<{ moduleId: string; ring: 'inner' | 'outer' | 'hidden' }> }>('/launcher-config'),
   save: (assignments: Array<{ moduleId: string; ring: 'inner' | 'outer' | 'hidden' }>) => api.patch('/launcher-config', { assignments }),
+};
+
+export const roomAllocationApi = {
+  get: (retreatId: string) => api.get<AllocationBoard>(`/retreats/${retreatId}/room-allocation`, { suppressGlobalError: true } as ReadOptions),
+  change: (retreatId: string, data: { revision: number; action: 'configure' | 'assign' | 'refresh'; roomId?: string; availableBeds?: number; bed?: number; bookingId?: string | null }) => api.patch<AllocationBoard>(`/retreats/${retreatId}/room-allocation`, data, { suppressGlobalError: true } as ReadOptions),
 };
 
 export const housesApi = {

@@ -1,3 +1,4 @@
+import HouseRoomConfiguration from './HouseRoomConfiguration';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
 import { housesApi } from '../services/api';
@@ -78,6 +79,8 @@ const HousesGrid: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [houseError, setHouseError] = useState('');
+  const [houseTab, setHouseTab] = useState<'general' | 'rooms'>('general');
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
   const [formData, setFormData] = useState<Partial<House>>({});
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
@@ -113,6 +116,8 @@ const HousesGrid: React.FC = () => {
   }, [isModalOpen, editingHouse]);
 
   const handleAdd = () => {
+    setHouseError('');
+    setHouseTab('general');
     setEditingHouse(null);
     setHeroImageUrl(null);
     setFormData({
@@ -133,6 +138,8 @@ const HousesGrid: React.FC = () => {
       numberOfRooms: resolveNumberOfRooms(house),
       amenities: house.amenities || []
     };
+    setHouseError('');
+    setHouseTab('general');
     setFormData(formattedHouse);
     setIsModalOpen(true);
     if (house._id && house.heroImageS3Key) {
@@ -196,6 +203,14 @@ const HousesGrid: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setHouseError('');
+    const rooms = Array.isArray(formData.bedrooms) ? formData.bedrooms : [];
+    const names = rooms.map(room => room.name.trim().toLowerCase());
+    if (rooms.some(room => !room.name.trim() || !Number.isInteger(room.bedCount ?? 2) || (room.bedCount ?? 2) < 1 || (room.bedCount ?? 2) > 20) || new Set(names).size !== names.length) {
+      setHouseError('Each bedroom needs a unique name and 1–20 physical beds.');
+      setHouseTab('rooms');
+      return;
+    }
     try {
       console.log('Submitting house with data:', formData);
 
@@ -214,7 +229,7 @@ const HousesGrid: React.FC = () => {
       if (formData.description?.trim()) cleanData.description = formData.description.trim();
       if (formData.status) cleanData.status = formData.status;
       if (formData.pricePerNight && formData.pricePerNight > 0) cleanData.pricePerNight = Number(formData.pricePerNight);
-      if (Array.isArray(formData.bedrooms)) cleanData.bedrooms = formData.bedrooms.filter((bedroom) => bedroom.name.trim()).map((bedroom) => ({ ...bedroom, name: bedroom.name.trim(), hasBathroom: Boolean(bedroom.hasBathroom), allowsSharing: bedroom.allowsSharing !== false }));
+      if (Array.isArray(formData.bedrooms)) cleanData.bedrooms = formData.bedrooms.filter((bedroom) => bedroom.name.trim()).map((bedroom) => ({ ...bedroom, name: bedroom.name.trim(), beds: bedroom.bedCount ?? bedroom.beds ?? 2, bedCount: bedroom.bedCount ?? bedroom.beds ?? 2, hasBathroom: Boolean(bedroom.hasBathroom), allowsSharing: bedroom.allowsSharing !== false }));
       cleanData.allowsRoomSharing = formData.allowsRoomSharing !== false;
 
       console.log('Cleaned house data:', cleanData);
@@ -232,7 +247,7 @@ const HousesGrid: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving house:', error);
       console.error('Error response:', error.response?.data);
-      showError(apiErrorMessage(error, 'Failed to save house.'));
+      setHouseError(Array.isArray(error.response?.data?.message) ? error.response.data.message.join(', ') : error.response?.data?.message || 'Unable to save the house.');
     }
   };
 
@@ -424,7 +439,10 @@ const HousesGrid: React.FC = () => {
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               {editingHouse ? 'Edit House' : 'Add New House'}
             </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div role="tablist" aria-label="House settings" className="mb-4 flex gap-2"><button type="button" role="tab" aria-selected={houseTab === 'general'} onClick={() => setHouseTab('general')} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">General</button><button type="button" role="tab" aria-selected={houseTab === 'rooms'} onClick={() => setHouseTab('rooms')} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">Room configuration</button></div>
+            {houseError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">{houseError}</p>}
+            <form onInvalidCapture={event => { if ((event.target as HTMLElement).closest('[hidden]')) setHouseTab('general'); }} onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4" hidden={houseTab !== 'general'}>
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                   House Name
@@ -662,12 +680,6 @@ const HousesGrid: React.FC = () => {
               </div>
 
               <div>
-                <div className="mb-2 flex items-center justify-between"><label className="block text-sm font-medium text-gray-700">Bedrooms and bathrooms</label><button type="button" className="text-sm font-semibold text-indigo-600" onClick={() => setFormData(prev => ({ ...prev, bedrooms: [...(Array.isArray(prev.bedrooms) ? prev.bedrooms : []), { beds: 1, floor: '', active: true, name: `Room ${(Array.isArray(prev.bedrooms) ? prev.bedrooms.length : 0) + 1}`, hasBathroom: false, allowsSharing: true }] }))}>Add bedroom</button></div>
-                <label className="mb-3 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={formData.allowsRoomSharing !== false} onChange={event => setFormData(prev => ({ ...prev, allowsRoomSharing: event.target.checked }))} /> This house allows shared rooms</label>
-                <div className="space-y-2">{(Array.isArray(formData.bedrooms) ? formData.bedrooms : []).map((bedroom, index) => <div className="grid gap-2 rounded-md border border-gray-200 p-2 md:grid-cols-[1fr_auto_auto_auto]" key={bedroom._id || index}><input aria-label={`Bedroom ${index + 1} name`} value={bedroom.name} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) }))} className="rounded-md border border-gray-300 px-2 py-1 text-sm" /><label className="text-xs">Floor<input aria-label={`Bedroom ${index + 1} floor`} type="text"  value={bedroom.floor ?? ''} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, floor: event.target.value } : item) }))} className="block w-full rounded border px-2 py-1" /></label><label className="text-xs">Beds<input aria-label={`Bedroom ${index + 1} beds`} type="number" min="1" max="20" value={bedroom.beds ?? ''} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, beds: Number(event.target.value) } : item) }))} className="block w-full rounded border px-2 py-1" /></label><label className="text-xs">Bathroom name<input aria-label={`Bedroom ${index + 1} bathroom name`} type="text"  value={bedroom.bathroomName ?? ''} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, bathroomName: event.target.value } : item) }))} className="block w-full rounded border px-2 py-1" /></label><label className="text-xs">Room notes<input aria-label={`Bedroom ${index + 1} notes`} value={bedroom.notes || ''} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, notes: event.target.value } : item) }))} className="block w-full rounded border px-2 py-1" /></label><label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={Boolean(bedroom.hasBathroom)} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, hasBathroom: event.target.checked } : item) }))} /> Private bathroom</label><label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={bedroom.allowsSharing !== false} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, allowsSharing: event.target.checked } : item) }))} /> Sharing</label><button type="button" className="text-xs text-red-600" onClick={() => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, active: item.active === false } : item) }))}>{bedroom.active === false ? 'Restore archived room' : 'Archive'}</button></div>)}</div>
-              </div>
-
-              <div>
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                   Description
                 </label>
@@ -681,6 +693,8 @@ const HousesGrid: React.FC = () => {
                 />
               </div>
 
+              </div>
+              {houseTab === 'rooms' && <HouseRoomConfiguration house={formData} onChange={change => setFormData(prev => ({ ...prev, ...change }))} />}
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
