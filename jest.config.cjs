@@ -288,6 +288,7 @@ module.exports = {
     "^.+\\.[jt]sx?$": "babel-jest"
   },
   "moduleNameMapper": {
+    "^@ant-design/colors/es/(.*)$": "@ant-design/colors/lib/$1",
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
     "\\.(gif|ttf|eot|svg|png|jpg|jpeg|webp|ico)$": "<rootDir>/test/fileMock.cjs"
   },
