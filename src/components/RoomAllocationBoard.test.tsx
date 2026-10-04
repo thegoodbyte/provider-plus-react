@@ -69,3 +69,7 @@ it('keeps house restrictions and empty-room guidance visible',async()=>{
 it('shows how to configure bedrooms when the house has none',async()=>{
  const board=copy();board.rooms=[];(roomAllocationApi.get as jest.Mock).mockResolvedValue({data:board});render(<RoomAllocationBoard retreatId="retreat1"/>);expect(await screen.findByText(/No bedrooms configured/)).toHaveTextContent('Houses');
 });
+
+it('preserves the current shared-bed limit when Shared is selected again',async()=>{
+ const board=copy();board.rooms[0].availableBeds=1;board.rooms[0].use='shared';(roomAllocationApi.get as jest.Mock).mockResolvedValue({data:board});(roomAllocationApi.change as jest.Mock).mockResolvedValue({data:board});render(<RoomAllocationBoard retreatId="retreat1"/>);fireEvent.click(await screen.findByRole('button',{name:'Shared',exact:true}));await waitFor(()=>expect(roomAllocationApi.change).toHaveBeenCalledWith('retreat1',{revision:0,action:'configure',roomId:'r1',use:'shared',availableBeds:1}));
+});

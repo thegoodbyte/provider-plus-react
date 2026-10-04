@@ -8,7 +8,7 @@ interface GuestOption { value?: string; label: React.ReactNode; guest?: Allocati
 function GuestRow({ guest, details = false }: { guest: AllocationGuest; details?: boolean }) {
   return <div className="flex min-w-0 items-center gap-2">
     <ClientAvatar client={{ _id: guest.clientId, profilePictureUrl: guest.profilePictureUrl, profilePictureS3Key: guest.profilePictureS3Key, profilePictureFileUploadId: guest.profilePictureFileUploadId }} name={guest.name} className="!h-7 !w-7" />
-    <div className="min-w-0"><div className="truncate">#{guest.bookingNumber || guest.clientNumber || '—'} · {guest.name}</div>{details && <div className="text-xs text-slate-500">{guest.roomType.replace(/_/g, ' ')} · {guest.amountPaid > 0 ? 'payment received' : 'unpaid'}</div>}</div>
+    <div className="min-w-0"><div className="truncate">#{guest.bookingNumber || guest.clientNumber || '—'} · {guest.name}</div>{details && <div className="truncate text-xs text-slate-500">{guest.roomType === 'unspecified' ? 'Accommodation not selected' : guest.roomType.replace(/_/g, ' ')} · {guest.amountPaid > 0 ? 'payment received' : 'unpaid'}</div>}</div>
   </div>;
 }
 
