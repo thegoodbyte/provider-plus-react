@@ -66,38 +66,51 @@ async function mockApi(page: any, baseURL: string, conflict = false) {
   return { changes, savedHouse: () => savedHouse };
 }
 
-test('allocates shared beds and a private room, blocks duplicate choices, and releases guests', async ({ page, baseURL }) => {
-  await mockApi(page, baseURL!);
-  await page.goto(`/admin/retreats/${retreatId}/rooms`);
-  await expect(page.getByRole('tab', { name: 'Room allocation', exact: true })).toHaveAttribute('aria-selected', 'true');
-  await chooseGuest(page, 'Room 1 Shared bed 1 guest', 'Bob Shared');
-  await expect(page.getByLabel('Room 1 available beds')).toBeDisabled();
-  await expect(page.getByRole('combobox', { name: 'Room 1 Shared bed 2 guest' })).toBeEnabled();
-  await page.getByRole('combobox', { name: 'Room 1 Shared bed 2 guest' }).click();
-  await expect(page.getByRole('option', { name: /Bob Shared/ })).toHaveCount(0);
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('combobox', { name: 'Room 1 Shared bed 3 guest' })).toHaveCount(0);
-  await chooseGuest(page, 'Room 1 Shared bed 2 guest', 'Carol Shared');
-  await chooseGuest(page, 'Room 2 Private room guest', 'Anna Private');
-  await expect(page.getByRole('article', { name: 'Room 2', exact: true }).getByRole('button', { name: 'Shared', exact: true })).toBeDisabled();
-  await expect(page.getByRole('combobox', { name: 'Room 2 Shared bed 1 guest' })).toHaveCount(0);
-  await expect(page.getByText('Unassigned guests (0)')).toBeVisible();
-  await page.getByRole('button', { name: 'Release Bob Shared' }).click();
-  await page.getByRole('button', { name: 'Release Carol Shared' }).click();
-  await page.getByRole('article', { name: 'Room 1', exact: true }).getByRole('button', { name: 'Private', exact: true }).click();
-  await expect(page.getByRole('combobox', { name: 'Room 1 Private room guest' })).toBeEnabled();
-  await page.reload();
-  await expect(page.getByRole('button', { name: 'Release Anna Private' })).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'Room 1 Private room guest' })).toBeVisible();
-});
+async function chooseGuest(page: any, label: string, name: string) {
+  const slot = label.replace(/ guest$/, '');
+  await page.getByRole('button', { name: `Edit ${slot}`, exact: true }).click();
+  const picker = page.getByRole('combobox', { name: label });
+  await picker.click();
+  const listId = await picker.getAttribute('aria-controls');
+  await page.locator(`[id="${listId}"]`).getByRole('option', { name: new RegExp(name) }).click();
+}
+async function save(page: any, label: string) {
+  await page.getByRole('button', { name: `Save ${label}`, exact: true }).click();
+  await expect(page.getByRole('button', { name: `Edit ${label}`, exact: true })).toBeEnabled();
+}
+async function release(page: any, label: string, guest: string) {
+  await page.getByRole('button', { name: `Edit ${label}`, exact: true }).click();
+  await page.getByRole('button', { name: `Remove ${guest}`, exact: true }).click();
+  await save(page, label);
+}
 
-test('refreshes the board after a simultaneous allocation conflict', async ({ page, baseURL }) => {
-  await mockApi(page, baseURL!, true);
-  await page.goto(`/admin/retreats/${retreatId}/rooms`);
-  await chooseGuest(page, 'Room 1 Shared bed 1 guest', 'Carol Shared');
-  await expect(page.getByRole('alert')).toContainText('Room allocations changed');
-  await expect(page.getByRole('button', { name: 'Release Bob Shared' })).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'Room 1 Shared bed 2 guest' })).toBeEnabled();
+test('shows vacant slots, saves selected names and photos, and excludes allocated guests until released', async ({page,baseURL}) => {
+ const api=await mockApi(page,baseURL!);await page.goto(`/admin/retreats/${retreatId}/rooms`);
+ await expect(page.getByText('Vacant',{exact:true})).toHaveCount(3);
+ await expect(page.getByRole('combobox',{name:/guest/})).toHaveCount(0);
+ await chooseGuest(page,'Room 1 Shared bed 1 guest','Bob Shared');expect(api.changes).toHaveLength(0);
+ await save(page,'Room 1 Shared bed 1');expect(api.changes).toHaveLength(1);
+ const slot=page.getByLabel('Room 1 Shared bed 1 slot');await expect(slot.getByText('Bob Shared',{exact:true})).toBeVisible();await expect(slot.locator('img')).toBeVisible();
+ await page.getByRole('button',{name:'Edit Room 2 Private room',exact:true}).click();
+ await page.getByRole('combobox',{name:'Room 2 Private room guest'}).click();await expect(page.getByRole('option',{name:/Bob Shared/})).toHaveCount(0);
+ await page.keyboard.press('Escape');await page.getByRole('button',{name:'Cancel',exact:true}).click();
+ await release(page,'Room 1 Shared bed 1','Bob Shared');await expect(slot.getByText('Vacant',{exact:true})).toBeVisible();
+ await chooseGuest(page,'Room 2 Private room guest','Bob Shared');await save(page,'Room 2 Private room');await page.reload();await expect(page.getByLabel('Room 2 Private room slot').getByText('Bob Shared',{exact:true})).toBeVisible();
+});
+test('Cancel discards a guest selection and removal without saving',async({page,baseURL})=>{
+ const api=await mockApi(page,baseURL!);await page.goto(`/admin/retreats/${retreatId}/rooms`);
+ await chooseGuest(page,'Room 1 Shared bed 1 guest','Bob Shared');await page.getByRole('button',{name:'Cancel',exact:true}).click();expect(api.changes).toHaveLength(0);await expect(page.getByLabel('Room 1 Shared bed 1 slot').getByText('Vacant',{exact:true})).toBeVisible();
+ await chooseGuest(page,'Room 1 Shared bed 1 guest','Bob Shared');await save(page,'Room 1 Shared bed 1');await page.getByRole('button',{name:'Edit Room 1 Shared bed 1',exact:true}).click();await page.getByRole('button',{name:'Remove Bob Shared',exact:true}).click();await page.getByRole('button',{name:'Cancel',exact:true}).click();expect(api.changes).toHaveLength(1);await expect(page.getByLabel('Room 1 Shared bed 1 slot').getByText('Bob Shared',{exact:true})).toBeVisible();
+});
+test('refreshes saved guest cards after a simultaneous save conflict',async({page,baseURL})=>{
+ await mockApi(page,baseURL!,true);await page.goto(`/admin/retreats/${retreatId}/rooms`);await chooseGuest(page,'Room 1 Shared bed 1 guest','Carol Shared');await page.getByRole('button',{name:'Save Room 1 Shared bed 1',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Room allocations changed');await expect(page.getByLabel('Room 1 Shared bed 1 slot').getByText('Bob Shared',{exact:true})).toBeVisible();await expect(page.getByRole('combobox',{name:/guest/})).toHaveCount(0);
+});
+test('keeps editing and guest-picker photos inside a narrow screen',async({page,baseURL})=>{
+ await mockApi(page,baseURL!);await page.setViewportSize({width:390,height:844});await page.goto(`/admin/retreats/${retreatId}/rooms`);
+ await page.getByRole('button',{name:'Edit Room 1 Shared bed 1',exact:true}).click();await page.getByRole('combobox',{name:'Room 1 Shared bed 1 guest'}).click();const list=page.getByRole('listbox');await expect(list).toBeVisible();const bounds=await list.boundingBox();expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(390);await page.keyboard.press('Escape');await page.getByRole('button',{name:'Cancel',exact:true}).click();expect(await page.getByRole('region',{name:'Room allocation board'}).evaluate(e=>e.scrollWidth>e.clientWidth)).toBe(false);
+});
+test('keeps private and one-bed shared configurations distinct',async({page,baseURL})=>{
+ const api=await mockApi(page,baseURL!);await page.goto(`/admin/retreats/${retreatId}/rooms`);const room=page.getByRole('article',{name:'Room 1',exact:true});await room.getByRole('button',{name:'Private',exact:true}).click();await expect(page.getByRole('button',{name:'Edit Room 1 Private room',exact:true})).toBeVisible();await room.getByRole('button',{name:'Shared',exact:true}).click();await page.getByLabel('Room 1 available beds').selectOption('1');await chooseGuest(page,'Room 1 Shared bed 1 guest','Bob Shared');await save(page,'Room 1 Shared bed 1');expect(api.changes).toContainEqual(expect.objectContaining({action:'configure',use:'shared',availableBeds:1}));await release(page,'Room 1 Shared bed 1','Bob Shared');await room.getByRole('button',{name:'Closed',exact:true}).click();await expect(room.getByText('Room closed for this retreat.')).toBeVisible();
 });
 
 test('saves house room floors and physical bed limits while preserving bedroom IDs', async ({ page, baseURL }) => {
@@ -113,48 +126,3 @@ test('saves house room floors and physical bed limits while preserving bedroom I
   ] });
 });
 
-test('keeps the room board usable on a narrow screen', async ({ page, baseURL }) => {
-  await mockApi(page, baseURL!);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/admin/retreats/${retreatId}/rooms`);
-  await expect(page.getByRole('combobox', { name: 'Room 1 Shared bed 1 guest' })).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'Room 2 Private room guest' })).toBeVisible();
-  await page.getByRole('combobox', { name: 'Room 1 Shared bed 1 guest' }).click();
-  const list = page.getByRole('listbox');
-  await expect(list).toBeVisible();
-  const bounds = await list.boundingBox();
-  expect(bounds!.x).toBeGreaterThanOrEqual(0);
-  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
-  const overflow = await page.getByRole('region', { name: 'Room allocation board' }).evaluate(element => element.scrollWidth > element.clientWidth);
-  expect(overflow).toBe(false);
-});
-
-async function chooseGuest(page: any, label: string, name: string) {
-  const picker = page.getByRole('combobox', { name: label });
-  await picker.click();
-  const listId = await picker.getAttribute('aria-controls');
-  await page.locator(`[id="${listId}"]`).getByRole('option', { name: new RegExp(name) }).click();
-}
-
-test('switches room use independently of the shared bed limit and searches guests with photos', async ({ page, baseURL }) => {
-  const api = await mockApi(page, baseURL!);
-  await page.goto(`/admin/retreats/${retreatId}/rooms`);
-  const room = page.getByRole('article', { name: 'Room 1', exact: true });
-  await room.getByRole('button', { name: 'Private', exact: true }).click();
-  await expect(page.getByRole('combobox', { name: 'Room 1 Private room guest' })).toBeEnabled();
-  await room.getByRole('button', { name: 'Shared', exact: true }).click();
-  await page.getByLabel('Room 1 available beds').selectOption('1');
-  const picker = page.getByRole('combobox', { name: 'Room 1 Shared bed 1 guest' });
-  await expect(picker).toBeEnabled();
-  await picker.fill('Bob');
-  const bob = page.getByRole('option', { name: /Bob Shared/ });
-  await expect(bob.locator('img')).toBeVisible();
-  await expect(page.getByRole('option', { name: /Carol Shared/ })).toHaveCount(0);
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: 'Release Bob Shared' })).toBeVisible();
-  expect(api.changes).toContainEqual(expect.objectContaining({ action: 'configure', use: 'shared', availableBeds: 1 }));
-  await page.getByRole('button', { name: 'Release Bob Shared' }).click();
-  await room.getByRole('button', { name: 'Closed', exact: true }).click();
-  await expect(room.getByText('Room closed for this retreat.')).toBeVisible();
-});
