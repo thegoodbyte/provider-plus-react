@@ -29,6 +29,10 @@ describe('booking payment-request pricing', () => {
     } as any, 'client-1')).toBe(9445);
   });
 
+  it('uses the complete new-format full-payment price rather than only the adjustments', () => {
+    expect(bookingPriceFromPaymentRequest({ requestType: 'full_payment', baseBookingPrice: 2950, fullPrice: 4000, lineItems: [{ type: 'charge', description: 'Private room', amount: 1050 }] } as any, 'client-1')).toBe(4000);
+  });
+
   it('does not turn an additional medical fee into the retreat booking price', () => {
     expect(bookingPriceFromPaymentRequest({
       requestType: 'additional',

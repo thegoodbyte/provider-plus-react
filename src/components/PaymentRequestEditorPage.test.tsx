@@ -11,7 +11,7 @@ jest.mock('../services/api', () => ({
     getOne: jest.fn(), create: jest.fn(), update: jest.fn(), link: jest.fn(),
     getNextDisplayIdFresh: jest.fn(), getAllFresh: jest.fn(),
   },
-  paymentsApi: { getReceipt: jest.fn(), getByClient: jest.fn(), convertToUsd: jest.fn() },
+  paymentsApi: { getPlanSettings: jest.fn().mockResolvedValue({ data: { depositPercentage: 40, balanceDueDaysBeforeRetreat: 30 } }), getReceipt: jest.fn(), getByClient: jest.fn(), convertToUsd: jest.fn() },
   clientsApi: { getAll: jest.fn() },
   retreatsApi: { getAll: jest.fn() },
   paymentRequestTypesApi: { getAll: jest.fn() },
@@ -59,6 +59,7 @@ const renderNew = () => render(
 describe('PaymentRequestEditorPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (paymentsApi.getPlanSettings as jest.Mock).mockResolvedValue({ data: { depositPercentage: 40, balanceDueDaysBeforeRetreat: 30 } });
     (clientsApi.getAll as jest.Mock).mockResolvedValue({ data: [client1] });
     (retreatsApi.getAll as jest.Mock).mockResolvedValue({ data: [retreat1] });
     (paymentRequestTypesApi.getAll as jest.Mock).mockResolvedValue({ data: requestTypeCatalog });
@@ -88,7 +89,7 @@ describe('PaymentRequestEditorPage', () => {
 
     fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
     fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
     await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
     fireEvent.click(screen.getByLabelText('Also create the final payment request'));
     expect((await screen.findAllByText(/600/)).length).toBeGreaterThan(0);
@@ -116,7 +117,7 @@ describe('PaymentRequestEditorPage', () => {
 
     fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
     fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
     fireEvent.click(screen.getByText('Create Request'));
 
     await waitFor(() => expect(paymentRequestsApi.create).toHaveBeenCalledTimes(1));

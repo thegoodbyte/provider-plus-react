@@ -132,13 +132,18 @@ const PaymentRequestEditorPage: React.FC = () => {
           paymentDate: deposit.paymentDate,
           paymentType: deposit.paymentType,
           requestType: 'balance',
+          baseBookingPrice: deposit.baseBookingPrice,
+          lineItems: deposit.lineItems,
+          roomType: deposit.roomType,
+          roomAdjustmentType: deposit.roomAdjustmentType,
+          roomAdjustmentAmount: deposit.roomAdjustmentAmount,
           requestedAmount: finalPaymentRequestPreview.requestedAmount,
           fullPrice: finalPaymentRequestPreview.fullPrice,
           fullPriceQuote: finalPaymentRequestPreview.fullPrice,
           amountPaid: finalPaymentRequestPreview.requestedAmount,
           currency: finalPaymentRequestPreview.currency as PaymentRequest['currency'],
-          note: `Final balance for invoice ${deposit.invoiceNumber}, due 30 days before the retreat.`,
-          notes: `Final balance for invoice ${deposit.invoiceNumber}, due 30 days before the retreat.`,
+          note: `Final balance for invoice ${deposit.invoiceNumber}, due ${finalPaymentRequestPreview.dueDate}.`,
+          notes: `Final balance for invoice ${deposit.invoiceNumber}, due ${finalPaymentRequestPreview.dueDate}.`,
           status: 'pending',
           dueDate: finalPaymentRequestPreview.dueDate,
           isUrgent: false,
@@ -269,10 +274,11 @@ const PaymentRequestEditorPage: React.FC = () => {
             </div>
           </div>
 
-          {(Boolean(paymentRequest.lineItems?.length) || (paymentRequest.roomAdjustmentType && paymentRequest.roomAdjustmentType !== 'none')) && (
+          {(paymentRequest.baseBookingPrice !== undefined || Boolean(paymentRequest.lineItems?.length) || (paymentRequest.roomAdjustmentType && paymentRequest.roomAdjustmentType !== 'none')) && (
             <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
               <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800">Itemization</div>
               <div className="divide-y divide-gray-100">
+                {paymentRequest.baseBookingPrice !== undefined && <div className="flex justify-between gap-4 px-4 py-3 text-sm"><span>Base retreat price</span><span>{formatAmount(paymentRequest.baseBookingPrice, paymentRequest.currency)}</span></div>}
                 {paymentRequest.roomAdjustmentType && paymentRequest.roomAdjustmentType !== 'none' && <div className="flex items-start justify-between gap-4 px-4 py-3 text-sm"><div><div className="font-medium text-gray-900">{paymentRequest.accommodationLabel || (paymentRequest.roomType === 'private_ensuite' ? 'Private room with private bathroom' : paymentRequest.roomType === 'private' ? 'Private room' : paymentRequest.roomType === 'shared' ? 'Shared room' : 'Room adjustment')}</div><div className="text-xs text-gray-500">Room {paymentRequest.roomAdjustmentType}</div></div><div className="font-semibold text-gray-900">{formatAmount(paymentRequest.roomAdjustmentAmount, paymentRequest.currency)}</div></div>}
                 {(paymentRequest.lineItems || []).map((item, index) => (
                   <div key={index} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
@@ -288,7 +294,7 @@ const PaymentRequestEditorPage: React.FC = () => {
               <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 text-right text-sm">
                 <div>Subtotal: {formatAmount(paymentRequest.subtotal, paymentRequest.currency)}</div>
                 <div>Discount: {formatAmount(paymentRequest.discountTotal, paymentRequest.currency)}</div>
-                <div className="mt-1 font-semibold">Total: {formatAmount(paymentRequest.requestedAmount, paymentRequest.currency)}</div>
+                <div className="mt-1 font-semibold">Total booking price: {formatAmount(paymentRequest.fullPriceQuote || paymentRequest.fullPrice, paymentRequest.currency)}</div>
               </div>
             </div>
           )}

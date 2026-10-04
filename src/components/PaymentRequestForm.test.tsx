@@ -12,7 +12,7 @@ jest.mock('../services/api', () => ({
   paymentRequestTypesApi: { getAll: jest.fn() },
   paymentRequestsApi: { getNextDisplayIdFresh: jest.fn(), getAllFresh: jest.fn() },
   bookingsApi: { getAllFresh: jest.fn().mockResolvedValue({ data: [] }), getByClient: jest.fn() },
-  paymentsApi: { getByClient: jest.fn(), convertToUsd: jest.fn(), convert: jest.fn() },
+  paymentsApi: { getPlanSettings: jest.fn().mockResolvedValue({ data: { depositPercentage: 40, balanceDueDaysBeforeRetreat: 30 } }), getByClient: jest.fn(), convertToUsd: jest.fn(), convert: jest.fn() },
   ceremoniesApi: { getByRetreat: jest.fn() },
   revolutPaymentLinksApi: { list: jest.fn().mockResolvedValue({ data: [] }) },
 }));
@@ -68,6 +68,7 @@ const originalAlert = window.alert;
 describe('PaymentRequestForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (paymentsApi.getPlanSettings as jest.Mock).mockResolvedValue({ data: { depositPercentage: 40, balanceDueDaysBeforeRetreat: 30 } });
     window.alert = jest.fn();
     setUp();
   });
@@ -233,7 +234,7 @@ describe('PaymentRequestForm', () => {
     view();
     await screen.findByLabelText('Client');
 
-    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
 
     await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
   });
@@ -242,7 +243,7 @@ describe('PaymentRequestForm', () => {
     view();
     await screen.findByLabelText('Client');
 
-    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
     await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
 
     fireEvent.change(screen.getByLabelText('Requested Amount *'), { target: { value: '250' } });
@@ -250,8 +251,8 @@ describe('PaymentRequestForm', () => {
 
     // Changing something that feeds the auto-calc (e.g. the full price)
     // must not silently reset the admin's manual override back to 40%.
-    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1200' } });
-    await waitFor(() => expect(screen.getByLabelText('Full Booking Price *')).toHaveValue(1200));
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1200' } });
+    await waitFor(() => expect(screen.getByLabelText('Base Booking Price *')).toHaveValue(1200));
     expect(screen.getByLabelText('Requested Amount *')).toHaveValue(250);
     expect(screen.getByText(/Overridden manually/)).toBeInTheDocument();
 
@@ -274,7 +275,7 @@ describe('PaymentRequestForm', () => {
 
     fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
     fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
     fireEvent.click(screen.getByText('Create Request'));
 
     expect(await screen.findByText(/Invoice number 2001 already exists/)).toBeInTheDocument();
@@ -296,7 +297,7 @@ describe('PaymentRequestForm', () => {
 
     fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
     fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
     fireEvent.click(screen.getByLabelText('Itemize this payment request'));
     fireEvent.click(screen.getByText('Create Request'));
 
@@ -310,7 +311,7 @@ describe('PaymentRequestForm', () => {
 
     fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
     fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-    fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
     fireEvent.click(screen.getByText('Create Request'));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
@@ -331,7 +332,7 @@ describe('PaymentRequestForm', () => {
       view({ isEdit: true, paymentRequest: { _id: 'pr-1', display_id: 500, invoiceNumber: '500', clientId: 'client-1', retreatId: 'retreat-1', bookingId: 'booking-1', requestType: 'balance', fullPriceQuote: 5000, currency: 'EUR' } });
       await screen.findByLabelText('Client');
 
-      expect(screen.queryByLabelText('Full Booking Price *')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Base Booking Price *')).not.toBeInTheDocument();
       expect(screen.getByText(/5,000 EUR/)).toBeInTheDocument();
     });
 
@@ -342,7 +343,7 @@ describe('PaymentRequestForm', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Clear booking' }));
 
-      const priceInput = await screen.findByLabelText('Full Booking Price *');
+      const priceInput = await screen.findByLabelText('Base Booking Price *');
       fireEvent.change(priceInput, { target: { value: '4200' } });
       expect(priceInput).toHaveValue(4200);
     });
@@ -353,8 +354,58 @@ describe('PaymentRequestForm', () => {
 
       fireEvent.change(screen.getByLabelText('Request Type'), { target: { value: 'balance' } });
 
-      expect(await screen.findByLabelText('Full Booking Price *')).toBeInTheDocument();
+      expect(await screen.findByLabelText('Base Booking Price *')).toBeInTheDocument();
     });
+  });
+
+  it('uses configured deposit and due-date settings, and keeps an overridden deposit', async () => {
+    (paymentsApi.getPlanSettings as jest.Mock).mockResolvedValueOnce({ data: { depositPercentage: 25, balanceDueDaysBeforeRetreat: 14 } });
+    const { onSave } = view();
+    await screen.findByLabelText('Client');
+    fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
+    fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
+    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '4000' } });
+    await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(1000));
+    fireEvent.click(screen.getByLabelText('Also create the final payment request'));
+    fireEvent.change(screen.getByLabelText('Requested Amount *'), { target: { value: '1500' } });
+    expect(screen.getByLabelText('Requested Amount *')).toHaveValue(1500);
+    expect(screen.getByText(/2026-12-01/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Create Request'));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      requestedAmount: 1500, fullPrice: 4000, baseBookingPrice: 4000,
+      finalPaymentRequestPreview: { requestedAmount: 2500, fullPrice: 4000, currency: 'EUR', dueDate: '2026-12-01' },
+    })));
+  });
+
+  it('calculates the deposit from the complete itemized booking price', async () => {
+    view({ paymentRequest: { requestType: 'deposit', baseBookingPrice: 2950, lineItems: [{ type: 'charge', description: 'Private bedroom', amount: 650 }, { type: 'charge', description: 'Private tub', amount: 400 }] } });
+    await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(1600));
+    expect(screen.getByText('4000.00 EUR')).toBeInTheDocument();
+  });
+
+  it('reopens an itemized deposit without adding its charges twice', async () => {
+    const { onSave } = view({ isEdit: true, paymentRequest: {
+      clientId: 'client-1', retreatId: 'retreat-1', invoiceNumber: '1234', requestType: 'deposit',
+      baseBookingPrice: 2950, fullPrice: 4000, fullPriceQuote: 4000, requestedAmount: 1200,
+      lineItems: [{ type: 'charge', description: 'Private bedroom', amount: 650 }, { type: 'charge', description: 'Private tub', amount: 400 }],
+    } });
+    await screen.findByLabelText('Client');
+    expect(screen.getByLabelText('Base Booking Price *')).toHaveValue(2950);
+    expect(screen.getByLabelText('Requested Amount *')).toHaveValue(1200);
+    await screen.findByRole('option', { name: 'Deposit' });
+    fireEvent.click(screen.getByText('Update Request'));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ fullPrice: 4000, baseBookingPrice: 2950, requestedAmount: 1200 })));
+  });
+
+  it('preserves a legacy itemized deposit when reopened', async () => {
+    view({ isEdit: true, paymentRequest: {
+      requestType: 'deposit', fullPrice: 4000, requestedAmount: 1600,
+      lineItems: [{ type: 'charge', description: 'Private room', amount: 1050 }],
+    } });
+    await screen.findByLabelText('Client');
+    expect(screen.getByLabelText('Base Booking Price *')).toHaveValue(2950);
+    expect(screen.getByLabelText('Requested Amount *')).toHaveValue(1600);
+    expect(screen.getByText('4000.00 EUR')).toBeInTheDocument();
   });
 
   describe('final payment request checkbox', () => {
@@ -377,7 +428,7 @@ describe('PaymentRequestForm', () => {
 
       fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
       fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-      fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
       await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
 
       fireEvent.click(screen.getByLabelText('Also create the final payment request'));
@@ -393,7 +444,7 @@ describe('PaymentRequestForm', () => {
 
       fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
       fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-      fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
       fireEvent.click(screen.getByLabelText('Also create the final payment request'));
 
       expect(await screen.findByText('Select a retreat with a start date to preview the final request.')).toBeInTheDocument();
@@ -408,7 +459,7 @@ describe('PaymentRequestForm', () => {
 
       fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
       fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-      fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
       await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
       fireEvent.click(screen.getByLabelText('Also create the final payment request'));
       expect((await screen.findAllByText(/600/)).length).toBeGreaterThan(0);
@@ -426,7 +477,7 @@ describe('PaymentRequestForm', () => {
 
       fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
       fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-      fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
       fireEvent.click(screen.getByText('Create Request'));
 
       await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ finalPaymentRequestPreview: undefined })));

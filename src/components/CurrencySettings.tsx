@@ -18,7 +18,7 @@ interface CurrencySettingsProps {
 
 type ConverterCurrency = 'USD' | 'EUR' | 'CZK' | 'PLN';
 type PaymentTypeSetting = { key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string };
-type PaymentPlanSettings = { enabled: boolean; automaticallyCreateBalanceRequest: boolean; balanceDueDaysBeforeRetreat: number; reminderAutomationEnabled: boolean; reminderOffsetsDays: number[]; showFuturePaymentRequestInPortal: boolean; publicPaymentRequestBaseUrl: string; receiptAttachPdf: boolean; receiptAttachBookingConfirmation: boolean; receiptPortalBaseUrl: string };
+type PaymentPlanSettings = { depositPercentage: number; enabled: boolean; automaticallyCreateBalanceRequest: boolean; balanceDueDaysBeforeRetreat: number; reminderAutomationEnabled: boolean; reminderOffsetsDays: number[]; showFuturePaymentRequestInPortal: boolean; publicPaymentRequestBaseUrl: string; receiptAttachPdf: boolean; receiptAttachBookingConfirmation: boolean; receiptPortalBaseUrl: string };
 const converterCurrencies: ConverterCurrency[] = ['PLN', 'USD', 'EUR', 'CZK'];
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
@@ -41,7 +41,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
   const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
   const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
-  const [paymentPlan, setPaymentPlan] = useState<PaymentPlanSettings>({ enabled: true, automaticallyCreateBalanceRequest: true, balanceDueDaysBeforeRetreat: 30, reminderAutomationEnabled: true, reminderOffsetsDays: [5, 3, 0, -1], showFuturePaymentRequestInPortal: true, publicPaymentRequestBaseUrl: 'https://ibogaspirit.com/clients/payment/request', receiptAttachPdf: true, receiptAttachBookingConfirmation: false, receiptPortalBaseUrl: 'https://www.ibogaready.com' });
+  const [paymentPlan, setPaymentPlan] = useState<PaymentPlanSettings>({ depositPercentage: 40, enabled: true, automaticallyCreateBalanceRequest: true, balanceDueDaysBeforeRetreat: 30, reminderAutomationEnabled: true, reminderOffsetsDays: [5, 3, 0, -1], showFuturePaymentRequestInPortal: true, publicPaymentRequestBaseUrl: 'https://ibogaspirit.com/clients/payment/request', receiptAttachPdf: true, receiptAttachBookingConfirmation: false, receiptPortalBaseUrl: 'https://www.ibogaready.com' });
   const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
 
   useEffect(() => {
@@ -200,6 +200,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
             <p>This rule creates one final-balance request per booking. It is updated when the booking, price, currency, or retreat date changes and cancelled when the booking is cancelled.</p>
             <label><input type="checkbox" checked={paymentPlan.enabled} onChange={(event) => setPaymentPlan(current => ({ ...current, enabled: event.target.checked }))} /> Enable payment-plan automation</label>
             <label><input type="checkbox" checked={paymentPlan.automaticallyCreateBalanceRequest} onChange={(event) => setPaymentPlan(current => ({ ...current, automaticallyCreateBalanceRequest: event.target.checked }))} /> Automatically create the final-balance payment request</label>
+            <label><span>Default deposit</span><div className="payment-plan-number"><input type="number" min="0" max="100" step="0.01" value={paymentPlan.depositPercentage ?? 40} onChange={(event) => setPaymentPlan(current => ({ ...current, depositPercentage: Number(event.target.value) }))} /><span>%</span></div></label>
             <label><span>Final balance due before retreat</span><div className="payment-plan-number"><input type="number" min="0" max="365" value={paymentPlan.balanceDueDaysBeforeRetreat} onChange={(event) => setPaymentPlan(current => ({ ...current, balanceDueDaysBeforeRetreat: Number(event.target.value) }))} /><span>days</span></div></label>
             <label><input type="checkbox" checked={paymentPlan.reminderAutomationEnabled} onChange={(event) => setPaymentPlan(current => ({ ...current, reminderAutomationEnabled: event.target.checked }))} /> Automatically email unpaid final-balance reminders</label>
             <label><span>Reminder schedule (days before due; use -1 for one day after)</span><input value={paymentPlan.reminderOffsetsDays.join(', ')} onChange={(event) => setPaymentPlan(current => ({ ...current, reminderOffsetsDays: event.target.value.split(',').map(value => Number(value.trim())).filter(Number.isFinite) }))} /></label>

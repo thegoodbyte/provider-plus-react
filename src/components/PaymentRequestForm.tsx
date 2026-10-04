@@ -34,7 +34,7 @@ const resolveId = (value: any) => (typeof value === 'object' && value?._id ? val
 export const calculateRoomAdjustedPrice = (basePrice: number, adjustmentType?: string, adjustmentAmount?: number) => {
   const base = Number(basePrice || 0);
   const adjustment = Math.max(0, Number(adjustmentAmount || 0));
-  if (!Number.isFinite(base) || base <= 0) return 0;
+  if (!Number.isFinite(base) || base < 0) return 0;
   if (adjustmentType === 'surcharge') return Math.round((base + adjustment) * 100) / 100;
   if (adjustmentType === 'discount') return Math.max(0, Math.round((base - adjustment) * 100) / 100);
   return Math.round(base * 100) / 100;
@@ -44,6 +44,19 @@ export const calculateBookingTotal = (basePrice: number, adjustmentType?: string
   const roomAdjusted = calculateRoomAdjustedPrice(basePrice, adjustmentType, adjustmentAmount);
   const bookingAdjustments = lineItems.filter(item => item.type !== 'info').reduce((sum, item) => sum + Number(item.amount || 0), 0);
   return Math.max(0, Math.round((roomAdjusted + bookingAdjustments) * 100) / 100);
+};
+
+export const initialBaseBookingPrice = (request?: Partial<PaymentRequest>) => {
+  if (request?.requestType === 'balance') return request.fullPriceQuote ?? request.fullPrice;
+  if (request?.baseBookingPrice !== undefined) return request.baseBookingPrice;
+  const total = request?.fullPriceQuote ?? request?.fullPrice;
+  if (total === undefined) return undefined;
+  if (!['deposit', 'payment', 'full_payment'].includes(request?.requestType || '')) return total;
+  // Older deposits store the complete total; older full payments store the
+  // room-adjusted base separately from their additive line items.
+  const adjustments = request?.requestType === 'deposit' ? (request.lineItems || []).reduce((sum, item) => sum + Number(item.amount || 0), 0) : 0;
+  const room = Number(request?.roomAdjustmentAmount || 0) * (request?.roomAdjustmentType === 'discount' ? -1 : request?.roomAdjustmentType === 'surcharge' ? 1 : 0);
+  return Math.max(0, Math.round((total - adjustments - room) * 100) / 100);
 };
 
 const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
@@ -64,6 +77,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [revolutLinkMismatch, setRevolutLinkMismatch] = useState(false);
   const [bookingDefaultsLoading, setBookingDefaultsLoading] = useState(false);
   const [bookingDefaultsMessage, setBookingDefaultsMessage] = useState('');
+  const [planSettings, setPlanSettings] = useState({ depositPercentage: 40, balanceDueDaysBeforeRetreat: 30 });
+  const [depositOverridden, setDepositOverridden] = useState(isEdit || paymentRequest?.requestedAmount !== undefined);
   const [itemized, setItemized] = useState(Boolean(paymentRequest?.lineItems?.length));
   const [createFinalPaymentRequest, setCreateFinalPaymentRequest] = useState(false);
   const [lineItems, setLineItems] = useState<PaymentRequestLineItem[]>(paymentRequest?.lineItems || []);
@@ -90,7 +105,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     requestType: paymentRequest?.requestType === 'additional'
       ? 'payment'
       : paymentRequest?.requestType || 'deposit',
-    fullPriceQuote: paymentRequest?.fullPriceQuote?.toString() || '',
+    fullPriceQuote: initialBaseBookingPrice(paymentRequest)?.toString() || '',
     requestedAmount: (paymentRequest?.requestedAmount ?? paymentRequest?.amountPaid)?.toString() || '',
     currency: paymentRequest?.currency || 'EUR',
     note: paymentRequest?.note || paymentRequest?.notes || '',
@@ -102,17 +117,6 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     revolutPaymentLink: paymentRequest?.revolutPaymentLink || '',
     createdBy: paymentRequest?.createdBy || '',
   });
-
-  // PPVC-716: the 40% deposit auto-calc below was unconditionally
-  // overwriting requestedAmount on every recompute, so admin edits (and
-  // even a stored custom amount when opening an existing request) never
-  // stuck. Once the admin types into the field, stop recalculating it;
-  // an existing request that already has an amount stored starts "already
-  // decided" so loading it doesn't silently reset it to 40%.
-  const [depositAmountManuallyEdited, setDepositAmountManuallyEdited] = useState(() => Boolean(paymentRequest?.requestedAmount));
-  useEffect(() => {
-    setDepositAmountManuallyEdited(Boolean(paymentRequest?.requestedAmount));
-  }, [formData.requestType]);
 
   const createsBalance = !isEdit && Boolean(formData.bookingId) && (formData.requestType === 'balance' || (formData.requestType === 'deposit' && createFinalPaymentRequest));
   const findExistingBalance = (requests: PaymentRequest[]) => requests.find(request =>
@@ -130,6 +134,13 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     }
     return () => { active = false; };
   }, [createsBalance, formData.bookingId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    paymentsApi.getPlanSettings().then(response => setPlanSettings({
+      depositPercentage: response.data.depositPercentage ?? 40,
+      balanceDueDaysBeforeRetreat: response.data.balanceDueDaysBeforeRetreat ?? 30,
+    })).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -240,7 +251,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       fullPriceQuote: '',
       requestedAmount: '',
     }));
-    setDepositAmountManuallyEdited(false);
+    setDepositOverridden(false);
   };
 
   useEffect(() => {
@@ -296,48 +307,46 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       : item);
     const changed = recalculated.some((item, index) => item.amount !== lineItems[index].amount);
     const total = formData.requestType === 'deposit'
-      ? calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, recalculated) * 0.4
-      : calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount) + (['payment', 'full_payment'].includes(formData.requestType) ? recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0) : 0);
-    if (formData.requestType !== 'balance' && !(formData.requestType === 'deposit' && depositAmountManuallyEdited)) {
-      setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
-    }
+      ? calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, recalculated) * planSettings.depositPercentage / 100
+      : calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, ['payment', 'full_payment'].includes(formData.requestType) ? recalculated : []);
+    if (formData.requestType !== 'balance' && (formData.requestType !== 'deposit' || !depositOverridden)) setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
     if (changed) setLineItems(recalculated);
-  }, [itemized, lineItems, formData.requestType, formData.fullPriceQuote, formData.roomAdjustmentType, formData.roomAdjustmentAmount, depositAmountManuallyEdited]);
+  }, [itemized, lineItems, formData.requestType, formData.fullPriceQuote, formData.roomAdjustmentType, formData.roomAdjustmentAmount, depositOverridden, planSettings.depositPercentage]);
 
   useEffect(() => {
-    const fullPrice = calculateBookingTotal(Number(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : []);
+    const fullPrice = calculateBookingTotal(Number(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? lineItems : []);
     if (itemized) return;
     if (!Number.isFinite(fullPrice) || fullPrice <= 0) return;
 
-    if (formData.requestType === 'deposit') {
-      if (depositAmountManuallyEdited) return;
-      const depositAmount = String(Math.round(fullPrice * 0.4 * 100) / 100);
+    if (formData.requestType === 'deposit' && !depositOverridden) {
+      const depositAmount = String(Math.round(fullPrice * planSettings.depositPercentage) / 100);
       if (formData.requestedAmount !== depositAmount) {
         setFormData(prev => ({ ...prev, requestedAmount: depositAmount }));
       }
-    } else if (formData.requestType === 'full_payment' && formData.requestedAmount !== String(fullPrice)) {
+    } else if (['payment', 'full_payment'].includes(formData.requestType) && formData.requestedAmount !== String(fullPrice)) {
       setFormData(prev => ({ ...prev, requestedAmount: String(fullPrice) }));
     }
-  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized, lineItems, depositAmountManuallyEdited]);
+  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized, lineItems, depositOverridden, planSettings.depositPercentage]);
 
   const handleChange = (field: string, value: any) => {
+    if (field === 'requestedAmount' && formData.requestType === 'deposit') setDepositOverridden(true);
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const showFinalPaymentRequestOption = !isEdit && formData.requestType === 'deposit';
 
   // Preview of the final-balance request the checkbox below will create
-  // alongside this deposit: due 30 days before the retreat starts, for
+  // alongside this deposit, using the payment-plan due-date setting, for
   // whatever remains of the full price after this deposit.
   const finalPaymentRequestPreview = (() => {
     if (!showFinalPaymentRequestOption || !createFinalPaymentRequest) return null;
     const selectedRetreat = retreats.find((retreat) => retreat._id === formData.retreatId);
     const startDate = parseCalendarDate(selectedRetreat?.startDate);
-    const fullPrice = calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : []);
+    const fullPrice = calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? lineItems : []);
     const depositAmount = parseFloat(formData.requestedAmount);
     if (!startDate || !Number.isFinite(fullPrice) || !Number.isFinite(depositAmount)) return null;
     const dueDate = new Date(startDate);
-    dueDate.setDate(dueDate.getDate() - 30);
+    dueDate.setDate(dueDate.getDate() - planSettings.balanceDueDaysBeforeRetreat);
     return {
       dueDate: toDateInputValue(dueDate),
       requestedAmount: Math.max(0, Math.round((fullPrice - depositAmount) * 100) / 100),
@@ -390,10 +399,14 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       }
 
       const selectedBooking = bookings.find((booking) => booking._id === formData.bookingId);
-      const fullPriceQuote = calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : [])
+      const fullPriceQuote = (formData.requestType === 'balance' ? Number(formData.fullPriceQuote) : calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? lineItems : []))
         || Number(selectedBooking?.totalAmount)
         || parseFloat(formData.requestedAmount);
       const requestedAmount = parseFloat(formData.requestedAmount);
+      if (formData.requestType === 'deposit' && (!Number.isFinite(requestedAmount) || requestedAmount <= 0 || requestedAmount > fullPriceQuote)) {
+        setFormError('Deposit must be greater than zero and cannot exceed the total booking price.');
+        return;
+      }
       if (itemized && (!lineItems.length || lineItems.some(item => !item.description.trim() || (item.type !== 'info' && !Number(item.amount))))) {
         setFormError('Every itemized row needs a description and amount. Informational items only need a description.');
         return;
@@ -417,6 +430,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         paymentType: formData.paymentType as PaymentRequest['paymentType'],
         requestType: formData.requestType as PaymentRequest['requestType'],
         requestedAmount,
+        baseBookingPrice: ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? Number(formData.fullPriceQuote) : undefined,
         lineItems: itemized ? lineItems : [],
         subtotal: itemized ? subtotal : undefined,
         discountTotal: itemized ? discountTotal : undefined,
@@ -444,7 +458,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     }
   };
 
-  const bookingTotal = calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : []);
+  const bookingTotal = formData.requestType === 'balance' ? Number(formData.fullPriceQuote || 0) : calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? lineItems : []);
   const remainingBalance = Math.max(0, bookingTotal - Number(formData.requestedAmount || 0));
   const roomLabel = formData.roomType === 'private_ensuite' ? 'Private room with private bathroom' : formData.roomType === 'private' ? 'Private room' : formData.roomType === 'shared' ? 'Shared room' : 'Room choice';
   const selectedRetreat = retreats.find((item) => item._id === formData.retreatId);
@@ -685,14 +699,14 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 {itemized && lineItems.filter(item => item.type !== 'info').map((item, index) => <div key={`price-line-${index}`} className="flex justify-between gap-4"><span>{item.description || 'Unnamed adjustment'}</span><span className={Number(item.amount || 0) < 0 ? 'text-green-700' : ''}>{Number(item.amount || 0) >= 0 ? '+' : ''}{Number(item.amount || 0).toFixed(2)} {formData.currency}</span></div>)}
                 {formData.roomAdjustmentType !== 'none' && <div className="flex justify-between gap-4"><span>{roomLabel}</span><span>{formData.roomAdjustmentType === 'discount' ? '-' : '+'}{Number(formData.roomAdjustmentAmount || 0).toFixed(2)} {formData.currency}</span></div>}
                 <div className="flex justify-between gap-4 border-t border-slate-200 pt-2 font-semibold"><span>Total booking price</span><span>{bookingTotal.toFixed(2)} {formData.currency}</span></div>
-                {formData.requestType === 'deposit' && <div className="flex justify-between gap-4 text-blue-800"><span>Deposit due on this invoice (40%)</span><span>{Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</span></div>}
-                {formData.requestType === 'deposit' && createFinalPaymentRequest && <div className="flex justify-between gap-4 text-slate-700"><span>Remaining balance for linked final request</span><span>{remainingBalance.toFixed(2)} {formData.currency}</span></div>}
+                {formData.requestType === 'deposit' && <div className="flex justify-between gap-4 text-blue-800"><span>Deposit due on this invoice ({bookingTotal ? (Number(formData.requestedAmount || 0) / bookingTotal * 100).toFixed(2) : '0'}%)</span><span>{Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</span></div>}
+                {formData.requestType === 'deposit' && <div className="flex justify-between gap-4 text-slate-700"><span>Remaining balance for linked final request</span><span>{remainingBalance.toFixed(2)} {formData.currency}</span></div>}
               </div>
             </div>
 
             {formData.requestType === 'deposit' || formData.requestType === 'payment' || formData.requestType === 'full_payment' || (formData.requestType === 'balance' && !formData.bookingId) ? (
               <div>
-                <label htmlFor="fullPriceQuote" className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price *</label>
+                <label htmlFor="fullPriceQuote" className="block text-sm font-medium text-gray-700 mb-2">Base Booking Price *</label>
                 <input
                   id="fullPriceQuote"
                   type="number"
@@ -704,7 +718,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   placeholder="0.00"
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">{formData.requestType === 'full_payment' ? 'The complete amount due for this booking.' : formData.requestType === 'balance' ? 'No booking is linked, so set the full price manually.' : 'The full price before any payment-request discount. The requested amount is calculated below it.'}</p>
+                <p className="mt-1 text-xs text-gray-500">The base retreat price. Room adjustments and itemized charges or discounts produce the total shown above.</p>
                 {formData.roomAdjustmentType !== 'none' && <p className="mt-1 text-sm font-semibold text-slate-700">Adjusted full price after room {formData.roomAdjustmentType}: {calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount).toFixed(2)} {formData.currency}</p>}
               </div>
             ) : formData.requestType === 'balance' ? (
@@ -721,28 +735,29 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <label htmlFor="requestedAmount" className="block text-sm font-medium text-gray-700 mb-2">Requested Amount *</label>
               <input
                 id="requestedAmount"
+                readOnly={['payment', 'full_payment'].includes(formData.requestType)}
                 type="number"
                 min="0"
                 step="0.01"
                 value={formData.requestedAmount}
                 onChange={(e) => {
                   handleChange('requestedAmount', e.target.value);
-                  if (formData.requestType === 'deposit') setDepositAmountManuallyEdited(true);
+                  if (formData.requestType === 'deposit') setDepositOverridden(true);
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
                 required
               />
               {formData.requestType === 'deposit' && (
-                depositAmountManuallyEdited ? (
+                depositOverridden ? (
                   <p className="mt-1 text-xs text-gray-500">
                     Overridden manually.{' '}
-                    <button type="button" className="text-blue-600 underline" onClick={() => setDepositAmountManuallyEdited(false)}>
-                      Reset to 40% of the full price
+                    <button type="button" className="text-blue-600 underline" onClick={() => setDepositOverridden(false)}>
+                      Reset to {planSettings.depositPercentage}% of the total price
                     </button>
                   </p>
                 ) : (
-                  <p className="mt-1 text-xs text-gray-500">Auto-calculated as 40% of the full price. Edit it to set a custom amount.</p>
+                  <p className="mt-1 text-xs text-gray-500">Auto-calculated as {planSettings.depositPercentage}% of the total price. Edit it to set a custom amount.</p>
                 )
               )}
               {formData.requestType === 'payment' && itemized && (
@@ -765,7 +780,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   Also create the final payment request
                 </label>
                 <p className="mt-1 text-xs text-gray-500">
-                  Due 30 days before the retreat starts, for the remaining balance after this deposit. It will show as a linked request on this deposit.
+                  Due {planSettings.balanceDueDaysBeforeRetreat} days before the retreat starts, for the remaining balance after this deposit. It will show as a linked request on this deposit.
                 </p>
                 {createFinalPaymentRequest && (
                   finalPaymentRequestPreview ? (
@@ -790,7 +805,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                     const enabled = event.target.checked;
                     setItemized(enabled);
                     if (enabled && !lineItems.length) {
-                      setLineItems([{ type: 'charge', description: '', amount: formData.requestType === 'payment' ? 0 : Number(formData.requestedAmount || 0) }]);
+                      setLineItems([{ type: 'charge', description: '', amount: 0 }]);
                     }
                   }}
                   className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -902,7 +917,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                       {formData.roomAdjustmentType !== 'none' && <div className="font-semibold">Adjusted booking price: {calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount).toFixed(2)} {formData.currency}</div>}
                       <div>Additional charges: {lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0).toFixed(2)} {formData.currency}</div>
                       <div>Discount: {(-lineItems.filter(item => item.amount < 0).reduce((sum, item) => sum + Number(item.amount), 0)).toFixed(2)} {formData.currency}</div>
-                      <div className="font-semibold">Total: {Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</div>
+                      <div className="font-semibold">Payable now: {Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</div>
                     </div>
                   </div>
                 </div>

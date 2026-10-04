@@ -1734,6 +1734,7 @@ export interface PaymentRequestLineItem {
 }
 
 export interface PaymentRequest {
+  baseBookingPrice?: number;
   _id?: string;
   display_id?: number;
   bookingId?: string;

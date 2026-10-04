@@ -13,6 +13,7 @@ export const bookingPriceLinesForClient = (request?: PaymentRequest, clientId?: 
 
 export const bookingPriceFromPaymentRequest = (request?: PaymentRequest, clientId?: string) => {
   if (String(request?.requestType || '').toLowerCase() === 'additional') return undefined;
+  if (request?.baseBookingPrice !== undefined) return Number(request.fullPriceQuote ?? request.fullPrice) || undefined;
   const lines = bookingPriceLinesForClient(request, clientId);
   const explicitlyAssignedLines = (request?.lineItems || []).filter(line => id(line.clientId) === clientId);
 
