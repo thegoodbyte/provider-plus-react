@@ -256,7 +256,7 @@ describe('PaymentRequestForm', () => {
     expect(screen.getByLabelText('Requested Amount *')).toHaveValue(250);
     expect(screen.getByText(/Overridden manually/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Reset to 40% of the full price'));
+    fireEvent.click(screen.getByText('Reset to 40% of the total price'));
     await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(480));
   });
 

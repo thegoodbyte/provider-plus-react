@@ -18,11 +18,11 @@ describe('HouseRoomConfiguration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add bedroom' }));
     expect(onChange).toHaveBeenCalledWith({ bedrooms: [expect.objectContaining({ name: 'Room 1', bedCount: 2, allowsSharing: true })] });
   });
-  it('can remove a room and turn off sharing for the house', () => {
+  it('can archive a room and turn off sharing for the house', () => {
     const onChange = jest.fn();
     render(<HouseRoomConfiguration house={house} onChange={onChange} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Room 1' }));
-    expect(onChange).toHaveBeenCalledWith({ bedrooms: [] });
+    fireEvent.click(screen.getByRole('button', { name: 'Archive Room 1' }));
+    expect(onChange).toHaveBeenCalledWith({ bedrooms: [expect.objectContaining({ _id: "stable-id", active: false })] });
     fireEvent.click(screen.getByLabelText('This house allows shared rooms'));
     expect(onChange).toHaveBeenCalledWith({ allowsRoomSharing: false });
   });

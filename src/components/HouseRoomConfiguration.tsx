@@ -16,11 +16,11 @@ export default function HouseRoomConfiguration({ house, onChange }: { house: Par
       <label className="block text-sm font-medium">Room number / name<input aria-label={`Bedroom ${index + 1} name`} value={room.name} onChange={event => update(index, { name: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2" required /></label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">Floor<input aria-label={`Bedroom ${index + 1} floor`} value={room.floor || ''} onChange={event => update(index, { floor: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2" /></label>
-        <label className="block text-sm">Physical beds<input aria-label={`Bedroom ${index + 1} beds`} type="number" min="1" max="20" value={room.bedCount ?? 2} onChange={event => update(index, { bedCount: Number(event.target.value) })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2" required /></label>
+        <label className="block text-sm">Physical beds<input aria-label={`Bedroom ${index + 1} beds`} type="number" min="1" max="20" value={room.bedCount ?? room.beds ?? 2} onChange={event => update(index, { bedCount: Number(event.target.value) })} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2" required /></label>
       </div>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(room.hasBathroom)} onChange={event => update(index, { hasBathroom: event.target.checked })} /> Private bathroom</label>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={room.allowsSharing !== false} onChange={event => update(index, { allowsSharing: event.target.checked })} /> Allow shared use</label>
-      <button type="button" onClick={() => onChange({ bedrooms: rooms.filter((_, i) => i !== index) })} className="text-sm font-medium text-red-700">Remove {room.name || 'bedroom'}</button>
+      <button type="button" onClick={() => update(index, { active: room.active === false })} className="text-sm font-medium text-red-700">{room.active === false ? 'Restore' : 'Archive'} {room.name || 'bedroom'}</button>
     </div>)}</div>
     <p className="text-xs text-slate-500">Saved retreat allocations keep their configuration. Refresh an empty retreat board to use updated house bedrooms.</p>
   </section>;
