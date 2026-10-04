@@ -112,6 +112,27 @@ describe('RoomAllocationBoard', () => {
     render(<RoomAllocationBoard retreatId="retreat1" />);
     expect(await screen.findByText(/Guests without an accommodation choice/)).toHaveTextContent('selected in their booking');
   });
+  it('hides every booking for an assigned client until that client is released', async () => {
+    const board: AllocationBoard = JSON.parse(JSON.stringify(fixture));
+    board.guests[1].clientId = 'bob-client';
+    board.guests.push({ ...board.guests[1], id: 'duplicate-b', bookingNumber: 104 });
+    board.rooms[0].occupants = [{ bed: 1, bookingId: 'b' }];
+    board.rooms.push({ ...board.rooms[0], id: 'r2', name: 'Room 2', occupants: [] });
+    (roomAllocationApi.get as jest.Mock).mockResolvedValue({ data: board });
+    const released: AllocationBoard = JSON.parse(JSON.stringify(board));
+    released.rooms[0].occupants = [];
+    (roomAllocationApi.change as jest.Mock).mockResolvedValue({ data: released });
+    render(<RoomAllocationBoard retreatId="retreat1" />);
+    const picker = await screen.findByRole('combobox', { name: 'Room 2 Shared bed 1 guest' });
+    await userEvent.click(picker);
+    await screen.findByRole('option', { name: /Anna/ });
+    expect(screen.queryByRole('option', { name: /Bob/ })).not.toBeInTheDocument();
+    fireEvent.keyDown(picker, { key: 'Escape', code: 'Escape', keyCode: 27 });
+    fireEvent.click(screen.getByRole('button', { name: 'Release Bob' }));
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Room 2 Shared bed 1 guest' })).toBeEnabled());
+    await userEvent.click(screen.getByRole('combobox', { name: 'Room 2 Shared bed 1 guest' }));
+    expect((await screen.findAllByRole('option', { name: /Bob/ })).length).toBe(2);
+  });
   it('shows an actionable empty-house configuration message', async () => {
     (roomAllocationApi.get as jest.Mock).mockResolvedValue({ data: { ...fixture, rooms: [] } });
     render(<RoomAllocationBoard retreatId="retreat1" />);

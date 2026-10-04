@@ -43,6 +43,8 @@ export default function RoomAllocationBoard({ retreatId }: { retreatId: string }
     } finally { setBusy(false); }
   };
   const assigned = new Set(board?.rooms.flatMap(room => room.occupants.map(occupant => occupant.bookingId)) || []);
+  const assignedClients = new Set(board?.guests.filter(guest => assigned.has(guest.id)).map(guest => guest.clientId).filter(Boolean) || []);
+  const unassignedGuests = board?.guests.filter(guest => !assigned.has(guest.id) && (!guest.clientId || !assignedClients.has(guest.clientId))) || [];
   const occupied = board?.rooms.reduce((sum, room) => sum + room.occupants.length, 0) || 0;
   const offered = board?.rooms.reduce((sum, room) => sum + room.availableBeds, 0) || 0;
   return <section className="space-y-5" aria-label="Room allocation board">
@@ -68,7 +70,7 @@ export default function RoomAllocationBoard({ retreatId }: { retreatId: string }
         const bed = index + 1;
         const occupantId = room.occupants.find(occupant => occupant.bed === bed)?.bookingId;
         const occupant = board.guests.find(guest => guest.id === occupantId);
-        const guests = board.guests.filter(guest => !assigned.has(guest.id) || guest.id === occupantId);
+        const guests = board.guests.filter(guest => guest.id === occupantId || (!assigned.has(guest.id) && (!guest.clientId || !assignedClients.has(guest.clientId))));
         const recommended = guests.filter(guest => matchesRoomPreference(room, guest));
         const others = guests.filter(guest => !matchesRoomPreference(room, guest));
         const label = roomUse(room) === 'private' ? 'Private room' : `Shared bed ${bed}`;
@@ -79,6 +81,6 @@ export default function RoomAllocationBoard({ retreatId }: { retreatId: string }
         </div>;
       })}{room.availableBeds === 0 && <p className="text-sm text-slate-500">Room closed for this retreat.</p>}</div>
     </article>)}</div>
-    {board && <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-semibold text-slate-900">Unassigned guests ({board.guests.length - assigned.size})</h3><div className="mt-2 flex flex-wrap gap-2">{board.guests.filter(guest => !assigned.has(guest.id)).map(guest => <span key={guest.id} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700">#{guest.bookingNumber || '—'} · {guest.name}</span>)}</div></div>}
+    {board && <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><h3 className="font-semibold text-slate-900">Unassigned guests ({unassignedGuests.length})</h3><div className="mt-2 flex flex-wrap gap-2">{unassignedGuests.map(guest => <span key={guest.id} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700">#{guest.bookingNumber || '—'} · {guest.name}</span>)}</div></div>}
   </section>;
 }
