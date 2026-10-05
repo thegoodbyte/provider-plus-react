@@ -12,7 +12,7 @@ import IntegrationCalendar, {
 } from "./IntegrationCalendar";
 import { integrationCalendarApi } from "../services/integrationCalendarApi";
 jest.mock("../services/integrationCalendarApi", () => ({
-  integrationCalendarApi: { get: jest.fn(), save: jest.fn() },
+  integrationCalendarApi: { get: jest.fn(), save: jest.fn(), supportRequests: jest.fn().mockResolvedValue({ data: [] }), updateSupportRequest: jest.fn() },
 }));
 const person = {
   clientId: "client",
@@ -225,4 +225,14 @@ it("retains an editor after a failed save", async () => {
   expect(
     screen.getByRole("form", { name: "Integration call" }),
   ).toBeInTheDocument();
+});
+it('prefills an individual call from a client support request on the global calendar', async () => {
+  (integrationCalendarApi.supportRequests as jest.Mock).mockResolvedValueOnce({ data: [{ _id: 'request', retreatId: { _id: 'retreat', name: 'JNO-09' }, clientId: { _id: 'client', firstName: 'Ada' }, createdAt: '2026-10-05', status: 'requested', message: 'Please arrange support' }] });
+  render(<IntegrationCalendar />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Schedule individual call' }));
+  await waitFor(() => expect(screen.getByLabelText('Call type')).toHaveValue('individual'));
+  expect(screen.getByLabelText('Title')).toHaveValue('Individual integration support');
+  fireEvent.click(screen.getByRole('button', { name: 'Save call' }));
+  await waitFor(() => expect(integrationCalendarApi.save).toHaveBeenCalledWith(undefined, expect.objectContaining({ kind: 'individual', retreatId: 'retreat', clientIds: ['client'] })));
+  (integrationCalendarApi.supportRequests as jest.Mock).mockResolvedValue({ data: [] });
 });
