@@ -3,11 +3,10 @@ const money = (value: unknown) => Number.isFinite(Number(value)) ? Number(value)
 export const bookingFinancialSummary = (booking?: BookingFinancialSource | null) => {
   if (booking?.financialSummary?.state) return booking.financialSummary as { price: number; currency: string; grossReceived: number; refunded: number; netPaid: number; balance: number; overpayment: number; paidInFull: boolean; state: 'unpaid' | 'partial' | 'paid' | 'overpaid' };
   const price = Math.max(0, money(booking?.totalAmount));
-  const recordedNetPaid = money(booking?.amountPaid);
-  const priceUsd = money(booking?.totalAmountUsd ?? booking?.totalAmountUSD);
-  const paidUsd = money(booking?.amountPaidUsd ?? booking?.amountPaidUSD);
-  const usdEquivalentPaid = priceUsd > 0 && paidUsd >= 0 ? (paidUsd / priceUsd) * price : 0;
-  const netPaid = Math.max(recordedNetPaid, usdEquivalentPaid);
+  // amountPaid is maintained by the payment ledger in the booking currency.
+  // USD snapshots can come from different exchange rates and must not inflate
+  // this amount. Mixed-currency settlement uses financialSummary above.
+  const netPaid = money(booking?.amountPaid);
   const grossReceived = Math.max(netPaid, money(booking?.grossReceived));
   const refunded = Math.max(money(booking?.refundedAmount), grossReceived - netPaid, 0);
   const balance = Math.max(price - netPaid, 0);

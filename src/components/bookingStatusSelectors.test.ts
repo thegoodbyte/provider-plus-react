@@ -1,6 +1,14 @@
 import { bookingPaymentSummary, bookingSettlementSummary, confirmationState, hasReceivedEvidence, isActivePaymentRequest, isAccomplishedStatus, isSatisfiedStatus } from './bookingStatusSelectors';
 
 describe('canonical booking status selectors', () => {
+  it('settles the reported CZK installments without USD exchange-rate drift', () => {
+    expect(bookingSettlementSummary([
+      { status: 'completed', amount: 18000, currency: 'CZK', usd_amount: 825 },
+      { status: 'completed', amount: 27000, currency: 'CZK', usd_amount: 1240.812444 },
+    ] as any, 45000, 'CZK', 2000)).toEqual({
+      received: 45000, outstanding: 0, overpaid: 0, paidPercent: 100, paidInFull: true, basis: 'CZK',
+    });
+  });
   it('separates sent requests from received evidence', () => {
     expect(hasReceivedEvidence('sent')).toBe(false);
     expect(isSatisfiedStatus('sent')).toBe(false);
