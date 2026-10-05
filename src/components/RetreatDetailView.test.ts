@@ -39,12 +39,12 @@ describe('getPaymentAmountInBookingCurrency', () => {
 });
 
 describe('getEffectivePaidAmount', () => {
-  it('recognizes a legacy cross-currency booking as paid from its USD totals', () => {
-    expect(getEffectivePaidAmount(9500, 2470, 0, 2470)).toBeCloseTo(9500);
+  it('does not invent a booking-currency payment from legacy USD totals', () => {
+    expect(getEffectivePaidAmount(9500, 2470, 0, 2470)).toBe(0);
   });
 
-  it('converts a partial USD payment proportionally into the booking currency', () => {
-    expect(getEffectivePaidAmount(9500, 2470, 0, 1235)).toBeCloseTo(4750);
+  it('keeps the recorded booking-currency amount despite higher USD snapshots', () => {
+    expect(getEffectivePaidAmount(45000, 2000, 18000, 2065)).toBe(18000);
   });
 });
 
