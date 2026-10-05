@@ -221,3 +221,5 @@
     max-height: 600px;
   }
 }
+
+.integration-support-requests{border:1px solid #e0e6df;border-radius:14px;padding:20px;margin:18px 0;background:#fafcf9}.integration-support-requests h3{margin:0 0 8px}.integration-support-requests>p{color:#647268;font-size:14px}.integration-support-requests article{background:white;border:1px solid #e2e8df;border-radius:10px;padding:16px;margin-top:12px}.integration-support-requests article>div:first-child{display:flex;gap:12px;flex-wrap:wrap}.integration-support-requests article span{color:#647268;font-size:14px}.integration-support-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}

@@ -1,3 +1,4 @@
+import IntegrationSupportRequests from './IntegrationSupportRequests';
 import React, { useCallback, useEffect, useState } from "react";
 import { integrationCalendarApi } from "../services/integrationCalendarApi";
 import "./IntegrationCalendar.css";
@@ -95,7 +96,7 @@ export default function IntegrationCalendar({
     setConflicts([]);
     setNotice("");
     try {
-      const callRetreat = call?.retreatId || selected;
+      const callRetreat = call?.retreatId || suggestion?.retreatId || selected;
       if (!callRetreat) throw new Error("Choose a retreat to schedule a call.");
       const details =
         selected === callRetreat
@@ -121,12 +122,12 @@ export default function IntegrationCalendar({
           : {
               requestId: crypto.randomUUID(),
               retreatId: callRetreat,
-              kind: "group",
+              kind: suggestion?.kind || "group",
               checkpointNumber: suggestion?.checkpointNumber || "",
               title: suggestion?.title || "Group integration call",
               localStart: firstDate + "T18:00",
               durationMinutes: 60,
-              clientIds: details.clients
+              clientIds: suggestion?.clientId ? [suggestion.clientId] : details.clients
                 .filter((p: any) => !p.archived)
                 .map((p: any) => p.clientId),
               meetingUrl: "",
@@ -268,6 +269,7 @@ export default function IntegrationCalendar({
         </div>
       )}
       {notice && <p role="status">{notice}</p>}
+      <IntegrationSupportRequests retreatId={selected || undefined} disabled={busy || !!editor} onSchedule={request => open(undefined, { retreatId: String(request.retreatId?._id || request.retreatId), clientId: String(request.clientId?._id || request.clientId), kind: 'individual', title: 'Individual integration support', date: dayOf(new Date().toISOString()) })} />
       {!!data?.legacyAppointments?.length && <aside>
         <h3>Appointments from checkpoint notes</h3>
         <p>These earlier appointments have no calendar duration or meeting link. Manage them in Checkpoint notes; they do not reserve a calendar slot.</p>
