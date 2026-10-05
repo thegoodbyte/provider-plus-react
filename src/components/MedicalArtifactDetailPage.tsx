@@ -206,7 +206,7 @@ const MedicalArtifactInlinePreview: React.FC<{
       active = false;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-  }, [artifactId, storedPath, file.mimeType]);
+  }, [artifactId, storedPath, file.mimeType, file.uploadedAt]);
 
   return (
     <div className="rounded-md border border-gray-200 bg-white p-4">
@@ -298,7 +298,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
         const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(id).catch(() => ({ data: [] }));
         const item = response.data;
         setArtifact(item);
-        setTranslationLanguage(item.translation?.sourceLanguage || item.data?.sourceLanguage || 'pl');
+        setTranslationLanguage(item.originalLanguage || item.translation?.sourceLanguage || item.data?.sourceLanguage || item.data?.language || 'pl');
         setReviewRequests(((reviewsResponse.data || []) as MedicalReviewRequest[]).sort((a, b) => getReviewSortTime(b) - getReviewSortTime(a)));
         setForm({
           title: item.title || '',
@@ -549,15 +549,6 @@ const MedicalArtifactDetailPage: React.FC = () => {
         </div>
       ))}
     </div>
-    {['questionnaire', 'medications_form', 'medication_list', 'food_intake', 'other'].includes(String(artifact.artifactType)) && (
-      <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div><div className="font-semibold text-blue-950">English advisor version</div><div className="mt-1 text-sm text-blue-900">{artifact.translation?.status === 'ready' ? `Ready · translated from ${artifact.translation.sourceLanguage.toUpperCase()}` : artifact.translation?.status === 'failed' ? `Failed: ${artifact.translation.error || 'Retry translation'}` : 'Generate an English equivalent while preserving the signed original.'}</div></div>
-          <div className="flex items-end gap-2"><label className="text-xs font-semibold text-blue-900">Original language<select value={translationLanguage} onChange={(event) => setTranslationLanguage(event.target.value)} className="mt-1 block rounded-md border border-blue-300 bg-white px-3 py-2 text-sm"><option value="pl">Polish</option><option value="cs">Czech</option><option value="de">German</option><option value="es">Spanish</option><option value="fr">French</option><option value="other">Other</option></select></label><button type="button" onClick={handleGenerateEnglish} disabled={translating} className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">{translating ? 'Generating…' : artifact.translation?.status === 'ready' ? 'Regenerate English' : 'Generate English'}</button></div>
-        </div>
-        {artifact.translation?.status === 'ready' && <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">AI-generated translation. The original signed submission remains authoritative.</div>}
-      </div>
-    )}
     {['ekg', 'liver_panel'].includes(String(artifact.artifactType)) && (
       <div className="mt-4 rounded-md border border-indigo-200 bg-indigo-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -898,6 +889,11 @@ const MedicalArtifactDetailPage: React.FC = () => {
               {downloading ? 'Preparing…' : 'Download'}
             </button>
           </div>
+          {artifact.translation?.status === 'ready' && (
+            <button type="button" onClick={handleGenerateEnglish} disabled={translating} className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
+              {translating ? 'Regenerating…' : 'Regenerate English translation'}
+            </button>
+          )}
           {!isEditMode && (
             <button onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/edit`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
               <Edit className="h-4 w-4" />
@@ -976,6 +972,16 @@ const MedicalArtifactDetailPage: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-900">Medical Artifact #{artifact.display_id || '-'}</h1>
         <div className="mt-2 flex items-center gap-3 text-sm text-gray-600"><MedicalDocumentTypeIcon type={artifact.artifactType} fallbackType={artifact.documentType} />{getArtifactTypeLabel(artifact.artifactType)} for {clientLabel}</div>
       </div>
+
+    {['questionnaire', 'medications_form', 'medication_list', 'food_intake', 'other'].includes(String(artifact.artifactType)) && (
+      <div className="mb-5 rounded-md border border-blue-200 bg-blue-50 p-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div><div className="font-semibold text-blue-950">English advisor version</div><div className="mt-1 text-sm text-blue-900">{artifact.translation?.status === 'ready' ? `Ready · translated from ${artifact.translation.sourceLanguage.toUpperCase()}` : artifact.translation?.status === 'failed' ? `Failed: ${artifact.translation.error || 'Retry translation'}` : 'Generate an English equivalent while preserving the signed original.'}</div></div>
+          <div className="flex items-end gap-2"><label className="text-xs font-semibold text-blue-900">Original language<select value={translationLanguage} onChange={(event) => setTranslationLanguage(event.target.value)} className="mt-1 block rounded-md border border-blue-300 bg-white px-3 py-2 text-sm"><option value="pl">Polish</option><option value="cs">Czech</option><option value="de">German</option><option value="es">Spanish</option><option value="fr">French</option><option value="other">Other</option></select></label><button type="button" onClick={handleGenerateEnglish} disabled={translating} className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">{translating ? 'Generating…' : artifact.translation?.status === 'ready' ? 'Regenerate English' : 'Generate English'}</button></div>
+        </div>
+        {artifact.translation?.status === 'ready' && <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">AI-generated translation. The original signed submission remains authoritative.</div>}
+      </div>
+    )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         {error && (
