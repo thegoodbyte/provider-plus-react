@@ -54,6 +54,29 @@ describe('ClientScreening referral capture', () => {
     expect(screen.getByText('Referral')).toBeInTheDocument();
   });
 
+  it.each(['direct', 'self_identified', 'na'] as const)('saves and restores the %s attribution when screening is reopened', async (attribution) => {
+    const firstRender = renderPage();
+    await screen.findByDisplayValue('Eva');
+    fireEvent.change(screen.getByLabelText('Attribution type'), { target: { value: attribution } });
+    expect(screen.getByLabelText('Attribution type')).toHaveValue(attribution);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save Screening' })[0]);
+    await waitFor(() => expect(mockedScreeningApi.create).toHaveBeenCalledWith(expect.objectContaining({ referralAttributionType: attribution })));
+
+    const saved = mockedScreeningApi.create.mock.calls[0][0];
+    firstRender.unmount();
+    mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, screeningData: saved } } as any);
+    renderPage();
+    await screen.findByDisplayValue('Eva');
+    expect(screen.getByLabelText('Attribution type')).toHaveValue(attribution);
+  });
+
+  it('loads attribution from the client profile when screening has no saved value', async () => {
+    mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, referralAttributionType: 'self_identified' } } as any);
+    renderPage();
+    await screen.findByDisplayValue('Eva');
+    expect(screen.getByLabelText('Attribution type')).toHaveValue('self_identified');
+  });
+
   it('captures a free-typed friend name and saves it alongside the referral', async () => {
     renderPage();
     await screen.findByText('Referral');

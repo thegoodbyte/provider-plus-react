@@ -21,6 +21,7 @@ interface ScreeningData {
   referralPersonType?: 'existing_client' | 'someone_else';
   referralClientId?: string | Client;
   referralPersonName?: string;
+  referralAttributionType?: Client['referralAttributionType'];
   sexualAbuse: boolean;
   sexualAbuseDetails: string;
   physicalAbuse: boolean;
@@ -495,6 +496,7 @@ const ClientScreening: React.FC = () => {
         referralPersonType: existingValue('referralPersonType', 'referralPersonType') as ScreeningData['referralPersonType'],
         referralClientId: existingValue('referralClientId', 'referralClientId') as ScreeningData['referralClientId'],
         referralPersonName: existingValue('referralPersonName', 'referralPersonName') as string | undefined,
+        referralAttributionType: existingValue('referralAttributionType', 'referralAttributionType') as ScreeningData['referralAttributionType'],
         heartConditionOk: existingScreening.heartConditionOk === true || heartCondition === 'OK',
         heartCondition,
         liverConditionOk: existingScreening.liverConditionOk === true || liverCondition === 'OK',
@@ -1104,6 +1106,7 @@ const ClientScreening: React.FC = () => {
                 referralPersonType: formData.referralPersonType,
                 referralClientId: formData.referralClientId,
                 referralPersonName: formData.referralPersonName,
+                referralAttributionType: formData.referralAttributionType,
               }}
               referrals={referrals}
               currentClientId={clientId}
@@ -1115,6 +1118,7 @@ const ClientScreening: React.FC = () => {
                   referralPersonType: 'referralPersonType' in patch ? patch.referralPersonType : current.referralPersonType,
                   referralClientId: 'referralClientId' in patch ? patch.referralClientId : current.referralClientId,
                   referralPersonName: 'referralPersonName' in patch ? patch.referralPersonName : current.referralPersonName,
+                  referralAttributionType: 'referralAttributionType' in patch ? patch.referralAttributionType : current.referralAttributionType,
                   referralId: 'referralId' in patch
                     ? (typeof patch.referralId === 'object' ? patch.referralId?._id || '' : patch.referralId || '')
                     : current.referralId,
