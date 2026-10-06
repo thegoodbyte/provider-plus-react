@@ -1,3 +1,4 @@
+import { quoteBookingUsd, retreatExpectedUsd } from './retreatUsdTotals';
 import RoomAllocationBoard from './RoomAllocationBoard';
 import RouteContentBoundary from './RouteContentBoundary';
 import { authService } from '../services/authService';
@@ -111,7 +112,7 @@ interface RetreatClientData {
   checkOutDate?: string;
   status: string;
   totalAmount: number;
-  totalAmountUSD: number;
+  totalAmountUSD: number | null;
   amountPaid: number;
   amountPaidUSD: number;
   cashPaidUSD: number;
@@ -287,15 +288,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         });
         return Array.from(exactBookingPayments.values());
         })),
-        Promise.all((clientsResponse.data || []).map(async (booking: any) => {
-          const currency = booking.currency || 'EUR';
-          try {
-            const response = await paymentsApi.convertToUsd(Number(booking.totalAmount || 0), currency);
-            return Number(response.data.usd_amount || 0);
-          } catch {
-            return convertAmountToUSD(Number(booking.totalAmount || 0), currency);
-          }
-        })),
+        Promise.all((clientsResponse.data || []).map((booking: any) =>
+          quoteBookingUsd(Number(booking.totalAmount || 0), booking.currency || 'EUR')
+        )),
       ]);
       const payments = paymentResults.flat();
       const getPaymentsForBooking = (booking: any) => {
@@ -356,7 +351,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           checkOutDate: booking.checkOutDate,
           status: booking.status || 'pending',
           totalAmount: booking.totalAmount || 0,
-          totalAmountUSD: totalUsdResults[bookingIndex] || convertAmountToUSD(Number(booking.totalAmount || 0), currency),
+          totalAmountUSD: totalUsdResults[bookingIndex],
           amountPaid: getPaidAmountForBooking({ ...booking, currency }),
           amountPaidUSD: getPaidUsdForBooking(booking),
           cashPaidUSD: getCashPaidUsdForBooking(booking),
@@ -924,10 +919,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   }
 
   const totalRevenueUSD = clients.reduce((sum, client) => sum + (client.cashPaidUSD || 0), 0);
-  const totalExpectedUSD = clients.reduce(
-    (sum, client) => sum + convertAmountToUSD(client.totalAmount || 0, client.currency),
-    0
-  );
+  const expectedUsdQuote = retreatExpectedUsd(clients);
+  const totalExpectedUSD = expectedUsdQuote ?? 0;
+  const missingUsdQuotes = expectedUsdQuote === null;
   const plannedExpensesUSD = expensesSummary?.plannedExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
   const actualExpensesUSD = expensesSummary?.actualExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
   const profitUSD = totalRevenueUSD - actualExpensesUSD;
@@ -1013,6 +1007,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <span>{activeClientCount}/{retreatCapacity} spots taken</span>
           <span aria-hidden="true">·</span>
           <span>{retreatDateText}</span>
+          <span aria-hidden="true">·</span>
+          <span title="Total booking prices for non-cancelled bookings, using ECB reference rates">Retreat booking total: {missingUsdQuotes ? 'USD conversion unavailable' : formatUSD(totalExpectedUSD)} <span className="text-xs">(ECB reference rates)</span></span>
         </div>
       </div>
 
@@ -1038,7 +1034,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               <div className="stat-label">Revenue Collected</div>
             </div>
             <div className="stat-card metric-expected-revenue">
-              <div className="stat-number">{formatUSD(totalExpectedUSD)}</div>
+              <div className="stat-number">{missingUsdQuotes ? 'USD total unavailable' : formatUSD(totalExpectedUSD)}</div>
               <div className="stat-label">Expected Revenue</div>
             </div>
             <div className="stat-card metric-confirmed">
@@ -1061,7 +1057,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </div>
             <div className={`stat-card ${expectedProfitUSD >= 0 ? 'metric-expected-profit' : 'metric-loss'}`}>
               <div className={`stat-number ${expectedProfitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                {formatUSD(expectedProfitUSD)}
+                {missingUsdQuotes ? 'USD total unavailable' : formatUSD(expectedProfitUSD)}
               </div>
               <div className="stat-label">Expected Profit</div>
             </div>
@@ -1392,6 +1388,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatAmount(client.totalAmount, client.currency)}
+                        {client.currency !== 'USD' && <div className="mt-1 text-xs text-gray-500" title="ECB reference rate">{client.totalAmountUSD === null ? 'USD conversion unavailable' : `≈ ${formatUSD(client.totalAmountUSD)}`}</div>}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatAmount(client.amountPaid, client.currency)}
