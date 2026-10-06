@@ -1,3 +1,4 @@
+import MedicalReviewFileDownload, { MedicalReviewDownloadContext } from './MedicalReviewFileDownload';
 import MedicalReviewClientMessages from './MedicalReviewClientMessages';
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import { MedicalReviewAuditTrail } from './MedicalReviewAuditTrail';
@@ -424,6 +425,7 @@ const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile;
         )}
         <div className="flex items-center justify-between gap-3 text-xs">
           <span className="truncate text-gray-700">{fileName}</span>
+          <MedicalReviewFileDownload artifactId={artifactId} fileKey={storedPath} />
           {url && (
             <a href={url} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-blue-700 hover:text-blue-900">
               Open
@@ -453,6 +455,7 @@ const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile;
       )}
       <div className="flex items-center justify-between gap-3 border-t border-gray-200 p-2 text-xs">
         <span className="truncate text-gray-700">{fileName}</span>
+        <MedicalReviewFileDownload artifactId={artifactId} fileKey={storedPath} />
         {url && (
           <a href={url} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-blue-700 hover:text-blue-900">
             Open
@@ -1736,6 +1739,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   ) : null;
 
   return (
+    <MedicalReviewDownloadContext.Provider value={selected?._id || ''}>
     <div className={`medical-review-page overflow-x-hidden p-0 sm:p-6 ${!isDetailView ? 'mrr-index-page' : ''}`}>
       <Toast toast={toast} onDismiss={dismissToast} />
       {nextReviewPrompt && (
@@ -2174,6 +2178,17 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 {aiAssessmentPanel}
                 {clientVisibleAdminNotePanel}
               </section>
+            )}
+            {isDetailView && linkedArtifacts.some((artifact) => artifact.files?.length) && (
+              <details className="no-print rounded-md border border-gray-200 bg-white p-3" aria-label="Download review documents">
+                <summary className="cursor-pointer text-sm font-semibold text-blue-800">Download review documents</summary>
+                <div className="mt-2 space-y-2">{linkedArtifacts.flatMap((artifact) => (artifact.files || []).map((file, index) => (
+                  <div key={`${artifact._id}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="min-w-0 truncate">{getArtifactTypeLabel(artifact.artifactType)} — {file.fileName || `File ${index + 1}`}</span>
+                    <MedicalReviewFileDownload artifactId={artifact._id} fileKey={file.s3Key || file.filePath || ''}/>
+                  </div>
+                )))}</div>
+              </details>
             )}
             <div className={`${isDetailView ? 'hidden mrr-desktop-legacy' : ''} space-y-4 sm:space-y-5`}>
               {!isDetailView && (
@@ -2791,6 +2806,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       </div>
       {selected?._id && <MedicalReviewClientMessages key={selected._id} requestId={selected._id} refreshKey={messagesRefreshKey + notifiedCount} />}
     </div>
+    </MedicalReviewDownloadContext.Provider>
   );
 };
 
