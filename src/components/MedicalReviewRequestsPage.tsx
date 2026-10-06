@@ -1,3 +1,4 @@
+import MedicalReviewClientMessages from './MedicalReviewClientMessages';
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import { MedicalReviewAuditTrail } from './MedicalReviewAuditTrail';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -542,6 +543,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
   const [selected, setSelected] = useState<MedicalReviewRequest | null>(null);
+  const [messagesRefreshKey, setMessagesRefreshKey] = useState(0);
   const [history, setHistory] = useState<MedicalReviewRequest[]>([]);
   const [relatedArtifacts, setRelatedArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
@@ -953,7 +955,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         await loadRequests();
       } catch (error: any) {
         setValidationError(error?.response?.data?.message || 'Could not save WhatsApp status. Please try again.');
-      } finally { setSavingReview(false); }
+      } finally { setSavingReview(false); setMessagesRefreshKey(value => value + 1); }
       return;
     }
     if (onBehalfOfAdvisor && delegationReason.trim().length < 3) {
@@ -1002,6 +1004,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       }
     } finally {
       setSavingReview(false);
+      setMessagesRefreshKey(value => value + 1);
     }
   };
 
@@ -1064,7 +1067,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     if (!selected?._id || !clientVisibleAdminNoteSource.trim()) { setClientVisibleAdminNoteStatus('Save a message before emailing it.'); return; }
     try { setEmailingClientVisibleAdminNote(true); await medicalReviewRequestsApi.updateClientVisibleAdminNote(selected._id, clientVisibleAdminNoteSource); const response = await medicalReviewRequestsApi.emailClientVisibleAdminNote(selected._id); setClientVisibleAdminNoteStatus(response.data.message || 'Client message emailed.'); }
     catch (error: any) { setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to email the client message.'); }
-    finally { setEmailingClientVisibleAdminNote(false); }
+    finally { setEmailingClientVisibleAdminNote(false); setMessagesRefreshKey(value => value + 1); }
   };
   // PPVC-686: resend the localized "submitted for review" email on demand
   // from the MRR detail page, not just the grid.
@@ -1080,6 +1083,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       setNotifySubmissionStatus(error?.response?.data?.message || 'Unable to notify the client.');
     } finally {
       setNotifyingSubmission(false);
+      setMessagesRefreshKey(value => value + 1);
     }
   };
   const handleTranslateClientVisibleAdminNote = async () => {
@@ -2785,6 +2789,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           )}
         </div>
       </div>
+      {selected?._id && <MedicalReviewClientMessages key={selected._id} requestId={selected._id} refreshKey={messagesRefreshKey + notifiedCount} />}
     </div>
   );
 };

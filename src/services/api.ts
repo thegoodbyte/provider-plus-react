@@ -1261,6 +1261,7 @@ export const medicalReviewRequestsApi = {
   downloadPendingArtifacts: (groupId: string, unsentOnly = true, language?: 'en' | 'original') => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-review-requests/groups/${encodeURIComponent(groupId)}/pending-artifacts/download`, { params: { unsentOnly: unsentOnly ? 'true' : 'false', ...(language ? { language } : {}) } }),
   markAdvisorSent: (requestIds: string[]) => api.post<{ updated: number }>('/medical-review-requests/groups/mark-advisor-sent', { requestIds }),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
+  getClientMessages: (id: string) => api.get<SentEmail[]>(`/medical-review-requests/${id}/client-messages`),
   getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
   generateMedicalSummary: (id: string) => api.post<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; unavailableReason?: string; generatedAt: string }>(`/medical-review-requests/${id}/medical-summary/generate`),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),

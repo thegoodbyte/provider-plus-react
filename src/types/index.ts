@@ -1886,6 +1886,8 @@ export interface EmailTemplateSeedOption {
 }
 
 export interface SentEmail {
+  safetyRedirected?: boolean;
+  intendedRecipients?: { to: string[]; cc: string[]; bcc: string[] };
   _id?: string;
   display_id?: number;
   templateId?: string | EmailTemplate;
