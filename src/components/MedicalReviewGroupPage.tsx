@@ -92,6 +92,7 @@ const MedicalReviewGroupPage: React.FC = () => {
   const canManageGroup = user?.role === 'admin' || user?.role === 'medical_staff';
   const openRequestFromPocket = (requestId?: string) => {
     if (!requestId) return;
+    requestId = String(requestId);
     sessionStorage.setItem('medicalReviewReturnPath', location.pathname);
     navigate(`/medical/review-requests/${requestId}`, { state: { returnTo: location.pathname } });
   };
@@ -340,7 +341,7 @@ const MedicalReviewGroupPage: React.FC = () => {
             <div className="min-w-0">
               <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-800">{group?.retreatName || 'Grouped medical review packet'}</div>
               <h1 className="mt-1 text-[26px] font-black leading-none tracking-tight text-gray-900">{group?.title || 'Medical review packet'}</h1>
-              <p className="mt-3 max-w-[280px] text-[13px] font-semibold leading-snug text-red-700">{pendingRequestCount} request{pendingRequestCount === 1 ? '' : 's'} awaiting review</p>
+              <button type="button" onClick={() => setStatusFilter(new Set(DEFAULT_STATUS_FILTER))} className="mt-3 min-h-11 max-w-[280px] text-left text-[13px] font-semibold leading-snug text-red-700" title="Show requests awaiting review">{pendingRequestCount} request{pendingRequestCount === 1 ? '' : 's'} awaiting review</button>
             </div>
             <button
               type="button"
@@ -437,7 +438,9 @@ const MedicalReviewGroupPage: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+            <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <button type="button" onClick={openFilterModal} className="min-h-11 rounded border border-gray-300 bg-white px-4 font-semibold" aria-label="Filter requests on desktop">Filter requests</button>
+              <button type="button" onClick={() => setStatusFilter(new Set(DEFAULT_STATUS_FILTER))} className="block min-h-11 text-red-700">Show pending reviews</button>
               <div className="font-semibold text-gray-900">{group?.groupType || 'custom'} packet</div>
             </div>
           </div>
@@ -474,11 +477,11 @@ const MedicalReviewGroupPage: React.FC = () => {
                       const tile = getMobileTypeTile(request.requestType);
                       const rowNumber = orderedRequestNumbers.get(getRequestKey(request));
                       return (
-                      <React.Fragment key={request._id}>
+                      <React.Fragment key={getRequestKey(request)}>
                         <button
                           type="button"
-                          onClick={() => openRequestFromPocket(request._id)}
-                          className="flex w-full items-center gap-3 border-b border-gray-100 bg-white px-4 py-4 text-left last:border-b-0 md:hidden"
+                          onClick={() => openRequestFromPocket(getRequestKey(request))}
+                          className="flex w-full items-center gap-3 border-b border-gray-100 bg-white px-4 py-4 text-left last:border-b-0 xl:hidden"
                         >
                           <span className="w-5 shrink-0 text-sm font-semibold text-gray-400">{rowNumber}</span>
                           <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${tile.tileClass}`}>
@@ -495,7 +498,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                         </button>
 
                         <div
-                          className={`hidden md:grid md:items-center md:gap-x-3 md:border-b md:border-gray-100 md:py-4 ${statusRowClass[request.status] || 'bg-white'} ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
+                          className={`hidden xl:grid xl:items-center xl:gap-x-3 xl:border-b xl:border-gray-100 xl:py-4 ${statusRowClass[request.status] || 'bg-white'} ${canManageGroup && packetEditMode ? 'xl:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'xl:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
                         >
                         {canManageGroup && packetEditMode && (
                           <div className="flex items-start justify-center">
@@ -510,7 +513,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                         <div className="min-w-0">
                           <button
                             type="button"
-                            onClick={() => openRequestFromPocket(request._id)}
+                            onClick={() => openRequestFromPocket(getRequestKey(request))}
                             className="text-left text-sm font-bold text-cyan-800 hover:underline"
                           >
                             #{request.display_id || '-'}
@@ -518,7 +521,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                           <div className="mt-1 text-xs text-gray-700">{request.requestType || 'review'}</div>
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-gray-900">{getClientName(request)}</div>
+                          <button type="button" onClick={() => openRequestFromPocket(getRequestKey(request))} className="block max-w-full truncate text-left text-sm font-medium text-gray-900 hover:underline">{getClientName(request)}</button>
                           <div className="truncate text-xs text-gray-500">{getRetreatLabel(request)}</div>
                         </div>
                         <div className="min-w-0">
@@ -534,7 +537,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                            onClick={() => openRequestFromPocket(request._id)}
+                            onClick={() => openRequestFromPocket(getRequestKey(request))}
                               className="rounded-md bg-cyan-700 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-800"
                             >
                               Open review

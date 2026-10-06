@@ -39,6 +39,7 @@ const renderPage = () => render(
   <MemoryRouter initialEntries={['/medical/review-groups/group-1']}>
     <Routes>
       <Route path="/medical/review-groups/:id" element={<MedicalReviewGroupPage />} />
+      <Route path="/medical/review-requests/:id" element={<div>Review destination</div>} />
     </Routes>
   </MemoryRouter>,
 );
@@ -48,6 +49,25 @@ describe('MedicalReviewGroupPage', () => {
     jest.clearAllMocks();
     (useAuth as jest.Mock).mockReturnValue({ user: { role: 'medical_advisor' } });
     (medicalReviewRequestsApi.getGroup as jest.Mock).mockResolvedValue({ data: group });
+  });
+
+  it('opens an MRR from its mobile tile and remembers the pocket return path', async () => {
+    renderPage();
+    const name = await screen.findByText('Maria S.');
+    fireEvent.click(name.closest('button')!);
+    expect(await screen.findByText('Review destination')).toBeInTheDocument();
+    expect(sessionStorage.getItem('medicalReviewReturnPath')).toBe('/medical/review-groups/group-1');
+  });
+
+  it('opens the desktop filter and resets to pending from the count button', async () => {
+    renderPage();
+    await screen.findByText('Maria S.');
+    fireEvent.click(screen.getByRole('button', { name: 'Filter requests on desktop' }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Approved/ }));
+    fireEvent.click(screen.getByText('Apply'));
+    expect(await screen.findByText('Omar D.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '2 requests awaiting review' }));
+    expect(screen.queryByText('Omar D.')).not.toBeInTheDocument();
   });
 
   it('shows only pending/in-review requests by default, hiding approved and rejected ones', async () => {
