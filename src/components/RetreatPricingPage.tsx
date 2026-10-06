@@ -1,3 +1,4 @@
+import RetreatWebsiteContentEditor from './RetreatWebsiteContentEditor';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiArrowLeft, FiSave } from 'react-icons/fi';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -30,7 +31,7 @@ const RetreatPricingPage: React.FC = () => {
   }, [location.pathname]);
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [prices, setPrices] = useState<Prices>(DEFAULTS);
-  const [included, setIncluded] = useState('');
+  const [websiteContent, setWebsiteContent] = useState<Record<string, any>>({});
   const [showOnSite, setShowOnSite] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -51,8 +52,7 @@ const RetreatPricingPage: React.FC = () => {
         farShared: Number(far.sharedRoom ?? DEFAULTS.farShared), farPrivate: Number(far.privateRoom ?? DEFAULTS.farPrivate), farEnsuite: Number(far.privateEnsuite ?? DEFAULTS.farEnsuite),
         addictionSupport: Number(pl.addictionSupport ?? DEFAULTS.addictionSupport),
       });
-      const items = item.websiteContent?.includedItems?.pl || (Array.isArray(item.websiteContent?.includedItems) ? item.websiteContent.includedItems : []);
-      setIncluded((items || []).join('\n'));
+      setWebsiteContent(item.websiteContent || {});
     }).catch((cause) => setError(cause?.response?.data?.message || cause?.message || 'Unable to load retreat pricing.')).finally(() => setLoading(false));
   }, [retreatId]);
 
@@ -73,14 +73,6 @@ const RetreatPricingPage: React.FC = () => {
               { key: '6_plus', label: '6+ months', daysFrom: 181, daysTo: null, sharedRoom: Number(prices.farShared), privateRoom: Number(prices.farPrivate), privateEnsuite: Number(prices.farEnsuite) },
             ],
           },
-        },
-      };
-      const existingContent = retreat.websiteContent || {};
-      const websiteContent = {
-        ...existingContent,
-        includedItems: {
-          ...(Array.isArray(existingContent.includedItems) ? { en: existingContent.includedItems } : existingContent.includedItems || {}),
-          pl: included.split('\n').map((item) => item.trim()).filter(Boolean),
         },
       };
       const response = await retreatsApi.update(retreatId, { websitePricing, websiteContent, showOnSite });
@@ -105,7 +97,7 @@ const RetreatPricingPage: React.FC = () => {
 
   return <main className="mx-auto min-h-full max-w-7xl border-t-4 border-blue-600 bg-[#eceff3] text-gray-900">
     <header className="flex flex-col gap-4 border-b border-gray-900 bg-white px-5 py-5 md:flex-row md:items-center md:justify-between md:px-8">
-      <div><button className="mb-3 inline-flex items-center gap-2 text-sm text-blue-700" onClick={() => navigate(`${prefix}/retreats/${retreatId}`)}><Icon component={FiArrowLeft}/> Back to retreat</button><h1 className="text-2xl font-bold">Retreat pricing &amp; website</h1><p className="mt-1 text-sm text-gray-600">{retreat.code || retreat.retreatCode || retreat.name} · Polish website</p></div>
+      <div><button className="mb-3 inline-flex items-center gap-2 text-sm text-blue-700" onClick={() => navigate(`${prefix}/retreats/${retreatId}`)}><Icon component={FiArrowLeft}/> Back to retreat</button><h1 className="text-2xl font-bold">Retreat pricing &amp; website</h1><p className="mt-1 text-sm text-gray-600">{retreat.code || retreat.retreatCode || retreat.name} · Website content and Polish pricing</p></div>
       <button disabled={saving} onClick={save} className="inline-flex min-h-11 items-center justify-center gap-2 bg-gray-950 px-6 text-sm font-semibold text-white disabled:opacity-50"><Icon component={FiSave}/>{saving ? 'Saving…' : 'Save pricing'}</button>
     </header>
     {error && <div className="mx-5 mt-5 border border-red-300 bg-red-50 p-3 text-sm text-red-800 md:mx-8">{error}</div>}
@@ -120,7 +112,7 @@ const RetreatPricingPage: React.FC = () => {
         <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead><tr className="border-y border-gray-300 bg-gray-50"><th className="p-3 text-left">Booking window</th><th className="p-3 text-left">Shared room</th><th className="p-3 text-left">Private room</th><th className="p-3 text-left">Private room + bathroom</th></tr></thead><tbody>{rows.map(([title, shared, privateRoom, ensuite, detail]) => <tr key={title} className="border-b border-gray-200"><th className="p-3 text-left"><span className="block">{title}</span><span className="font-normal text-gray-500">{detail}</span></th>{[shared, privateRoom, ensuite].map((key) => <td className="p-3" key={key}><div className="flex items-center"><input aria-label={`${title} ${key}`} className={field} type="number" min="0" step="100" value={prices[key]} onChange={(e) => setPrices((current) => ({ ...current, [key]: Number(e.target.value) }))}/><span className="ml-2">PLN</span></div></td>)}</tr>)}</tbody></table></div>
         <label className="mt-5 block max-w-sm"><span className={label}>Additional addiction support</span><div className="flex items-center"><input className={field} type="number" min="0" step="100" value={prices.addictionSupport} onChange={(e) => setPrices((current) => ({ ...current, addictionSupport: Number(e.target.value) }))}/><span className="ml-2">PLN</span></div></label>
       </section>
-      <section className="border border-gray-300 bg-white p-5"><h2 className="text-lg font-bold">What the retreat includes</h2><p className="mb-4 text-sm text-gray-600">Polish website, one item per line.</p><textarea className={field} rows={8} value={included} onChange={(e) => setIncluded(e.target.value)} placeholder={'Accommodation\nTwo ceremonies\nMeals\nAirport transfer'}/></section>
+      <RetreatWebsiteContentEditor value={websiteContent} onChange={setWebsiteContent}/>
     </div>
   </main>;
 };

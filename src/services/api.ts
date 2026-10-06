@@ -79,6 +79,8 @@ const invalidateBookingDocumentDependents = () => {
 };
 
 export const retreatsApi = {
+  getWebsiteContentDefaults: () => api.get<{ includedItems: Record<string, string[]> }>('/retreats/website-content-defaults'),
+  updateWebsiteContentDefaults: (includedItems: Record<string, string[]>) => api.patch('/retreats/website-content-defaults', { includedItems }),
   getAll: (options?: ReadOptions) => readGet<Retreat[]>('retreats:all', '/retreats', options),
   getUpcomingRetreats: () => cachedGet<any>('retreats:upcoming', () => api.get<any>('/retreats?status=upcoming'), 30000),
   getOne: (id: string) => cachedGet<Retreat>(`retreats:${id}`, () => api.get<Retreat>(`/retreats/${id}`)),
