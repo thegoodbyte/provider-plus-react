@@ -3265,3 +3265,18 @@
 .retreat-detail-container .tab-navigation.retreat-detail-tabs .retreat-tab-icon { width:20px; height:20px; font-size:20px; }
 @media(max-width:1050px) { .retreat-detail-container .retreat-detail-header { flex-wrap:wrap; gap:10px; } .retreat-detail-container .retreat-detail-actions { overflow-x:auto; max-width:100%; } }
 @media(max-width:600px) { .retreat-page-title { font-size:26px; } .retreat-heading-group { flex-basis:100%; } .retreat-detail-container .retreat-detail-header .retreat-action-label { position:static; width:auto; height:auto; margin:0; clip:auto; overflow:visible; } }
+
+.retreat-detail-container .clients-section > .section-header {
+ display:flex; flex-direction:row; justify-content:space-between; align-items:center;
+ flex-wrap:nowrap; gap:12px; margin-bottom:16px;
+}
+.retreat-detail-container .clients-section > .section-header h2 { font-size:22px; flex-shrink:0; }
+.retreat-detail-container .clients-section > .section-header .section-actions { gap:6px; flex-wrap:nowrap; }
+.retreat-detail-container .clients-section .retreat-client-action {
+ min-height:34px; height:auto; padding:7px 10px; font-size:12px; gap:5px; border-radius:8px; white-space:nowrap;
+}
+.retreat-detail-container .clients-section .retreat-client-action svg { width:16px; height:16px; font-size:16px; }
+@media(max-width:1050px) {
+ .retreat-detail-container .clients-section > .section-header { flex-wrap:wrap; }
+ .retreat-detail-container .clients-section > .section-header .section-actions { flex-wrap:wrap; justify-content:flex-start; }
+}

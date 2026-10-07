@@ -1202,15 +1202,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 <Icon icon={FiPrinter} className="w-4 h-4" />
                 <span>Print Client Grid</span>
               </button>
-              <button
-                onClick={() => setShowQuickBookingModal(true)}
-                className="retreat-client-action retreat-client-action-book"
-                title="Quick book client"
-                aria-label="Quick book client"
-              >
-                <Icon icon={FiPlus} className="w-4 h-4" />
-                <span>Quick Book Client</span>
-              </button>
+
               <button
                 onClick={() => setShowExistingClientModal(true)}
                 className="retreat-client-action retreat-client-action-existing"
