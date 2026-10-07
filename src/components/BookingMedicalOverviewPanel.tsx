@@ -1,14 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { bookingFlowApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest } from '../types';
+import { BookingStepReminderModal, BookingStepReminderModalState } from './BookingStepCommunicationModals';
+import { buildBookingStepReminderPayload, getBookingStepDuplicateReminderPrompt, getBookingStepReminderFailure } from './bookingStepCommunicationRules';
 import BookingMedicalUpload from './BookingMedicalUpload';
+import MedicalItemCard, { MedicalItemCardProps } from './MedicalItemCard';
+import { deriveMedicalItemState, MEDICAL_ITEM_TONES, MedicalItemState } from './medicalItemStatus';
 import './BookingMedicalOverviewPanel.css';
 import {
+  findRequiredEntryFlowItem,
   groupMedicalArtifacts,
   latestArtifactReview,
   loadBookingMedicalOverview,
   medicalStageLabels,
   medicalStageOrder,
+  recordsSummary,
   requiredEntryRows,
   reviewedMedicalStatuses,
 } from './bookingMedicalOverviewData';
@@ -44,7 +51,15 @@ export const shortMedicalDate = (value?: Date | string) => {
 export const artifactTitle = (artifact: MedicalArtifact) => [artifact.title || artifact.documentType || artifact.artifactType || 'Medical record', artifact.ceremonyNumber ? `Ceremony #${artifact.ceremonyNumber}` : ''].filter(Boolean).join(' - ');
 
 const reviewNotes = (review?: MedicalReviewRequest) => review?.reviewNotes || review?.overallNotes || review?.medicalStaffNotes || '';
-const reviewerName = (review?: MedicalReviewRequest) => (review as any)?.reviewedByName || (review as any)?.reviewerName || (review as any)?.reviewer?.name || '';
+
+const OVERALL_LABELS: Record<MedicalItemState, (count: number) => string> = {
+  declined: count => `${count} entry item${count === 1 ? '' : 's'} declined`,
+  missing: count => `${count} entry item${count === 1 ? '' : 's'} missing`,
+  pending: () => 'Entry review in progress',
+  caution: () => 'Cleared with caution',
+  ok: () => 'Entry items cleared',
+  received: () => 'Entry review in progress',
+};
 
 const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = ({ bookingId, clientId, retreatId, refreshKey, onUploadComplete, bookingNumber }) => {
   const navigate = useNavigate();
@@ -53,9 +68,13 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviews, setReviews] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [plan, setPlan] = useState<any[]>([]);
+  const [flowItems, setFlowItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [uploadRequest, setUploadRequest] = useState<{ stage: NonNullable<MedicalArtifact['documentStage']>; documentType?: 'EKG' | 'Liver'; key: number } | null>(null);
+  const [stageOpen, setStageOpen] = useState<Record<string, boolean>>({ entry: true });
+  const [reminderState, setReminderState] = useState<BookingStepReminderModalState | null>(null);
+  const [reminderSaving, setReminderSaving] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -65,6 +84,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
       setArtifacts(result.artifacts);
       setReviews(result.reviewsByArtifact);
       setPlan(result.medicationPlan);
+      setFlowItems(result.flowItems);
     } catch (cause) {
       setError(medicalOverviewError(cause));
     } finally {
@@ -77,13 +97,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
   const stages = groupMedicalArtifacts(artifacts);
   const required = requiredEntryRows(artifacts, reviews);
   const allClear = plan.find(item => item.metadata?.medicationStopPlanAllClear);
-  const reviewedRequired = required.filter(item => item.review && reviewDecisionText(item.review) !== 'No decision');
-  const cautiousRequired = required.filter(item => reviewDecisionClass(item.review) === 'medical-decision-caution');
-  const missingRequired = required.filter(item => !item.artifact);
-  const noDecisionCount = artifacts.filter(artifact => !latestArtifactReview(artifact, reviews) || reviewDecisionText(latestArtifactReview(artifact, reviews)) === 'No decision').length;
-  const noMrrCount = required.filter(item => item.artifact && !item.review).length;
-  const overallLabel = missingRequired.length ? 'Action required' : cautiousRequired.length ? 'Cleared with caution' : reviewedRequired.length === required.length ? 'Medical items cleared' : 'Review pending';
-  const overallClass = missingRequired.length ? 'medical-decision-declined' : cautiousRequired.length ? 'medical-decision-caution' : reviewedRequired.length === required.length ? 'medical-decision-ok' : 'medical-decision-pending';
+  const summaryCounts = recordsSummary(artifacts, reviews);
 
   const openArtifact = (artifact: MedicalArtifact) => artifact._id && navigate(`${prefix}/medical-artifacts/${artifact._id}`);
   const openReview = (review: MedicalReviewRequest) => review._id && navigate(`${prefix}/medical-review-requests/${review._id}`);
@@ -94,16 +108,83 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
     setUploadRequest({ stage, key: Date.now() });
   };
   const requestEntryUpload = (documentType: 'EKG' | 'Liver') => setUploadRequest({ stage: 'entry', documentType, key: Date.now() });
+  const toggleStage = (stage: string) => setStageOpen(current => ({ ...current, [stage]: !current[stage] }));
+
+  const openEntryReminder = async (documentType: 'EKG' | 'Liver') => {
+    const flowItem = findRequiredEntryFlowItem(flowItems, documentType);
+    if (!flowItem?._id) { setError('No booking step is linked to this requirement yet.'); return; }
+    setReminderSaving(`reminder-preview:${flowItem._id}`);
+    try {
+      const response = await bookingFlowApi.getItemReminderPreview(flowItem._id);
+      setReminderState({ item: flowItem, ...response.data });
+    } catch (cause: any) {
+      setError(medicalOverviewError(cause));
+    } finally {
+      setReminderSaving('');
+    }
+  };
+  const sendEntryReminder = async (overrideDuplicate = false) => {
+    if (!reminderState?.item?._id) return;
+    const duplicatePrompt = getBookingStepDuplicateReminderPrompt(reminderState, overrideDuplicate);
+    if (duplicatePrompt) {
+      if (!window.confirm(duplicatePrompt)) return;
+      overrideDuplicate = true;
+    }
+    setReminderSaving(`reminder-send:${reminderState.item._id}`);
+    try {
+      const response = await bookingFlowApi.sendItemReminder(reminderState.item._id, buildBookingStepReminderPayload(reminderState, overrideDuplicate));
+      const failure = getBookingStepReminderFailure(response);
+      if (failure) { setError(failure); return; }
+      setReminderState(null);
+    } catch (cause: any) {
+      setError(medicalOverviewError(cause));
+    } finally {
+      setReminderSaving('');
+    }
+  };
+
+  const requiredCards: Array<MedicalItemCardProps & { key: string }> = required.map(({ documentType, artifact, review }) => {
+    const state = deriveMedicalItemState(artifact, review);
+    return {
+      key: documentType,
+      state,
+      title: `Entry ${documentType === 'Liver' ? 'liver panel' : documentType}`,
+      artifactRef: artifact ? `Artifact #${artifact.display_id || artifact._id}` : undefined,
+      mrr: review ? reviewReferenceText(review) : undefined,
+      note: review ? reviewNotes(review) || undefined : undefined,
+      channel: review?.reviewChannel === 'whatsapp' ? 'WhatsApp' : 'Internal',
+      receivedAt: artifact ? shortMedicalDate(artifact.receivedAt || artifact.createdAt) : undefined,
+      sentAt: review ? shortMedicalDate(review.requestedAt || review.createdAt) : undefined,
+      reviewedAt: review?.reviewedAt ? shortMedicalDate(review.reviewedAt) : undefined,
+      onOpenFile: artifact ? () => openArtifact(artifact) : undefined,
+      onOpenMrr: review ? () => openReview(review) : undefined,
+      onCreateMrr: artifact && !review ? () => createReview(artifact) : undefined,
+      onUploadFile: clientId && retreatId ? () => requestEntryUpload(documentType === 'Liver' ? 'Liver' : 'EKG') : undefined,
+      onRequestFromClient: () => openEntryReminder(documentType === 'Liver' ? 'Liver' : 'EKG'),
+    };
+  });
+
+  const declinedCount = requiredCards.filter(card => card.state === 'declined').length;
+  const missingCount = requiredCards.filter(card => card.state === 'missing').length;
+  const decidedCount = requiredCards.filter(card => ['ok', 'caution', 'declined'].includes(card.state)).length;
+  const cautionCount = requiredCards.filter(card => card.state === 'caution').length;
+  const receivedCount = requiredCards.filter(card => card.state !== 'missing').length;
+  const overallState: MedicalItemState = declinedCount ? 'declined' : missingCount ? 'missing' : decidedCount < required.length ? 'pending' : cautionCount ? 'caution' : 'ok';
+  const overallCount = overallState === 'declined' ? declinedCount : missingCount;
+  const overallTone = MEDICAL_ITEM_TONES[overallState];
 
   return <div className="booking-medical-panel booking-medical-redesign">
     <header className="booking-medical-page-header">
       <div>
         <div className="booking-medical-eyebrow">Booking #{bookingNumber || bookingId}</div>
         <h2>Medical</h2>
-        <p>{reviewedRequired.length} of {required.length} required entry items reviewed. {noMrrCount ? `${noMrrCount} record${noMrrCount === 1 ? '' : 's'} have no MRR. ` : ''}{noDecisionCount ? `${noDecisionCount} record${noDecisionCount === 1 ? '' : 's'} still ${noDecisionCount === 1 ? 'has' : 'have'} no decision.` : 'All records have a review decision.'}</p>
+        <p>{receivedCount} of {required.length} entry items received · {decidedCount} of {required.length} decided</p>
       </div>
       <div className="booking-medical-header-actions">
-        <span className={`booking-medical-decision ${overallClass}`}>{overallLabel}</span>
+        <span className="booking-medical-overall-pill" style={{ background: overallTone.chip, color: overallTone.ink }}>
+          <span className="booking-medical-overall-dot" style={{ background: overallTone.dot }} />
+          {OVERALL_LABELS[overallState](overallCount)}
+        </span>
         <button className="booking-medical-button is-secondary" type="button" onClick={load} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</button>
       </div>
     </header>
@@ -116,33 +197,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
         <span>Both must be reviewed before the retreat starts</span>
       </div>
       <div className="booking-medical-required-grid">
-        {required.map(({ documentType, artifact, review }) => {
-          const decisionClass = artifact ? reviewDecisionClass(review) : 'medical-decision-declined';
-          return <article className={`booking-medical-required-card ${decisionClass}`} key={documentType}>
-            <div className="booking-medical-card-title-row">
-              <span className="booking-medical-document-icon" aria-hidden="true">{documentType === 'EKG' ? '♡' : '◒'}</span>
-              <div className="booking-medical-card-title">
-                <strong>Entry {documentType === 'Liver' ? 'liver panel' : documentType}</strong>
-                <span>{artifact ? <span>Artifact #{artifact.display_id || artifact._id}</span> : 'Required document has not been uploaded'}</span>
-              </div>
-              {review ? (
-                <button type="button" className={`booking-medical-decision ${decisionClass}`} onClick={() => openReview(review)}>{reviewReferenceText(review)} · {review.status?.replace(/_/g, ' ')} · {reviewDecisionText(review)}</button>
-              ) : (
-                <span className={`booking-medical-decision ${artifact ? 'medical-decision-pending' : 'medical-decision-declined'}`}>{artifact ? 'NO MRR' : 'Missing'}</span>
-              )}
-            </div>
-            <p className="booking-medical-required-notes">{artifact ? (reviewNotes(review) || (review ? 'No review notes were added.' : 'No medical review request exists for this artifact. Create an MRR to send it for review.')) : `Upload the entry ${documentType.toLowerCase()} to continue.`}</p>
-            <div className="booking-medical-card-footer">
-              <span>{review?.reviewedAt ? `Reviewed ${shortMedicalDate(review.reviewedAt)}${reviewerName(review) ? ` by ${reviewerName(review)}` : ''}` : artifact ? `Received ${shortMedicalDate(artifact.receivedAt || artifact.createdAt)}` : 'Not received'}</span>
-              <div>
-                {artifact && <button type="button" onClick={() => openArtifact(artifact)}>Open file</button>}
-                {review && <button type="button" onClick={() => openReview(review)}>{reviewReferenceText(review)}</button>}
-                {artifact && !review && <button type="button" onClick={() => createReview(artifact)}>Create MRR</button>}
-                {clientId && retreatId && <button className="is-primary" type="button" onClick={() => requestEntryUpload(documentType === 'Liver' ? 'Liver' : 'EKG')}>{artifact ? 'Upload another' : `Upload ${documentType === 'Liver' ? 'liver panel' : 'EKG'}`}</button>}
-              </div>
-            </div>
-          </article>;
-        })}
+        {requiredCards.map(({ key, ...card }) => <MedicalItemCard key={key} {...card} />)}
       </div>
     </section>
 
@@ -165,37 +220,53 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
     <section className="booking-medical-section">
       <div className="booking-medical-section-heading">
         <h3>Records by stage</h3>
-        <span>{artifacts.length} records · {noDecisionCount} without a decision</span>
+        <span>{summaryCounts.total} records · {summaryCounts.undecided} without a decision{summaryCounts.noMrr ? ` · ${summaryCounts.noMrr} need an MRR` : ''}</span>
       </div>
       <div className="booking-medical-stage-list">
         {medicalStageOrder.map(stage => {
           const records = stages[stage || 'other'] || [];
-          return <details className="booking-medical-stage" key={stage} open={stage === 'entry'}>
-            <summary>
-              <span className="booking-medical-stage-name"><b>{records.length}</b>{medicalStageLabels[stage]}{records.length > 0 && records.filter(record => !latestArtifactReview(record, reviews)).length > 0 && <em>{records.filter(record => !latestArtifactReview(record, reviews)).length} need a decision</em>}</span>
-              <span className="booking-medical-stage-actions"><span>{stage === 'entry' ? 'Hide records' : records.length ? 'Show records' : 'No records yet'}</span>{clientId && retreatId && <button type="button" onClick={event => requestUpload(stage || 'other', event)}>Upload</button>}</span>
-            </summary>
-            {records.length ? <div className="booking-medical-record-list">{records.map(artifact => {
+          const open = Boolean(stageOpen[stage]);
+          const recordStates = records.map(record => deriveMedicalItemState(record, latestArtifactReview(record, reviews)));
+          const needsDecision = recordStates.filter(state => state !== 'ok' && state !== 'caution' && state !== 'declined').length;
+          return <div className={`booking-medical-stage ${records.length ? 'has-records' : 'is-empty'}`} key={stage}>
+            <div className="booking-medical-stage-header">
+              <span className="booking-medical-stage-name">
+                <b style={{ background: records.length ? MEDICAL_ITEM_TONES.pending.chip : undefined, color: records.length ? MEDICAL_ITEM_TONES.pending.ink : undefined }}>{records.length}</b>
+                {medicalStageLabels[stage]}
+                {needsDecision > 0 && <em>{needsDecision} need{needsDecision === 1 ? 's' : ''} a decision</em>}
+              </span>
+              <span className="booking-medical-stage-actions">
+                {records.length ? <button type="button" onClick={() => toggleStage(stage)}>{open ? 'Hide records' : 'Show records'}</button> : <span className="booking-medical-muted">No records yet</span>}
+                {clientId && retreatId && <button type="button" onClick={event => requestUpload(stage || 'other', event)}>Upload</button>}
+              </span>
+            </div>
+            {open && records.length ? <div className="booking-medical-record-list">{records.map(artifact => {
               const review = latestArtifactReview(artifact, reviews);
+              const state = deriveMedicalItemState(artifact, review);
+              const tone = MEDICAL_ITEM_TONES[state];
               return <article className="booking-medical-record" key={artifact._id || `${artifact.documentType}-${artifact.receivedAt}`}>
                 <div className="booking-medical-record-identity">
                   <span className="booking-medical-record-icon" aria-hidden="true">{String(artifact.documentType || '').toLowerCase().includes('ekg') ? '♡' : '▤'}</span>
                   <div><strong>#{artifact.display_id || artifact._id || 'New'} {artifactTitle(artifact)}</strong><span>{artifact.documentType || 'Medical'} · {shortMedicalDate(artifact.receivedAt || artifact.createdAt)} · {(artifact.files || []).length} file{(artifact.files || []).length === 1 ? '' : 's'}</span></div>
                 </div>
-                <span className={`booking-medical-decision ${reviewDecisionClass(review)}`}>{reviewDecisionText(review)}</span>
+                <span className="booking-medical-decision" style={{ background: tone.chip, color: tone.ink }}>{tone.label}</span>
                 {review ? <button className="booking-medical-review-reference" type="button" onClick={() => openReview(review)}>MRR #{review.display_id || review._id}</button> : <span className="booking-medical-review-reference">NO MRR</span>}
                 <div className="booking-medical-record-actions">
                   <button type="button" onClick={() => openArtifact(artifact)}>Open</button>
                   {review ? <button type="button" onClick={() => openReview(review)}>View review</button> : <button className="is-primary" type="button" onClick={() => createReview(artifact)}>Create MRR</button>}
                 </div>
               </article>;
-            })}</div> : <div className="booking-medical-empty">No {medicalStageLabels[stage].toLowerCase()} records found.</div>}
-          </details>;
+            })}</div> : null}
+          </div>;
         })}
       </div>
     </section>
 
-    {clientId && retreatId ? <BookingMedicalUpload bookingId={bookingId} bookingNumber={bookingNumber} clientId={clientId} retreatId={retreatId} uploadRequest={uploadRequest} onUploadComplete={() => { onUploadComplete(); load(); }} /> : <section className="booking-medical-section"><p className="booking-medical-muted">Medical upload needs a linked client and retreat on this booking.</p></section>}
+    {clientId && retreatId
+      ? <BookingMedicalUpload bookingId={bookingId} bookingNumber={bookingNumber} clientId={clientId} retreatId={retreatId} uploadRequest={uploadRequest} hideRequiredDocumentCards onUploadComplete={() => { onUploadComplete(); load(); }} />
+      : <section className="booking-medical-section"><p className="booking-medical-muted">Medical upload needs a linked client and retreat on this booking.</p></section>}
+
+    {reminderState && <BookingStepReminderModal state={reminderState} saving={reminderSaving} onChange={setReminderState} onClose={() => setReminderState(null)} onSend={() => sendEntryReminder()} />}
   </div>;
 };
 

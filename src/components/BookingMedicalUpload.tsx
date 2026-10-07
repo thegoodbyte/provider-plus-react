@@ -17,6 +17,9 @@ interface BookingMedicalUploadProps {
     documentType?: UploadDocumentType;
     key: number;
   } | null;
+  /** The redesigned Medical tab renders its own "Required entry items" cards for EKG/Liver;
+   * set this to avoid rendering this component's duplicate grid for the same two documents. */
+  hideRequiredDocumentCards?: boolean;
 }
 
 type BookingMedicalTestType = 'ekg' | 'liver_panel';
@@ -153,10 +156,10 @@ const getReviewDecisionInfo = (review?: MedicalReviewRequest) => {
   return { label: String(rawDecision).replace(/_/g, ' '), className: 'badge-default' };
 };
 
-const getFlowReceiptKey = (sectionType: BookingMedicalTestType) =>
+export const getFlowReceiptKey = (sectionType: BookingMedicalTestType) =>
   sectionType === 'ekg' ? 'ekg_received' : 'liver_received';
 
-const getFlowReadinessGroup = (sectionType: BookingMedicalTestType) =>
+export const getFlowReadinessGroup = (sectionType: BookingMedicalTestType) =>
   sectionType === 'ekg' ? 'ekg' : 'liver';
 
 const artifactMatchesSection = (artifact: MedicalArtifact, section: (typeof medicalTestSections)[number]) =>
@@ -191,6 +194,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   retreatId,
   onUploadComplete,
   uploadRequest,
+  hideRequiredDocumentCards,
 }) => {
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
@@ -476,8 +480,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     <div className="booking-medical-upload">
       <div className="booking-documents-header">
         <div>
-          <h3>Booking Medical Tests</h3>
-          <p>Each booking requires an EKG and liver panel artifact, plus a linked medical review request.</p>
+          <h3>{hideRequiredDocumentCards ? 'Additional medical monitoring' : 'Booking Medical Tests'}</h3>
+          <p>{hideRequiredDocumentCards ? 'Blood pressure readings and other tracked documents for this booking.' : 'Each booking requires an EKG and liver panel artifact, plus a linked medical review request.'}</p>
         </div>
         <button className="btn btn-sm btn-secondary" onClick={loadMedicalArtifacts} disabled={loading}>
           <RefreshCw size={16} /> {loading ? 'Loading...' : 'Refresh'}
@@ -527,7 +531,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         )}
       </section>
 
-      <div className="booking-documents-grid">
+      {!hideRequiredDocumentCards && <div className="booking-documents-grid">
         {medicalTestSections.map((section) => {
           const sectionArtifacts = artifactsByType[section.type];
           const latestArtifact = sectionArtifacts[0];
@@ -733,7 +737,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
             </div>
           );
         })}
-      </div>
+      </div>}
 
       {uploadModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="booking-medical-upload-title">

@@ -1,0 +1,173 @@
+.booking-medical-redesign .medical-item-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+  border: 1.5px solid var(--tone-edge);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--tone-wash) 0%, #ffffff 120px);
+}
+
+.booking-medical-redesign .medical-item-card[data-state='missing'] {
+  border-style: dashed;
+}
+
+.booking-medical-redesign .medical-item-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.booking-medical-redesign .medical-item-card-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.booking-medical-redesign .medical-item-card-title {
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: var(--medical-ink);
+}
+
+.booking-medical-redesign .medical-item-card-ref {
+  color: var(--medical-muted);
+  font-size: 12px;
+}
+
+.booking-medical-redesign .medical-item-card-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 7px;
+  border-radius: 999px;
+  background: var(--tone-chip);
+  color: var(--tone-ink);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.booking-medical-redesign .medical-item-card-chip-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--tone-dot);
+  color: #fff;
+}
+
+.booking-medical-redesign .medical-item-card-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fafaf9;
+}
+
+.booking-medical-redesign .medical-item-card-step {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.booking-medical-redesign .medical-item-card-step-bar {
+  height: 5px;
+  border-radius: 999px;
+  background-size: cover;
+}
+
+.booking-medical-redesign .medical-item-card-step-label {
+  color: var(--medical-muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.booking-medical-redesign .medical-item-card-step-value {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-medical-redesign .medical-item-card-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 15px;
+  border-radius: 14px 14px 14px 3px;
+  background: var(--tone-chip);
+}
+
+.booking-medical-redesign .medical-item-card-note-head {
+  color: var(--tone-ink);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.booking-medical-redesign .medical-item-card-note-body {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.booking-medical-redesign .medical-item-card-hint {
+  margin: 0;
+  color: var(--medical-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.booking-medical-redesign .medical-item-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.booking-medical-redesign .medical-item-card-meta {
+  color: var(--medical-muted);
+  font-size: 11px;
+}
+
+.booking-medical-redesign .medical-item-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.booking-medical-redesign .medical-item-card-actions button {
+  min-height: 32px;
+  padding: 7px 13px;
+  border: 1px solid #cfd2d6;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--medical-ink);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.booking-medical-redesign .medical-item-card-actions button.is-primary {
+  border-color: #252525;
+  background: #252525;
+  color: #fff;
+}
+
+@media (max-width: 720px) {
+  .booking-medical-redesign .medical-item-card { padding: 16px; }
+  .booking-medical-redesign .medical-item-card-steps { grid-template-columns: 1fr; gap: 10px; }
+  .booking-medical-redesign .medical-item-card-footer { align-items: flex-start; flex-direction: column; }
+}
