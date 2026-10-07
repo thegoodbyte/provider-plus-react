@@ -30,7 +30,7 @@ it('sorts and searches by the requested amount', async () => {
   mount();
   fireEvent.click(await screen.findByRole('button', { name: 'Requested amount' }));
   expect(within(screen.getAllByRole('row')[1]).getByText('INV-BALANCE')).toBeInTheDocument();
-  fireEvent.change(screen.getByPlaceholderText('Search by client, retreat, amount, invoice...'), { target: { value: '2500' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search payment requests' }), { target: { value: '2500' } });
   expect(screen.getByText('INV-DEPOSIT')).toBeInTheDocument();
   expect(screen.queryByText('INV-BALANCE')).not.toBeInTheDocument();
 });
@@ -54,7 +54,7 @@ it('filters paid, unpaid and paid without any booking, including joint-request l
   expect(screen.getByRole('status')).toHaveTextContent('1 of 7');
   fireEvent.change(filter, { target: { value: 'paid' } });
   expect(screen.getByRole('status')).toHaveTextContent('3 of 7');
-  fireEvent.change(screen.getByPlaceholderText('Search by client, retreat, amount, invoice...'), { target: { value: 'JOINT' } });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Search payment requests' }), { target: { value: 'JOINT' } });
   expect(screen.getByRole('status')).toHaveTextContent('1 of 7');
   fireEvent.click(screen.getByText('Clear filters'));
   fireEvent.change(filter, { target: { value: 'unpaid' } });
