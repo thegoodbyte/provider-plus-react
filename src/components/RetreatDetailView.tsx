@@ -954,6 +954,23 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   return (
     <div className="retreat-detail-container">
       <div className="retreat-detail-header">
+        <select className="retreat-section-select" aria-label="Retreat section" value={activeTab} onChange={(event) => handleTabChange(event.target.value as RetreatDetailTab)}>
+          <option value="rooms">Room allocation</option>
+          {authService.getUser()?.role === 'admin' && <option value="announcements">Announcements</option>}
+          <option value="drugScreening">Drug Screening</option>
+          <option value="clients">Clients ({activeClientCount})</option>
+          <option value="reserveList">Reserve List</option>
+          <option value="holisticView">Retreat Readiness</option>
+          <option value="tracking">Medical Grid</option>
+          <option value="foodMatrix">Food Matrix</option>
+          <option value="aiSummary">AI Summary</option>
+          <option value="expenses">Expenses</option>
+          <option value="payments">Payments</option>
+          <option value="ceremonies">Ceremonies</option>
+          <option value="analytics">Analytics</option>
+          <option value="tasks">Tasks</option>
+          <option value="integration">Integration</option>
+        </select>
         <div className="retreat-detail-actions">
           <button onClick={onBack} className="edit-retreat-btn retreat-icon-action" title="Back to all retreats">
             All retreats
@@ -1001,14 +1018,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <span className="retreat-action-label">Edit Retreat</span>
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm">
+        <div className="retreat-compact-summary">
           <span className="font-semibold text-gray-900">{retreatCode}</span>
           <span aria-hidden="true">·</span>
           <span>{activeClientCount}/{retreatCapacity} spots taken</span>
           <span aria-hidden="true">·</span>
           <span>{retreatDateText}</span>
           <span aria-hidden="true">·</span>
-          <span title="Total booking prices for non-cancelled bookings, using ECB reference rates">Retreat booking total: {missingUsdQuotes ? 'USD conversion unavailable' : formatUSD(totalExpectedUSD)} <span className="text-xs">(ECB reference rates)</span></span>
+          <span title="Total booking prices for non-cancelled bookings, using ECB reference rates">Total: {missingUsdQuotes ? 'USD conversion unavailable' : formatUSD(totalExpectedUSD)}</span>
         </div>
       </div>
 
@@ -1064,120 +1081,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           </div>
       </Modal>
 
-      {/* Tab Navigation */}
-      <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
-        <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Room allocation</button>
-        {authService.getUser()?.role === 'admin' && <button className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'announcements'} onClick={() => handleTabChange('announcements')}>Announcements</button>}
-        <button
-          className={`tab-btn ${activeTab === 'drugScreening' ? 'active' : ''}`}
-          onClick={() => handleTabChange('drugScreening')}
-          role="tab"
-          aria-selected={activeTab === 'drugScreening'}
-        >
-          <BiotechRoundedIcon className="retreat-tab-icon" />
-          <span>Drug Screening</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
-          onClick={() => handleTabChange('clients')}
-          role="tab"
-          aria-selected={activeTab === 'clients'}
-        >
-          <PeopleAltRoundedIcon className="retreat-tab-icon" />
-          <span>Clients ({activeClientCount})</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'reserveList' ? 'active' : ''}`}
-          onClick={() => handleTabChange('reserveList')}
-          role="tab"
-          aria-selected={activeTab === 'reserveList'}
-        >
-          <Icon icon={FiUserPlus} className="w-5 h-5 retreat-tab-icon" />
-          <span>Reserve List</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
-          onClick={() => handleTabChange('holisticView')}
-          role="tab"
-          aria-selected={activeTab === 'holisticView'}
-        >
-          <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
-          <span>Retreat Readiness</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
-          onClick={() => handleTabChange('tracking')}
-          role="tab"
-          aria-selected={activeTab === 'tracking'}
-        >
-          <FactCheckRoundedIcon className="retreat-tab-icon" />
-          <span>Medical Grid</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'foodMatrix' ? 'active' : ''}`}
-          onClick={() => handleTabChange('foodMatrix')}
-          role="tab"
-          aria-selected={activeTab === 'foodMatrix'}
-        >
-          <RestaurantRoundedIcon className="retreat-tab-icon" />
-          <span>Food Matrix</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'aiSummary' ? 'active' : ''}`}
-          onClick={() => handleTabChange('aiSummary')}
-          role="tab"
-          aria-selected={activeTab === 'aiSummary'}
-        >
-          <AutoAwesomeRoundedIcon className="retreat-tab-icon" />
-          <span>AI Summary</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
-          onClick={() => handleTabChange('expenses')}
-          role="tab"
-          aria-selected={activeTab === 'expenses'}
-        >
-          <SavingsRoundedIcon className="retreat-tab-icon" />
-          <span>Expenses</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
-          onClick={() => handleTabChange('payments')}
-          role="tab"
-          aria-selected={activeTab === 'payments'}
-        >
-          <CreditCardRoundedIcon className="retreat-tab-icon" />
-          <span>Payments</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
-          onClick={() => handleTabChange('ceremonies')}
-          role="tab"
-          aria-selected={activeTab === 'ceremonies'}
-        >
-          <SpaRoundedIcon className="retreat-tab-icon" />
-          <span>Ceremonies</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => handleTabChange('analytics')}
-          role="tab"
-          aria-selected={activeTab === 'analytics'}
-        >
-          <InsightsRoundedIcon className="retreat-tab-icon" />
-          <span>Analytics</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
-          onClick={() => handleTabChange('tasks')}
-          role="tab"
-          aria-selected={activeTab === 'tasks'}
-        >
-          <TaskAltRoundedIcon className="retreat-tab-icon" />
-          <span>Tasks</span>
-        </button>
-        {['admin','facilitator'].includes(authService.getUser()?.role || '') && <button className={`tab-btn ${activeTab === 'integration' ? 'active' : ''}`} onClick={()=>handleTabChange('integration')} role="tab" aria-selected={activeTab === 'integration'}><SpaRoundedIcon className="retreat-tab-icon"/><span>Integration</span></button>}
-      </div>
+
 
       {/* Tab Content */}
       <div className="retreat-detail-tab-content">
