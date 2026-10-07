@@ -3251,35 +3251,17 @@
 .drug-form { display:grid; gap:10px; padding-top:12px; }.drug-form label { margin-top:7px; font-weight:600; color:#344054; }.drug-form label span { color:#dc2626; }.drug-form .ant-picker { width:100%; }.drug-checkboxes { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; padding:12px; background:#f8fafc; border-radius:8px; }
 @media(max-width:700px){.drug-screening-heading{align-items:flex-start}.drug-screening-summary{grid-template-columns:1fr}.drug-checkboxes{grid-template-columns:1fr}}
 
-/* Keep retreat navigation and context in a single compact toolbar. */
+/* Compact retreat heading with visible section tabs. */
 .retreat-detail-container .retreat-detail-header {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
-  padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 12px; background: white;
+ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px;
 }
-.retreat-detail-container .retreat-detail-actions {
-  display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: 6px; margin: 0; padding: 0; flex-shrink: 0;
-}
-.retreat-detail-container .retreat-detail-header .edit-retreat-btn {
-  width: auto; min-width: 34px; height: 36px; padding: 6px 9px; border-radius: 7px;
-  font-size: 12px; gap: 5px; white-space: nowrap; margin: 0;
-}
-.retreat-section-select {
-  order: 2; max-width: 200px; min-width: 150px; height: 36px; padding: 6px 8px;
-  border: 1px solid #c7d2fe; border-radius: 7px; color: #4338ca; background: #eef2ff; font-size: 13px; font-weight: 600;
-}
-.retreat-compact-summary {
-  order: 1; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;
-  font-size: 12px; color: #4b5563; white-space: nowrap; overflow-x: auto;
-}
-@media (max-width: 1050px) {
-  .retreat-detail-container .retreat-detail-header { flex-wrap: wrap; }
-  .retreat-compact-summary { order: 3; flex-basis: 100%; }
-  .retreat-section-select { margin-left: auto; }
-}
-@media (max-width: 600px) {
-  .retreat-detail-container .retreat-detail-header { gap: 8px; padding: 8px; }
-  .retreat-detail-container .retreat-detail-actions { width: 100%; overflow-x: auto; }
-  .retreat-detail-container .retreat-detail-header .retreat-action-label { position: static; width: auto; height: auto; margin: 0; clip: auto; overflow: visible; }
-  .retreat-section-select { order: 2; margin-left: 0; flex: 1; }
-  .retreat-compact-summary { order: 3; }
-}
+.retreat-heading-group { min-width:0; flex:1; }
+.retreat-page-title { margin:0 0 4px; font-size:30px; font-weight:700; line-height:1.2; color:#111827; overflow-wrap:anywhere; }
+.retreat-compact-summary { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:12px; color:#4b5563; }
+.retreat-detail-container .retreat-detail-actions { display:flex; flex-wrap:nowrap; gap:6px; margin:0; padding:0; flex-shrink:0; }
+.retreat-detail-container .retreat-detail-header .edit-retreat-btn { width:auto; min-width:36px; height:38px; padding:7px 10px; border-radius:8px; font-size:13px; gap:5px; white-space:nowrap; margin:0; }
+.retreat-detail-container .tab-navigation.retreat-detail-tabs { margin:8px 0 16px; padding:5px; gap:4px; }
+.retreat-detail-container .tab-navigation.retreat-detail-tabs .tab-btn { min-width:0; min-height:42px; padding:8px 12px; font-size:13px; gap:6px; }
+.retreat-detail-container .tab-navigation.retreat-detail-tabs .retreat-tab-icon { width:20px; height:20px; font-size:20px; }
+@media(max-width:1050px) { .retreat-detail-container .retreat-detail-header { flex-wrap:wrap; gap:10px; } .retreat-detail-container .retreat-detail-actions { overflow-x:auto; max-width:100%; } }
+@media(max-width:600px) { .retreat-page-title { font-size:26px; } .retreat-heading-group { flex-basis:100%; } .retreat-detail-container .retreat-detail-header .retreat-action-label { position:static; width:auto; height:auto; margin:0; clip:auto; overflow:visible; } }
