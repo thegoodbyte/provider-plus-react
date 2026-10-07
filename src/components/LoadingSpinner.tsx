@@ -6,11 +6,11 @@ interface LoadingSpinnerProps {
 
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' }) => {
   return (
-    <div className="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+    <div className="workspace-loading flex min-h-64 items-center justify-center" role="status" aria-live="polite">
       <div className="text-center">
         <div className="inline-flex items-center justify-center">
           <svg
-            className="animate-spin h-12 w-12 text-blue-600"
+            className="animate-spin h-7 w-7 text-emerald-700"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -30,7 +30,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' 
             />
           </svg>
         </div>
-        <p className="mt-4 text-gray-600 text-lg font-medium">{message}</p>
+        <p className="mt-4 text-gray-600 text-sm font-medium">{message}</p>
       </div>
     </div>
   );

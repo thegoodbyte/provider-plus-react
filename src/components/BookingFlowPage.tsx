@@ -323,7 +323,7 @@ const BookingFlowPage: React.FC = () => {
 
   if (!bookingId) {
     return (
-      <div className="mx-auto max-w-[1500px] bg-white shadow-sm">
+      <div className="workspace-requirements mx-auto max-w-[1500px] bg-white shadow-sm">
         <header className="flex flex-col gap-4 border-b border-gray-300 px-7 py-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">Operations · {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
@@ -355,7 +355,7 @@ const BookingFlowPage: React.FC = () => {
           <select value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} className="border border-gray-300 bg-white px-3 py-2.5 text-sm"><option value="">All clients</option>{clientOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>
           <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} className="border border-gray-300 bg-white px-3 py-2.5 text-sm"><option value="">All categories</option>{actionOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
           <button type="button" onClick={() => setHideAccomplished((current) => !current)} className={`border px-4 py-2.5 text-sm font-medium ${hideAccomplished ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>{hideAccomplished ? 'Show accomplished' : 'Hide accomplished'}</button>
-          <div className="flex items-center gap-2 md:col-span-4">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 md:col-span-4">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Group by</span>
             <div className="inline-flex border border-gray-300 bg-white p-0.5">
               {(['client', 'day'] as const).map((option) => <button key={option} type="button" onClick={() => setGroupBy(option)} className={`px-3 py-1.5 text-xs font-semibold ${groupBy === option ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{option === 'client' ? 'Client' : 'Due date'}</button>)}

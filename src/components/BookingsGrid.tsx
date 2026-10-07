@@ -276,10 +276,10 @@ const BookingsGrid: React.FC = () => {
 
   const SortableHeader: React.FC<{ field: SortField; children: React.ReactNode }> = ({ field, children }) => (
     <th
+      aria-sort={sortField === field ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-      onClick={() => handleSort(field)}
     >
-      <div className="flex items-center space-x-1">
+      <button type="button" onClick={() => handleSort(field)} className="flex items-center space-x-1 text-left uppercase">
         <span>{children}</span>
         {sortField === field && (
           <Icon
@@ -287,19 +287,20 @@ const BookingsGrid: React.FC = () => {
             className="w-4 h-4"
           />
         )}
-      </div>
+      </button>
     </th>
   );
 
   return (
     <div className="p-6 h-full">
       <Toast toast={toast} onDismiss={dismissToast} />
-      <div className="mb-6 flex justify-between items-center">
+      <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">Bookings</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-700">PDF Language:</label>
+            <label htmlFor="booking-pdf-language" className="text-sm text-gray-700">PDF language</label>
             <select
+              id="booking-pdf-language"
               value={pdfLanguage}
               onChange={(e) => setPdfLanguage(e.target.value as 'pl' | 'cz' | 'en')}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -319,6 +320,7 @@ const BookingsGrid: React.FC = () => {
         </div>
       </div>
 
+      <div className="workspace-mobile-sort"><label htmlFor="mobile-booking-sort">Sort by</label><select id="mobile-booking-sort" value={sortField} onChange={event => { setSortField(event.target.value as SortField); }}><option value="bookingNumber">Booking number</option><option value="clientName">Client name</option><option value="retreatName">Retreat</option><option value="bookingDate">Booking date</option><option value="status">Status</option></select><button type="button" onClick={() => setSortDirection(value => value === 'asc' ? 'desc' : 'asc')} aria-label="Reverse booking sort order">{sortDirection === 'asc' ? '↑' : '↓'}</button></div>
       {/* Filters */}
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end">
         <div className="relative w-full md:max-w-md">
@@ -331,7 +333,8 @@ const BookingsGrid: React.FC = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by booking number, client name, retreat, or status..."
+            aria-label="Search bookings"
+            placeholder="Search bookings, clients or retreats…"
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
@@ -357,7 +360,7 @@ const BookingsGrid: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="workspace-mobile-table min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <SortableHeader field="bookingNumber">Booking #</SortableHeader>
@@ -376,7 +379,7 @@ const BookingsGrid: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredAndSortedBookings.map((booking) => (
                 <tr key={booking._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td data-label="Booking" className="px-6 py-4 whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => navigate(`${routePrefix}/bookings/${booking._id}`)}
@@ -386,7 +389,7 @@ const BookingsGrid: React.FC = () => {
                       #{booking.bookingNumber || booking._id?.slice(-6)}
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td data-label="Client" className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
                       {booking.resolvedClientId ? (
@@ -406,7 +409,7 @@ const BookingsGrid: React.FC = () => {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td data-label="Retreat" className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Icon icon={FiCalendar} className="w-4 h-4 mr-2 text-gray-400" />
                       <span
@@ -420,15 +423,15 @@ const BookingsGrid: React.FC = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Booked on" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(booking.createdAt || (booking as any).bookingDate)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td data-label="Status" className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(booking.status || 'pending')}`}>
                       {booking.status || 'pending'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td data-label="Final payment" className="px-6 py-4 whitespace-nowrap">
                     {typeof booking.paymentRequestId === 'object' && booking.paymentRequestId ? (() => {
                       const request: any = booking.paymentRequestId;
                       const requestId = request._id;
@@ -458,7 +461,7 @@ const BookingsGrid: React.FC = () => {
                       );
                     })() : <span className="text-xs text-gray-400">No plan</span>}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td data-label="Actions" className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => navigate(`${routePrefix}/bookings/${booking._id}`)}
@@ -520,13 +523,13 @@ const BookingsGrid: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-wrap gap-3 items-center justify-between">
         <div className="text-sm text-gray-700">
           Showing {bookingStats.total} booking{bookingStats.total !== 1 ? 's' : ''}
           {searchTerm && <span> matching "{searchTerm}"</span>}
           {selectedRetreatId && <span> for {selectedRetreatLabel}</span>}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-sm text-gray-700">
             Confirmed: {bookingStats.confirmed}
           </div>

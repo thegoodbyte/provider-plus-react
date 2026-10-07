@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
 import LoadingSpinner from './LoadingSpinner';
@@ -579,6 +580,9 @@ const UnifiedClientManager: React.FC = () => {
     );
   };
 
+  const clientDialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(showForm, clientDialogRef, handleCloseForm);
+
   if (isLoading) {
     return <LoadingSpinner message="Loading clients..." />;
   }
@@ -606,7 +610,8 @@ const UnifiedClientManager: React.FC = () => {
             <Icon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search clients, email, phone, or ID..."
+              aria-label="Search clients"
+              placeholder="Search clients, email, phone, or ID…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue"
@@ -614,6 +619,7 @@ const UnifiedClientManager: React.FC = () => {
           </div>
         </div>
         <select
+          aria-label="Filter clients by status"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           className="px-4 py-2 border border-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue"
@@ -810,13 +816,14 @@ const UnifiedClientManager: React.FC = () => {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-white sm:items-center sm:bg-black sm:bg-opacity-50 sm:p-4">
+        <div ref={clientDialogRef} role="dialog" aria-modal="true" aria-labelledby="client-editor-title" className="fixed inset-0 z-50 flex items-stretch justify-center bg-white sm:items-center sm:bg-black sm:bg-opacity-50 sm:p-4">
           <div className="flex h-full w-full flex-col overflow-hidden bg-slate-50 sm:h-auto sm:max-h-[92vh] sm:max-w-6xl sm:rounded-lg sm:border sm:border-slate-200 sm:shadow-2xl">
             <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
-                <h3 className="text-lg font-semibold text-slate-950">
+                <h3 id="client-editor-title" className="text-lg font-semibold text-slate-950">
                   {selectedClient ? 'Edit Client' : 'Add New Client'}
                 </h3>
                 <button
+                  aria-label="Close client editor"
                   onClick={handleCloseForm}
                   className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
@@ -826,7 +833,7 @@ const UnifiedClientManager: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto p-3 sm:max-h-[calc(92vh-73px)] sm:p-5">
               <div className="grid gap-3 sm:gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-                <aside className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:sticky lg:top-0 lg:self-start">
+                <aside className="client-editor-profile rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:sticky lg:top-0 lg:self-start">
                   <div className="flex flex-col items-center gap-4">
                     <div className="relative h-36 w-36 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm">
                       {profilePicturePreviewUrl ? (

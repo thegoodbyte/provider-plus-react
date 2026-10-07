@@ -224,18 +224,19 @@ const PaymentsPage: React.FC = () => {
   return (
     <div className="p-6 h-full">
       <Toast toast={toast} onDismiss={dismissToast} />
-      <div className="mb-6 flex items-start gap-4">
-        <div className="flex-1 min-w-0">
+      <div className="mb-6 flex flex-wrap items-start gap-4">
+        <div className="flex-1 min-w-0 basis-52">
           <h1 className="text-2xl font-semibold text-gray-900">Payments</h1>
           <p className="text-sm text-gray-600">Manage client payments and invoice settlement records</p>
         </div>
-        <div className="ml-auto flex shrink-0 gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => navigate('/admin/payments/receipts')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">Receipts</button>
           <button onClick={() => navigate('/admin/payments/joint/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-blue-600 bg-white px-4 py-2 text-blue-700 hover:bg-blue-50"><Icon icon={FiPlus} className="w-4 h-4" />Joint / Split Payment</button>
           <button onClick={() => navigate('/admin/payments/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"><Icon icon={FiPlus} className="w-4 h-4" />Add Payment</button>
         </div>
       </div>
 
+      <div className="workspace-mobile-sort"><label htmlFor="mobile-payment-sort">Sort by</label><select id="mobile-payment-sort" value={sortKey} onChange={event => setSortKey(event.target.value as PaymentSortKey)}><option value="display">Payment number</option><option value="date">Date</option><option value="client">Client</option><option value="retreat">Retreat</option><option value="booking">Booking</option><option value="request">Payment request</option><option value="amount">Amount</option><option value="usd">USD amount</option><option value="method">Method</option><option value="status">Status</option><option value="type">Type</option></select><button type="button" onClick={() => setSortDirection(value => value === 'asc' ? 'desc' : 'asc')} aria-label="Reverse payment sort order">{sortDirection === 'asc' ? '↑' : '↓'}</button></div>
       <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
         <div className="relative min-w-0 flex-1">
           <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -247,7 +248,7 @@ const PaymentsPage: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="workspace-finance-table min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left">{renderSortableHeader('display', 'Payment #')}</th>
@@ -267,7 +268,7 @@ const PaymentsPage: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedPayments.map((payment) => (
                 <tr key={payment._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                  <td data-label="Payment" className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                     {payment._id ? (
                       <button
                         type="button"
@@ -283,10 +284,10 @@ const PaymentsPage: React.FC = () => {
                     {payment.allocationGroupId && <div className="mt-1 text-xs font-medium text-violet-700">Joint payment {payment.allocationIndex || '?'} of {payment.allocationCount || '?'}</div>}
                     {payment.receiptId && <div className="mt-1 text-xs text-gray-500">Receipt {typeof payment.receiptId === 'string' ? payment.receiptId.slice(-8) : payment.receiptId._id?.slice(-8)}</div>}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Date" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatCalendarDate(payment.paymentDate)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Client" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center gap-2">
                       <ClientAvatar client={payment.clientRecord} name={payment.clientName || ''} />
                       <span>
@@ -305,11 +306,11 @@ const PaymentsPage: React.FC = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Retreat" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <span>{payment.retreatName}</span>
                     {payment.description && <div className="max-w-xs whitespace-normal text-xs text-gray-500">{payment.description}</div>}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Booking" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.bookingNumber && payment.bookingId ? (
                       <button
                         type="button"
@@ -323,7 +324,7 @@ const PaymentsPage: React.FC = () => {
                       'Not linked to a booking'
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Payment request" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.paymentRequestId ? (() => {
                       const request = payment.paymentRequestId;
                       const requestId = typeof request === 'string' ? request : request._id;
@@ -333,24 +334,24 @@ const PaymentsPage: React.FC = () => {
                       return requestId ? <Link to={`/admin/payment-requests/${requestId}`} className="font-semibold text-blue-600 hover:underline">{label}</Link> : label;
                     })() : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Amount" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <CurrencyDisplay amount={payment.amount} currency={payment.currency} />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="USD equivalent" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.usd_amount !== undefined ? <CurrencyDisplay amount={payment.usd_amount} currency="USD" /> : '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Method" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.paymentMethod.replace(/_/g, ' ')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td data-label="Status" className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payment.status)}`}>
                       {payment.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td data-label="Type" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.paymentType?.replace(/_/g, ' ') || 'regular'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td data-label="Actions" className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEdit(payment)}

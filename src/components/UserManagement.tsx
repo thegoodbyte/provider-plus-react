@@ -330,7 +330,7 @@ const UserManagement: React.FC = () => {
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <div className="bg-white rounded-lg shadow-sm border p-4">
           <div className="text-sm font-medium text-gray-500">Total Users</div>
           <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
@@ -353,7 +353,8 @@ const UserManagement: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-4">
             <AppleInput
               type="text"
-              placeholder="Search users..."
+              aria-label="Search users"
+              placeholder="Search users…"
               value={searchTerm}
               onChange={(value) => setSearchTerm(value)}
               className="w-full sm:w-64"

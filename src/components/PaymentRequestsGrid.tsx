@@ -261,8 +261,8 @@ const PaymentRequestsGrid: React.FC = () => {
   return (
     <div className="p-6">
       <Toast toast={toast} onDismiss={dismissToast} />
-      <div className="mb-6 flex items-start gap-4">
-        <div className="flex-1 min-w-0">
+      <div className="mb-6 flex flex-wrap items-start gap-4">
+        <div className="flex-1 min-w-0 basis-52">
           <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['payment-requests'].label}</h1>
           <p className="text-sm text-gray-600">{NAVIGATION['payment-requests'].description}</p>
         </div>
@@ -301,14 +301,17 @@ const PaymentRequestsGrid: React.FC = () => {
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search by client, retreat, amount, invoice..."
+          aria-label="Search payment requests"
+          placeholder="Search client, retreat, amount or invoice…"
           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+      <div className="workspace-mobile-sort"><label htmlFor="mobile-request-sort">Sort by</label><select id="mobile-request-sort" value={sortKey} onChange={event => setSortKey(event.target.value as PaymentRequestSortKey)}><option value="invoice">Invoice number</option><option value="client">Client</option><option value="retreat">Retreat</option><option value="date">Request date</option><option value="paidDate">Paid date</option><option value="requested">Amount</option><option value="usd">USD amount</option><option value="currency">Currency</option><option value="status">Status</option></select><button type="button" onClick={() => setSortDirection(value => value === 'asc' ? 'desc' : 'asc')} aria-label="Reverse request sort order">{sortDirection === 'asc' ? '↑' : '↓'}</button></div>
+      {sortedRequests.length === 0 && <div role="status" className="workspace-empty-state">{searchTerm ? 'No payment requests match your search. Try another name or invoice.' : 'No payment requests yet. Create a request to start tracking client payments.'}</div>}
+      <div className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden ${sortedRequests.length === 0 ? 'hidden' : ''}`}>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="workspace-request-table min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('invoice', 'Invoice #')}</th>
@@ -329,7 +332,7 @@ const PaymentRequestsGrid: React.FC = () => {
                 const retreat = resolveRetreat(request.retreatId);
                 return (
                   <tr key={request._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                    <td data-label="Invoice" className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       <button
                         type="button"
                         onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
@@ -339,7 +342,7 @@ const PaymentRequestsGrid: React.FC = () => {
                         {request.invoiceNumber || (request.display_id ? `#${request.display_id}` : 'n/a')}
                       </button>
                     </td>
-                    <td className="w-44 max-w-44 px-3 py-4">
+                    <td data-label="Client" className="w-44 max-w-44 px-3 py-4">
                       <div className="flex items-center gap-2">
                         <ClientAvatar client={client.record} name={client.name} />
                         <div className="min-w-0">
@@ -362,21 +365,21 @@ const PaymentRequestsGrid: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td data-label="Retreat" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
+                    <td data-label="Requested on" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {formatCalendarDate(request.paymentDate)}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td data-label="Paid on" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.paidDate ? formatCalendarDate(request.paidDate) : '-'}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td data-label="Amount" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {paymentRequestFinancialSummary(request).requested.toLocaleString()} {paymentRequestFinancialSummary(request).currency}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td data-label="USD equivalent" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {(request.usd_amount ?? 0).toLocaleString()} USD
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{request.currency}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td data-label="Currency" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{request.currency}</td>
+                    <td data-label="Status" className="px-4 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
                         {request.status === 'paid' && <Icon icon={FiCheckCircle} className="w-3 h-3" />}
                         {request.status === 'pending' && <Icon icon={FiClock} className="w-3 h-3" />}
@@ -384,7 +387,7 @@ const PaymentRequestsGrid: React.FC = () => {
                         {request.status}
                       </span>
                     </td>
-                    <td className="sticky right-0 whitespace-nowrap border-l border-gray-100 bg-white px-2 py-4">
+                    <td data-label="Actions" className="sticky right-0 whitespace-nowrap border-l border-gray-100 bg-white px-2 py-4">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`, { state: { returnTo: '/admin/payment-requests' } })}

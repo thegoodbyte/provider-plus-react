@@ -171,3 +171,68 @@
   font-size: 12px;
   font-weight: 600;
 }
+/* Calm directory of workspaces, with a distinct hierarchy for each group. */
+.module-launcher-page { padding:0; background:transparent; }
+.module-launcher-header { padding:8px 0 24px; margin:0; align-items:flex-end; gap:20px; }
+.module-launcher-brand { align-items:center; gap:16px; }
+.module-launcher-mark { display:none; }
+.launcher-eyebrow { display:block; color:#71867a; font-size:10px; font-weight:650; letter-spacing:.14em; margin-bottom:9px; }
+.module-launcher-brand h1 { font-size:36px; font-weight:650; letter-spacing:-.05em; line-height:1.2; }
+.module-launcher-brand p { margin:10px 0 0; font-size:14px; color:#65756f; }
+.module-launcher-role { padding:5px 10px; border:1px solid #dfe7e3; border-radius:7px; text-transform:capitalize; font-size:11px; background:#fff; }
+.module-launcher-edit-button { background:transparent; border-color:#d9e3dc; border-radius:10px; font-size:12px; color:#52655a; font-weight:500; }
+.module-launcher-edit-button:hover { background:#fff; border-color:#a6beb0; }
+.launcher-directory-header { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:32px 0 24px; }
+.launcher-directory-header h2 { font-size:21px; font-weight:600; color:#20332f; letter-spacing:-.035em; }
+.launcher-directory-header p { margin-top:5px; font-size:13px; color:#65756f; }
+.launcher-search { display:flex; align-items:center; gap:9px; padding:0 13px; border:1px solid #dfe7e3; border-radius:10px; background:#fff; width:260px; color:#7a8a80; }
+.launcher-search input { width:100%; min-width:0; border:0; outline:0; height:42px; background:transparent; font-size:13px; color:#20332f; }
+.launcher-search:focus-within { border-color:#176b5b; box-shadow:0 0 0 3px #176b5b12; }
+.launcher-area { margin:0; }
+.launcher-group { margin-bottom:28px; }
+.launcher-group > h3 { margin-bottom:12px; color:#6a7e71; font-size:11px; font-weight:650; text-transform:uppercase; letter-spacing:.09em; }
+.launcher-shortcuts { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.launcher-shortcut { position:relative; align-items:center; min-height:110px; padding:20px 16px; gap:14px; border-radius:14px; border-color:#dfe7e3; color:#20332f; box-shadow:0 2px 4px #20332f02; transition:transform 180ms ease,border-color 180ms ease,box-shadow 180ms ease,background-color 180ms ease; }
+.launcher-shortcut:hover { background:#fff; border-color:#a4c4b2; transform:translateY(-2px); box-shadow:0 8px 24px #20332f08; }
+.launcher-shortcut:focus-visible { outline-color:#176b5b; }
+.launcher-shortcut > span:not(.launcher-icon-wrap) { min-width:0; padding-right:7px; }
+.launcher-shortcut strong { font-size:14px; line-height:1.4; font-weight:600; letter-spacing:-.02em; }
+.launcher-shortcut small { margin-top:5px; color:#738279; font-size:11px; line-height:1.55; }
+.launcher-icon-wrap { display:grid; place-items:center; flex-shrink:0; width:42px; height:42px; border:1px solid #dcebe3; border-radius:12px; background:#edf5f0; color:#39765b; }
+.launcher-shortcut-icon { color:inherit; width:20px; height:20px; }
+.tone-violet .launcher-icon-wrap { background:#f1eff8; color:#74668b; border-color:#e8e2f0; }
+.tone-amber .launcher-icon-wrap { background:#f9f4e9; color:#97834f; border-color:#efe7d5; }
+.tone-slate .launcher-icon-wrap { background:#f0f3f4; color:#667781; border-color:#e3e9eb; }
+.launcher-shortcut-arrow { position:absolute; right:12px; top:13px; color:#a1b2a7; opacity:0; transition:opacity 160ms ease; }
+.launcher-shortcut:hover .launcher-shortcut-arrow,.launcher-shortcut:focus-visible .launcher-shortcut-arrow { opacity:1; }
+.launcher-setup { padding-top:24px; margin-top:8px; border-color:#dfe7e3; }
+.launcher-setup > h2 { font-size:20px; font-weight:600; letter-spacing:-.03em; color:#20332f; }
+.launcher-setup > p { font-size:13px; color:#65756f; }
+.launcher-empty { padding:24px; border:1px dashed #bccdc2; border-radius:12px; color:#65756f; font-size:14px; background:#fff; }
+.tasks-today-panel { padding:20px 22px; border:1px solid #d5e6db; border-radius:16px; background:#edf5ef; box-shadow:none; }
+.tasks-today-title { font-size:12px; font-weight:600; color:#2d6851; letter-spacing:.035em; text-transform:none; }
+.tasks-today-clear { font-size:13px; font-weight:400; color:#4f7661; }
+.module-launcher-editor { border-color:#dfe7e3; border-radius:16px; background:#fff; }
+.module-launcher-editor h2 { font-size:18px; font-weight:600; }
+.module-launcher-editor p { font-size:13px; color:#65756f; }
+.module-launcher-editor label { font-size:13px; }
+.module-launcher-save-button { border-color:#176b5b; background:#176b5b; color:#fff; }
+@media(min-width:1600px) { .launcher-shortcuts { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media(max-width:1199px) { .launcher-shortcuts { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:767px) {
+ .module-launcher-page { padding:4px; }
+ .module-launcher-header { padding-top:4px; gap:14px; }
+ .module-launcher-brand h1 { font-size:32px; }
+ .module-launcher-brand p { font-size:13px; line-height:1.6; }
+ .module-launcher-header-actions { width:100%; }
+ .module-launcher-edit-button { min-height:40px; padding:8px 12px; }
+ .launcher-directory-header { flex-direction:column; align-items:stretch; margin:24px 0; gap:14px; }
+ .launcher-search { width:100%; }
+ .launcher-shortcuts { grid-template-columns:1fr; gap:9px; }
+ .launcher-shortcut { min-height:88px; padding:16px; }
+ .launcher-shortcut strong { font-size:14px; }
+ .launcher-shortcut small { font-size:12px; }
+ .launcher-shortcut-arrow { opacity:1; top:24px; }
+ .tasks-today-panel { padding:18px; }
+ .tasks-today-item-retreat { white-space:normal; max-width:72px; text-align:right; }
+}

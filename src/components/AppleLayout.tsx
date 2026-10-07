@@ -1,6 +1,7 @@
-import React, { Suspense, lazy, useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
+import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiMenu, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
+import { NAVIGATION } from '../navigation/navigation';
 import { formatCalendarDate } from '../utils/dateFormat';
 import AppleSidebar from './AppleSidebar';
 import StorageOverrideBanner from './StorageOverrideBanner';
@@ -73,6 +74,7 @@ import { Retreat } from '../types';
 import GlobalSearch from './GlobalSearch';
 import { APP_MODE_STORAGE_KEY, readStoredAppMode, StoredAppMode } from '../utils/appModeStorage';
 
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import RouteContentBoundary from './RouteContentBoundary';
 
 const AnnouncementsPage = lazy(() => import('./AnnouncementsPage'));
@@ -150,6 +152,9 @@ const HeaderIcon: React.FC<{ icon: any; className?: string }> = ({ icon: IconCom
 );
 
 const AppleLayout: React.FC = () => {
+  const accountRef = useRef<HTMLDetailsElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
   const [appMode, setAppMode] = useState<StoredAppMode>(readStoredAppMode);
@@ -166,6 +171,8 @@ const AppleLayout: React.FC = () => {
   const { logout, user, startMedicalStaffPreview, stopImpersonation } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => { mainRef.current?.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }, [location.pathname]);
 
   const isMedicalAdvisor = user?.role === 'medical_advisor';
   const isMedicalReviewScreen = location.pathname.includes('/medical/review-requests') || location.pathname.includes('/medical-review-requests') || location.pathname.includes('/medical/review-groups') || location.pathname.includes('/medical-review-group-access');
@@ -223,6 +230,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
     if (route === 'communications') return 'communications';
+    if (route === 'client-forms') return 'client-forms';
     if (route === 'assistant') return 'assistant';
     if (route === 'requirements') return 'requirements';
     if (route === 'analytics') return 'analytics';
@@ -441,8 +449,10 @@ const AppleLayout: React.FC = () => {
           className="inline-flex min-h-11 items-center gap-2 rounded-apple border border-apple-gray-200 bg-white px-3 py-2 text-sm font-semibold text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50"
           aria-expanded={quickMenuOpen}
           aria-controls="quick-menu"
+          aria-label={appMode.mode === 'normal' ? 'Quick Menu' : appMode.mode === 'shopping' ? 'Shopping Mode' : appMode.retreatLabel || 'Retreat Mode'}
         >
-          {appMode.mode === 'normal' ? 'Quick Menu' : appMode.mode === 'shopping' ? 'Shopping Mode' : appMode.retreatLabel || 'Retreat Mode'}
+          <HeaderIcon icon={FiGrid} className="workspace-quick-icon h-4 w-4" />
+          <span className="workspace-quick-label">{appMode.mode === 'normal' ? 'Quick Menu' : appMode.mode === 'shopping' ? 'Shopping Mode' : appMode.retreatLabel || 'Retreat Mode'}</span>
           <HeaderIcon
             icon={FiChevronDown}
             className={`h-4 w-4 transition-transform ${quickMenuOpen ? 'rotate-180' : ''}`}
@@ -522,11 +532,24 @@ const AppleLayout: React.FC = () => {
     );
   };
 
-  // Close sidebar on escape key
+  useEffect(() => {
+    const closeAccount = (event: MouseEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) accountRef.current?.removeAttribute('open');
+    };
+    document.addEventListener('click', closeAccount);
+    return () => document.removeEventListener('click', closeAccount);
+  }, []);
+
+  useDialogFocus(showSettings, settingsRef, () => setShowSettings(false));
+
+  // Close overlays on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && sidebarOpen) {
+      if (e.key === 'Escape') {
         setSidebarOpen(false);
+        setQuickMenuOpen(false);
+        setShowSettings(false);
+        accountRef.current?.removeAttribute('open');
       }
     };
     document.addEventListener('keydown', handleEscape);
@@ -590,7 +613,8 @@ const AppleLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-apple-gray-50">
+    <div className="admin-workspace">
+      <a className="workspace-skip" href="#workspace-content">Skip to main content</a>
       {/* Sidebar */}
       <AppleSidebar
         activeItem={appMode.mode === 'retreat' ? 'selected-retreat' : activeItem}
@@ -605,168 +629,31 @@ const AppleLayout: React.FC = () => {
       />
 
       {/* Main Content */}
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
-        {/* Mobile controls have their own row so they do not cover page headings or scrolled content. */}
-        <div className="relative z-30 flex h-20 items-center justify-between px-4 md:hidden">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={isMedicalReviewScreen ? 'pointer-events-auto fixed right-4 top-4 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white' : 'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white'}
-            aria-label="Toggle menu"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="pointer-events-auto">
-              {renderQuickMenu()}
-            </div>
-            {canChangeOwnPassword && !isMedicalReviewScreen && (
-              <button
-                onClick={() => navigate('/users/change-password')}
-                className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
-                aria-label="Change password"
-                title="Change password"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H3v-4.586l5.257-5.257A6 6 0 1121 9z" />
-                </svg>
-              </button>
-            )}
-            <button
-              className={isMedicalReviewScreen ? 'hidden' : 'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white'}
-              onClick={() => setShowSettings(true)}
-              aria-label="Currency converter"
-              title="Revolut currency converter"
-            >
-              <span className="text-lg font-bold" aria-hidden="true">$↔</span>
+      <div className={`workspace-frame ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+        <header className="workspace-header">
+          <div className="workspace-header-leading">
+            <button type="button" className="workspace-icon-button md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu" aria-expanded={sidebarOpen} aria-controls="workspace-navigation">
+              <HeaderIcon icon={FiMenu} className="h-5 w-5" />
             </button>
-            <button
-              disabled={isMedicalReviewScreen}
-              onClick={() => setShowSettings(true)}
-              className={isMedicalReviewScreen ? 'hidden' : 'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white'}
-              aria-label="Settings"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
+            <span className="workspace-context">Workspace <span>/</span> <strong>{NAVIGATION[activeItem]?.label || activeItem.replace(/-/g, ' ')}</strong></span>
           </div>
-        </div>
-
-        {appMode.mode !== 'normal' && (
-          <div className={`sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 text-sm font-semibold md:top-14 ${
-            appMode.mode === 'shopping' ? 'bg-emerald-100 text-emerald-950' : 'bg-violet-100 text-violet-950'
-          }`}>
-            <span className="truncate">
-              {appMode.mode === 'shopping' ? 'Shopping Mode · Receipts & expenses only' : `Retreat Mode · ${appMode.retreatLabel || 'Selected retreat'}`}
-            </span>
-            <button type="button" onClick={() => setQuickMenuOpen(true)} className="min-h-10 shrink-0 rounded-lg bg-white px-3 shadow-sm">
-              Switch
-            </button>
-          </div>
-        )}
-
-        {/* Header with glass morphism */}
-        <header className="sticky top-0 z-30 hidden bg-white/70 backdrop-blur-apple border-b border-apple-gray-200 md:block">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-14">
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-apple hover:bg-apple-gray-100 transition-colors flex-shrink-0"
-                aria-label="Toggle menu"
-              >
-                <svg className="w-5 h-5 text-apple-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-
-              <div className="flex items-center gap-4">
-                <h1 className="text-xl font-semibold text-apple-gray-900 tracking-tight">
-                  Provider Plus
-                </h1>
-                {renderQuickMenu()}
+          <div className="workspace-search"><GlobalSearch routePrefix={routePrefix} onNavigate={navigate} /></div>
+          <div className="workspace-header-tools">
+            {renderQuickMenu()}
+            <details ref={accountRef} className="workspace-account" key={location.pathname}>
+              <summary aria-label="Account and tools" title="Account and tools"><span>{(user?.firstName || userEmail || 'A')[0].toUpperCase()}</span><HeaderIcon icon={FiChevronDown} className="h-3 w-3" /></summary>
+              <div className="workspace-account-menu" onClick={(event) => { if ((event.target as HTMLElement).closest('button')) accountRef.current?.removeAttribute('open'); }}>
+                <div className="workspace-account-info"><strong>{[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Your account'}</strong><small>{userEmail}</small></div>
+                <button type="button" onClick={() => setShowSettings(true)}>Currency converter</button>
+                {user?.role === 'admin' && !isImpersonating && <button type="button" onClick={async () => { await startMedicalStaffPreview(); navigate('/medical/launcher'); }}>Medical View</button>}
+                {isImpersonating && <button type="button" onClick={() => { stopImpersonation(); navigate('/admin/launcher'); }}>{isUserImpersonation ? 'Return to Admin' : 'Exit Medical View'}</button>}
+                {canChangeOwnPassword && <button type="button" onClick={() => navigate('/users/change-password')}>Change Password</button>}
+                <button type="button" onClick={logout}>Sign Out</button>
               </div>
-
-              <GlobalSearch routePrefix={routePrefix} onNavigate={navigate} />
-
-                {/* Actions */}
-              <div className="flex items-center gap-2">
-                <button
-                  className={isMedicalReviewScreen ? 'hidden' : 'inline-flex items-center gap-2 rounded-apple bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100'}
-                  onClick={() => setShowSettings(true)}
-                  aria-label="Currency converter"
-                  title="Revolut currency converter"
-                >
-                  <span aria-hidden="true">$↔</span>
-                  <span>Currency</span>
-                </button>
-                {user?.role === 'admin' && !isImpersonating && (
-                  <button
-                    onClick={async () => {
-                      await startMedicalStaffPreview();
-                      navigate('/medical/launcher');
-                    }}
-                    className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-apple transition-all"
-                  >
-                    Medical View
-                  </button>
-                )}
-                {isImpersonating && (
-                  <button
-                    onClick={() => {
-                      stopImpersonation();
-                      navigate('/admin/launcher');
-                    }}
-                    className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-amber-800 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-apple transition-all"
-                  >
-                    {isUserImpersonation ? 'Return to Admin' : 'Exit Medical View'}
-                  </button>
-                )}
-                {/* Settings button */}
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="p-2 rounded-apple hover:bg-apple-gray-100 transition-colors"
-                  aria-label="Settings"
-                >
-                  <svg className="w-5 h-5 text-apple-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
-
-                {/* User menu */}
-                <div className="hidden sm:flex items-center gap-2">
-                  {userEmail && (
-                    <span className="max-w-48 truncate text-xs font-medium text-apple-gray-600" title={userEmail}>
-                      {userEmail}
-                    </span>
-                  )}
-                  {canChangeOwnPassword && (
-                    <button
-                      onClick={() => navigate('/users/change-password')}
-                      className="inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
-                               bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
-                    >
-                      Change Password
-                    </button>
-                  )}
-                  <button
-                    onClick={logout}
-                    className="inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
-                             bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            </div>
+            </details>
           </div>
         </header>
+        {appMode.mode !== 'normal' && <div className="workspace-mode"><span>{appMode.mode === 'shopping' ? 'Shopping Mode · Receipts & expenses only' : `Retreat Mode · ${appMode.retreatLabel || 'Selected retreat'}`}</span><button type="button" onClick={() => setQuickMenuOpen(true)}>Switch mode</button></div>}
 
         {isImpersonating && (
           <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
@@ -792,9 +679,9 @@ const AppleLayout: React.FC = () => {
         <AiHealthBanner />
 
         {/* Page Content */}
-        <main className="re-shell h-[calc(100dvh-112px)] overflow-y-auto px-4 py-4 sm:px-6 md:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="rounded-apple-lg bg-[#e7eaee] shadow-apple-sm">
+        <main ref={mainRef} id="workspace-content" tabIndex={-1} className="re-shell workspace-content">
+          <div className="workspace-content-inner">
+            <div className="workspace-page">
               <RouteContentBoundary>
               <Routes>
                 {/* Unauthorized route */}
@@ -1184,10 +1071,10 @@ const AppleLayout: React.FC = () => {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white/70 backdrop-blur-apple border-t border-apple-gray-200 h-8">
+        <footer className="workspace-footer">
           <div className="h-full flex items-center justify-center px-4">
             <span className="text-xs text-apple-gray-500">
-              Release: 2026-09-09_2136
+              Provider Plus · Retreat operations
             </span>
           </div>
         </footer>
@@ -1200,7 +1087,7 @@ const AppleLayout: React.FC = () => {
             className="fixed inset-0 bg-black/30 backdrop-blur-sm"
             onClick={() => setShowSettings(false)}
           />
-          <div className="relative bg-white rounded-apple-xl shadow-apple-xl max-w-lg w-full">
+          <div ref={settingsRef} role="dialog" aria-modal="true" aria-label="Currency settings" className="relative bg-white rounded-apple-xl shadow-apple-xl max-w-lg w-full max-h-[90dvh] overflow-y-auto">
             <RouteContentBoundary><CurrencySettings onClose={() => setShowSettings(false)} /></RouteContentBoundary>
           </div>
         </div>

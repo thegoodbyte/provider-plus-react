@@ -15,5 +15,5 @@ beforeEach(() => {
 
 test('renders the login screen for a signed-out user', async () => {
   render(<App />);
-  expect(await screen.findByRole('heading', { name: /Provider Plus Login/i })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: /Welcome back/i })).toBeInTheDocument();
 });

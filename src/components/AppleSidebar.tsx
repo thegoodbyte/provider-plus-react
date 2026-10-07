@@ -1,5 +1,5 @@
 import { NAVIGATION, SETTINGS_LABEL, canShowNavigation, useNavigationPreferences } from '../navigation/navigation';
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { Tooltip } from '@mui/material';
 import * as Fi from 'react-icons/fi';
 import { api } from '../services/api';
@@ -430,6 +430,22 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     }
   }, [activeItem, menuSections]);
 
+  const sidebarRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!isOpen || !mobile) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    sidebarRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input, a[href], select, [tabindex="0"]') || []).filter(element => element.getClientRects().length > 0);
+      const first = controls[0]; const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', trapFocus);
+    return () => { document.removeEventListener('keydown', trapFocus); previousFocus?.focus(); };
+  }, [isOpen, mobile]);
+
   const handleToggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
@@ -450,7 +466,10 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
 
       {/* Sidebar */}
       <aside
-        className={`
+        ref={sidebarRef}
+        id="workspace-navigation"
+        inert={mobile && !isOpen}
+        className={`workspace-sidebar
           fixed top-0 left-0 h-full z-40
           bg-white/80 backdrop-blur-xl
           border-r border-apple-gray-200
@@ -466,6 +485,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             <div className="flex items-center justify-between">
               {/* Mobile close button */}
               <button
+                aria-label="Close menu"
                 className="md:hidden p-2 -ml-2 text-apple-gray-500 hover:text-apple-gray-700"
                 onClick={onClose}
               >
@@ -482,7 +502,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                 />
               </div>
               {isExpanded && (
-                <span className="text-lg font-semibold text-apple-gray-900 whitespace-nowrap">
+                <span className="workspace-brand text-lg font-semibold text-apple-gray-900 whitespace-nowrap">
                   Provider Plus
                 </span>
               )}
@@ -544,14 +564,16 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             )}
             <ul className={`px-3 space-y-1 ${!isExpanded && 'px-2'}`}>
               {visibleMenuSections.map((section) => {
+                const directSection = section.items.length === 1 && section.label === section.items[0].label;
                 const sectionIsActive = section.items.some((item) => item.id === activeItem);
                 const sectionIsOpen = Boolean(normalizedMenuSearch) || openSections[section.id] || sectionIsActive;
                 const SectionIcon = section.Icon;
                 const sectionTextColor = getTextColor(sectionIsActive);
                 const sectionButton = (
                   <button
-                    aria-expanded={isExpanded && sectionIsOpen}
-                    onClick={() => isExpanded ? toggleSection(section.id) : onItemClick(section.items[0]?.id || section.id)}
+                    aria-current={directSection && sectionIsActive ? 'page' : undefined}
+                    aria-expanded={!directSection ? isExpanded && sectionIsOpen : undefined}
+                    onClick={() => isExpanded && !directSection ? toggleSection(section.id) : onItemClick(section.items[0]?.id || section.id)}
                     style={{
                       backgroundColor: 'transparent',
                       color: sectionTextColor,
@@ -559,7 +581,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                       borderWidth: '1px',
                     }}
                     className={`
-                      w-full flex items-center gap-3 px-3 py-2 rounded-apple
+                      workspace-nav-section w-full flex items-center gap-3 px-3 py-2 rounded-apple
                       transition-all duration-200 text-left
                       border hover:bg-transparent hover:border-apple-gray-300 hover:shadow-sm
                       ${!isExpanded && 'justify-center px-2'}
@@ -571,7 +593,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                         <span className={`text-sm font-semibold whitespace-nowrap ${sectionIsActive ? 'font-bold' : ''}`}>
                           {section.label}
                         </span>
-                        {React.createElement(Fi.FiChevronDown as any, {
+                        {!directSection && React.createElement(Fi.FiChevronDown as any, {
                           className: `ml-auto w-4 h-4 transition-transform ${sectionIsOpen ? 'rotate-180' : ''}`
                         })}
                       </>
@@ -597,7 +619,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                 return (
                   <li key={section.id}>
                     {sectionButton}
-                    {sectionIsOpen && (
+                    {sectionIsOpen && !directSection && (
                       <ul className="mt-1 ml-3 space-y-1 border-l border-apple-gray-200 pl-2">
                         {section.items.map((item) => {
                           const isActive = activeItem === item.id;
@@ -606,6 +628,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                           return (
                             <li key={item.id}>
                               <button
+                                aria-current={isActive ? 'page' : undefined}
                                 title={NAVIGATION[item.id]?.description}
                                 onClick={() => {
                                   setMenuSearch('');
@@ -618,7 +641,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                                   boxShadow: accent ? `inset 3px 0 0 ${accent.border}` : undefined,
                                 }}
                                 className={`
-                                  w-full flex items-center gap-2 rounded-apple px-3 py-1.5 text-left
+                                  workspace-nav-item w-full flex items-center gap-2 rounded-apple px-3 py-1.5 text-left
                                   transition-all duration-200
                                   border hover:bg-transparent hover:border-apple-gray-300 hover:shadow-sm
                                   ${isActive ? 'text-gray-950 shadow-none' : 'text-apple-gray-700 hover:text-apple-gray-950'}

@@ -565,6 +565,10 @@ const WorkflowDashboard: React.FC = () => {
                 filteredRows.map((row) => (
                   <div
                     key={row._id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open booking for ${row.clientName}`}
+                    onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); goToBooking(row._id); } }}
                     className={`workflow-booking-row ${row._id === detail?._id ? 'active' : ''}`}
                     onClick={() => goToBooking(row._id)}
                   >

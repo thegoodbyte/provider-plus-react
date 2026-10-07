@@ -2,6 +2,8 @@ import { NAVIGATION, SETTINGS_LABEL, canShowNavigation, useNavigationPreferences
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
+  ArrowUpRight,
+  Search,
   Activity,
   Bell,
   BookOpen,
@@ -70,6 +72,7 @@ const ModuleLauncherPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const [shortcutSearch, setShortcutSearch] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [assignmentMap, setAssignmentMap] = useState<Record<string, 'inner' | 'outer' | 'hidden'>>({});
   const [saving, setSaving] = useState(false);
@@ -242,11 +245,11 @@ const ModuleLauncherPage: React.FC = () => {
     const additional: LauncherTile[] = [
       { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, route: 'retreat-flow-library', icon: BookOpen, tone: 'slate', section: SETTINGS_LABEL },
       { id: 'booking-document-types', label: NAVIGATION['booking-document-types'].label, route: 'booking-document-types', icon: FileText, tone: 'slate', section: SETTINGS_LABEL },
-      { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, route: 'retreat-staffing', icon: Users, tone: 'blue', section: 'Retreats' },
+      { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, route: 'retreat-staffing', icon: Users, tone: 'blue', section: 'Core' },
     ];
     return Array.from(new Map([...existing, ...additional].map(tile => [tile.id, tile])).values())
       .filter(tile => canShowNavigation(tile.id, user?.role, preferences))
-      .map(tile => ({ ...tile, label: NAVIGATION[tile.id]?.label || tile.label, subtitle: NAVIGATION[tile.id]?.description || tile.subtitle }));
+      .map(tile => ({ ...tile, label: NAVIGATION[tile.id]?.label || tile.label, subtitle: NAVIGATION[tile.id]?.description || tile.subtitle, section: user?.role === 'admin' && tile.id === 'booking-step-deadlines' ? 'Core' : tile.section }));
   }, [sections, user?.role, preferences]);
 
   useEffect(() => {
@@ -261,11 +264,14 @@ const ModuleLauncherPage: React.FC = () => {
   const handleTileClick = (route: string) => navigate(`${routePrefix}/${route}`);
   const renderTile = (tile: LauncherTile) => {
     const Icon = tile.icon;
-    return <button key={tile.id} type="button" aria-label={tile.label} onClick={() => handleTileClick(tile.route)} className="launcher-shortcut">
-      <Icon className="launcher-shortcut-icon" aria-hidden="true" />
-      <span><strong>{tile.label}</strong>{tile.subtitle && <small>{tile.subtitle}</small>}</span>
+    return <button key={tile.id} type="button" aria-label={tile.label} onClick={() => handleTileClick(tile.route)} className={`launcher-shortcut tone-${tile.tone}`} >
+      <span className="launcher-icon-wrap"><Icon className="launcher-shortcut-icon" aria-hidden="true" /></span>
+      <span><strong>{tile.label}</strong>{tile.subtitle && <small>{tile.subtitle}</small>}</span><ArrowUpRight className="launcher-shortcut-arrow" size={16} aria-hidden="true" />
     </button>;
   };
+  const matchingTiles = visibleTiles.filter(tile => `${tile.label} ${tile.subtitle || ''}`.toLowerCase().includes(shortcutSearch.trim().toLowerCase()));
+  const groupNames: Record<string, string> = { Core: 'Clients & retreats', Flow: 'Readiness & follow-up', Medical: 'Medical workspace', Money: 'Payments & communications', System: 'Team & operations' };
+  const dailyGroups = Array.from(new Set(matchingTiles.filter(tile => !isSetup(tile)).map(tile => tile.section)));
   const saveConfiguration = async () => {
     setSaving(true);
     setSaveError('');
@@ -287,8 +293,9 @@ const ModuleLauncherPage: React.FC = () => {
             <img src={`${process.env.PUBLIC_URL}/images/icon/retreategnine.png`} alt="RetreatEngine" />
           </div>
           <div>
+            <span className="launcher-eyebrow">YOUR DAILY WORKSPACE</span>
             <h1>{NAVIGATION.launcher.label}</h1>
-            <p>Open daily work or manage application setup.</p>
+            <p>A clear view of your day. Everything you need, in one place.</p>
           </div>
         </div>
         <div className="module-launcher-header-actions"><div className="module-launcher-role">{user?.role || 'admin'}</div>{user?.role === 'admin' && <button type="button" className="module-launcher-edit-button" onClick={() => setEditMode((value) => !value)}>{editMode ? 'Close editor' : 'Customize shortcuts'}</button>}</div>
@@ -299,16 +306,16 @@ const ModuleLauncherPage: React.FC = () => {
       <TasksForTodayPanel />
 
       {saveError && <p role="alert">{saveError}</p>}
+      <div className="launcher-directory-header"><div><h2>Find your focus</h2><p>Choose a workspace to get started.</p></div><div className="launcher-search"><Search size={17} aria-hidden="true" /><input type="search" aria-label="Find a shortcut" placeholder="Find a shortcut…" value={shortcutSearch} onChange={event => setShortcutSearch(event.target.value)} /></div></div>
       <section className="launcher-area" aria-labelledby="daily-work-title">
-        <h2 id="daily-work-title">Daily Work</h2>
-        <p>Clients, bookings, retreats and the work that needs your attention.</p>
-        <div className="launcher-shortcuts">{visibleTiles.filter(tile => !isSetup(tile)).map(renderTile)}</div>
-        {!visibleTiles.some(tile => !isSetup(tile)) && <p>No daily shortcuts are visible.</p>}
+        <h2 id="daily-work-title" className="sr-only">Daily Work</h2>
+        {dailyGroups.map(group => <div className="launcher-group" key={group}><h3>{groupNames[group] || group}</h3><div className="launcher-shortcuts">{matchingTiles.filter(tile => !isSetup(tile) && tile.section === group).map(renderTile)}</div></div>)}
+        {!matchingTiles.some(tile => !isSetup(tile)) && <p className="launcher-empty" role="status">{shortcutSearch ? 'No matching daily shortcuts. Try another search.' : 'No daily shortcuts are visible.'}</p>}
       </section>
-      {visibleTiles.some(isSetup) && <section className="launcher-area launcher-setup" aria-labelledby="setup-title">
+      {matchingTiles.some(isSetup) && <section className="launcher-area launcher-setup" aria-labelledby="setup-title">
         <h2 id="setup-title">{SETTINGS_LABEL}</h2>
         <p>Reusable steps, document categories and application configuration.</p>
-        <div className="launcher-shortcuts">{visibleTiles.filter(isSetup).map(renderTile)}</div>
+        <div className="launcher-shortcuts">{matchingTiles.filter(isSetup).map(renderTile)}</div>
       </section>}
 
     </div>

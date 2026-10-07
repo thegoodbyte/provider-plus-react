@@ -69,6 +69,7 @@ const AppleButton: React.FC<AppleButtonProps> = ({
 
   return (
     <button
+      aria-busy={loading}
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
