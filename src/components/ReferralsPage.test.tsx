@@ -22,6 +22,20 @@ describe('ReferralsPage payout workflow', () => {
     (referralsApi.createPayout as jest.Mock).mockResolvedValue({ data: { _id: 'expense' } });
   });
 
+  it('saves influence rates and repeat-credit rules, including an explicit zero', async () => {
+    view();
+    await screen.findAllByText('Eva Novak');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Partners' }));
+    fireEvent.change(screen.getByLabelText(/Influence commission %/), { target: { value: '20' } });
+    fireEvent.click(screen.getByLabelText('Allow explicitly credited repeat bookings'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ influenceCommissionPercentage: 20, allowRepeatBookingCredit: false })));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Partners' }));
+    fireEvent.change(screen.getByLabelText(/Influence commission %/), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(referralsApi.update).toHaveBeenLastCalledWith('r1', expect.objectContaining({ influenceCommissionPercentage: 0 })));
+  });
+
   it('filters a partner, totals commissions, and records selected bookings', async () => {
     view();
     await screen.findAllByText('Eva Novak');

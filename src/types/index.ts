@@ -141,6 +141,9 @@ export interface ReferralCommissionPackage {
 }
 
 export interface Referral {
+  influenceCommissionPercentage?: number | null;
+  allowRepeatBookingCredit?: boolean;
+
   _id?: string;
   name: string;
   referralCode?: string;
@@ -156,6 +159,9 @@ export interface Referral {
 }
 
 export interface ReferralReportRow {
+  attributionType?: string;
+  attributionEvidence?: string;
+
   signupDate?: string;
   source?: string;
   commissionKind?: 'percentage' | 'fixed';
@@ -319,6 +325,11 @@ export interface Client {
 }
 
 export interface RetreatClient {
+  referralAttribution?: 'inherit' | 'self' | 'direct' | 'influenced';
+  referralPartnerId?: string;
+  referralEvidence?: string;
+  referralAttributionHistory?: Array<{ at: string; actor: string; from: any; to: any; evidence: string }>;
+
   _id?: string;
   bookingNumber?: number;
   bookingHash?: string; // 20-character alphanumeric hash for linking payments

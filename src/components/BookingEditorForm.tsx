@@ -1,6 +1,7 @@
 import AccommodationSelect from './AccommodationSelect';
 import React, { useEffect, useMemo, useState } from 'react';
-import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
+import { authService } from '../services/authService';
+import { referralsApi, bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
 import { roomInventoryApi } from '../services/roomInventoryApi';
 import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -15,6 +16,10 @@ import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 
 type BookingFormData = {
+  referralAttribution: 'inherit' | 'self' | 'direct' | 'influenced';
+  referralPartnerId: string;
+  referralEvidence: string;
+
   clientId: string;
   retreatId: string;
   paymentRequestId: string;
@@ -63,6 +68,8 @@ interface BookingEditorFormProps {
 }
 
 const emptyForm = (): BookingFormData => ({
+  referralAttribution: 'inherit', referralPartnerId: '', referralEvidence: '',
+
   clientId: '',
   retreatId: '',
   paymentRequestId: '',
@@ -144,6 +151,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const { toast, showError, dismiss: dismissToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [referralPartners, setReferralPartners] = useState<import('../types').Referral[]>([]);
+  useEffect(() => { if (authService.getUser()?.role === 'admin') referralsApi.getAll().then(response => setReferralPartners(response.data)).catch(() => showError('Unable to load referral partners.')); }, []);
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>(initialRetreats || []);
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
@@ -209,6 +218,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
       if (currentBooking) {
         setFormData({
+          referralAttribution: currentBooking.referralAttribution || 'inherit',
+          referralPartnerId: currentBooking.referralPartnerId || '',
+          referralEvidence: currentBooking.referralEvidence || '',
           clientId: typeof currentBooking.clientId === 'string' ? currentBooking.clientId : (currentBooking.clientId as any)?._id || '',
           retreatId: typeof currentBooking.retreatId === 'string' ? currentBooking.retreatId : (currentBooking.retreatId as any)?._id || '',
           paymentRequestId: typeof currentBooking.paymentRequestId === 'string' ? currentBooking.paymentRequestId : (currentBooking.paymentRequestId as any)?._id || '',
@@ -360,6 +372,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       const bookingNumberValue = formData.bookingNumber.trim();
       const bookingNumber = bookingNumberValue ? Number(bookingNumberValue) : undefined;
       const payload = {
+        ...(authService.getUser()?.role === 'admin' ? { referralAttribution: formData.referralAttribution, referralPartnerId: ['direct', 'influenced'].includes(formData.referralAttribution) ? formData.referralPartnerId : null, referralEvidence: formData.referralEvidence } : {}),
+
         clientId: formData.clientId,
         retreatId: formData.retreatId,
         paymentRequestId: formData.paymentRequestId || undefined,
@@ -457,6 +471,19 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
     <div className="w-full">
       <Toast toast={toast} onDismiss={dismissToast} />
       <form onSubmit={handleSubmit} className="space-y-5">
+        {authService.getUser()?.role === 'admin' && <fieldset className="rounded-xl border border-gray-200 p-4 space-y-3">
+          <legend className="font-semibold">Booking referral and influence</legend>
+          <p className="text-sm text-gray-600">Automatic: inherit the client referral only for their first non-cancelled booking. Repeat bookings default to self-referred. Explicit credit applies only to this booking; the partner's repeat-booking rule still applies.</p>
+          <label className="block">Attribution<select className="block w-full rounded border p-2" value={formData.referralAttribution} onChange={e => setFormData(prev => ({ ...prev, referralAttribution: e.target.value as BookingFormData['referralAttribution'], referralPartnerId: '' }))}>
+            <option value="inherit">Automatic — first booking inherits client referral</option><option value="self">Self-referred — no partner credit</option><option value="direct">L1 — direct referral</option><option value="influenced">L2 — influenced by a partner</option>
+          </select></label>
+          {['direct', 'influenced'].includes(formData.referralAttribution) && <>
+            <label className="block">Credited partner<select required className="block w-full rounded border p-2" value={formData.referralPartnerId} onChange={e => setFormData(prev => ({ ...prev, referralPartnerId: e.target.value }))}><option value="">Select partner</option>{referralPartners.map(partner => <option key={partner._id} value={partner._id}>{partner.name}</option>)}</select></label>
+            <label className="block">Confirmation / evidence<textarea required className="block w-full rounded border p-2" value={formData.referralEvidence} onChange={e => setFormData(prev => ({ ...prev, referralEvidence: e.target.value }))} placeholder="Client confirmed watching AD videos; confirmed on date…" /></label>
+          </>}
+          {(booking?.referralAttributionHistory || []).length > 0 && <details><summary>Attribution history</summary>{booking!.referralAttributionHistory!.map((entry, i) => <p className="text-sm" key={i}>{new Date(entry.at).toLocaleString()} · {entry.actor} · {entry.from.type} → {entry.to.type} · {entry.evidence}</p>)}</details>}
+        </fieldset>}
+
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Booking number</label>
