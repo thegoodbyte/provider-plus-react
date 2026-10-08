@@ -2,11 +2,11 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PaymentEditorPage from './PaymentEditorPage';
-import { bookingsApi, clientsApi, configSummaryApi, paymentsApi, retreatsApi } from '../services/api';
+import { bookingsApi, clientsApi, configSummaryApi, paymentRequestsApi, serviceRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
   bookingsApi: { getAll: jest.fn() }, clientsApi: { getAll: jest.fn() }, retreatsApi: { getAll: jest.fn() },
-  configSummaryApi: { get: jest.fn() }, paymentRequestsApi: { getOne: jest.fn() },
+  configSummaryApi: { get: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getOneFresh: jest.fn() }, serviceRequestsApi: { get: jest.fn() },
   paymentsApi: { getOne: jest.fn(), getAll: jest.fn(), getNextDisplayId: jest.fn(), convert: jest.fn(), create: jest.fn(), update: jest.fn() },
 }));
 jest.mock('./SearchableClientSelect', () => (props: any) => <select aria-label="Client" value={props.selectedClientId} onChange={e => props.onClientSelect(e.target.value)}><option value="">Choose</option><option value="c1">Anna</option></select>);
@@ -69,4 +69,14 @@ test('links an existing payment while preserving its original amount, currency a
   fireEvent.click(screen.getByRole('button', { name: 'Update Payment' }));
   await waitFor(() => expect(paymentsApi.update).toHaveBeenCalledWith('p1', expect.objectContaining({ bookingId: 'b1', retreatId: 'r1', amount: 150, currency: 'EUR', description: 'Medical exam' })));
   expect(paymentsApi.create).not.toHaveBeenCalled();
+});
+
+test('records the outstanding standalone amount without retreat or booking controls', async()=>{
+  const request={_id:'s1',context:'standalone_service',clientId:'c1',requestedAmount:25,amountOutstanding:15,currency:'EUR',requestType:'full_payment',status:'pending',invoiceNumber:'2000'};
+  mock(paymentRequestsApi.getOneFresh).mockResolvedValue({data:request});mock(serviceRequestsApi.get).mockResolvedValue({data:request});
+  view('/admin/payments/new?paymentRequestId=s1');
+  await waitFor(()=>expect(screen.getByLabelText('Amount')).toHaveValue(15));
+  expect(screen.queryByText('Retreat selector')).not.toBeInTheDocument();expect(screen.queryByLabelText('Booking')).not.toBeInTheDocument();expect(screen.getByLabelText('Currency')).toBeDisabled();
+  fireEvent.click(screen.getByRole('button',{name:'Add Payment'}));await screen.findByText('Payment list');
+  expect(paymentsApi.create).toHaveBeenCalledWith(expect.objectContaining({clientId:'c1',paymentRequestId:'s1',amount:15,currency:'EUR',retreatId:undefined,bookingId:undefined,isFinalPayment:false}));
 });

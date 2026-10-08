@@ -1745,6 +1745,10 @@ export interface PaymentRequestLineItem {
 }
 
 export interface PaymentRequest {
+  context?: 'retreat' | 'standalone_service' | 'event';
+  amountReceived?: number;
+  amountOutstanding?: number;
+  serviceDocument?: any;
   baseBookingPrice?: number;
   _id?: string;
   display_id?: number;

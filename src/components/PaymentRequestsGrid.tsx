@@ -1,7 +1,7 @@
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { paymentRequestsApi } from '../services/api';
+import { paymentRequestsApi, serviceRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
@@ -39,7 +39,7 @@ const resolveRetreat = (retreatValue: any) => {
 };
 
 const getPublicPaymentApiUrl = (request: any) => (
-  request?.publicHash ? `${API_BASE_URL}/public/invoices/${request.publicHash}` : ''
+  request?.publicHash ? `${API_BASE_URL}/public/${request.context === 'standalone_service' ? 'service-payment-requests' : 'invoices'}/${request.publicHash}` : ''
 );
 
 const formatAmount = (amount: any, currency: string) => {
@@ -91,6 +91,7 @@ const PaymentRequestsGrid: React.FC = () => {
   };
 
   const handleSendPaymentRequest = (request: any) => {
+    if (request.publicLinkRevokedAt || request.status === 'cancelled') { showError('Restore an active private link before sending.'); return; }
     if (!request.publicHash) {
       showError('This payment request does not have a public hash yet. Open and save it once, then send it.');
       return;
@@ -105,7 +106,7 @@ const PaymentRequestsGrid: React.FC = () => {
 
   const buildPaymentEmail = (request: any): EmailComposeInitialValues => {
     const client = resolveClient(request.clientId);
-    const retreat = resolveRetreat(request.retreatId);
+    const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
     const paymentUrl = getPreferredPaymentUrl(request);
     const invoiceNumber = request.invoiceNumber || request.display_id || request._id;
     const financials = paymentRequestFinancialSummary(request);
@@ -121,9 +122,9 @@ const PaymentRequestsGrid: React.FC = () => {
         '',
         `Your payment request for ${retreat} is ready.`,
         ...(requestedAmount ? [`Requested amount: ${requestedAmount}`] : []),
-        ...(totalAmount ? [`Total retreat price: ${totalAmount}`] : []),
+        ...(totalAmount ? [`${request.context === 'standalone_service' ? 'Total' : 'Total retreat price'}: ${totalAmount}`] : []),
         '',
-        'Please open the secure link below to review the payment request and complete the required confirmations before payment:',
+        'Please open the private link below to review your payment request and payment terms:',
         paymentUrl,
         '',
         'Thank you,',
@@ -172,7 +173,7 @@ const PaymentRequestsGrid: React.FC = () => {
       if (paymentFilter === 'paid-unbooked' && (!paid || hasBooking)) return false;
       if (!term) return true;
       const client = resolveClient(request.clientId);
-      const retreat = resolveRetreat(request.retreatId);
+      const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
       return (
         String(paymentRequestFinancialSummary(request).requested).includes(term) ||
         paymentRequestFinancialSummary(request).requested.toLocaleString().toLowerCase().includes(term) ||
@@ -190,7 +191,7 @@ const PaymentRequestsGrid: React.FC = () => {
 
   const getSortValue = (request: any, key: PaymentRequestSortKey) => {
     const client = resolveClient(request.clientId);
-    const retreat = resolveRetreat(request.retreatId);
+    const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
 
     switch (key) {
       case 'invoice':
@@ -283,6 +284,7 @@ const PaymentRequestsGrid: React.FC = () => {
         </button>
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-3"><Link className="px-4 py-2 rounded-md bg-teal-700 text-white" to="/admin/payment-requests/services/new">New standalone service request</Link><Link className="px-4 py-2 rounded-md border border-gray-300" to="/admin/payment-requests/services/settings">Service & policy settings</Link></div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium">Payment status
           <select aria-label="Payment status" value={paymentFilter} onChange={event => setPaymentFilter(event.target.value)} className="ml-2 rounded-md border border-gray-300 px-3 py-2">
@@ -329,13 +331,13 @@ const PaymentRequestsGrid: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedRequests.map((request) => {
                 const client = resolveClient(request.clientId);
-                const retreat = resolveRetreat(request.retreatId);
+                const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
                 return (
                   <tr key={request._id} className="hover:bg-gray-50">
                     <td data-label="Invoice" className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       <button
                         type="button"
-                        onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
+                        onClick={() => navigate(request.context === 'standalone_service' ? `/admin/payment-requests/services/${request._id}` : `/admin/payment-requests/${request._id}`)}
                         className="font-semibold text-gray-900 hover:underline"
                         title="View payment request"
                       >
@@ -393,6 +395,7 @@ const PaymentRequestsGrid: React.FC = () => {
                           onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`, { state: { returnTo: '/admin/payment-requests' } })}
                           className="icon-action-btn icon-action-btn-success"
                           title="Add payment from this request"
+                          disabled={request.context === 'standalone_service' && ['paid','cancelled'].includes(request.status)}
                         >
                           <Icon icon={FiDollarSign} />
                         </button>
@@ -404,23 +407,24 @@ const PaymentRequestsGrid: React.FC = () => {
                           <Icon icon={FiSend} />
                         </button>
                         <button
-                          onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
+                          onClick={() => navigate(request.context === 'standalone_service' ? `/admin/payment-requests/services/${request._id}` : `/admin/payment-requests/${request._id}`)}
                           className="icon-action-btn icon-action-btn-view"
                           title="View"
                         >
                           <Icon icon={FiEye} />
                         </button>
                         <button
-                          onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
+                          onClick={() => navigate(request.context === 'standalone_service' ? `/admin/payment-requests/services/${request._id}` : `/admin/payment-requests/${request._id}/edit`)}
                           className="icon-action-btn icon-action-btn-edit"
-                          title="Edit"
+                          title={request.context === 'standalone_service' ? 'Open immutable service document' : 'Edit'}
                         >
                           <Icon icon={FiEdit2} />
                         </button>
                         <button
                           onClick={() => handleDelete(request._id)}
                           className="icon-action-btn icon-action-btn-danger"
-                          title="Delete"
+                          title={request.context === 'standalone_service' ? 'Use cancellation from the service document' : 'Delete'}
+                          disabled={request.context === 'standalone_service'}
                         >
                           <Icon icon={FiTrash2} />
                         </button>
@@ -446,8 +450,10 @@ const PaymentRequestsGrid: React.FC = () => {
           title="Send Payment Request"
           initialValues={buildPaymentEmail(selectedSendRequest)}
           onClose={() => setSelectedSendRequest(null)}
-          onSent={async () => {
-            await paymentRequestsApi.update(selectedSendRequest._id, {
+          onSent={async (email) => {
+            if (email?.status && email.status !== 'sent') throw new Error('Delivery failed. Request status has not changed.');
+            if (selectedSendRequest.context === 'standalone_service') await serviceRequestsApi.action(selectedSendRequest._id, 'sent');
+            else await paymentRequestsApi.update(selectedSendRequest._id, {
               status: 'sent',
               sentAt: new Date().toISOString(),
               sentToClient: true,
@@ -457,7 +463,7 @@ const PaymentRequestsGrid: React.FC = () => {
           extraContent={selectedSendRequest.publicHash ? (
             <div className="space-y-3 rounded-md border border-blue-100 bg-blue-50 p-3">
               <div>
-                <div className="mb-1 text-xs font-semibold uppercase text-blue-800">IbogaReady client URL</div>
+                <div className="mb-1 text-xs font-semibold uppercase text-blue-800">Client payment URL</div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     readOnly

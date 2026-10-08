@@ -1,9 +1,10 @@
+export const getServicePaymentUrl = (request: any) => request?.publicHash ? `https://ibogaspirit.cz/clients/payment/services/${request.publicHash}` : '';
 export const getIbogaReadyPaymentUrl = (request: any) => (
-  request?.publicHash ? `https://www.ibogaready.com/payment/${request.publicHash}` : ''
+  request?.context === 'standalone_service' ? getServicePaymentUrl(request) : request?.publicHash ? `https://www.ibogaready.com/payment/${request.publicHash}` : ''
 );
 
 export const getPolishWebsitePaymentUrl = (request: any) => (
-  request?.publicHash ? `https://ibogaspirit.pl/clients/payment/request/${request.publicHash}?lang=pl` : ''
+  request?.context === 'standalone_service' ? getServicePaymentUrl(request) : request?.publicHash ? `https://ibogaspirit.pl/clients/payment/request/${request.publicHash}?lang=pl` : ''
 );
 
 export const getPreferredPaymentUrl = (request: any) => {

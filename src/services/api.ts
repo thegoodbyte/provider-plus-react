@@ -2117,3 +2117,11 @@ export const morningDigestApi = {
   save: (settings: any) => api.put('/morning-digest/settings', settings),
   preview: () => api.get('/morning-digest/preview'),
 };
+
+export const serviceRequestsApi = {
+ settings: () => api.get('/service-payment-requests/settings'),
+ saveSettings: (data: any) => api.put('/service-payment-requests/settings',data),
+ create: (data: any) => {cacheService.clearPattern('payment-requests:');return api.post('/service-payment-requests',data);},
+ get: (id: string) => api.get(`/service-payment-requests/${id}`),
+ action: (id: string, action: string) => {cacheService.clearPattern('payment-requests:');return api.post(`/service-payment-requests/${id}/${action}`,{});},
+};

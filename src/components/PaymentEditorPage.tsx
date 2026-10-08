@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { bookingsApi, clientsApi, configSummaryApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
+import { bookingsApi, clientsApi, configSummaryApi, serviceRequestsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -23,6 +23,7 @@ const defaultDate = () => todayDateInputValue();
 
 const getPaymentRequestAmount = (paymentRequest?: PaymentRequest | null) => {
   if (!paymentRequest) return '';
+  if (paymentRequest.context === 'standalone_service') return paymentRequest.amountOutstanding ?? paymentRequest.requestedAmount ?? '';
   const candidates = [
     paymentRequest.requestedAmount,
     paymentRequest.fullPriceQuote,
@@ -141,7 +142,7 @@ const PaymentEditorPage: React.FC = () => {
         if (paymentResponse?.data) {
           const payment = paymentResponse.data as Payment;
           setLoadedPayment(payment);
-          setClientOnly(!payment.bookingId && !payment.paymentRequestId && !payment.retreatId);
+          setClientOnly((typeof payment.paymentRequestId === 'object' && (payment.paymentRequestId as PaymentRequest)?.context === 'standalone_service') || (!payment.bookingId && !payment.paymentRequestId && !payment.retreatId));
           const populatedPaymentRequest = typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId as PaymentRequest : null;
           if (populatedPaymentRequest) setSelectedPaymentRequest(populatedPaymentRequest);
           setFormData({
@@ -169,7 +170,8 @@ const PaymentEditorPage: React.FC = () => {
           if (nextDisplayIdResponse?.data) {
             setFormData((prev) => ({ ...prev, display_id: String(nextDisplayIdResponse.data) }));
           }
-          const paymentRequestResponse = await paymentRequestsApi.getOne(paymentRequestIdFromQuery);
+          const initialRequest = await paymentRequestsApi.getOneFresh(paymentRequestIdFromQuery);
+          const paymentRequestResponse = initialRequest.data.context === 'standalone_service' ? await serviceRequestsApi.get(paymentRequestIdFromQuery) : initialRequest;
           applyPaymentRequest(paymentRequestIdFromQuery, paymentRequestResponse.data, bookingsResponse.data || []);
         } else {
           const requestedBooking = (bookingsResponse.data || []).find((item: RetreatClient) => item._id === bookingIdFromQuery);
@@ -279,6 +281,8 @@ const PaymentEditorPage: React.FC = () => {
       return;
     }
 
+    const service = paymentRequest.context === 'standalone_service';
+    setClientOnly(service);
     const amount = getPaymentRequestAmount(paymentRequest);
     const currency = paymentRequest?.currency || formData.currency;
     const clientId = resolveId(paymentRequest?.clientId);
@@ -293,13 +297,13 @@ const PaymentEditorPage: React.FC = () => {
       paymentRequestId,
       clientId,
       retreatId,
-      bookingId: requestBookingId || booking?._id || prev.bookingId,
+      bookingId: service ? '' : requestBookingId || booking?._id || prev.bookingId,
       amount: amount !== '' && amount !== undefined ? String(amount) : prev.amount,
       currency,
       paymentMethod: paymentMethodFromRequest(paymentRequest.paymentType),
       paymentType: requestPaymentType,
       isDeposit: requestPaymentType === 'deposit_non_refundable' || requestPaymentType === 'deposit_refundable',
-      isFinalPayment: requestPaymentType === 'balance_payment' || paymentRequest.requestType === 'full_payment',
+      isFinalPayment: !service && (requestPaymentType === 'balance_payment' || paymentRequest.requestType === 'full_payment'),
       status: paymentRequest.status === 'paid' ? 'completed' : prev.status === 'pending' ? 'completed' : prev.status,
       paymentDate: paymentRequest.paidDate ? toDateInputValue(paymentRequest.paidDate) : prev.paymentDate,
       description: `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim(),
@@ -497,8 +501,9 @@ const PaymentEditorPage: React.FC = () => {
               )}
             </div>
           )}
-          <fieldset disabled={isView} className="grid grid-cols-1 md:grid-cols-2 gap-6 disabled:opacity-90">
-            {(!loadedPayment?.bookingId && !loadedPayment?.paymentRequestId) && <div className="md:col-span-2 rounded-md border border-blue-200 bg-blue-50 p-4">
+          {selectedPaymentRequest?.context === 'standalone_service' && <div className="mb-6 rounded-lg border border-teal-200 bg-teal-50 p-4"><strong>Standalone service · request #{selectedPaymentRequest.invoiceNumber}</strong><p>This payment settles this service request and has no retreat or booking allocation.</p>{isExisting && <p>This financial record is immutable. Use an audited refund to correct a recorded payment.</p>}</div>}
+          <fieldset disabled={isView || (isExisting && selectedPaymentRequest?.context === 'standalone_service')} className="grid grid-cols-1 md:grid-cols-2 gap-6 disabled:opacity-90">
+            {(!loadedPayment?.bookingId && !loadedPayment?.paymentRequestId && selectedPaymentRequest?.context !== 'standalone_service') && <div className="md:col-span-2 rounded-md border border-blue-200 bg-blue-50 p-4">
               <label className="flex items-center gap-2 font-medium">
                 <input type="checkbox" checked={clientOnly} onChange={event => {
                   setClientOnly(event.target.checked);
@@ -533,7 +538,7 @@ const PaymentEditorPage: React.FC = () => {
                 formData.paymentRequestId ? (
                   <button
                     type="button"
-                    onClick={() => navigate(`/admin/payment-requests/${formData.paymentRequestId}`)}
+                    onClick={() => navigate(selectedPaymentRequest?.context === 'standalone_service' ? `/admin/payment-requests/services/${formData.paymentRequestId}` : `/admin/payment-requests/${formData.paymentRequestId}`)}
                     className="inline-flex rounded-md border border-blue-200 bg-blue-50 px-3 py-2 font-semibold text-blue-700 hover:bg-blue-100 hover:underline"
                   >
                     Payment request {selectedPaymentRequest?.invoiceNumber || (selectedPaymentRequest?.display_id ? `#${selectedPaymentRequest.display_id}` : `#${formData.paymentRequestId.slice(-8)}`)}
@@ -563,7 +568,7 @@ const PaymentEditorPage: React.FC = () => {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-              {isExisting ? <p>{clients.find(client => client._id === formData.clientId)?.firstName} {clients.find(client => client._id === formData.clientId)?.lastName}</p> : <SearchableClientSelect
+              {isExisting || selectedPaymentRequest?.context === 'standalone_service' ? <p>{clients.find(client => client._id === formData.clientId)?.firstName} {clients.find(client => client._id === formData.clientId)?.lastName}</p> : <SearchableClientSelect
                 clients={clients}
                 selectedClientId={formData.clientId}
                 onClientSelect={(clientId) => { if (!isExisting) setFormData(prev => ({ ...prev, clientId, bookingId: '', retreatId: '', paymentRequestId: '' })); }}
@@ -627,6 +632,7 @@ const PaymentEditorPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
               <select
                 aria-label="Currency"
+                disabled={selectedPaymentRequest?.context === 'standalone_service'}
                 value={formData.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -819,7 +825,7 @@ const PaymentEditorPage: React.FC = () => {
             {!isView && (
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || (isExisting && selectedPaymentRequest?.context === 'standalone_service')}
                 className="inline-flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
               >
                 <Icon icon={FiSave} className="w-4 h-4" />

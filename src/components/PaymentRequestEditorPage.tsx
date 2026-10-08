@@ -80,6 +80,7 @@ const PaymentRequestEditorPage: React.FC = () => {
       try {
         setLoading(true);
         const response = await paymentRequestsApi.getOne(id);
+        if ((response.data as any).context === 'standalone_service') { navigate(`/admin/payment-requests/services/${id}`, { replace: true }); return; }
         setPaymentRequest(response.data);
         // The editor must not wait for optional audit/receipt enrichment.
         // Those requests can be slow or unavailable while the payment request

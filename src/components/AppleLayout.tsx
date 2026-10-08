@@ -1,3 +1,5 @@
+import ServicePaymentRequestPage from './ServicePaymentRequestPage';
+import ServiceBillingSettingsPage from './ServiceBillingSettingsPage';
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiMenu, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
@@ -783,6 +785,9 @@ const AppleLayout: React.FC = () => {
                       <Route path="expenses/:id/edit" element={<ExpenseEditorPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
                       <Route path="payment-requests/types" element={<PaymentRequestTypesSettings />} />
+                      <Route path="payment-requests/services/new" element={<ProtectedRoute requiredRole={['admin']}><ServicePaymentRequestPage /></ProtectedRoute>} />
+                      <Route path="payment-requests/services/settings" element={<ProtectedRoute requiredRole={['admin']}><ServiceBillingSettingsPage /></ProtectedRoute>} />
+                      <Route path="payment-requests/services/:id" element={<ProtectedRoute requiredRole={['admin']}><ServicePaymentRequestPage /></ProtectedRoute>} />
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id" element={<PaymentRequestEditorPage />} />
                       <Route path="revolut-payment-links" element={<ProtectedRoute requiredRole={['admin']}><RevolutPaymentLinksPage /></ProtectedRoute>} />
