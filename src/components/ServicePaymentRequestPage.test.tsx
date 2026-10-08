@@ -68,9 +68,12 @@ test("requires review before issuing EUR 25 and sends no automatic email", async
   mock(serviceRequestsApi.create).mockResolvedValue({ data: { _id: "s1" } });
   mount();
   await screen.findByLabelText("Client");
+  expect(screen.queryByText("Find client")).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Client"), {
-    target: { value: "c1" },
+    target: { value: "anna@example" },
   });
+  fireEvent.keyDown(screen.getByLabelText("Client"), { key: "ArrowDown" });
+  fireEvent.keyDown(screen.getByLabelText("Client"), { key: "Enter" });
   fireEvent.change(screen.getByLabelText("Add a configured service"), {
     target: { value: "medical" },
   });
@@ -105,9 +108,12 @@ test("invalidates review on item changes and shows server errors without losing 
   });
   mount();
   await screen.findByLabelText("Client");
+  expect(screen.queryByText("Find client")).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Client"), {
-    target: { value: "c1" },
+    target: { value: "anna@example" },
   });
+  fireEvent.keyDown(screen.getByLabelText("Client"), { key: "ArrowDown" });
+  fireEvent.keyDown(screen.getByLabelText("Client"), { key: "Enter" });
   fireEvent.change(screen.getByLabelText("Add a configured service"), {
     target: { value: "medical" },
   });

@@ -4,6 +4,7 @@ import { clientsApi, serviceRequestsApi } from "../services/api";
 import { getServicePaymentUrl } from "./paymentRequestLinks";
 import "./ServicePaymentRequestPage.css";
 import EmailComposeModal from "./EmailComposeModal";
+import SearchableClientSelect from "./SearchableClientSelect";
 const money = (n: number, c: string) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: c }).format(
     n || 0,
@@ -19,7 +20,6 @@ export default function ServicePaymentRequestPage() {
     [clients, setClients] = useState<any[]>([]),
     [request, setRequest] = useState<any>(null);
   const [clientId, setClient] = useState(""),
-    [search, setSearch] = useState(""),
     [title, setTitle] = useState("Service payment request"),
     [currency, setCurrency] = useState("EUR"),
     [policyCode, setPolicy] = useState(""),
@@ -351,37 +351,17 @@ export default function ServicePaymentRequestPage() {
               <h2>1. Client & request</h2>
               <div className="sr-fields">
                 <label>
-                  Find client
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Name or email"
-                  />
-                </label>
-                <label>
                   Client
-                  <select
-                    required
+                  <SearchableClientSelect
+                    ariaLabel="Client"
+                    clients={clients}
                     value={clientId}
-                    onChange={(e) => {
-                      setClient(e.target.value);
+                    onChange={(selectedId) => {
+                      setClient(selectedId);
                       setPreview(false);
                     }}
-                  >
-                    <option value="">Select a client</option>
-                    {clients
-                      .filter((c) =>
-                        [c.firstName, c.lastName, c.email]
-                          .join(" ")
-                          .toLowerCase()
-                          .includes(search.toLowerCase()),
-                      )
-                      .map((c) => (
-                        <option key={c._id} value={c._id}>
-                          {c.firstName} {c.lastName} · {c.email}
-                        </option>
-                      ))}
-                  </select>
+                    placeholder="Search by client name, email or number"
+                  />
                 </label>
                 <label>
                   Request title

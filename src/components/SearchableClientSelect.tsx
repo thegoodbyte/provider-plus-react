@@ -9,6 +9,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 interface SearchableClientSelectProps {
   clients: Client[];
+  ariaLabel?: string;
   value?: string;
   selectedClientId?: string;
   onChange?: (clientId: string) => void;
@@ -19,6 +20,7 @@ interface SearchableClientSelectProps {
 
 const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
   clients,
+  ariaLabel,
   value,
   selectedClientId,
   onChange,
@@ -145,6 +147,7 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <div className="relative">
         <input
+          aria-label={ariaLabel}
           ref={inputRef}
           type="text"
           value={isOpen ? searchTerm : (selectedClient ? formatClientDisplay(selectedClient) : '')}
