@@ -6,6 +6,7 @@ import AppleButton from '../components/AppleButton';
 import ClientReferralFields from '../components/ClientReferralFields';
 import { clientsApi, referralsApi, screeningApi } from '../services/api';
 import { Client, Referral } from '../types';
+import { validateScreeningBirth } from '../utils/screeningBirth';
 
 interface ScreeningData {
   clientId: string;
@@ -30,6 +31,10 @@ interface ScreeningData {
   psychologicalAbuseDetails: string;
   age: number;
   year_of_birth: number;
+  month_of_birth?: number;
+  day_of_birth?: number;
+  city: string;
+  country: string;
   screeningDate: string;
   riskLevel: number;
   heartConditionOk: boolean;
@@ -278,6 +283,8 @@ const ClientScreening: React.FC = () => {
     psychologicalAbuseDetails: '',
     age: undefined as any,
     year_of_birth: undefined as any,
+    city: '',
+    country: '',
     screeningDate: new Date().toISOString().split('T')[0],
     riskLevel: 1,
     heartConditionOk: false,
@@ -469,8 +476,15 @@ const ClientScreening: React.FC = () => {
       const existingAge = existingValue('age') as number | undefined;
       const existingYearOfBirth = existingValue('year_of_birth', 'yearOfBirth') as number | undefined;
       const dateOfBirthYear = (clientData as any).dateOfBirth
-        ? new Date((clientData as any).dateOfBirth).getFullYear()
+        ? new Date((clientData as any).dateOfBirth).getUTCFullYear()
         : undefined;
+      const birthDate = (clientData as any).dateOfBirth ? new Date((clientData as any).dateOfBirth) : undefined;
+      // Older screening saves fabricated January 1 from a year alone.
+      const hasStoredBirthParts = 'month_of_birth' in existingScreening || 'day_of_birth' in existingScreening;
+      const legacyYearOnly = ('year_of_birth' in existingScreening || 'yearOfBirth' in existingScreening)
+        && birthDate?.getUTCMonth() === 0 && birthDate?.getUTCDate() === 1
+        && !(clientData as any).dateOfBirthSource;
+      const useClientDate = birthDate && Number.isFinite(birthDate.getTime()) && !hasStoredBirthParts && !legacyYearOnly;
       const existingReferral = existingValue('referralId', 'referralId') as string | Referral | undefined;
 
       // Pre-populate client info
@@ -483,6 +497,10 @@ const ClientScreening: React.FC = () => {
         displayId: clientData.display_id || 0,
         phoneNumber: clientData.phone || '',
         age: existingAge ?? prev.age,
+        city: existingValue('city', 'city') ?? '',
+        country: existingValue('country', 'country') ?? '',
+        month_of_birth: existingScreening.month_of_birth ?? (useClientDate ? birthDate.getUTCMonth() + 1 : undefined),
+        day_of_birth: existingScreening.day_of_birth ?? (useClientDate ? birthDate.getUTCDate() : undefined),
         year_of_birth: existingYearOfBirth
           ?? dateOfBirthYear
           ?? getYearOfBirthFromAge(existingAge)
@@ -724,10 +742,21 @@ const ClientScreening: React.FC = () => {
           ...prev,
           age: numericValue as any,
           year_of_birth: getYearOfBirthFromAge(numericValue) as any,
+          month_of_birth: undefined,
+          day_of_birth: undefined,
         }));
         return;
       }
-      setFormData(prev => ({ ...prev, [name]: numericValue }));
+      setFormData(prev => {
+        const next = { ...prev, [name]: numericValue };
+        if (['year_of_birth', 'month_of_birth', 'day_of_birth'].includes(name)) {
+          const today = new Date();
+          next.age = next.year_of_birth ? today.getFullYear() - next.year_of_birth -
+            (next.month_of_birth && next.day_of_birth && (today.getMonth() + 1 < next.month_of_birth ||
+              (today.getMonth() + 1 === next.month_of_birth && today.getDate() < next.day_of_birth)) ? 1 : 0) : undefined as any;
+        }
+        return next;
+      });
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -883,6 +912,8 @@ const ClientScreening: React.FC = () => {
   };
 
   const persistScreening = async () => {
+    const birthError = validateScreeningBirth(formData.year_of_birth, formData.month_of_birth, formData.day_of_birth);
+    if (birthError) throw new Error(birthError);
     const { referralId, referralClientId: rawReferralClientId, ...screeningFields } = formData;
     const referralClientId = typeof rawReferralClientId === 'object' ? rawReferralClientId?._id : rawReferralClientId;
     const bloodPressure = [
@@ -930,6 +961,11 @@ const ClientScreening: React.FC = () => {
       ...screeningFields,
       ...(referralId ? { referralId } : {}),
       ...(referralClientId ? { referralClientId } : {}),
+      city: formData.city.trim(),
+      country: formData.country.trim(),
+      month_of_birth: formData.month_of_birth ?? null,
+      day_of_birth: formData.day_of_birth ?? null,
+      year_of_birth: formData.year_of_birth ?? null,
       occupation: formData.occupation.trim(),
       heartCondition: formData.heartConditionOk ? 'OK' : formData.heartCondition,
       liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
@@ -962,7 +998,7 @@ const ClientScreening: React.FC = () => {
       flashSaveMessage('Screening saved.');
     } catch (error) {
       console.error('Error saving screening:', error);
-      flashSaveMessage('Could not save screening.');
+      flashSaveMessage(error instanceof Error ? error.message : 'Could not save screening.');
     } finally {
       setSaving(false);
     }
@@ -1002,7 +1038,7 @@ const ClientScreening: React.FC = () => {
       navigate(getClientProfilePath());
     } catch (error) {
       console.error('Error saving screening:', error);
-      flashSaveMessage('Could not save screening.');
+      flashSaveMessage(error instanceof Error ? error.message : 'Could not save screening.');
     } finally {
       setSaving(false);
     }
@@ -1017,7 +1053,7 @@ const ClientScreening: React.FC = () => {
       flashSaveMessage('Auto-saved.');
     } catch (error) {
       console.error('Error auto-saving screening:', error);
-      flashSaveMessage('Could not auto-save screening.');
+      flashSaveMessage(error instanceof Error ? error.message : 'Could not auto-save screening.');
     } finally {
       setSaving(false);
     }
@@ -1087,6 +1123,12 @@ const ClientScreening: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
             />
           </div>
+          {(['city', 'country'] as const).map(name => (
+            <div key={name}>
+              <label htmlFor={`screening-${name}`} className="block text-sm font-medium text-gray-700 mb-1">{name === 'city' ? 'Town / City' : 'Country'}</label>
+              <input id={`screening-${name}`} name={name} value={formData[name]} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-200 rounded-md" />
+            </div>
+          ))}
           <div className="md:col-span-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
             <input
@@ -1254,9 +1296,11 @@ const ClientScreening: React.FC = () => {
               <input
                 type="number"
                 name="age"
+                aria-label="Age"
                 value={formData.age || ''}
                 onChange={handleInputChange}
                 placeholder="Enter age"
+                title="Entering age estimates the year and clears the optional birth month/day."
                 className="w-full px-3 py-2 border border-gray-200 rounded-md"
               />
             </div>
@@ -1266,11 +1310,18 @@ const ClientScreening: React.FC = () => {
                 type="number"
                 name="year_of_birth"
                 value={formData.year_of_birth || ''}
-                readOnly
-                placeholder="Auto-filled"
-                className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
+                onChange={handleInputChange}
+                aria-label="Year of Birth"
+                placeholder="Enter or correct year"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
               />
             </div>
+            {(['month_of_birth', 'day_of_birth'] as const).map(name => (
+              <div key={name}>
+                <label htmlFor={`screening-${name}`} className="block text-sm font-medium text-gray-700 mb-1">{name === 'month_of_birth' ? 'Birth Month' : 'Birth Day'} (optional)</label>
+                <input id={`screening-${name}`} type="number" min={1} max={name === 'month_of_birth' ? 12 : 31} name={name} value={formData[name] ?? ''} onChange={handleInputChange} placeholder="Unknown" className="w-full px-3 py-2 border border-gray-200 rounded-md" />
+              </div>
+            ))}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Screening Date</label>
               <input

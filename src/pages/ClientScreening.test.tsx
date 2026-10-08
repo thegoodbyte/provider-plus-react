@@ -91,4 +91,39 @@ describe('ClientScreening referral capture', () => {
       referralId: 'friend', referralPersonType: 'someone_else', referralPersonName: 'Arek',
     })));
   });
+  it('loads location and exact birth date, accepts year correction, and saves optional date parts', async () => {
+    mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, city: 'Prague', country: 'Czechia', dateOfBirth: '1990-06-15', screeningData: { year_of_birth: 1990 } } } as any);
+    renderPage();
+    await waitFor(() => expect(screen.getByLabelText('Town / City')).toHaveValue('Prague'));
+    expect(screen.getByLabelText('Birth Month (optional)')).toHaveValue(6);
+    expect(screen.getByLabelText('Birth Day (optional)')).toHaveValue(15);
+    fireEvent.change(screen.getByLabelText('Year of Birth'), { target: { value: '1992' } });
+    fireEvent.change(screen.getByLabelText('Town / City'), { target: { value: 'Brno' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save Screening' })[0]);
+    await waitFor(() => expect(mockedScreeningApi.create).toHaveBeenCalledWith(expect.objectContaining({ city: 'Brno', country: 'Czechia', year_of_birth: 1992, month_of_birth: 6, day_of_birth: 15 })));
+  });
+
+  it('autofills year from age, allows correction and keeps unknown date parts empty', async () => {
+    mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, dateOfBirth: '1991-01-01', screeningData: { year_of_birth: 1991 } } } as any);
+    renderPage();
+    await waitFor(() => expect(screen.getByLabelText('Year of Birth')).toHaveValue(1991));
+    expect(screen.getByLabelText('Birth Month (optional)')).toHaveValue(null);
+    fireEvent.change(screen.getByLabelText('Age'), { target: { value: '40' } });
+    expect(screen.getByLabelText('Year of Birth')).toHaveValue(new Date().getFullYear() - 40);
+    fireEvent.change(screen.getByLabelText('Year of Birth'), { target: { value: '1985' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save Screening' })[0]);
+    await waitFor(() => expect(mockedScreeningApi.create).toHaveBeenCalledWith(expect.objectContaining({ year_of_birth: 1985, month_of_birth: null, day_of_birth: null })));
+  });
+
+  it('blocks saving an impossible date and shows the reason', async () => {
+    renderPage();
+    await screen.findByText('Referral');
+    fireEvent.change(screen.getByLabelText('Year of Birth'), { target: { value: '1991' } });
+    fireEvent.change(screen.getByLabelText('Birth Month (optional)'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('Birth Day (optional)'), { target: { value: '29' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save Screening' })[0]);
+    await screen.findByText('Enter a valid date of birth.');
+    expect(mockedScreeningApi.create).not.toHaveBeenCalled();
+  });
+
 });
