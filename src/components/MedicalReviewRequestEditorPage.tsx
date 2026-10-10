@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
+import MrrCreatedModal from './MrrCreatedModal';
 import SearchableMedicalTrackingSelect from './SearchableMedicalTrackingSelect';
 import { clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, medicalTrackingApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
@@ -139,6 +140,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const artifactId = new URLSearchParams(location.search).get('artifactId') || '';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [createdMrr, setCreatedMrr] = useState<MedicalReviewRequest | null>(null);
   const [trackingItems, setTrackingItems] = useState<MedicalItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
@@ -409,9 +411,13 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           notifyClientOnSubmission: form.notifyClientOnSubmission,
         };
         if (selectedArtifact?._id) {
-          await medicalReviewRequestsApi.createFromArtifact(selectedArtifact._id, form.requestType, payload);
+          const response = await medicalReviewRequestsApi.createFromArtifact(selectedArtifact._id, form.requestType, payload);
+          setCreatedMrr(response.data);
+          return;
         } else if (form.artifactIds.length > 0) {
-          await medicalReviewRequestsApi.create(payload as any);
+          const response = await medicalReviewRequestsApi.create(payload as any);
+          setCreatedMrr(response.data);
+          return;
         } else {
           await medicalReviewRequestsApi.create({ ...payload, medicalTrackingId: form.medicalTrackingId } as any);
         }
@@ -434,6 +440,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
 
   return (
     <div className="mrr-editor-page">
+      <MrrCreatedModal request={createdMrr} onDismiss={() => { setCreatedMrr(null); navigate('/admin/medical-review-requests'); }} onViewMrr={() => { setCreatedMrr(null); if (createdMrr) navigate(`/admin/medical-review-requests/${createdMrr._id}`, { state: location.state }); }} onBackToArtifacts={() => navigate(location.state?.artifactReturnTo || '/admin/medical-artifacts', { state: location.state })} />
       <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mrr-editor-shell">
       <header className="mrr-editor-header">

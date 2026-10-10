@@ -6,6 +6,7 @@ import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../s
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import MrrCreatedModal from './MrrCreatedModal';
 import { formatCalendarDate } from '../utils/dateFormat';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
@@ -264,6 +265,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [quickMrrOpen, setQuickMrrOpen] = useState(false);
+  const [createdMrr, setCreatedMrr] = useState<MedicalReviewRequest | null>(null);
   const [quickMrrSaving, setQuickMrrSaving] = useState(false);
   const [quickMrrAdvisors, setQuickMrrAdvisors] = useState<User[]>([]);
   const [quickMrrGroups, setQuickMrrGroups] = useState<MedicalReviewGroup[]>([]);
@@ -400,15 +402,16 @@ const MedicalArtifactDetailPage: React.FC = () => {
   useEffect(() => {
     if (!artifact || isEditMode || quickMrrOpen || new URLSearchParams(location.search).get('quickMrr') !== '1') return;
     void openQuickMrr();
-    navigate(location.pathname, { replace: true });
+    navigate(location.pathname, { replace: true, state: location.state });
   }, [artifact, isEditMode, quickMrrOpen, location.pathname, location.search, navigate]);
 
   const createQuickMrr = async () => {
     if (!artifact?._id || !quickMrr.advisorId || !quickMrr.groupId) return;
     setQuickMrrSaving(true);
     try {
-      await medicalReviewRequestsApi.createFromArtifact(artifact._id, quickMrr.requestType, { assignedToUserId: quickMrr.advisorId, medicalReviewGroupId: quickMrr.groupId, documentStage: quickMrr.documentStage || undefined, sentForReviewAt: new Date().toISOString(), notifyClientOnSubmission: quickMrr.notifyClient });
+      const response = await medicalReviewRequestsApi.createFromArtifact(artifact._id, quickMrr.requestType, { assignedToUserId: quickMrr.advisorId, medicalReviewGroupId: quickMrr.groupId, documentStage: quickMrr.documentStage || undefined, sentForReviewAt: new Date().toISOString(), notifyClientOnSubmission: quickMrr.notifyClient });
       setQuickMrrOpen(false);
+      setCreatedMrr(response.data);
       await reloadArtifact();
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Unable to create the medical review request.');
@@ -749,7 +752,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)}
+              onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`, { state: location.state })}
               className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               <Plus className="h-4 w-4" />
@@ -864,6 +867,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
 
   return (
     <div className="medical-artifact-page -mx-4 px-4 pb-6 sm:mx-0 sm:p-6">
+      <MrrCreatedModal request={createdMrr} onDismiss={() => setCreatedMrr(null)} onViewMrr={() => { setCreatedMrr(null); if (createdMrr) navigate(`${routePrefix}/medical-review-requests/${createdMrr._id}`, { state: location.state }); }} onBackToArtifacts={() => navigate(location.state?.artifactReturnTo || `${routePrefix}/medical-artifacts`, { state: location.state })} />
       <div className="medical-artifact-page-actions mb-4 flex items-start justify-between gap-3 sm:mb-6">
         <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
           <ArrowLeft className="h-4 w-4" />
@@ -904,7 +908,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
             <Zap className="h-4 w-4" />
             <span className="hidden sm:inline">Quick MRR</span>
           </button>
-          <button onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <button onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`, { state: location.state })} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
             <Plus className="h-4 w-4" />
             Full MRR
           </button>

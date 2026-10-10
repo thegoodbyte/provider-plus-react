@@ -1,6 +1,6 @@
 import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, ChevronDown, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
@@ -10,6 +10,7 @@ import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import LoadingSpinner from './LoadingSpinner';
+import MrrCreatedModal from './MrrCreatedModal';
 import ClientAvatar from './ClientAvatar';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
@@ -279,37 +280,40 @@ export const filterRetreatSubmissionRowsByMrr = (
 
 const MedicalArtifactsPage: React.FC = () => {
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
-  const navigate = useNavigate();
+  const routerNavigate = useNavigate();
+  const location = useLocation();
+  const savedView = location.state?.artifactView || {};
+  const [createdMrr, setCreatedMrr] = useState<MedicalReviewRequest | null>(null);
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchFilter, setSearchFilter] = useState('');
-  const [bookingIdFilter, setBookingIdFilter] = useState('');
-  const [clientIdFilter, setClientIdFilter] = useState('');
-  const [retreatIdFilter, setRetreatIdFilter] = useState('');
-  const [stageFilter, setStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
-  const [documentTypeFilter, setDocumentTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['documentType']>>('all');
-  const [artifactTypeFilter, setArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | NonNullable<MedicalArtifact['status']>>('all');
-  const [reviewFilter, setReviewFilter] = useState<'all' | 'has_review' | 'no_review'>('all');
-  const [outcomeFilter, setOutcomeFilter] = useState<'all' | 'declined' | 'needs_info' | 'pending'>('all');
-  const [futureRetreatsOnly, setFutureRetreatsOnly] = useState(true);
-  const [artifactSortKey, setArtifactSortKey] = useState<'id' | 'client' | 'stage' | 'documentType' | 'source' | 'retreat' | 'received' | 'files'>('received');
-  const [artifactSortDirection, setArtifactSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [activeView, setActiveView] = useState<'artifacts' | 'retreat_submissions'>('artifacts');
+  const [searchFilter, setSearchFilter] = useState<string>(savedView.searchFilter ?? '');
+  const [bookingIdFilter, setBookingIdFilter] = useState<string>(savedView.bookingIdFilter ?? '');
+  const [clientIdFilter, setClientIdFilter] = useState<string>(savedView.clientIdFilter ?? '');
+  const [retreatIdFilter, setRetreatIdFilter] = useState<string>(savedView.retreatIdFilter ?? '');
+  const [stageFilter, setStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>(savedView.stageFilter ?? 'all');
+  const [documentTypeFilter, setDocumentTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['documentType']>>(savedView.documentTypeFilter ?? 'all');
+  const [artifactTypeFilter, setArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>(savedView.artifactTypeFilter ?? 'all');
+  const [statusFilter, setStatusFilter] = useState<'all' | NonNullable<MedicalArtifact['status']>>(savedView.statusFilter ?? 'all');
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'has_review' | 'no_review'>(savedView.reviewFilter ?? 'all');
+  const [outcomeFilter, setOutcomeFilter] = useState<'all' | 'declined' | 'needs_info' | 'pending'>(savedView.outcomeFilter ?? 'all');
+  const [futureRetreatsOnly, setFutureRetreatsOnly] = useState<boolean>(savedView.futureRetreatsOnly ?? true);
+  const [artifactSortKey, setArtifactSortKey] = useState<'id' | 'client' | 'stage' | 'documentType' | 'source' | 'retreat' | 'received' | 'files'>(savedView.artifactSortKey ?? 'received');
+  const [artifactSortDirection, setArtifactSortDirection] = useState<'asc' | 'desc'>(savedView.artifactSortDirection ?? 'desc');
+  const [activeView, setActiveView] = useState<'artifacts' | 'retreat_submissions'>(savedView.activeView ?? 'artifacts');
   const [retreats, setRetreats] = useState<Retreat[]>([]);
-  const [submissionRetreatFilter, setSubmissionRetreatFilter] = useState('');
-  const [submissionArtifactTypeFilter, setSubmissionArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
-  const [submissionStageFilter, setSubmissionStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
-  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<'all' | 'missing' | 'received'>('all');
-  const [submissionMrrFilter, setSubmissionMrrFilter] = useState<RetreatSubmissionMrrFilter>('all');
-  const [submissionSearchFilter, setSubmissionSearchFilter] = useState('');
-  const [submissionSort, setSubmissionSort] = useState<'client' | 'type' | 'stage' | 'status'>('client');
+  const [submissionRetreatFilter, setSubmissionRetreatFilter] = useState<string>(savedView.submissionRetreatFilter ?? '');
+  const [submissionArtifactTypeFilter, setSubmissionArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>(savedView.submissionArtifactTypeFilter ?? 'all');
+  const [submissionStageFilter, setSubmissionStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>(savedView.submissionStageFilter ?? 'all');
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<'all' | 'missing' | 'received'>(savedView.submissionStatusFilter ?? 'all');
+  const [submissionMrrFilter, setSubmissionMrrFilter] = useState<RetreatSubmissionMrrFilter>(savedView.submissionMrrFilter ?? 'all');
+  const [submissionSearchFilter, setSubmissionSearchFilter] = useState<string>(savedView.submissionSearchFilter ?? '');
+  const [submissionSort, setSubmissionSort] = useState<'client' | 'type' | 'stage' | 'status'>(savedView.submissionSort ?? 'client');
   const [submissionData, setSubmissionData] = useState<RetreatArtifactSubmissionsResponse | null>(null);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [submissionsError, setSubmissionsError] = useState('');
   const [deletingArtifactId, setDeletingArtifactId] = useState('');
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState<boolean>(savedView.mobileFiltersOpen ?? false);
   const [quickMrrArtifact, setQuickMrrArtifact] = useState<MedicalArtifact | null>(null);
   const [quickMrrAdvisors, setQuickMrrAdvisors] = useState<User[]>([]);
   const [quickMrrGroups, setQuickMrrGroups] = useState<any[]>([]);
@@ -325,6 +329,11 @@ const MedicalArtifactsPage: React.FC = () => {
   const [bulkAssignSaving, setBulkAssignSaving] = useState(false);
   const [bulkAssignError, setBulkAssignError] = useState('');
   const [bulkAssignProgress, setBulkAssignProgress] = useState<{ completed: number; total: number } | null>(null);
+
+  const navigate = (to: string) => routerNavigate(to, { state: {
+    artifactReturnTo: location.pathname + location.search,
+    artifactView: { searchFilter, bookingIdFilter, clientIdFilter, retreatIdFilter, stageFilter, documentTypeFilter, artifactTypeFilter, statusFilter, reviewFilter, outcomeFilter, futureRetreatsOnly, artifactSortKey, artifactSortDirection, activeView, submissionRetreatFilter, submissionArtifactTypeFilter, submissionStageFilter, submissionStatusFilter, submissionMrrFilter, submissionSearchFilter, submissionSort, mobileFiltersOpen },
+  } });
 
   const loadData = async () => {
     setLoading(true);
@@ -665,10 +674,10 @@ const MedicalArtifactsPage: React.FC = () => {
     if (!quickMrrArtifact?._id || !quickMrrForm.advisorId || !quickMrrForm.groupId) return;
     setQuickMrrSaving(true);
     try {
-      await medicalReviewRequestsApi.createFromArtifact(quickMrrArtifact._id, quickMrrForm.requestType, { assignedToUserId: quickMrrForm.advisorId, medicalReviewGroupId: quickMrrForm.groupId, documentStage: quickMrrArtifact.documentStage, sentForReviewAt: new Date().toISOString(), notifyClientOnSubmission: quickMrrForm.notifyClient });
+      const response = await medicalReviewRequestsApi.createFromArtifact(quickMrrArtifact._id, quickMrrForm.requestType, { assignedToUserId: quickMrrForm.advisorId, medicalReviewGroupId: quickMrrForm.groupId, documentStage: quickMrrArtifact.documentStage, sentForReviewAt: new Date().toISOString(), notifyClientOnSubmission: quickMrrForm.notifyClient });
       setQuickMrrArtifact(null);
+      setCreatedMrr(response.data);
       await loadData();
-      showSuccess('Medical review request created.');
     } catch (error: any) {
       showError(apiErrorMessage(error, 'Unable to create the medical review request.'));
     } finally { setQuickMrrSaving(false); }
@@ -712,6 +721,7 @@ const MedicalArtifactsPage: React.FC = () => {
 
   return (
     <div className="min-h-full bg-slate-50 p-3 md:p-6">
+      <MrrCreatedModal request={createdMrr} onDismiss={() => setCreatedMrr(null)} onBackToArtifacts={() => setCreatedMrr(null)} onViewMrr={() => { if (createdMrr) navigate(`/admin/medical-review-requests/${createdMrr._id}`); }} />
       <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
