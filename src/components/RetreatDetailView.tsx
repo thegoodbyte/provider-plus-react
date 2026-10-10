@@ -2,7 +2,7 @@ import { quoteBookingUsd, retreatExpectedUsd } from './retreatUsdTotals';
 import RoomAllocationBoard from './RoomAllocationBoard';
 import RouteContentBoundary from './RouteContentBoundary';
 import { authService } from '../services/authService';
-import React, { lazy, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { lazy, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, communicationsApi, bookingFlowApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment, EmailAsset, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
@@ -207,6 +207,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [retreatEmailTemplateLanguage, setRetreatEmailTemplateLanguage] = useState<RetreatEmailTemplateLanguage>('all');
   const [retreatEmailStepTemplates, setRetreatEmailStepTemplates] = useState<BookingFlowTemplate[]>([]);
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
+  const retreatEmailPreviewVersion = useRef(0);
+  const retreatTranslationVersion = useRef(0);
+  const [retreatTranslating, setRetreatTranslating] = useState(false);
+  const [retreatTranslationError, setRetreatTranslationError] = useState('');
+  const [retreatTranslations, setRetreatTranslations] = useState<{ sourceKey: string; variants: Record<string, { subject: string; bodyText: string; bodyHtml: string }> } | null>(null);
   const [excludedRetreatEmailClientIds, setExcludedRetreatEmailClientIds] = useState<string[]>([]);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   useEffect(() => {
@@ -233,8 +238,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [retreatEmailForm] = Form.useForm();
   const retreatEmailBodyHtml = Form.useWatch('bodyHtml', retreatEmailForm);
   const retreatEmailTemplateId = Form.useWatch('templateId', retreatEmailForm);
+  const retreatEmailSubject = Form.useWatch('subject', retreatEmailForm);
+  const retreatEmailBodyText = Form.useWatch('bodyText', retreatEmailForm);
+  const translateCustomRetreatEmail = Form.useWatch('translateWithAi', retreatEmailForm) === true && !retreatEmailTemplateId;
+  const retreatTranslationKey = JSON.stringify([retreatEmailSubject || '', retreatEmailBodyText || '']);
+  const retreatTranslationsReady = retreatTranslations?.sourceKey === retreatTranslationKey;
   const useRetreatRecipientLanguage = Form.useWatch('useRecipientLanguage', retreatEmailForm) !== false;
   const selectedRetreatEmailTemplate = retreatEmailTemplates.find((template) => template._id === retreatEmailTemplateId);
+  const usesLocalizedRetreatTemplate = Boolean(retreatEmailTemplateId) && useRetreatRecipientLanguage;
   const selectedRetreatEmailAssets = retreatEmailAssets.filter((asset) => selectedRetreatEmailTemplate?.attachmentAssetIds?.includes(asset._id || ''));
   const filteredRetreatEmailTemplates = useMemo(
     () => filterRetreatEmailTemplates(retreatEmailTemplates, retreatEmailTemplateLanguage),
@@ -669,9 +680,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   };
 
   const openRetreatEmailModal = async () => {
+    retreatEmailPreviewVersion.current += 1;
+    retreatTranslationVersion.current += 1;
+    setRetreatTranslations(null);
+    setRetreatTranslationError('');
+    setRetreatTranslating(false);
     const retreatLabel = retreat?.code || retreat?.retreatCode || retreat?.name || 'retreat';
     retreatEmailForm.setFieldsValue({
       templateId: '',
+      translateWithAi: false,
       useRecipientLanguage: true,
       subject: `Information for ${retreatLabel}`,
       bodyText: '',
@@ -700,10 +717,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
-  const handleRetreatEmailTemplateChange = async (templateId: string) => {
+  const handleRetreatEmailTemplateChange = async (templateId?: string) => {
+    const previewVersion = ++retreatEmailPreviewVersion.current;
     const template = retreatEmailTemplates.find((item) => item._id === templateId);
     if (!template) {
-      retreatEmailForm.setFieldsValue({ bookingFlowStepKey: '', bookingFlowStatusOnSend: 'completed' });
+      retreatEmailForm.setFieldsValue({ bodyHtml: '', bookingFlowStepKey: '', bookingFlowStatusOnSend: 'completed' });
       return;
     }
     retreatEmailForm.setFieldsValue({
@@ -726,12 +744,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           retreatEndDate: retreat?.endDate,
         },
       });
+      if (previewVersion !== retreatEmailPreviewVersion.current) return;
       retreatEmailForm.setFieldsValue({
         subject: response.data.subject || template.subject || '',
         bodyText: response.data.bodyText || template.bodyText || '',
         bodyHtml: response.data.bodyHtml || template.bodyHtml || '',
       });
     } catch (error) {
+      if (previewVersion !== retreatEmailPreviewVersion.current) return;
       console.error('Error rendering retreat email template:', error);
       message.warning('The live template preview could not be rendered. The saved template content is shown instead.');
     }
@@ -742,10 +762,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     const selectedTemplateId = retreatEmailForm.getFieldValue('templateId');
     const selectedTemplate = retreatEmailTemplates.find((template) => template._id === selectedTemplateId);
     if (selectedTemplate && language !== 'all' && normalizeTemplateLanguage(selectedTemplate.language) !== language) {
+      retreatEmailPreviewVersion.current += 1;
       retreatEmailForm.setFieldsValue({
         templateId: undefined,
-        subject: '',
-        bodyText: '',
         bodyHtml: '',
         bookingFlowStepKey: '',
         bookingFlowStatusOnSend: 'completed',
@@ -753,12 +772,43 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
-  const handleRetreatEmailSend = async (values: { useRecipientLanguage?: boolean; templateId?: string; subject: string; bodyText: string; bodyHtml?: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
+  const prepareRetreatTranslations = async () => {
     try {
+      const values = await retreatEmailForm.validateFields(['subject', 'bodyText']);
+      const version = ++retreatTranslationVersion.current;
+      const sourceKey = JSON.stringify([values.subject, values.bodyText]);
+      setRetreatTranslating(true);
+      setRetreatTranslationError('');
+      setRetreatTranslations(null);
+      try {
+        const response = await communicationsApi.translateRetreatMessage({ subject: values.subject, bodyText: values.bodyText });
+        if (version !== retreatTranslationVersion.current) return;
+        if (retreatEmailForm.getFieldValue('templateId') || !retreatEmailForm.getFieldValue('translateWithAi') ||
+            sourceKey !== JSON.stringify([retreatEmailForm.getFieldValue('subject'), retreatEmailForm.getFieldValue('bodyText')])) return;
+        const variants = response.data.languageVariants;
+        if (!['en', 'cz', 'pl'].every(language => variants?.[language]?.subject?.trim() && variants?.[language]?.bodyText?.trim())) throw new Error('AI returned incomplete translations. Retry before sending.');
+        setRetreatTranslations({ sourceKey, variants });
+      } catch (error: any) {
+        if (version === retreatTranslationVersion.current) setRetreatTranslationError(error?.response?.data?.message || error.message || 'Translation failed. Your draft has been kept.');
+      } finally {
+        if (version === retreatTranslationVersion.current) setRetreatTranslating(false);
+      }
+    } catch { /* Form validation shows which draft fields need input. */ }
+  };
+
+  const handleRetreatEmailSend = async (values: { translateWithAi?: boolean; useRecipientLanguage?: boolean; templateId?: string; subject: string; bodyText: string; bodyHtml?: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
+    try {
+      const translateWithAi = values.translateWithAi === true && !values.templateId;
+      if (translateWithAi && (!retreatTranslations || retreatTranslations.sourceKey !== JSON.stringify([values.subject, values.bodyText]))) {
+        message.error('Prepare and review translations for the current draft before sending.');
+        return;
+      }
       setRetreatEmailLoading(true);
       const response = await communicationsApi.sendRetreatEmail(retreatId, {
         templateId: values.templateId || undefined,
-        useRecipientLanguage: values.useRecipientLanguage !== false,
+        useRecipientLanguage: translateWithAi || (Boolean(values.templateId) && values.useRecipientLanguage !== false),
+        ...(translateWithAi ? { languageVariants: retreatTranslations!.variants } : {}),
+        plainTextOnly: translateWithAi || (!(Boolean(values.templateId) && values.useRecipientLanguage !== false) && !values.bodyHtml),
         subject: values.subject,
         bodyText: values.bodyText,
         bodyHtml: values.bodyHtml,
@@ -1931,8 +1981,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           layout="vertical"
           onFinish={handleRetreatEmailSend}
         >
-          <Form.Item name="useRecipientLanguage" valuePropName="checked" initialValue={true} extra="When checked, each client receives the saved version of this template in their preferred language, with that version’s attachments. Clients without a language use the selected template language. Missing translations stop the entire send. Turn off to edit or send the selected message to everyone.">
-            <Checkbox onChange={(event) => { if (event.target.checked && retreatEmailTemplateId) handleRetreatEmailTemplateChange(retreatEmailTemplateId); }}>Use each recipient’s preferred language</Checkbox>
+          <Form.Item name="useRecipientLanguage" valuePropName="checked" initialValue={true} extra="Without a template, write a custom message for everyone. With a template selected and this option checked, each client receives the saved version of this template in their preferred language, with that version’s attachments. Clients without a language use the selected template language. Missing translations stop the entire send. Turn off to edit or send the selected message to everyone.">
+            <Checkbox disabled={!retreatEmailTemplateId} onChange={(event) => { if (event.target.checked && retreatEmailTemplateId) handleRetreatEmailTemplateChange(retreatEmailTemplateId); else retreatEmailPreviewVersion.current += 1; }}>Use each recipient’s preferred language</Checkbox>
           </Form.Item>
           <Form.Item label="Template language">
             <Select
@@ -1947,7 +1997,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </Select>
           </Form.Item>
 
-          <Form.Item name="templateId" label="Template" rules={[{ required: useRetreatRecipientLanguage, message: "Select a template or turn off recipient language to write a custom message." }]}>
+          <Form.Item name="templateId" label="Template">
             <Select
               allowClear
               showSearch
@@ -1956,7 +2006,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 const template = filteredRetreatEmailTemplates.find((item) => item._id === option?.value);
                 return template ? retreatEmailTemplateSearchText(template).includes(input.trim().toLowerCase()) : false;
               }}
-              placeholder={useRetreatRecipientLanguage ? "Select a template" : "Optional template"}
+              placeholder="Optional template"
               onChange={(value) => handleRetreatEmailTemplateChange(value)}
               notFoundContent="No templates match this language or search"
             >
@@ -2017,7 +2067,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             label="Subject"
             rules={[{ required: true, message: 'Subject is required' }]}
           >
-            <Input placeholder="Email subject" readOnly={useRetreatRecipientLanguage} />
+            <Input placeholder="Email subject" onChange={() => { retreatEmailPreviewVersion.current += 1; setRetreatTranslations(null); }} readOnly={usesLocalizedRetreatTemplate} />
           </Form.Item>
 
           <Form.Item
@@ -2025,8 +2075,26 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             label="Message"
             rules={[{ required: true, message: 'Message is required' }]}
           >
-            <TextArea readOnly={useRetreatRecipientLanguage} rows={12} placeholder="Write the email that should be sent to everyone in this retreat." />
+            <TextArea readOnly={usesLocalizedRetreatTemplate} onChange={() => { retreatEmailPreviewVersion.current += 1; setRetreatTranslations(null); retreatEmailForm.setFieldValue('bodyHtml', ''); }} rows={12} placeholder="Write the email that should be sent to everyone in this retreat." />
           </Form.Item>
+
+          <Form.Item name="translateWithAi" valuePropName="checked" initialValue={false}
+            extra={retreatEmailTemplateId ? 'Saved templates use their existing language versions.' : 'AI prepares English, Czech and Polish versions for review. Each included client receives their preferred language; clients without a saved language receive English. Turn off to send exactly what you wrote.'}>
+            <Checkbox disabled={Boolean(retreatEmailTemplateId)}>Translate custom message for each recipient with AI</Checkbox>
+          </Form.Item>
+          {translateCustomRetreatEmail && <div className="mb-5 space-y-3">
+            <Button onClick={prepareRetreatTranslations} loading={retreatTranslating} disabled={retreatEmailLoading}>Prepare translations</Button>
+            {retreatTranslationError && <p role="alert" className="text-red-700">{retreatTranslationError}</p>}
+            {!retreatTranslationsReady && <p className="text-sm text-gray-600">Prepare and review translations before sending. After editing the subject or message, prepare them again.</p>}
+            {retreatTranslationsReady && retreatTranslations && <div aria-label="AI translation previews" className="space-y-3">
+              <p className="text-sm text-gray-600">Review these translations, then use Send below. Preparing translations does not send an email.</p>
+              {(['en', 'cz', 'pl'] as const).map(language => <details key={language} className="rounded-md border border-gray-200 p-3">
+                <summary className="cursor-pointer font-medium">{{ en: 'English', cz: 'Czech', pl: 'Polish' }[language]}</summary>
+                <h4 className="mt-2 font-medium">{retreatTranslations.variants[language].subject}</h4>
+                <p className="mt-2 whitespace-pre-wrap">{retreatTranslations.variants[language].bodyText}</p>
+              </details>)}
+            </div>}
+          </div>}
 
           <div className="flex justify-end gap-3">
             <Button onClick={() => setShowRetreatEmailModal(false)}>
@@ -2036,7 +2104,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               type="primary"
               htmlType="submit"
               loading={retreatEmailLoading}
-              disabled={retreatEmailRecipientCount === 0}
+              disabled={retreatEmailRecipientCount === 0 || retreatTranslating || (translateCustomRetreatEmail && !retreatTranslationsReady)}
             >
               Send to {retreatEmailRecipientCount}
             </Button>

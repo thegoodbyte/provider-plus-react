@@ -711,7 +711,9 @@ export const communicationsApi = {
     variables: Record<string, any>;
     bookingConfirmation: boolean;
   }>('/communications/preview', data),
+  translateRetreatMessage: (data: { subject: string; bodyText: string }) => api.post<{ languageVariants: Record<string, { subject: string; bodyText: string; bodyHtml: string }> }>('/communications/translate-retreat-message', data),
   sendRetreatEmail: (retreatId: string, data: {
+    plainTextOnly?: boolean;
     useRecipientLanguage?: boolean;
     subject: string;
     bodyText: string;
