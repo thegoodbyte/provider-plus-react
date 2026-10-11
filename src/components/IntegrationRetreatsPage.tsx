@@ -1,5 +1,6 @@
 import IntegrationCalendar from "./IntegrationCalendar";
 import IntegrationPrograms from "./IntegrationPrograms";
+import IntegrationCare from "./IntegrationCare";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HeartHandshake } from "lucide-react";
@@ -54,7 +55,10 @@ const IntegrationRetreatsPage: React.FC = () => {
         </div>
       </header>
 
-      <nav aria-label="Integration views" className="integration-view-tabs flex flex-wrap gap-3 my-4">
+      <nav
+        aria-label="Integration views"
+        className="integration-view-tabs flex flex-wrap gap-3 my-4"
+      >
         <button
           type="button"
           aria-pressed={view === "retreats"}
@@ -76,8 +80,17 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           Programs & enrollments
         </button>
+        <button
+          type="button"
+          aria-pressed={view === "care"}
+          onClick={() => setView("care")}
+        >
+          Post-retreat care
+        </button>
       </nav>
-      {view === "programs" ? (
+      {view === "care" ? (
+        <IntegrationCare />
+      ) : view === "programs" ? (
         <IntegrationPrograms />
       ) : view === "calendar" ? (
         <IntegrationCalendar />

@@ -9,6 +9,34 @@
   font-size: 1.4rem;
   margin-bottom: 8px;
 }
+.integration-care fieldset {
+  margin: 20px 0;
+}
+.integration-care label {
+  margin: 12px 0;
+}
+.integration-care textarea {
+  display: block;
+  width: 100%;
+  min-height: 110px;
+  border: 1px solid #a5b7af;
+  border-radius: 5px;
+  padding: 10px;
+}
+.integration-care td {
+  vertical-align: top;
+}
+.integration-care td small {
+  display: block;
+  margin-top: 6px;
+  color: #52665f;
+}
+.integration-care details {
+  margin: 16px 0;
+}
+.integration-care [role="alert"] {
+  color: #9c3030;
+}
 .integration-programs h4 {
   font-size: 1.1rem;
   margin: 24px 0 10px;
