@@ -15,6 +15,7 @@ export const NAVIGATION: Record<string, { label: string; description: string; se
   'payment-requests': { label: 'Payment Requests', description: 'Create and track amounts requested from clients.', aliases: 'Invoices' },
   payments: { label: 'Payments', description: 'Record and review money received.' },
   'medical-dashboard': { label: 'Medical Dashboard', description: 'Review the queue of medical decisions.' },
+  'integration-content': { label: 'Integration Content Review', description: 'Review urgent-help wording and integration safety content.' },
   'medical-artifacts': { label: 'Medical Artifacts', description: 'Find uploaded medical records and their reviews.' },
   'medical-tracking': { label: 'Medical Readiness', description: 'Track medical documents and clearance for each client.' },
   'medical-retreats': { label: 'Medical Retreats', description: 'Review medical readiness by retreat.' },

@@ -30,6 +30,7 @@ import WorkflowDashboard from './WorkflowDashboard';
 import RetreatFlowPage from './RetreatFlowPage';
 import RetreatFlowLibraryPage from './RetreatFlowLibraryPage';
 import IntegrationRetreatsPage from './IntegrationRetreatsPage';
+import IntegrationEmailContent from './IntegrationEmailContent';
 import IntegrationRetreatDetailPage from './IntegrationRetreatDetailPage';
 import BookingFlowPage from './BookingFlowPage';
 import NeedsAttentionPage from './NeedsAttentionPage';
@@ -819,6 +820,7 @@ const AppleLayout: React.FC = () => {
                     {isMedicalAdvisor ? (
                       <Routes>
                         <Route index element={<MedicalAdvisorDashboard />} />
+                      <Route path="integration-content" element={<IntegrationEmailContent reviewOnly />} />
                         <Route path="launcher" element={<MedicalAdvisorDashboard />} />
                         <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
                         <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
@@ -836,6 +838,7 @@ const AppleLayout: React.FC = () => {
                     ) : (
                       <Routes>
                         <Route index element={<MedicalReviewRequestsGrid />} />
+                      <Route path="integration-content" element={<IntegrationEmailContent reviewOnly />} />
                         <Route path="launcher" element={<ModuleLauncherPage />} />
                         <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
                         <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />

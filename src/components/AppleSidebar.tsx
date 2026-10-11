@@ -243,6 +243,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, Icon: Fi.FiHeart },
               { id: 'review-requests', label: NAVIGATION['review-requests'].label, Icon: Fi.FiInbox },
               { id: 'medical', label: 'Medical Profiles', Icon: Fi.FiActivity },
+              { id: 'integration-content', label: NAVIGATION['integration-content'].label, Icon: Fi.FiFileText },
             ],
           },
           {
@@ -296,6 +297,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           { id: 'medical', label: 'Medical', Icon: Fi.FiActivity, items: [
             { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: Fi.FiMonitor },
             { id: 'review-requests', label: NAVIGATION['review-requests'].label, Icon: Fi.FiInbox },
+            { id: 'integration-content', label: NAVIGATION['integration-content'].label, Icon: Fi.FiFileText },
           ] },
         ];
       case 'facilitator':

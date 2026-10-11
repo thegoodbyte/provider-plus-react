@@ -3,6 +3,7 @@ import IntegrationPrograms from "./IntegrationPrograms";
 import IntegrationCare from "./IntegrationCare";
 import IntegrationDashboard from "./IntegrationDashboard";
 import IntegrationDelivery from "./IntegrationDelivery";
+import IntegrationEmailContent from "./IntegrationEmailContent";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HeartHandshake } from "lucide-react";
@@ -104,8 +105,17 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           Delivery & preferences
         </button>
+        <button
+          type="button"
+          aria-pressed={view === "content"}
+          onClick={() => setView("content")}
+        >
+          Supportive content
+        </button>
       </nav>
-      {view === "delivery" ? (
+      {view === "content" ? (
+        <IntegrationEmailContent />
+      ) : view === "delivery" ? (
         <IntegrationDelivery />
       ) : view === "dashboard" ? (
         <IntegrationDashboard

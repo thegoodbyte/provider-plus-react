@@ -15,6 +15,7 @@ export default function IntegrationDelivery() {
   const [preference, setPreference] = useState<any>(null),
     [preview, setPreview] = useState<any>(null),
     [templateId, setTemplateId] = useState("");
+  const [approvalPolicyId, setApprovalPolicyId] = useState("");
   const [reference, setReference] = useState(""),
     [reviewed, setReviewed] = useState(false),
     [busy, setBusy] = useState(false),
@@ -194,6 +195,12 @@ export default function IntegrationDelivery() {
             value={templateId}
             onChange={(e) => {
               setTemplateId(e.target.value);
+              setApprovalPolicyId(
+                String(
+                  data.templates.find((t: any) => t._id === e.target.value)
+                    ?.integrationPolicyId || "",
+                ),
+              );
               setReference("");
               setReviewed(false);
             }}
@@ -213,6 +220,25 @@ export default function IntegrationDelivery() {
             </p>
             <pre style={{ whiteSpace: "pre-wrap" }}>{template.bodyText}</pre>
             <label>
+              Reviewed response/urgent-help policy{" "}
+              <select
+                value={approvalPolicyId}
+                onChange={(e) => {
+                  setApprovalPolicyId(e.target.value);
+                  setReviewed(false);
+                }}
+              >
+                <option value="">Choose a published policy</option>
+                {(data.policies || [])
+                  .filter((p: any) => p.versions.length && !p.archived)
+                  .map((p: any) => (
+                    <option key={p._id} value={p._id}>
+                      {p.name} · v{p.versions.at(-1).number}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
               Author/source and review reference{" "}
               <input
                 value={reference}
@@ -230,7 +256,12 @@ export default function IntegrationDelivery() {
             </label>
             <button
               type="button"
-              disabled={!reviewed || !reference.trim()}
+              disabled={
+                !reviewed ||
+                !reference.trim() ||
+                !approvalPolicyId ||
+                !template.active
+              }
               onClick={() =>
                 run(async () => {
                   await api.post(
@@ -239,6 +270,8 @@ export default function IntegrationDelivery() {
                       kind: template.category.replace("integration_", ""),
                       reviewed,
                       contentReference: reference,
+                      policyId: approvalPolicyId,
+                      expectedUpdatedAt: template.updatedAt,
                     },
                   );
                   setPreview(null);
