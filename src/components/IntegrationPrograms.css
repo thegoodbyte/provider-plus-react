@@ -1,0 +1,149 @@
+.integration-programs {
+  background: #fff;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #243b35;
+}
+.integration-programs h3 {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+}
+.integration-programs h4 {
+  font-size: 1.1rem;
+  margin: 24px 0 10px;
+  font-weight: 600;
+}
+.integration-programs p {
+  margin: 8px 0 16px;
+  color: #52665f;
+}
+.integration-programs fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.integration-programs input:not([type="checkbox"]),
+.integration-programs select {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #a5b7af;
+  border-radius: 5px;
+  background: #fff;
+  color: #243b35;
+  margin-top: 4px;
+}
+.integration-programs label {
+  display: block;
+  font-size: 0.9rem;
+}
+.program-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.program-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 18px 0;
+}
+.program-actions select {
+  max-width: 440px;
+}
+.integration-programs button {
+  color: #243b35;
+  border: 1px solid #8aa59a;
+  border-radius: 6px;
+  padding: 8px 13px;
+  background: #eff6f2;
+  cursor: pointer;
+}
+.integration-programs button:hover:not(:disabled) {
+  background: #dcebe3;
+  color: #243b35;
+}
+.integration-programs button[aria-pressed="true"]:hover {
+  background: #255a45;
+  color: white;
+}
+.integration-view-tabs button {
+  padding: 8px 12px;
+  border: 1px solid #a5b7af;
+  border-radius: 6px;
+  color: #243b35;
+  background: #fff;
+}
+.integration-view-tabs button[aria-pressed="true"] {
+  background: #255a45;
+  color: white;
+}
+.integration-programs button[aria-pressed="true"] {
+  background: #255a45;
+  color: white;
+}
+.integration-programs button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.integration-programs :focus-visible {
+  outline: 3px solid #ba7730;
+  outline-offset: 2px;
+}
+.program-table-wrap {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+.integration-programs table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.integration-programs th,
+.integration-programs td {
+  padding: 8px;
+  border-bottom: 1px solid #dae5df;
+  text-align: left;
+}
+.integration-programs th {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.program-fields td input[type="number"] {
+  min-width: 75px;
+}
+.program-fields td input[type="text"] {
+  min-width: 160px;
+}
+.program-email {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin: 12px 0;
+}
+.program-check {
+  margin: 12px 0;
+}
+.program-error {
+  color: #a52727 !important;
+  background: #fff1f1;
+  padding: 12px;
+}
+.program-enrollment {
+  border-top: 1px solid #dae5df;
+  margin-top: 24px;
+}
+.integration-programs details {
+  padding: 12px 0;
+}
+.integration-programs summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.integration-programs ul {
+  padding-left: 22px;
+  list-style: disc;
+}
