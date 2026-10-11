@@ -39,10 +39,14 @@ const name = (c: Care) =>
 const errorText = (e: any) =>
   e?.response?.data?.message || e.message || "Unable to save care.";
 
-export default function IntegrationCare() {
+export default function IntegrationCare({
+  initialCaseId = "",
+}: {
+  initialCaseId?: string;
+}) {
   const [cases, setCases] = useState<Care[]>([]),
     [retreats, setRetreats] = useState<any[]>([]);
-  const [selected, setSelected] = useState(""),
+  const [selected, setSelected] = useState(initialCaseId),
     [retreatId, setRetreatId] = useState("");
   const [status, setStatus] = useState("active"),
     [preview, setPreview] = useState<any>(null);

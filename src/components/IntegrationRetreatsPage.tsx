@@ -1,6 +1,7 @@
 import IntegrationCalendar from "./IntegrationCalendar";
 import IntegrationPrograms from "./IntegrationPrograms";
 import IntegrationCare from "./IntegrationCare";
+import IntegrationDashboard from "./IntegrationDashboard";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HeartHandshake } from "lucide-react";
@@ -19,6 +20,7 @@ const formatDate = (value?: string) =>
 const IntegrationRetreatsPage: React.FC = () => {
   const navigate = useNavigate();
   const [view, setView] = useState("retreats");
+  const [careId, setCareId] = useState("");
   const [retreats, setRetreats] = useState<IntegrationRetreatSummary[] | null>(
     null,
   );
@@ -61,6 +63,13 @@ const IntegrationRetreatsPage: React.FC = () => {
       >
         <button
           type="button"
+          aria-pressed={view === "dashboard"}
+          onClick={() => setView("dashboard")}
+        >
+          Control centre
+        </button>
+        <button
+          type="button"
           aria-pressed={view === "retreats"}
           onClick={() => setView("retreats")}
         >
@@ -88,8 +97,16 @@ const IntegrationRetreatsPage: React.FC = () => {
           Post-retreat care
         </button>
       </nav>
-      {view === "care" ? (
-        <IntegrationCare />
+      {view === "dashboard" ? (
+        <IntegrationDashboard
+          openCare={(id) => {
+            setCareId(id);
+            setView("care");
+          }}
+          openCalendar={() => setView("calendar")}
+        />
+      ) : view === "care" ? (
+        <IntegrationCare initialCaseId={careId} />
       ) : view === "programs" ? (
         <IntegrationPrograms />
       ) : view === "calendar" ? (
