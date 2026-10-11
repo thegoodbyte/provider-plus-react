@@ -1,3 +1,4 @@
+import RetreatCloseout from './RetreatCloseout';
 import { quoteBookingUsd, retreatExpectedUsd } from './retreatUsdTotals';
 import RoomAllocationBoard from './RoomAllocationBoard';
 import RouteContentBoundary from './RouteContentBoundary';
@@ -76,7 +77,7 @@ const CeremonyAnalytics = lazy(() => import('./CeremonyAnalytics'));
 // the URL-routing allowlist in AppleLayout.tsx derive from this array, so a
 // new tab can't be added to the UI while staying invisible to deep-linking
 // (the bug that silently dropped 'reserveList' and 'foodMatrix' from URLs).
-export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks', 'announcements', 'rooms', 'integration'] as const;
+export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks', 'announcements', 'rooms', 'integration', 'closeout'] as const;
 export type RetreatDetailTab = typeof RETREAT_DETAIL_TABS[number];
 
 export function isTabAvailableForRetreat(tab: RetreatDetailTab, retreat?: Retreat | null): boolean {
@@ -414,6 +415,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   }, [initialTab]);
 
   const handleTabChange = useCallback((tab: RetreatDetailTab) => {
+    if (document.querySelector('[data-closeout] [data-dirty="true"]')) { message.warning('Save your closeout steps before switching tabs.'); return; }
     setActiveTab(tab);
     onTabChange?.(tab);
   }, [onTabChange]);
@@ -1282,9 +1284,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <SpaRoundedIcon className="retreat-tab-icon"/><span>Integration</span>
           </button>
         )}
+        {['admin','facilitator'].includes(authService.getUser()?.role || '') && <button className={`tab-btn ${activeTab === 'closeout' ? 'active' : ''}`} onClick={() => handleTabChange('closeout')} role="tab" aria-selected={activeTab === 'closeout'}><TaskAltRoundedIcon className="retreat-tab-icon"/><span>Closeout</span></button>}
       </div>
 
       <div className="retreat-detail-tab-content">
+        {activeTab === 'closeout' && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <RetreatCloseout retreatId={retreatId} onOpenTab={tab => handleTabChange(tab as typeof activeTab)} />}
         {activeTab === 'integration' && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <RouteContentBoundary><IntegrationCalendar retreatId={retreatId} /></RouteContentBoundary>}
         {activeTab === 'rooms' && <details className="mb-4"><summary className="cursor-pointer">Accommodation rates and room settings</summary><RouteContentBoundary><RetreatRoomsTab retreatId={retreatId} /></RouteContentBoundary></details>}
         {activeTab === 'announcements' && authService.getUser()?.role === 'admin' && <RouteContentBoundary><AnnouncementsPage retreatId={retreatId} /></RouteContentBoundary>}

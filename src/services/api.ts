@@ -79,6 +79,17 @@ const invalidateBookingDocumentDependents = () => {
   invalidateBookingRequirements();
 };
 
+export interface RetreatCloseoutStep {
+  key: string; section: string; title: string; prompt: string; tool?: string;
+  notes: string; owner: string; dueDate: string; suggestedDate?: string;
+  completed: boolean; completedAt?: string; revision: number;
+}
+export const retreatCloseoutApi = {
+  get: (id: string) => api.get<RetreatCloseoutStep[]>(`/retreats/${id}/closeout`),
+  save: (id: string, step: RetreatCloseoutStep) => api.patch<RetreatCloseoutStep>(`/retreats/${id}/closeout/${step.key}`, {
+    notes: step.notes, owner: step.owner, dueDate: step.dueDate, completed: step.completed, revision: step.revision,
+  }),
+};
 export const retreatsApi = {
   getEventTypes: () => cachedGet<Record<string, EventTypeConfig>>('retreats:event-types', () => api.get<Record<string, EventTypeConfig>>('/retreats/event-types'), 60000),
   getWebsiteContentDefaults: () => api.get<{ includedItems: Record<string, string[]> }>('/retreats/website-content-defaults'),
