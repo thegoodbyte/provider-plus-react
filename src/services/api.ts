@@ -1,3 +1,4 @@
+import { ExpenseReceiptItemization } from '../types';
 import type { AllocationBoard } from '../components/RoomAllocationBoard';
 import type { RetreatWorkflowSummary } from '../types/workflowSummary';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -437,6 +438,8 @@ export const paymentRequestTypesApi = {
 };
 
 export const retreatExpensesApi = {
+  getDetailItems: (id: string) => api.get<ExpenseReceiptItemization>(`/retreat-expenses/${id}/detail-items`),
+  itemizeReceipt: (id: string) => api.post<ExpenseReceiptItemization>(`/retreat-expenses/${id}/itemize-receipt`, {}, { timeout: 120000 }),
   getAll: () => api.get<RetreatExpense[]>('/retreat-expenses'),
   getOne: (id: string) => api.get<RetreatExpense>(`/retreat-expenses/${id}`),
   getByRetreat: (retreatId: string) => api.get<RetreatExpense[]>(`/retreat-expenses/retreat/${retreatId}`),
@@ -449,6 +452,7 @@ export const retreatExpensesApi = {
     formData.append('receipt', receipt);
     return api.post<{ expense: RetreatExpense; receiptUrl: string }>(`/retreat-expenses/${id}/receipt`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
     });
   },
   getReceiptUrl: (id: string) => api.get<{ url: string; fileName?: string; mimeType?: string }>(`/retreat-expenses/${id}/receipt-url`),

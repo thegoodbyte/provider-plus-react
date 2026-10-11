@@ -1992,3 +1992,12 @@ export interface InboundEmail {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface ExpenseReceiptItemization {
+  status: 'not_started' | 'processing' | 'completed' | 'failed';
+  error: string;
+  startedAt?: string | null;
+  itemizedAt?: string | null;
+  summary: { currency: string | null; paymentMethod: string | null; totalAmount: number | null; taxAmount: number | null; itemTotal: number; warnings: string[] } | null;
+  items: Array<{ _id: string; name: string; quantity: number | null; unitPrice: number | null; amount: number; taxAmount: number | null; taxRate: number | null; currency: string | null; paymentMethod: string | null }>;
+}

@@ -4,6 +4,7 @@ import { ArrowLeft, Image, Pencil } from 'lucide-react';
 import { retreatExpensesApi } from '../services/api';
 import { RetreatExpense } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import ExpenseReceiptItems from './ExpenseReceiptItems';
 
 const ExpenseDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -49,6 +50,7 @@ const ExpenseDetailPage: React.FC = () => {
           </button>
         )}
       </div>
+      {expense.receiptS3Key && id && <ExpenseReceiptItems expenseId={id} currency={expense.currency} />}
     </div>
   );
 };
