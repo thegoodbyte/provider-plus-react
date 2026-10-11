@@ -162,7 +162,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     requestType: 'both',
     status: 'pending',
     requestedBy: 'Provider Plus CRM',
-    sentForReviewAt: '',
+    sentForReviewAt: isEdit ? '' : new Date().toISOString(),
     notifyClientOnSubmission: true,
     assignedTo: '',
     assignedToUserId: '',
