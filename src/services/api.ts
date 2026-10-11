@@ -47,6 +47,11 @@ api.interceptors.response.use(
   }
 );
 
+export const environmentApi = {
+  status: () => api.get('/environment/status'),
+  capture: () => api.get('/environment/capture'),
+  capturedMessage: (id: string) => api.get(`/environment/capture/${id}`),
+};
 export type ReadOptions = AxiosRequestConfig & { suppressGlobalError?: boolean };
 
 // Inline error owners use independent, fresh requests. Sharing a pending request

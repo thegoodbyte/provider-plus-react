@@ -1,5 +1,6 @@
 import IntegrationProviderSettings from './IntegrationProviderSettings';
 import IntegrationLibrary from './IntegrationLibrary';
+import EnvironmentBanner from './EnvironmentBanner';
 import ServicePaymentRequestPage from './ServicePaymentRequestPage';
 import ServiceBillingSettingsPage from './ServiceBillingSettingsPage';
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
@@ -635,6 +636,7 @@ const AppleLayout: React.FC = () => {
 
       {/* Main Content */}
       <div className={`workspace-frame ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
+        <EnvironmentBanner />
         <header className="workspace-header">
           <div className="workspace-header-leading">
             <button type="button" className="workspace-icon-button md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu" aria-expanded={sidebarOpen} aria-controls="workspace-navigation">
