@@ -1,3 +1,4 @@
+import IntegrationLibrary from "./IntegrationLibrary";
 import IntegrationCalendar from "./IntegrationCalendar";
 import IntegrationPrograms from "./IntegrationPrograms";
 import IntegrationCare from "./IntegrationCare";
@@ -112,8 +113,11 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           Supportive content
         </button>
+        <button type="button" aria-pressed={view === "library"} onClick={() => setView("library")}>Questions & activities</button>
       </nav>
-      {view === "content" ? (
+      {view === "library" ? (
+        <IntegrationLibrary />
+      ) : view === "content" ? (
         <IntegrationEmailContent />
       ) : view === "delivery" ? (
         <IntegrationDelivery />

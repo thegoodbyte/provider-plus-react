@@ -1,3 +1,4 @@
+import IntegrationLibrary from './IntegrationLibrary';
 import ServicePaymentRequestPage from './ServicePaymentRequestPage';
 import ServiceBillingSettingsPage from './ServiceBillingSettingsPage';
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
@@ -820,7 +821,7 @@ const AppleLayout: React.FC = () => {
                     {isMedicalAdvisor ? (
                       <Routes>
                         <Route index element={<MedicalAdvisorDashboard />} />
-                      <Route path="integration-content" element={<IntegrationEmailContent reviewOnly />} />
+                      <Route path="integration-content" element={<><IntegrationEmailContent reviewOnly /><IntegrationLibrary reviewOnly /></>} />
                         <Route path="launcher" element={<MedicalAdvisorDashboard />} />
                         <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
                         <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
@@ -838,7 +839,7 @@ const AppleLayout: React.FC = () => {
                     ) : (
                       <Routes>
                         <Route index element={<MedicalReviewRequestsGrid />} />
-                      <Route path="integration-content" element={<IntegrationEmailContent reviewOnly />} />
+                      <Route path="integration-content" element={<><IntegrationEmailContent reviewOnly /><IntegrationLibrary reviewOnly /></>} />
                         <Route path="launcher" element={<ModuleLauncherPage />} />
                         <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
                         <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
