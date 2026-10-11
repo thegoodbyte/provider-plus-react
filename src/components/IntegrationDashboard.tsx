@@ -55,7 +55,8 @@ export default function IntegrationDashboard({
         (filter === "unassigned" && (!a.owner || !a.backup)) ||
         (filter === "no-next-contact" && a.derived) ||
         (filter === "support" && a.key.startsWith("support:")) ||
-        (filter === "failed" && a.key.startsWith("email:"))),
+        (filter === "failed" &&
+          (a.key.startsWith("email:") || a.key.startsWith("delivery:")))),
   );
   const cohorts = [
     ...new Map<string, string>(

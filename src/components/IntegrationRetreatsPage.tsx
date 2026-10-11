@@ -2,6 +2,7 @@ import IntegrationCalendar from "./IntegrationCalendar";
 import IntegrationPrograms from "./IntegrationPrograms";
 import IntegrationCare from "./IntegrationCare";
 import IntegrationDashboard from "./IntegrationDashboard";
+import IntegrationDelivery from "./IntegrationDelivery";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HeartHandshake } from "lucide-react";
@@ -96,8 +97,17 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           Post-retreat care
         </button>
+        <button
+          type="button"
+          aria-pressed={view === "delivery"}
+          onClick={() => setView("delivery")}
+        >
+          Delivery & preferences
+        </button>
       </nav>
-      {view === "dashboard" ? (
+      {view === "delivery" ? (
+        <IntegrationDelivery />
+      ) : view === "dashboard" ? (
         <IntegrationDashboard
           openCare={(id) => {
             setCareId(id);
