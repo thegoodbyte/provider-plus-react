@@ -1,0 +1,8 @@
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import IntegrationCredits from './IntegrationCredits';
+import { api } from '../services/api';
+jest.mock('../services/api',()=>({api:{get:jest.fn(),post:jest.fn()}}));
+beforeEach(()=>{jest.clearAllMocks();(api.get as jest.Mock).mockImplementation((path:string)=>Promise.resolve({data:path.includes('enrollments')?{enrollments:[{_id:'one',clientId:{firstName:'Test',lastName:'Client'},homecomingDate:'2026-10-10',status:'active'}]}:{accounts:[],resolutions:[]}}));});
+it('reviews recipient and pinned cancellation policy before granting once with evidence',async()=>{render(<IntegrationCredits/>);await screen.findByRole('option',{name:/Test Client/});fireEvent.change(screen.getByLabelText('Client enrollment for session credits'),{target:{value:'one'}});(api.get as jest.Mock).mockResolvedValueOnce({data:{policy:{count:3,durationMinutes:30,cancellationPolicy:'restore',noShowPolicy:'restore'},expiresOn:'2027-01-01',owner:'Owner',backup:'Backup',previewHash:'hash'}});fireEvent.click(screen.getByRole('button',{name:'Preview eligible session grant'}));const grant=await screen.findByRole('button',{name:'Grant reviewed sessions once'});expect(grant).toBeDisabled();fireEvent.change(screen.getByLabelText('Action evidence / reason'),{target:{value:'Eligibility and policy reviewed'}});(api.post as jest.Mock).mockResolvedValue({data:{}});fireEvent.click(grant);await waitFor(()=>expect(api.post).toHaveBeenCalledWith('/integration/credits/enrollments/one/grant',{previewHash:'hash',reviewed:true,reason:'Eligibility and policy reviewed'}));});

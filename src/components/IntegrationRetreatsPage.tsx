@@ -1,3 +1,4 @@
+import IntegrationCredits from "./IntegrationCredits";
 import IntegrationLibrary from "./IntegrationLibrary";
 import IntegrationCalendar from "./IntegrationCalendar";
 import IntegrationPrograms from "./IntegrationPrograms";
@@ -114,8 +115,11 @@ const IntegrationRetreatsPage: React.FC = () => {
           Supportive content
         </button>
         <button type="button" aria-pressed={view === "library"} onClick={() => setView("library")}>Questions & activities</button>
+        <button type="button" aria-pressed={view === "credits"} onClick={() => setView("credits")}>Personal sessions</button>
       </nav>
-      {view === "library" ? (
+      {view === "credits" ? (
+        <IntegrationCredits />
+      ) : view === "library" ? (
         <IntegrationLibrary />
       ) : view === "content" ? (
         <IntegrationEmailContent />

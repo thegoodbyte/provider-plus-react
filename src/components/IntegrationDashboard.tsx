@@ -83,6 +83,8 @@ export default function IntegrationDashboard({
                     unanswered: "Unanswered support tasks",
                     noNextContact: "No scheduled next contact",
                     unusedSessions: "Remaining session promises",
+                    availableSessionCredits: "Available granted session credits",
+                    sessionBookingResolutions: "Session bookings needing resolution",
                     failedMessages: "Failed delivery tasks",
                     unassigned: "Missing owner or backup",
                     paused: "Paused care plans",
@@ -93,6 +95,7 @@ export default function IntegrationDashboard({
           </div>
         ))}
       </div>
+      {!!data.personalSessions?.length && <details><summary>Personal session balances and next reservations</summary><div style={{overflowX:'auto'}}><table><thead><tr><th>Client</th><th>Available</th><th>Reserved</th><th>Next appointment</th><th>Access through</th></tr></thead><tbody>{data.personalSessions.map((s:any)=><tr key={s._id}><td>{s.clientName}</td><td>{s.available}</td><td>{s.reserved}</td><td>{s.nextReservation?new Date(s.nextReservation).toLocaleString():'Not reserved'}</td><td>{s.expiresOn}</td></tr>)}</tbody></table></div></details>}
       <div className="program-grid">
         <label>
           Search client or owner{" "}
