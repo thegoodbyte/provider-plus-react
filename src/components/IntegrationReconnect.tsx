@@ -235,6 +235,16 @@ export default function IntegrationReconnect() {
                         {r.outreach.replyTaskId && (
                           <p>Owned reply task: {r.outreach.replyTaskId}</p>
                         )}
+                        {r.outreach.offerDecision && (
+                          <p>
+                            Client offer decision: {r.outreach.offerDecision}.
+                            {r.outreach.legacyEnrollmentId
+                              ? " Separate legacy grant recorded."
+                              : r.outreach.offerDecision === "accepted"
+                                ? " Fulfilment is still owed; no session grant yet."
+                                : " Respect the decline; no offer reminder."}
+                          </p>
+                        )}
                         <p>
                           {r.outreach.offer
                             ? "Explicit legacy offer recorded"
