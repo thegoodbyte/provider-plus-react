@@ -51,6 +51,7 @@ export default function IntegrationGroupDates() {
       ),
     );
   const row = data.proposals.find((p: any) => p._id === selected);
+  useEffect(()=>{setVerified(false);setSlot('');},[row?.revision]);
   const edit = (p: any) => {
     setDraft({
       _id: p._id,
@@ -60,7 +61,11 @@ export default function IntegrationGroupDates() {
       title: p.title,
       durationMinutes: p.durationMinutes,
       facilitator: p.facilitator,
-      enrollmentIds: p.participants.map((v: any) => v.enrollmentId),
+      enrollmentIds: p.participants
+        .map((v: any) => v.enrollmentId)
+        .filter((id: string) =>
+          data.enrollments.some((e: any) => e._id === id),
+        ),
       slots: p.slots.map((s: any) => ({
         localStart: s.localStart,
         facilitatorAvailable: s.facilitatorAvailable,
@@ -85,6 +90,7 @@ export default function IntegrationGroupDates() {
       </p>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
+      <button disabled={busy} onClick={()=>run(load)}>Refresh group dates & responses</button>
       <button
         disabled={busy}
         onClick={() => {
@@ -204,7 +210,6 @@ export default function IntegrationGroupDates() {
                 <label key={e._id}>
                   <input
                     type="checkbox"
-                    disabled={!!draft._id}
                     checked={draft.enrollmentIds.includes(e._id)}
                     onChange={(v) =>
                       field(

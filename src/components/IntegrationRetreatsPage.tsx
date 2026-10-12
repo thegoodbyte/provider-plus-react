@@ -1,4 +1,5 @@
 import IntegrationGroupDates from "./IntegrationGroupDates";
+import IntegrationGroupInvitations from "./IntegrationGroupInvitations";
 import IntegrationProviderSettings from "./IntegrationProviderSettings";
 import IntegrationCredits from "./IntegrationCredits";
 import IntegrationLibrary from "./IntegrationLibrary";
@@ -144,8 +145,17 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           Group dates
         </button>
+        <button
+          type="button"
+          aria-pressed={view === "invitations"}
+          onClick={() => setView("invitations")}
+        >
+          Group invitations & RSVP
+        </button>
       </nav>
-      {view === "groups" ? (
+      {view === "invitations" ? (
+        <IntegrationGroupInvitations />
+      ) : view === "groups" ? (
         <IntegrationGroupDates />
       ) : view === "providers" ? (
         <IntegrationProviderSettings />
