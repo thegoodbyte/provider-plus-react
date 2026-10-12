@@ -23,7 +23,27 @@ export default function IntegrationReconnect() {
     [contactEvidence, setContactEvidence] = useState(""),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [chosen, setChosen] = useState<string[]>([]),
+    [preview, setPreview] = useState<any>(),
+    [policy, setPolicy] = useState<any>({
+      owner: "",
+      backup: "",
+      maxBatchSize: 5,
+      responseDays: 2,
+      reminderDays: 0,
+      capacityEvidence: "",
+    }),
+    [offer, setOffer] = useState<any>({
+      kind: "conversation",
+      sessionCount: 0,
+      durationMinutes: 30,
+      accessDays: 60,
+      programId: "",
+      programVersion: 0,
+      reviewed: false,
+      evidence: "",
+    });
   scope.current = String(user?.id) + "|" + before;
   const load = async () => {
     const owner = actor.current,
@@ -36,6 +56,8 @@ export default function IntegrationReconnect() {
     setData(undefined);
     setSelected("");
     setEvidence("");
+    setPreview(undefined);
+    setChosen([]);
     setError("");
     load().catch((e) => {
       if (live) setError(e.response?.data?.message || e.message);
@@ -117,6 +139,23 @@ export default function IntegrationReconnect() {
               .map((r: any) => (
                 <tr key={r.clientId}>
                   <td>
+                    <label>
+                      <input
+                        type="checkbox"
+                        aria-label={"Select " + r.name + " for reconnection"}
+                        disabled={busy || user?.readOnly}
+                        checked={chosen.includes(r.clientId)}
+                        onChange={(e) => {
+                          setChosen(
+                            e.target.checked
+                              ? [...chosen, r.clientId]
+                              : chosen.filter((id) => id !== r.clientId),
+                          );
+                          setPreview(undefined);
+                        }}
+                      />
+                      Batch selection
+                    </label>
                     <button onClick={() => setSelected(r.clientId)}>
                       {r.name || r.clientId}
                     </button>
@@ -184,6 +223,303 @@ export default function IntegrationReconnect() {
           </tbody>
         </table>
       </div>
+      {data && (
+        <details>
+          <summary>Preview a reviewed reconnection batch</summary>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              run(async () => {
+                const r = await api.post("/integration/reconnect/preview", {
+                  clientIds: chosen,
+                  policy,
+                  offer,
+                });
+                setPreview(r.data);
+              }, false);
+            }}
+          >
+            <p>
+              {chosen.length} clients selected. No enrollment or credits are
+              automatically granted by this outreach.
+            </p>
+            <label>
+              Owner
+              <select
+                required
+                aria-label="Reconnection owner"
+                value={policy.owner}
+                onChange={(e) => {
+                  setPolicy({ ...policy, owner: e.target.value });
+                  setPreview(undefined);
+                }}
+              >
+                <option value="">Choose named owner</option>
+                {data.staff?.map((s: any) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Backup
+              <select
+                required
+                aria-label="Reconnection backup"
+                value={policy.backup}
+                onChange={(e) => {
+                  setPolicy({ ...policy, backup: e.target.value });
+                  setPreview(undefined);
+                }}
+              >
+                <option value="">Choose named backup</option>
+                {data.staff?.map((s: any) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Maximum reviewed batch size
+              <input
+                type="number"
+                required
+                min={1}
+                max={50}
+                value={policy.maxBatchSize}
+                onChange={(e) => {
+                  setPolicy({
+                    ...policy,
+                    maxBatchSize: Number(e.target.value),
+                  });
+                  setPreview(undefined);
+                }}
+              />
+            </label>
+            <label>
+              Reply follow-up deadline in days
+              <input
+                type="number"
+                required
+                min={1}
+                max={14}
+                value={policy.responseDays}
+                onChange={(e) => {
+                  setPolicy({
+                    ...policy,
+                    responseDays: Number(e.target.value),
+                  });
+                  setPreview(undefined);
+                }}
+              />
+            </label>
+            <label>
+              Optional single reminder
+              <select
+                aria-label="Optional single reminder"
+                value={policy.reminderDays}
+                onChange={(e) => {
+                  setPolicy({
+                    ...policy,
+                    reminderDays: Number(e.target.value),
+                  });
+                  setPreview(undefined);
+                }}
+              >
+                <option value={0}>No reminder</option>
+                {[10, 11, 12, 13, 14].map((d) => (
+                  <option key={d} value={d}>
+                    {d} days
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Reviewed availability / response capacity evidence
+              <textarea
+                required
+                maxLength={4000}
+                aria-label="Reviewed availability / response capacity evidence"
+                value={policy.capacityEvidence}
+                onChange={(e) => {
+                  setPolicy({ ...policy, capacityEvidence: e.target.value });
+                  setPreview(undefined);
+                }}
+              />
+            </label>
+            <label>
+              Explicit legacy offer
+              <select
+                aria-label="Explicit legacy offer"
+                value={offer.kind}
+                onChange={(e) => {
+                  setOffer({
+                    ...offer,
+                    kind: e.target.value,
+                    sessionCount: e.target.value === "conversation" ? 0 : 1,
+                    reviewed: false,
+                  });
+                  setPreview(undefined);
+                }}
+              >
+                <option value="conversation">
+                  Agree a conversation; no automatic entitlement
+                </option>
+                <option value="sessions">
+                  Explicit legacy personal sessions
+                </option>
+                <option value="program">
+                  Explicit published legacy programme
+                </option>
+              </select>
+            </label>
+            {offer.kind !== "conversation" && (
+              <>
+                <label>
+                  Offered sessions
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    max={6}
+                    value={offer.sessionCount}
+                    onChange={(e) => {
+                      setOffer({
+                        ...offer,
+                        sessionCount: Number(e.target.value),
+                        reviewed: false,
+                      });
+                      setPreview(undefined);
+                    }}
+                  />
+                </label>
+                <label>
+                  Access days after explicit agreement
+                  <input
+                    required
+                    type="number"
+                    min={7}
+                    max={365}
+                    value={offer.accessDays}
+                    onChange={(e) => {
+                      setOffer({
+                        ...offer,
+                        accessDays: Number(e.target.value),
+                        reviewed: false,
+                      });
+                      setPreview(undefined);
+                    }}
+                  />
+                </label>
+                <p>
+                  Each offered session is 30 minutes and separate from the
+                  original retreat entitlement.
+                </p>
+              </>
+            )}
+            {offer.kind === "program" && (
+              <label>
+                Published programme
+                <select
+                  required
+                  aria-label="Published legacy programme"
+                  value={
+                    offer.programId
+                      ? offer.programId + "|" + offer.programVersion
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const p = data.programs.find(
+                      (p: any) => p.id + "|" + p.version === e.target.value,
+                    );
+                    setOffer({
+                      ...offer,
+                      programId: p?.id || "",
+                      programVersion: p?.version || 0,
+                      sessionCount: p?.personal?.count || 1,
+                      accessDays: p?.personal?.accessDays || 60,
+                      reviewed: false,
+                    });
+                    setPreview(undefined);
+                  }}
+                >
+                  <option value="">Choose published legacy programme</option>
+                  {data.programs?.map((p: any) => (
+                    <option
+                      key={p.id + "|" + p.version}
+                      value={p.id + "|" + p.version}
+                    >
+                      {p.name} · version {p.version}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              Legacy offer review evidence
+              <textarea
+                required
+                maxLength={4000}
+                aria-label="Legacy offer review evidence"
+                value={offer.evidence}
+                onChange={(e) => {
+                  setOffer({
+                    ...offer,
+                    evidence: e.target.value,
+                    reviewed: false,
+                  });
+                  setPreview(undefined);
+                }}
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={offer.reviewed}
+                onChange={(e) => {
+                  setOffer({ ...offer, reviewed: e.target.checked });
+                  setPreview(undefined);
+                }}
+              />
+              I reviewed this explicit legacy offer and its capacity
+            </label>
+            <button
+              disabled={
+                busy || user?.readOnly || !chosen.length || !offer.reviewed
+              }
+            >
+              Preview recipients, text and capacity
+            </button>
+          </form>
+          {preview && (
+            <section aria-label="Reviewed reconnection preview">
+              <p>
+                {preview.eligibleCount} eligible · {preview.heldCount} held ·{" "}
+                {preview.totalSessionsOffered} sessions /{" "}
+                {preview.totalSessionMinutes} minutes offered.
+              </p>
+              {preview.candidates.map((c: any) => (
+                <article key={c.clientId}>
+                  <h4>
+                    {c.name} · {c.recipient}
+                  </h4>
+                  <p>
+                    {c.language.toUpperCase()}
+                    {c.languageFallback
+                      ? " · English fallback — review comprehension"
+                      : ""}
+                  </p>
+                  <p>{c.reasons.join(" ")}</p>
+                  <strong>{c.subject}</strong>
+                  <p style={{ whiteSpace: "pre-wrap" }}>{c.bodyText}</p>
+                </article>
+              ))}
+            </section>
+          )}
+        </details>
+      )}
       {row && (
         <details open>
           <summary>Review {row.name}</summary>
@@ -226,6 +562,7 @@ export default function IntegrationReconnect() {
               <textarea
                 required
                 maxLength={4000}
+                aria-label="Permission / opt-out source evidence"
                 value={evidence}
                 onChange={(e) => setEvidence(e.target.value)}
               />
@@ -264,6 +601,7 @@ export default function IntegrationReconnect() {
               <textarea
                 required
                 maxLength={4000}
+                aria-label="Human contact evidence"
                 value={contactEvidence}
                 onChange={(e) => setContactEvidence(e.target.value)}
               />
