@@ -70,6 +70,7 @@ export const authService = {
   },
 
   logout() {
+    for(const key of Object.keys(sessionStorage))if(key.startsWith('integration-live:'))sessionStorage.removeItem(key);
     cacheService.clear();
     localStorage.removeItem('token');
     localStorage.removeItem('user');

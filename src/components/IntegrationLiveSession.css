@@ -1,0 +1,105 @@
+.live-session {
+  min-width: 0;
+}
+.live-matrix-scroll {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid #dce4df;
+  border-radius: 10px;
+}
+.live-matrix-scroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+}
+.live-matrix-scroll th,
+.live-matrix-scroll td {
+  padding: 12px;
+  min-width: 240px;
+  max-width: 320px;
+  vertical-align: top;
+  border-bottom: 1px solid #e2e8e4;
+}
+.live-matrix-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: #edf5f1;
+  z-index: 2;
+}
+.live-matrix-scroll th:first-child {
+  position: sticky;
+  left: 0;
+  background: #f7faf8;
+  z-index: 1;
+}
+.live-matrix-scroll thead th:first-child {
+  z-index: 3;
+}
+.live-cell textarea {
+  width: 100%;
+  min-height: 80px;
+}
+.live-cell select {
+  width: 100%;
+}
+.live-cell span[role="status"] {
+  display: block;
+  font-size: 12px;
+  padding: 4px 0;
+  color: #50645a;
+}
+.live-cell small,
+.live-matrix-scroll th small {
+  display: block;
+  font-size: 12px;
+}
+.live-cell button {
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.live-participant-cards article {
+  padding: 16px;
+  border: 1px solid #dce4df;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+.live-participant-cards article > div {
+  margin-bottom: 16px;
+}
+.live-session input,
+.live-session textarea,
+.live-session select {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.live-session textarea {
+  min-height: 70px;
+}
+.live-session label {
+  display: block;
+  margin: 10px 0;
+}
+.live-session input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+}
+.live-session fieldset label {
+  display: flex;
+  gap: 8px;
+}
+.live-session :focus-visible {
+  outline: 3px solid #207d67;
+  outline-offset: 2px;
+}
+@media (max-width: 900px) {
+  .live-session {
+    padding: 16px;
+  }
+  .live-participant-cards article {
+    padding: 12px;
+  }
+  .live-cell textarea {
+    min-height: 100px;
+  }
+}
