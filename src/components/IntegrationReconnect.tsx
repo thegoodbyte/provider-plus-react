@@ -26,6 +26,7 @@ export default function IntegrationReconnect() {
     [busy, setBusy] = useState(false),
     [chosen, setChosen] = useState<string[]>([]),
     [preview, setPreview] = useState<any>(),
+    [batchReviewed, setBatchReviewed] = useState(false),
     [policy, setPolicy] = useState<any>({
       owner: "",
       backup: "",
@@ -66,6 +67,9 @@ export default function IntegrationReconnect() {
       live = false;
     };
   }, [user?.id, before]);
+  useEffect(() => {
+    setBatchReviewed(false);
+  }, [preview]);
   const row = data?.rows.find((r: any) => r.clientId === selected);
   useEffect(() => {
     setPermission(row?.permission.reconnectEmail || false);
@@ -208,6 +212,13 @@ export default function IntegrationReconnect() {
                           {r.outreach.status} ·{" "}
                           {r.outreach.owner || "Unassigned"}
                         </p>
+                        {r.outreach.initialDelivery && (
+                          <p>
+                            Initial delivery:{" "}
+                            {r.outreach.initialDelivery.status} ·{" "}
+                            {r.outreach.initialDelivery.reason}
+                          </p>
+                        )}
                         <p>
                           {r.outreach.offer
                             ? "Explicit legacy offer recorded"
@@ -500,6 +511,45 @@ export default function IntegrationReconnect() {
                 {preview.totalSessionsOffered} sessions /{" "}
                 {preview.totalSessionMinutes} minutes offered.
               </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={batchReviewed}
+                  onChange={(e) => setBatchReviewed(e.target.checked)}
+                />
+                I reviewed recipients, suppression, legacy offers and response
+                capacity
+              </label>
+              <button
+                disabled={
+                  busy ||
+                  user?.readOnly ||
+                  !batchReviewed ||
+                  !preview.eligibleCount
+                }
+                onClick={() =>
+                  run(async () => {
+                    const result = await api.post(
+                      "/integration/reconnect/queue",
+                      {
+                        clientIds: chosen,
+                        policy,
+                        offer,
+                        previewHash: preview.previewHash,
+                        reviewed: batchReviewed,
+                      },
+                    );
+                    setNotice(
+                      result.data.alreadyPrepared
+                        ? "This reviewed batch already exists; no duplicate campaign created."
+                        : `${result.data.queued} records queued for gated delivery. This action sends no messages and grants no enrollment or credits.`,
+                    );
+                    setBatchReviewed(false);
+                  }, false)
+                }
+              >
+                Queue reviewed reconnection batch
+              </button>
               {preview.candidates.map((c: any) => (
                 <article key={c.clientId}>
                   <h4>
