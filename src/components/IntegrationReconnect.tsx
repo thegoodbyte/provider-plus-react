@@ -580,6 +580,22 @@ export default function IntegrationReconnect() {
                   <p>{c.reasons.join(" ")}</p>
                   <strong>{c.subject}</strong>
                   <p style={{ whiteSpace: "pre-wrap" }}>{c.bodyText}</p>
+                  {c.reminder && (
+                    <section aria-label="Single reminder preview">
+                      <h5>
+                        One optional reminder after{" "}
+                        {preview.policy.reminderDays} days
+                      </h5>
+                      <strong>{c.reminder.subject}</strong>
+                      <p style={{ whiteSpace: "pre-wrap" }}>
+                        {c.reminder.bodyText}
+                      </p>
+                      <p>
+                        Cancelled after any verified reply or opt-out; expires
+                        after day 14.
+                      </p>
+                    </section>
+                  )}
                 </article>
               ))}
             </section>
