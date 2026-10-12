@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "../services/api";
 import "./IntegrationPrograms.css";
 export default function IntegrationProviderSettings() {
+  const loadId = useRef(0);
   const [rows, setRows] = useState<any[]>([]),
     [provider, setProvider] = useState("calendly"),
     [draft, setDraft] = useState<any>(null),
@@ -15,15 +16,17 @@ export default function IntegrationProviderSettings() {
     [reason, setReason] = useState(""),
     [enrollmentId, setEnrollmentId] = useState("");
   const load = async () => {
+    const requestId = ++loadId.current;
     const r = await api.get("/external-resources");
+    if (requestId !== loadId.current) return;
     setRows(r.data.resources);
     const chosen = r.data.resources.find((v: any) => v.provider === provider);
     setDraft(chosen);
     setSecrets({});
     setDirty(false);
-    if (provider === "calendly") {
-      const q = await api.get("/integration/providers/calendly");
-      setQueue(q.data);
+    {
+      const q = await api.get(`/integration/providers/${provider}`);
+      if (requestId === loadId.current) setQueue(q.data);
     }
     return chosen;
   };
@@ -69,7 +72,7 @@ export default function IntegrationProviderSettings() {
           : "Resource settings saved without returning secrets.",
       );
     });
-  if (!draft)
+  if (!draft || draft.provider !== provider)
     return (
       <p role={error ? "alert" : undefined}>
         {error || "Loading environment resource settings…"}
@@ -89,8 +92,11 @@ export default function IntegrationProviderSettings() {
       <label>
         Provider{" "}
         <select
+          disabled={busy}
           value={provider}
           onChange={(e) => {
+            loadId.current++;
+            setDraft(null);
             setProvider(e.target.value);
             setDiscovery(null);
             setQueue(null);
@@ -223,15 +229,63 @@ export default function IntegrationProviderSettings() {
               />
             </label>
             <p>
-              Group defaults: waiting room on, automatic recording off, RE owns
-              invitations. Zoom connection tests are provided by the
-              group-meeting adapter.
+              Zoom uses an activated Server-to-Server OAuth app. Confirm the
+              licensed host, capacity and scopes. Recording and AI summaries
+              stay off. RE owns group invitations; meeting readiness is separate
+              from invitation delivery.
             </p>
+            <label>
+              <input
+                type="checkbox"
+                checked={draft.options.waitingRoom}
+                onChange={(e) => option("waitingRoom", e.target.checked)}
+              />
+              Waiting room enabled
+            </label>
+            <p>
+              A passcode is always required. Leave the saved passcode blank to
+              generate a strong passcode for each new meeting.
+            </p>
+            <label>
+              Reconciliation owner{" "}
+              <input
+                value={draft.options.queueOwner || ""}
+                onChange={(e) => option("queueOwner", e.target.value)}
+              />
+            </label>
+            <label>
+              Reconciliation backup{" "}
+              <input
+                value={draft.options.queueBackup || ""}
+                onChange={(e) => option("queueBackup", e.target.value)}
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={!!draft.options.accountSettingsReviewed}
+                onChange={(e) =>
+                  option("accountSettingsReviewed", e.target.checked)
+                }
+              />
+              Licensed host, account capacity, recording/AI locks and passcode
+              policy reviewed
+            </label>
+            <label>
+              Account settings review evidence{" "}
+              <textarea
+                value={draft.options.accountSettingsEvidence || ""}
+                maxLength={2000}
+                onChange={(e) =>
+                  option("accountSettingsEvidence", e.target.value)
+                }
+              />
+            </label>
           </>
         )}
         {(provider === "calendly"
           ? ["accessToken", "webhookKey"]
-          : ["accountId", "clientId", "clientSecret"]
+          : ["accountId", "clientId", "clientSecret", "meetingPasscode"]
         ).map((k) => (
           <label key={k}>
             {
@@ -242,6 +296,7 @@ export default function IntegrationProviderSettings() {
                   accountId: "Account ID",
                   clientId: "Client ID",
                   clientSecret: "Client secret",
+                  meetingPasscode: "Optional meeting passcode",
                 } as any
               )[k]
             }{" "}
@@ -368,6 +423,117 @@ export default function IntegrationProviderSettings() {
             must be connected in Calendly. Live booking remains gated by the
             deployment provider-write switch and a controlled account pilot.
           </p>
+        </>
+      )}
+      {provider === "zoom" && (
+        <>
+          <button
+            disabled={busy || dirty || draft.enabled || !draft.revision}
+            onClick={() =>
+              run(async () => {
+                await api.post("/integration/providers/zoom/test");
+                await load();
+                setNotice(
+                  "Host, capacity and scope check completed; no meeting or invitation created.",
+                );
+              })
+            }
+          >
+            Test Zoom connection read-only
+          </button>
+          <button
+            disabled={busy || dirty}
+            onClick={() =>
+              run(async () => {
+                const r = await api.post("/integration/providers/zoom/process");
+                await load();
+                setNotice(
+                  r.data.disabled
+                    ? "Live Zoom operations are disabled; no provider writes."
+                    : "Recorded group meeting operations processed. Review unresolved rows and invitation delivery separately.",
+                );
+              })
+            }
+          >
+            Process confirmed group meeting updates
+          </button>
+          <h4>Group meeting operations</h4>
+          <p>
+            Uncertain creation is reconciled by its recorded reference. An empty
+            lookup never authorizes creating another room.
+          </p>
+          {queue?.meetings?.length === 0 && (
+            <p>No recorded group meeting operations.</p>
+          )}
+          {queue?.meetings?.map((m: any) => (
+            <article key={m._id}>
+              <p>
+                Call {m.callId} · {m.status} · appointment revision{" "}
+                {m.callRevision || 0}
+              </p>
+              <p>{m.reason}</p>
+              <p>
+                Owner {m.owner} · backup {m.backup} · due {m.dueDate}
+              </p>
+              {m.joinUrl && (
+                <a href={m.joinUrl} target="_blank" rel="noreferrer">
+                  Participant join link
+                </a>
+              )}
+              <button
+                disabled={busy}
+                onClick={() =>
+                  run(async () => {
+                    await api.post(
+                      `/integration/providers/zoom/calls/${m.callId}/reconcile`,
+                    );
+                    await load();
+                  })
+                }
+              >
+                Reconcile recorded outcome
+              </button>
+              <button
+                disabled={busy || !draft.enabled}
+                onClick={() =>
+                  run(async () => {
+                    await api.post(
+                      `/integration/providers/zoom/calls/${m.callId}/sync`,
+                    );
+                    await load();
+                  })
+                }
+              >
+                Apply current confirmed appointment revision
+              </button>
+              {m.status === "failed" && (
+                <>
+                  <label>
+                    Verified rejection / correction evidence{" "}
+                    <textarea
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      maxLength={2000}
+                    />
+                  </label>
+                  <button
+                    disabled={busy || !reason.trim()}
+                    onClick={() =>
+                      run(async () => {
+                        await api.post(
+                          `/integration/providers/zoom/calls/${m.callId}/retry-rejected`,
+                          { evidence: reason },
+                        );
+                        await load();
+                      })
+                    }
+                  >
+                    Authorize retry of explicitly rejected creation
+                  </button>
+                </>
+              )}
+            </article>
+          ))}
         </>
       )}
       {draft.health && (
