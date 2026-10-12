@@ -1,3 +1,4 @@
+import IntegrationGroupDates from "./IntegrationGroupDates";
 import IntegrationProviderSettings from "./IntegrationProviderSettings";
 import IntegrationCredits from "./IntegrationCredits";
 import IntegrationLibrary from "./IntegrationLibrary";
@@ -115,11 +116,38 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           Supportive content
         </button>
-        <button type="button" aria-pressed={view === "library"} onClick={() => setView("library")}>Questions & activities</button>
-        <button type="button" aria-pressed={view === "credits"} onClick={() => setView("credits")}>Personal sessions</button>
-        <button type="button" aria-pressed={view === "providers"} onClick={() => setView("providers")}>Provider connections</button>
+        <button
+          type="button"
+          aria-pressed={view === "library"}
+          onClick={() => setView("library")}
+        >
+          Questions & activities
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "credits"}
+          onClick={() => setView("credits")}
+        >
+          Personal sessions
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "providers"}
+          onClick={() => setView("providers")}
+        >
+          Provider connections
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "groups"}
+          onClick={() => setView("groups")}
+        >
+          Group dates
+        </button>
       </nav>
-      {view === "providers" ? (
+      {view === "groups" ? (
+        <IntegrationGroupDates />
+      ) : view === "providers" ? (
         <IntegrationProviderSettings />
       ) : view === "credits" ? (
         <IntegrationCredits />
