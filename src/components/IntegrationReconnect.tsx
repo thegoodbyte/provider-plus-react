@@ -219,6 +219,22 @@ export default function IntegrationReconnect() {
                             {r.outreach.initialDelivery.reason}
                           </p>
                         )}
+                        {r.outreach.replyReceivedAt && (
+                          <p>
+                            Verified reply received. Further reminders are
+                            stopped.
+                          </p>
+                        )}
+                        {!!r.outreach.pendingReplyCount && (
+                          <p role="status">
+                            {r.outreach.pendingReplyCount} reply(s) still need
+                            an owned task. Routing will retry; review the inbox
+                            now.
+                          </p>
+                        )}
+                        {r.outreach.replyTaskId && (
+                          <p>Owned reply task: {r.outreach.replyTaskId}</p>
+                        )}
                         <p>
                           {r.outreach.offer
                             ? "Explicit legacy offer recorded"
