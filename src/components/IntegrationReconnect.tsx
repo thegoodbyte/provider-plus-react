@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import IntegrationLegacyGrant from "./IntegrationLegacyGrant";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import "./IntegrationPrograms.css";
@@ -615,6 +616,16 @@ export default function IntegrationReconnect() {
       {row && (
         <details open>
           <summary>Review {row.name}</summary>
+          {row.outreach?.offerDecision === "accepted" &&
+            row.outreach?.offer?.sessionCount > 0 &&
+            !row.outreach?.legacyEnrollmentId && (
+              <IntegrationLegacyGrant
+                key={row.clientId + ":" + row.outreach.revision}
+                clientId={row.clientId}
+                disabled={busy || !!user?.readOnly}
+                onGranted={load}
+              />
+            )}
           <form
             onSubmit={(e) => {
               e.preventDefault();
