@@ -79,6 +79,18 @@ const CeremonyAnalytics = lazy(() => import('./CeremonyAnalytics'));
 export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks', 'announcements', 'rooms', 'integration'] as const;
 export type RetreatDetailTab = typeof RETREAT_DETAIL_TABS[number];
 
+export function isTabAvailableForRetreat(tab: RetreatDetailTab, retreat?: Retreat | null): boolean {
+  if (!retreat) return true;
+  if (Array.isArray(retreat.capabilities?.availableTabs) && retreat.capabilities.availableTabs.length > 0) {
+    return retreat.capabilities.availableTabs.includes(tab);
+  }
+  const type = retreat.type || 'regular';
+  if (type === 'learning_weekend' || type === 'workshop') {
+    return !['ceremonies', 'drugScreening', 'holisticView'].includes(tab);
+  }
+  return true;
+}
+
 interface QuickBookingFormData {
   firstName: string;
   lastName: string;
@@ -394,6 +406,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     setActiveTab(tab);
     onTabChange?.(tab);
   }, [onTabChange]);
+
+  useEffect(() => {
+    if (retreat && !isTabAvailableForRetreat(activeTab, retreat)) {
+      handleTabChange('clients');
+    }
+  }, [retreat, activeTab, handleTabChange]);
 
   const handleDeleteBooking = useCallback(async (bookingId: string) => {
     if (window.confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
@@ -1071,117 +1089,149 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       {/* Tab Content */}
       {/* Tab Navigation */}
       <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
-        <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Room allocation</button>
-        {authService.getUser()?.role === 'admin' && <button className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'announcements'} onClick={() => handleTabChange('announcements')}>Announcements</button>}
-        <button
-          className={`tab-btn ${activeTab === 'drugScreening' ? 'active' : ''}`}
-          onClick={() => handleTabChange('drugScreening')}
-          role="tab"
-          aria-selected={activeTab === 'drugScreening'}
-        >
-          <BiotechRoundedIcon className="retreat-tab-icon" />
-          <span>Drug Screening</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
-          onClick={() => handleTabChange('clients')}
-          role="tab"
-          aria-selected={activeTab === 'clients'}
-        >
-          <PeopleAltRoundedIcon className="retreat-tab-icon" />
-          <span>Clients ({activeClientCount})</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'reserveList' ? 'active' : ''}`}
-          onClick={() => handleTabChange('reserveList')}
-          role="tab"
-          aria-selected={activeTab === 'reserveList'}
-        >
-          <Icon icon={FiUserPlus} className="w-5 h-5 retreat-tab-icon" />
-          <span>Reserve List</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
-          onClick={() => handleTabChange('holisticView')}
-          role="tab"
-          aria-selected={activeTab === 'holisticView'}
-        >
-          <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
-          <span>Retreat Readiness</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
-          onClick={() => handleTabChange('tracking')}
-          role="tab"
-          aria-selected={activeTab === 'tracking'}
-        >
-          <FactCheckRoundedIcon className="retreat-tab-icon" />
-          <span>Medical Grid</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'foodMatrix' ? 'active' : ''}`}
-          onClick={() => handleTabChange('foodMatrix')}
-          role="tab"
-          aria-selected={activeTab === 'foodMatrix'}
-        >
-          <RestaurantRoundedIcon className="retreat-tab-icon" />
-          <span>Food Matrix</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'aiSummary' ? 'active' : ''}`}
-          onClick={() => handleTabChange('aiSummary')}
-          role="tab"
-          aria-selected={activeTab === 'aiSummary'}
-        >
-          <AutoAwesomeRoundedIcon className="retreat-tab-icon" />
-          <span>AI Summary</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
-          onClick={() => handleTabChange('expenses')}
-          role="tab"
-          aria-selected={activeTab === 'expenses'}
-        >
-          <SavingsRoundedIcon className="retreat-tab-icon" />
-          <span>Expenses</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
-          onClick={() => handleTabChange('payments')}
-          role="tab"
-          aria-selected={activeTab === 'payments'}
-        >
-          <CreditCardRoundedIcon className="retreat-tab-icon" />
-          <span>Payments</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
-          onClick={() => handleTabChange('ceremonies')}
-          role="tab"
-          aria-selected={activeTab === 'ceremonies'}
-        >
-          <SpaRoundedIcon className="retreat-tab-icon" />
-          <span>Ceremonies</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => handleTabChange('analytics')}
-          role="tab"
-          aria-selected={activeTab === 'analytics'}
-        >
-          <InsightsRoundedIcon className="retreat-tab-icon" />
-          <span>Analytics</span>
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
-          onClick={() => handleTabChange('tasks')}
-          role="tab"
-          aria-selected={activeTab === 'tasks'}
-        >
-          <TaskAltRoundedIcon className="retreat-tab-icon" />
-          <span>Tasks</span>
-        </button>
-        {['admin','facilitator'].includes(authService.getUser()?.role || '') && <button className={`tab-btn ${activeTab === 'integration' ? 'active' : ''}`} onClick={()=>handleTabChange('integration')} role="tab" aria-selected={activeTab === 'integration'}><SpaRoundedIcon className="retreat-tab-icon"/><span>Integration</span></button>}
+        {isTabAvailableForRetreat('rooms', retreat) && (
+          <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Room allocation</button>
+        )}
+        {isTabAvailableForRetreat('announcements', retreat) && authService.getUser()?.role === 'admin' && (
+          <button className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'announcements'} onClick={() => handleTabChange('announcements')}>Announcements</button>
+        )}
+        {isTabAvailableForRetreat('drugScreening', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'drugScreening' ? 'active' : ''}`}
+            onClick={() => handleTabChange('drugScreening')}
+            role="tab"
+            aria-selected={activeTab === 'drugScreening'}
+          >
+            <BiotechRoundedIcon className="retreat-tab-icon" />
+            <span>Drug Screening</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('clients', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
+            onClick={() => handleTabChange('clients')}
+            role="tab"
+            aria-selected={activeTab === 'clients'}
+          >
+            <PeopleAltRoundedIcon className="retreat-tab-icon" />
+            <span>Clients ({activeClientCount})</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('reserveList', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'reserveList' ? 'active' : ''}`}
+            onClick={() => handleTabChange('reserveList')}
+            role="tab"
+            aria-selected={activeTab === 'reserveList'}
+          >
+            <Icon icon={FiUserPlus} className="w-5 h-5 retreat-tab-icon" />
+            <span>Reserve List</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('holisticView', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
+            onClick={() => handleTabChange('holisticView')}
+            role="tab"
+            aria-selected={activeTab === 'holisticView'}
+          >
+            <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
+            <span>Retreat Readiness</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('tracking', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
+            onClick={() => handleTabChange('tracking')}
+            role="tab"
+            aria-selected={activeTab === 'tracking'}
+          >
+            <FactCheckRoundedIcon className="retreat-tab-icon" />
+            <span>Medical Grid</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('foodMatrix', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'foodMatrix' ? 'active' : ''}`}
+            onClick={() => handleTabChange('foodMatrix')}
+            role="tab"
+            aria-selected={activeTab === 'foodMatrix'}
+          >
+            <RestaurantRoundedIcon className="retreat-tab-icon" />
+            <span>Food Matrix</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('aiSummary', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'aiSummary' ? 'active' : ''}`}
+            onClick={() => handleTabChange('aiSummary')}
+            role="tab"
+            aria-selected={activeTab === 'aiSummary'}
+          >
+            <AutoAwesomeRoundedIcon className="retreat-tab-icon" />
+            <span>AI Summary</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('expenses', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
+            onClick={() => handleTabChange('expenses')}
+            role="tab"
+            aria-selected={activeTab === 'expenses'}
+          >
+            <SavingsRoundedIcon className="retreat-tab-icon" />
+            <span>Expenses</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('payments', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
+            onClick={() => handleTabChange('payments')}
+            role="tab"
+            aria-selected={activeTab === 'payments'}
+          >
+            <CreditCardRoundedIcon className="retreat-tab-icon" />
+            <span>Payments</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('ceremonies', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
+            onClick={() => handleTabChange('ceremonies')}
+            role="tab"
+            aria-selected={activeTab === 'ceremonies'}
+          >
+            <SpaRoundedIcon className="retreat-tab-icon" />
+            <span>Ceremonies</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('analytics', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+            onClick={() => handleTabChange('analytics')}
+            role="tab"
+            aria-selected={activeTab === 'analytics'}
+          >
+            <InsightsRoundedIcon className="retreat-tab-icon" />
+            <span>Analytics</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('tasks', retreat) && (
+          <button
+            className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
+            onClick={() => handleTabChange('tasks')}
+            role="tab"
+            aria-selected={activeTab === 'tasks'}
+          >
+            <TaskAltRoundedIcon className="retreat-tab-icon" />
+            <span>Tasks</span>
+          </button>
+        )}
+        {isTabAvailableForRetreat('integration', retreat) && ['admin','facilitator'].includes(authService.getUser()?.role || '') && (
+          <button className={`tab-btn ${activeTab === 'integration' ? 'active' : ''}`} onClick={()=>handleTabChange('integration')} role="tab" aria-selected={activeTab === 'integration'}>
+            <SpaRoundedIcon className="retreat-tab-icon"/><span>Integration</span>
+          </button>
+        )}
       </div>
 
       <div className="retreat-detail-tab-content">

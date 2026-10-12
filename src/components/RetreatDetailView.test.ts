@@ -1,5 +1,6 @@
 import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { filterRetreatEmailTemplates, normalizeTemplateLanguage, retreatEmailTemplateSearchText } from './retreatEmailTemplateFilters';
+import { isTabAvailableForRetreat } from './RetreatDetailView';
 import { Payment } from '../types';
 
 const payment = (overrides: Partial<Payment>): Payment => ({
@@ -74,5 +75,50 @@ describe('retreat email template language filtering', () => {
     expect(searchText).toContain('arrival_address');
     expect(searchText).toContain('your retreat location');
     expect(searchText).toContain('42');
+  });
+});
+
+describe('isTabAvailableForRetreat', () => {
+  it('allows all tabs when retreat is null or undefined', () => {
+    expect(isTabAvailableForRetreat('ceremonies', null)).toBe(true);
+    expect(isTabAvailableForRetreat('drugScreening', undefined)).toBe(true);
+  });
+
+  it('allows all tabs for regular retreat', () => {
+    const regularRetreat: any = { type: 'regular' };
+    expect(isTabAvailableForRetreat('ceremonies', regularRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('drugScreening', regularRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('holisticView', regularRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('clients', regularRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('foodMatrix', regularRetreat)).toBe(true);
+  });
+
+  it('hides ceremonies, drugScreening, and holisticView for learning_weekend and workshop', () => {
+    const weekendRetreat: any = { type: 'learning_weekend' };
+    expect(isTabAvailableForRetreat('ceremonies', weekendRetreat)).toBe(false);
+    expect(isTabAvailableForRetreat('drugScreening', weekendRetreat)).toBe(false);
+    expect(isTabAvailableForRetreat('holisticView', weekendRetreat)).toBe(false);
+    expect(isTabAvailableForRetreat('clients', weekendRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('foodMatrix', weekendRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('payments', weekendRetreat)).toBe(true);
+
+    const workshopRetreat: any = { type: 'workshop' };
+    expect(isTabAvailableForRetreat('ceremonies', workshopRetreat)).toBe(false);
+    expect(isTabAvailableForRetreat('drugScreening', workshopRetreat)).toBe(false);
+  });
+
+  it('strictly respects availableTabs when provided on capabilities', () => {
+    const customRetreat: any = {
+      type: 'custom',
+      capabilities: {
+        availableTabs: ['clients', 'payments', 'tasks'],
+      },
+    };
+    expect(isTabAvailableForRetreat('clients', customRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('payments', customRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('tasks', customRetreat)).toBe(true);
+    expect(isTabAvailableForRetreat('ceremonies', customRetreat)).toBe(false);
+    expect(isTabAvailableForRetreat('drugScreening', customRetreat)).toBe(false);
+    expect(isTabAvailableForRetreat('foodMatrix', customRetreat)).toBe(false);
   });
 });
