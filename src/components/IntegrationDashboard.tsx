@@ -83,11 +83,18 @@ export default function IntegrationDashboard({
                     unanswered: "Unanswered support tasks",
                     noNextContact: "No scheduled next contact",
                     unusedSessions: "Remaining session promises",
-                    availableSessionCredits: "Available granted session credits",
-                    sessionBookingResolutions: "Session bookings needing resolution",
+                    availableSessionCredits:
+                      "Available granted session credits",
+                    sessionBookingResolutions:
+                      "Session bookings needing resolution",
                     failedMessages: "Failed delivery tasks",
                     unassigned: "Missing owner or backup",
                     paused: "Paused care plans",
+                    legacyFollowUps: "Historical-client follow-up tasks",
+                    overdueLegacyFollowUps:
+                      "Overdue historical-client follow-ups",
+                    uncoveredLegacyFollowUps:
+                      "Historical follow-ups missing coverage or deadline",
                   } as any
                 )[key]
               }
@@ -95,7 +102,118 @@ export default function IntegrationDashboard({
           </div>
         ))}
       </div>
-      {!!data.personalSessions?.length && <details><summary>Personal session balances and next reservations</summary><div style={{overflowX:'auto'}}><table><thead><tr><th>Client</th><th>Available</th><th>Reserved</th><th>Next appointment</th><th>Access through</th></tr></thead><tbody>{data.personalSessions.map((s:any)=><tr key={s._id}><td>{s.clientName}</td><td>{s.available}</td><td>{s.reserved}</td><td>{s.nextReservation?new Date(s.nextReservation).toLocaleString():'Not reserved'}</td><td>{s.expiresOn}</td></tr>)}</tbody></table></div></details>}
+      {data.reconciliation && (
+        <section aria-label="Delivery and reconciliation monitoring">
+          <h4>Delivery and provider reconciliation</h4>
+          <p>
+            {data.reconciliation.failedDeliveryJobs} failed ·{" "}
+            {data.reconciliation.uncertainDeliveryJobs} uncertain ·{" "}
+            {data.reconciliation.deadLetterJobs} dead letters ·{" "}
+            {data.reconciliation.pendingReplyRouting} replies awaiting
+            owned-task routing.
+          </p>
+          <p>
+            {data.reconciliation.pendingProviderEvents} provider events need
+            reconciliation. Oldest pending age:{" "}
+            {data.reconciliation.oldestPendingAgeMinutes == null
+              ? "Not available"
+              : data.reconciliation.oldestPendingAgeMinutes + " minutes"}
+            .
+          </p>
+          <p>
+            These are support workflow states. They do not assess client
+            wellbeing.
+          </p>
+        </section>
+      )}
+      {!!data.legacyFollowUps?.length && (
+        <details open>
+          <summary>Historical-client promises and replies</summary>
+          <p>
+            Check Tasks for the owned response and recorded completion. A
+            message receipt does not fulfil a human support promise.
+          </p>
+          <div className="program-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Follow-up</th>
+                  <th>Owner / backup</th>
+                  <th>Due</th>
+                  <th>Coverage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.legacyFollowUps.map((t: any) => (
+                  <tr key={t.id}>
+                    <td>{t.clientName}</td>
+                    <td>
+                      {t.title}
+                      <br />
+                      <a href="/admin/tasks">Review Tasks</a>
+                    </td>
+                    <td>
+                      {t.owner || "Unassigned"} / {t.backup || "Unassigned"}
+                    </td>
+                    <td>
+                      {t.dueAt
+                        ? new Date(t.dueAt).toLocaleString()
+                        : "Missing deadline"}
+                      {t.overdue ? " — overdue" : ""}
+                    </td>
+                    <td>
+                      {!t.ownerAvailable ? "Owner unavailable. " : ""}
+                      {!t.backupAvailable
+                        ? "Backup unavailable or same as owner. "
+                        : ""}
+                      {t.missingDeadline ? "Review deadline." : ""}
+                      {t.ownerAvailable &&
+                      t.backupAvailable &&
+                      !t.missingDeadline
+                        ? "Named coverage recorded"
+                        : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+      {!!data.personalSessions?.length && (
+        <details>
+          <summary>Personal session balances and next reservations</summary>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Available</th>
+                  <th>Reserved</th>
+                  <th>Next appointment</th>
+                  <th>Access through</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.personalSessions.map((s: any) => (
+                  <tr key={s._id}>
+                    <td>{s.clientName}</td>
+                    <td>{s.available}</td>
+                    <td>{s.reserved}</td>
+                    <td>
+                      {s.nextReservation
+                        ? new Date(s.nextReservation).toLocaleString()
+                        : "Not reserved"}
+                    </td>
+                    <td>{s.expiresOn}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
       <div className="program-grid">
         <label>
           Search client or owner{" "}
