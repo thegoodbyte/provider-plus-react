@@ -1,3 +1,4 @@
+import IntegrationReconnect from "./IntegrationReconnect";
 import IntegrationCoach from "./IntegrationCoach";
 import IntegrationLiveSession from "./IntegrationLiveSession";
 import IntegrationCheckins from "./IntegrationCheckins";
@@ -176,8 +177,17 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           BeyondCeremony coach
         </button>
+        <button
+          type="button"
+          aria-pressed={view === "reconnect"}
+          onClick={() => setView("reconnect")}
+        >
+          Past-client reconnection
+        </button>
       </nav>
-      {view === "coach" ? (
+      {view === "reconnect" ? (
+        <IntegrationReconnect />
+      ) : view === "coach" ? (
         <IntegrationCoach />
       ) : view === "live" ? (
         <IntegrationLiveSession />
