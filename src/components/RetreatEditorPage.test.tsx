@@ -4,7 +4,7 @@ import RetreatEditorPage from './RetreatEditorPage';
 import { housesApi, retreatsApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
-  retreatsApi: { getOne: jest.fn(), update: jest.fn(), delete: jest.fn() },
+  retreatsApi: { getOne: jest.fn(), update: jest.fn(), delete: jest.fn(), getEventTypes: jest.fn() },
   housesApi: { getAll: jest.fn() },
 }));
 
@@ -60,5 +60,15 @@ describe('RetreatEditorPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Save changes' })[0]);
     expect(await screen.findByText(/positive whole-number capacity/i)).toBeInTheDocument();
     expect(retreatsApi.update).not.toHaveBeenCalled();
+  });
+
+  it('hides ceremonies count and medical cut-off when event type is learning_weekend', async () => {
+    (retreatsApi.getOne as jest.Mock).mockResolvedValue({
+      data: { ...retreat, type: 'learning_weekend', ceremonyCount: 0 },
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: 'Edit retreat' });
+    expect(screen.queryByText('Medical cut-off')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Ceremonies')).not.toBeInTheDocument();
   });
 });

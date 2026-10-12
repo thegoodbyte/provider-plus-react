@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiDollarSign, FiSave, FiUsers } from 'react-icons/fi';
 import { housesApi, retreatsApi } from '../services/api';
-import { House, Retreat } from '../types';
+import { EventTypeConfig, House, Retreat } from '../types';
 import { formatDateForInput } from './retreatDetailUtils';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -13,6 +13,13 @@ const dateValue = (value?: string | Date) => value ? new Date(value).toISOString
 const shortDate = (value?: string | Date) => { const date = value ? new Date(value) : null; return date && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date) : '—'; };
 const retreatLength = (start?: string | Date, end?: string | Date) => start && end ? Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000)) : 0;
 const daysUntil = (value?: string | Date) => value ? Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000)) : 0;
+
+const DEFAULT_EVENT_CONFIGS: Record<string, EventTypeConfig> = {
+  regular: { type: 'regular', label: '7-Night Iboga Retreat', codePrefix: 'F', hasCeremonies: true, requiresMedicalScreening: true, hasDrugScreening: true, hasAccommodation: true, defaultCeremonyCount: 2, availableTabs: [] },
+  booster: { type: 'booster', label: 'Booster', codePrefix: 'B', hasCeremonies: true, requiresMedicalScreening: false, hasDrugScreening: true, hasAccommodation: true, defaultCeremonyCount: 1, availableTabs: [] },
+  learning_weekend: { type: 'learning_weekend', label: 'Bwiti Learning Weekend', codePrefix: 'W', hasCeremonies: false, requiresMedicalScreening: false, hasDrugScreening: false, hasAccommodation: true, defaultCeremonyCount: 0, availableTabs: [] },
+  workshop: { type: 'workshop', label: 'Bwiti Workshop', codePrefix: 'W', hasCeremonies: false, requiresMedicalScreening: false, hasDrugScreening: false, hasAccommodation: true, defaultCeremonyCount: 0, availableTabs: [] },
+};
 const PALETTE = ['#2563eb', '#38a9df', '#34998c', '#a8b58f', '#78d10f', '#f59e0b', '#df8b4d', '#c73d0b', '#e61b4d', '#8257ee', '#6366e9', '#a8a29e'];
 
 const RetreatEditorPage: React.FC = () => {
@@ -32,8 +39,18 @@ const RetreatEditorPage: React.FC = () => {
   const [plPrices, setPlPrices] = useState({ closeShared: 9500, closePrivate: 10500, closeEnsuite: 11500, midShared: 8500, midPrivate: 9500, midEnsuite: 10500, farShared: 7500, farPrivate: 8500, farEnsuite: 9500, addictionSupport: 1500 });
   const [plIncluded, setPlIncluded] = useState('');
   const [error, setError] = useState('');
+  const [eventConfigs, setEventConfigs] = useState<Record<string, EventTypeConfig>>(DEFAULT_EVENT_CONFIGS);
 
   useEffect(() => {
+    const eventTypesPromise = retreatsApi.getEventTypes?.();
+    if (eventTypesPromise && typeof eventTypesPromise.then === 'function') {
+      eventTypesPromise.then((response) => {
+        if (response?.data && Object.keys(response.data).length) {
+          setEventConfigs(response.data);
+        }
+      }).catch(() => {});
+    }
+
     Promise.all([retreatsApi.getOne(retreatId), housesApi.getAll()]).then(([retreatResponse, houseResponse]) => {
       const item = retreatResponse.data;
       setRetreat(item);
@@ -140,15 +157,34 @@ const RetreatEditorPage: React.FC = () => {
 
       <section className="py-6"><SectionTitle number="02" title="Schedule" detail="Requirement deadlines count backwards from the start date."/><div className="border border-[#c4cad2] border-l-2 border-l-blue-500 bg-white p-4 md:ml-14">
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-[auto_150px_100px_auto_150px_100px] md:items-end"><span className="hidden pb-3 text-sm md:block">Runs</span><label><span className={`${label} md:hidden`}>Start date *</span><input aria-label="Start date" className={field} type="date" value={dateValue(form.startDate)} onChange={(e) => set({ startDate: e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : undefined })}/></label><label><span className={`${label} md:hidden`}>Start time</span><input aria-label="Start time" className={field} type="time" value={form.startTime || ''} onChange={(e) => set({ startTime: e.target.value || undefined })}/></label><span className="hidden pb-3 text-sm md:block">until</span><label><span className={`${label} md:hidden`}>End date *</span><input aria-label="End date" className={field} type="date" value={dateValue(form.endDate)} onChange={(e) => set({ endDate: e.target.value ? new Date(`${e.target.value}T12:00:00`).toISOString() : undefined })}/></label><label><span className={`${label} md:hidden`}>End time</span><input aria-label="End time" className={field} type="time" value={form.endTime || ''} onChange={(e) => set({ endTime: e.target.value || undefined })}/></label></div>
-        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-300 pt-4 md:grid-cols-3"><div><span className={label}>Length</span><strong>{nights} nights</strong></div><div className="md:border-l md:border-gray-300 md:pl-5"><span className={label}>Starts in</span><strong className="text-amber-700">{startsIn} days</strong></div><div className="col-span-2 md:col-span-1 md:border-l md:border-gray-300 md:pl-5"><span className={label}>Medical cut-off</span><strong>{shortDate(new Date(new Date(form.startDate || '').getTime() - 7 * 86_400_000))}</strong><span className="ml-1 text-xs text-gray-500">7 days before</span></div></div>
+        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-300 pt-4 md:grid-cols-3">
+          <div><span className={label}>Length</span><strong>{nights} nights</strong></div>
+          <div className="md:border-l md:border-gray-300 md:pl-5"><span className={label}>Starts in</span><strong className="text-amber-700">{startsIn} days</strong></div>
+          {(eventConfigs[form.type || 'regular'] || DEFAULT_EVENT_CONFIGS.regular).requiresMedicalScreening && (
+            <div className="col-span-2 md:col-span-1 md:border-l md:border-gray-300 md:pl-5"><span className={label}>Medical cut-off</span><strong>{shortDate(new Date(new Date(form.startDate || '').getTime() - 7 * 86_400_000))}</strong><span className="ml-1 text-xs text-gray-500">7 days before</span></div>
+          )}
+        </div>
       </div></section>
 
       <section className="py-6"><SectionTitle number="03" title="Place and capacity" detail={`${occupancy} bookings already sit against this retreat. Lowering capacity below ${occupancy} will flag those bookings.`}/><div className="grid gap-4 md:ml-14 md:grid-cols-6">
         <label className="md:col-span-3"><span className={label}>House</span><select className={field} value={idOf(form.houseId)} onChange={(e) => selectHouse(e.target.value)}><option value="">Select a house</option>{houses.map((house) => <option key={house._id} value={house._id}>{house.name}{house.address ? ` — ${house.address}` : ''}</option>)}</select></label>
         <label className="md:col-span-3"><span className={label}>Location town *</span><input className={field} value={form.location_town || form.location || ''} onChange={(e) => set({ location_town: e.target.value, location: e.target.value })}/></label>
         <label><span className={label}>Capacity *</span><input className={field} type="number" min="1" value={form.capacity ?? ''} onChange={(e) => set({ capacity: Number(e.target.value) || undefined })}/></label>
-        <label><span className={label}>Ceremonies</span><input className={field} type="number" min="1" value={form.ceremonyCount ?? 2} onChange={(e) => set({ ceremonyCount: Math.max(1, Number(e.target.value) || 2) })}/></label>
-        <label><span className={label}>Type</span><select className={field} value={form.type || 'regular'} onChange={(e) => set({ type: e.target.value as Retreat['type'] })}><option value="regular">Regular</option><option value="booster">Booster</option></select></label>
+        {(eventConfigs[form.type || 'regular'] || DEFAULT_EVENT_CONFIGS.regular).hasCeremonies && (
+          <label><span className={label}>Ceremonies</span><input className={field} type="number" min="1" value={form.ceremonyCount ?? 2} onChange={(e) => set({ ceremonyCount: Math.max(1, Number(e.target.value) || 2) })}/></label>
+        )}
+        <label><span className={label}>Type</span><select className={field} value={form.type || 'regular'} onChange={(e) => {
+          const nextType = e.target.value as Retreat['type'];
+          const cap = eventConfigs[nextType || 'regular'] || DEFAULT_EVENT_CONFIGS.regular;
+          set({
+            type: nextType,
+            ceremonyCount: cap.hasCeremonies ? (form.ceremonyCount && form.ceremonyCount > 0 ? form.ceremonyCount : cap.defaultCeremonyCount) : 0,
+          });
+        }}>
+          {Object.entries(eventConfigs).map(([key, config]) => (
+            <option key={key} value={key}>{config.label}</option>
+          ))}
+        </select></label>
         <div className="md:col-span-3"><span className={label}>Fill right now</span><div className="flex items-center gap-3"><div className="h-3 flex-1 bg-gray-200"><div className="h-full bg-blue-600" style={{ width: `${capacity ? Math.min(100, occupancy / capacity * 100) : 0}%` }}/></div><strong className="whitespace-nowrap text-sm">{occupancy} / {capacity || 0} places</strong></div></div>
       </div></section>
 

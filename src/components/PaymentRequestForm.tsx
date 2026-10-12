@@ -594,7 +594,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   value={formData.bookingType}
                   onChange={(event) => setFormData((prev) => ({
                     ...prev,
-                    bookingType: event.target.value as 'full_retreat' | 'booster',
+                    bookingType: (event.target.value as 'full_retreat' | 'booster' | 'learning_weekend' | 'workshop') || 'full_retreat',
                     ceremonyId: event.target.value === 'booster' ? prev.ceremonyId : '',
                     ceremonyNumber: event.target.value === 'booster' ? prev.ceremonyNumber : '',
                   }))}
@@ -602,10 +602,14 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 >
                   <option value="full_retreat">Full retreat</option>
                   <option value="booster">Booster in this retreat</option>
+                  <option value="learning_weekend">Bwiti Learning Weekend</option>
+                  <option value="workshop">Workshop</option>
                 </select>
               ) : (
                 <div className="min-h-[42px] rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-800">
-                  {formData.bookingType === 'booster' ? 'Booster in this retreat' : 'Full retreat'}
+                  {formData.bookingType === 'booster' ? 'Booster in this retreat' :
+                   formData.bookingType === 'learning_weekend' ? 'Bwiti Learning Weekend' :
+                   formData.bookingType === 'workshop' ? 'Workshop' : 'Full retreat'}
                 </div>
               )}
             </div>

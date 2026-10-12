@@ -12,12 +12,23 @@ interface BookingConfirmationPDFProps {
 
 export const BOOKING_CONFIRMATION_TEMPLATE_VERSION = '2026-09-04-ecb-balances-v4';
 
-export const getBookingConfirmationPolicy = (bookingType?: string) => ({
-  booster: String(bookingType || '').toLowerCase() === 'booster',
-  contractRequired: String(bookingType || '').toLowerCase() !== 'booster',
-  ekgRequired: String(bookingType || '').toLowerCase() !== 'booster',
-  liverRequired: String(bookingType || '').toLowerCase() !== 'booster',
-});
+export const getBookingConfirmationPolicy = (
+  bookingType?: string,
+  capabilities?: { requiresMedicalScreening?: boolean; hasCeremonies?: boolean },
+) => {
+  const normalizedType = String(bookingType || '').toLowerCase();
+  const isBooster = normalizedType === 'booster';
+  const isNonMedical =
+    normalizedType === 'learning_weekend' ||
+    normalizedType === 'workshop' ||
+    capabilities?.requiresMedicalScreening === false;
+  return {
+    booster: isBooster,
+    contractRequired: !isBooster,
+    ekgRequired: !isBooster && !isNonMedical,
+    liverRequired: !isBooster && !isNonMedical,
+  };
+};
 
 const waitForImages = async (container: HTMLElement) => {
   const images = Array.from(container.querySelectorAll('img'));

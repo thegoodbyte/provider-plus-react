@@ -782,12 +782,14 @@ const RetreatsGrid: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Number of ceremonies</label>
-                <input type="number" min="1" value={formData.ceremonyCount ?? 2}
-                  onChange={(e) => setFormData({ ...formData, ceremonyCount: Math.max(1, parseInt(e.target.value, 10) || 2) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
+              {formData.type !== 'learning_weekend' && formData.type !== 'workshop' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Number of ceremonies</label>
+                  <input type="number" min="1" value={formData.ceremonyCount ?? 2}
+                    onChange={(e) => setFormData({ ...formData, ceremonyCount: Math.max(1, parseInt(e.target.value, 10) || 2) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -809,11 +811,21 @@ const RetreatsGrid: React.FC = () => {
                   </label>
                   <select
                     value={formData.type || 'regular'}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'regular' | 'booster' })}
+                    onChange={(e) => {
+                      const newType = e.target.value as Retreat['type'];
+                      const isNoCeremony = newType === 'learning_weekend' || newType === 'workshop';
+                      setFormData({
+                        ...formData,
+                        type: newType,
+                        ceremonyCount: isNoCeremony ? 0 : (formData.ceremonyCount && formData.ceremonyCount > 0 ? formData.ceremonyCount : 2),
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="regular">Regular</option>
                     <option value="booster">Booster</option>
+                    <option value="learning_weekend">Bwiti Learning Weekend</option>
+                    <option value="workshop">Workshop</option>
                   </select>
                 </div>
               </div>
@@ -1022,12 +1034,14 @@ const RetreatsGrid: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Number of ceremonies</label>
-                <input type="number" min="1" value={formData.ceremonyCount ?? 2}
-                  onChange={(e) => setFormData({ ...formData, ceremonyCount: Math.max(1, parseInt(e.target.value, 10) || 2) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
+              {formData.type !== 'learning_weekend' && formData.type !== 'workshop' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Number of ceremonies</label>
+                  <input type="number" min="1" value={formData.ceremonyCount ?? 2}
+                    onChange={(e) => setFormData({ ...formData, ceremonyCount: Math.max(1, parseInt(e.target.value, 10) || 2) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1049,11 +1063,21 @@ const RetreatsGrid: React.FC = () => {
                   </label>
                   <select
                     value={formData.type || 'regular'}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'regular' | 'booster' })}
+                    onChange={(e) => {
+                      const newType = e.target.value as Retreat['type'];
+                      const isNoCeremony = newType === 'learning_weekend' || newType === 'workshop';
+                      setFormData({
+                        ...formData,
+                        type: newType,
+                        ceremonyCount: isNoCeremony ? 0 : (formData.ceremonyCount && formData.ceremonyCount > 0 ? formData.ceremonyCount : 2),
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="regular">Regular</option>
                     <option value="booster">Booster</option>
+                    <option value="learning_weekend">Bwiti Learning Weekend</option>
+                    <option value="workshop">Workshop</option>
                   </select>
                 </div>
               </div>

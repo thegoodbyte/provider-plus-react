@@ -28,7 +28,7 @@ type BookingFormData = {
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   status: 'pending' | 'confirmed' | 'conditional' | 'checked-in' | 'checked-out' | 'cancelled';
   bookingNumber: string;
-  bookingType: 'full_retreat' | 'booster';
+  bookingType: 'full_retreat' | 'booster' | 'learning_weekend' | 'workshop';
   ceremonyId: string;
   ceremonyNumber: string;
   checkInDate: string;
@@ -528,6 +528,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               >
                 <option value="full_retreat">Full 7-day retreat</option>
                 <option value="booster">Booster within this retreat</option>
+                <option value="learning_weekend">Bwiti Learning Weekend</option>
+                <option value="workshop">Workshop</option>
               </select>
             </div>
             {formData.bookingType === 'booster' && (

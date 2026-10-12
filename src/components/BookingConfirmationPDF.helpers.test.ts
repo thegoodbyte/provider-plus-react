@@ -79,6 +79,9 @@ describe('BookingConfirmationPDF helpers', () => {
   it('uses a distinct optional-requirements policy for booster bookings', () => {
     expect(getBookingConfirmationPolicy('booster')).toEqual({ booster: true, contractRequired: false, ekgRequired: false, liverRequired: false });
     expect(getBookingConfirmationPolicy('full_retreat')).toEqual({ booster: false, contractRequired: true, ekgRequired: true, liverRequired: true });
+    expect(getBookingConfirmationPolicy('learning_weekend')).toEqual({ booster: false, contractRequired: true, ekgRequired: false, liverRequired: false });
+    expect(getBookingConfirmationPolicy('workshop')).toEqual({ booster: false, contractRequired: true, ekgRequired: false, liverRequired: false });
+    expect(getBookingConfirmationPolicy('custom', { requiresMedicalScreening: false })).toEqual({ booster: false, contractRequired: true, ekgRequired: false, liverRequired: false });
   });
 
   it('maps a booking room type to its translated label, even with no price adjustment to hang it on (PPVC-701)', () => {

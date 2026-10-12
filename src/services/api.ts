@@ -1,7 +1,7 @@
 import type { AllocationBoard } from '../components/RoomAllocationBoard';
 import type { RetreatWorkflowSummary } from '../types/workflowSummary';
 import axios, { AxiosRequestConfig } from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, BookingDocumentContent, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
+import { Retreat, EventTypeConfig, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, BookingDocumentContent, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -79,6 +79,7 @@ const invalidateBookingDocumentDependents = () => {
 };
 
 export const retreatsApi = {
+  getEventTypes: () => cachedGet<Record<string, EventTypeConfig>>('retreats:event-types', () => api.get<Record<string, EventTypeConfig>>('/retreats/event-types'), 60000),
   getWebsiteContentDefaults: () => api.get<{ includedItems: Record<string, string[]> }>('/retreats/website-content-defaults'),
   updateWebsiteContentDefaults: (includedItems: Record<string, string[]>) => api.patch('/retreats/website-content-defaults', { includedItems }),
   getAll: (options?: ReadOptions) => readGet<Retreat[]>('retreats:all', '/retreats', options),
