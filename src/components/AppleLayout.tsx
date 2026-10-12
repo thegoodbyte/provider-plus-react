@@ -1,3 +1,4 @@
+import IntegrationProviderSettings from './IntegrationProviderSettings';
 import IntegrationLibrary from './IntegrationLibrary';
 import ServicePaymentRequestPage from './ServicePaymentRequestPage';
 import ServiceBillingSettingsPage from './ServiceBillingSettingsPage';
@@ -808,6 +809,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client-forms" element={<ClientFormsPage />} />
                       <Route path="analytics" element={<AnalyticsPage />} />
                       <Route path="users" element={<UserManagement />} />
+                      <Route path="external-resources" element={<IntegrationProviderSettings />} />
                       <Route path="audit-logs" element={<AuditLogsPage />} />
                       <Route path="backups" element={<DataBackupPage />} />
                       <Route path="tasks" element={<Tasks />} />
