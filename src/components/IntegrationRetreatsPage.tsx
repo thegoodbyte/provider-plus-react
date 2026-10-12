@@ -1,3 +1,4 @@
+import IntegrationCheckins from "./IntegrationCheckins";
 import IntegrationGroupDates from "./IntegrationGroupDates";
 import IntegrationGroupInvitations from "./IntegrationGroupInvitations";
 import IntegrationProviderSettings from "./IntegrationProviderSettings";
@@ -152,8 +153,17 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           Group invitations & RSVP
         </button>
+        <button
+          type="button"
+          aria-pressed={view === "checkins"}
+          onClick={() => setView("checkins")}
+        >
+          Check-ins & support triage
+        </button>
       </nav>
-      {view === "invitations" ? (
+      {view === "checkins" ? (
+        <IntegrationCheckins />
+      ) : view === "invitations" ? (
         <IntegrationGroupInvitations />
       ) : view === "groups" ? (
         <IntegrationGroupDates />
