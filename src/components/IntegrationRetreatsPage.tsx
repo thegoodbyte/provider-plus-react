@@ -1,4 +1,5 @@
-import IntegrationLiveSession from './IntegrationLiveSession';
+import IntegrationCoach from "./IntegrationCoach";
+import IntegrationLiveSession from "./IntegrationLiveSession";
 import IntegrationCheckins from "./IntegrationCheckins";
 import IntegrationGroupDates from "./IntegrationGroupDates";
 import IntegrationGroupInvitations from "./IntegrationGroupInvitations";
@@ -161,9 +162,26 @@ const IntegrationRetreatsPage: React.FC = () => {
         >
           Check-ins & support triage
         </button>
-        <button type="button" aria-pressed={view === "live"} onClick={() => setView("live")}>Live-session notes</button>
+        <button
+          type="button"
+          aria-pressed={view === "live"}
+          onClick={() => setView("live")}
+        >
+          Live-session notes
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "coach"}
+          onClick={() => setView("coach")}
+        >
+          BeyondCeremony coach
+        </button>
       </nav>
-      {view === "live" ? (<IntegrationLiveSession />) : view === "checkins" ? (
+      {view === "coach" ? (
+        <IntegrationCoach />
+      ) : view === "live" ? (
+        <IntegrationLiveSession />
+      ) : view === "checkins" ? (
         <IntegrationCheckins />
       ) : view === "invitations" ? (
         <IntegrationGroupInvitations />
