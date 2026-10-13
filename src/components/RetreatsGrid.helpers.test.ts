@@ -1,3 +1,4 @@
+import { countOccupyingRetreatBookings } from './RetreatsGrid.helpers';
 import { buildBookingStepOptions, formatRetreatCalendarDate, isBookingStepComplete, retreatEndDateFromStart, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
 import { BookingFlowTemplate } from '../types';
 
@@ -73,4 +74,14 @@ describe('RetreatsGrid helpers', () => {
     expect(retreatEndDateFromStart('2026-12-28')).toBe('2027-01-04T00:00:00.000Z');
     expect(retreatEndDateFromStart('')).toBeUndefined();
   });
+});
+
+it('shows five occupied of seven after one of six bookings becomes conditional, retaining the client row', () => {
+ const bookings = [...Array.from({length:5}, () => ({status:'confirmed'})), {status:'conditional'}];
+ expect(bookings).toHaveLength(6);
+ expect(countOccupyingRetreatBookings(bookings)).toBe(5);
+ expect(7-countOccupyingRetreatBookings(bookings)).toBe(2);
+});
+it('matches API occupancy exclusion for conditional and both cancellation spellings', () => {
+ expect(countOccupyingRetreatBookings([{status:'checked-in'}, {status:'pending'}, {status:'conditional'}, {status:'cancelled'}, {status:'canceled'}])).toBe(2);
 });

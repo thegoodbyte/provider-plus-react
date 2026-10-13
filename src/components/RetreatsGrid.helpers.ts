@@ -87,3 +87,6 @@ export const retreatEndDateFromStart = (startDate: string, durationDays = 7) => 
   date.setUTCDate(date.getUTCDate() + durationDays);
   return date.toISOString();
 };
+
+export const countOccupyingRetreatBookings = (bookings: Array<{ status?: string }>) =>
+  bookings.filter(booking => !['conditional', 'cancelled', 'canceled'].includes(String(booking.status || '').trim().toLowerCase())).length;

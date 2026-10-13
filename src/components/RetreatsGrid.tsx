@@ -1,3 +1,4 @@
+import { countOccupyingRetreatBookings } from './RetreatsGrid.helpers';
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
@@ -171,7 +172,7 @@ const RetreatsGrid: React.FC = () => {
 
   const displayedRetreats = operationalRetreats.filter((retreat) => {
     const search = retreatSearch.trim().toLowerCase();
-    const occupied = getRetreatBookings(retreat).length;
+    const occupied = countOccupyingRetreatBookings(getRetreatBookings(retreat));
     const capacity = Number(retreat.capacity || 0);
     const visualStatus = capacity > 0 && occupied >= capacity ? 'full' : occupied > 0 ? 'filling' : 'upcoming';
     const matchesStatus = retreatStatusFilter === 'all' || visualStatus === retreatStatusFilter || retreat.status === retreatStatusFilter;
@@ -410,7 +411,7 @@ const RetreatsGrid: React.FC = () => {
       <div className="retreat-register-header">
         <div>
           <h1>Retreats</h1>
-          <p>{operationalRetreats.length} upcoming · {operationalRetreats.reduce((sum, retreat) => sum + Math.max(0, Number(retreat.capacity || 0) - getRetreatBookings(retreat).length), 0)} places still open{operationalRetreats[0]?.startDate ? ` · next one starts in ${Math.max(0, Math.ceil((new Date(operationalRetreats[0].startDate).getTime() - Date.now()) / 86400000))} days` : ''}</p>
+          <p>{operationalRetreats.length} upcoming · {operationalRetreats.reduce((sum, retreat) => sum + Math.max(0, Number(retreat.capacity || 0) - countOccupyingRetreatBookings(getRetreatBookings(retreat))), 0)} places still open{operationalRetreats[0]?.startDate ? ` · next one starts in ${Math.max(0, Math.ceil((new Date(operationalRetreats[0].startDate).getTime() - Date.now()) / 86400000))} days` : ''}</p>
           <div className="retreat-register-tabs">
             <button
               type="button"
@@ -636,9 +637,9 @@ const RetreatsGrid: React.FC = () => {
       ) : (
       <div className="retreat-register-list">
         {groupedRetreats.map((group) => <section className="retreat-month" key={group.key}>
-          <header><h2>{group.label}</h2><span>{group.retreats.length} retreat{group.retreats.length === 1 ? '' : 's'} · {group.retreats.reduce((sum, retreat) => sum + Math.max(0, Number(retreat.capacity || 0) - getRetreatBookings(retreat).length), 0)} places open</span></header>
+          <header><h2>{group.label}</h2><span>{group.retreats.length} retreat{group.retreats.length === 1 ? '' : 's'} · {group.retreats.reduce((sum, retreat) => sum + Math.max(0, Number(retreat.capacity || 0) - countOccupyingRetreatBookings(getRetreatBookings(retreat))), 0)} places open</span></header>
           {group.retreats.map((retreat) => {
-            const occupied = getRetreatBookings(retreat).length;
+            const occupied = countOccupyingRetreatBookings(getRetreatBookings(retreat));
             const capacity = Number(retreat.capacity || 0);
             const places = Math.max(0, capacity - occupied);
             const percent = capacity ? Math.min(100, occupied / capacity * 100) : 0;
