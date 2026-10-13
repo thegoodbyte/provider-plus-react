@@ -603,7 +603,6 @@ const CommunicationsPage: React.FC = () => {
         autoCcEnabled: settings?.autoCcEnabled !== false,
         autoCcEmail: settings?.autoCcEmail || 'info@ibogaspirit.cz',
         automatedBookingRemindersEnabled: settings?.automatedBookingRemindersEnabled === true,
-        clientMedicalReviewEmailsEnabled: settings?.clientMedicalReviewEmailsEnabled !== false,
         clientMedicalSubmittedEmailsEnabled: settings?.clientMedicalSubmittedEmailsEnabled !== false,
         clientMedicalApprovedEmailsEnabled: settings?.clientMedicalApprovedEmailsEnabled !== false,
         clientMedicalNeedsInfoEmailsEnabled: settings?.clientMedicalNeedsInfoEmailsEnabled === true,
@@ -896,10 +895,9 @@ const CommunicationsPage: React.FC = () => {
             </div>
           </section>
           <section hidden={settingsArea !== 'medical'} className="rounded-lg border border-gray-200 bg-white p-5 space-y-4 lg:col-span-2">
-            <div><h2 className="text-lg font-semibold text-gray-900">Client medical-review notifications</h2><p className="text-sm text-gray-500">Emails contain only a generic status and never include reviewer notes or medical findings.</p></div>
+            <div><h2 className="text-lg font-semibold text-gray-900">Client medical-review notifications</h2><p className="text-sm text-gray-500">Emails contain only a generic status and never include reviewer notes or medical findings.</p><Link to={location.pathname.replace(/\/communications$/, '/communications-settings')} className="text-sm text-blue-700 underline">Email master switch is in Settings → Communications</Link></div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                ['clientMedicalReviewEmailsEnabled', 'Master email switch'],
                 ['clientMedicalApprovedEmailsEnabled', 'Approved emails'],
                 ['clientMedicalSubmittedEmailsEnabled', 'Submitted emails'],
                 ['clientMedicalNeedsInfoEmailsEnabled', 'Needs-info emails'],

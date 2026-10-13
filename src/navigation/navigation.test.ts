@@ -1,6 +1,12 @@
 import { canShowNavigation, NAVIGATION, readNavigationPreferences } from './navigation';
 
 beforeEach(() => localStorage.clear());
+it('places communications controls in Settings and preserves communication visibility restrictions', () => {
+  expect(NAVIGATION['communications-settings'].setup).toBe(true);
+  expect(canShowNavigation('communications-settings', 'admin')).toBe(true);
+  expect(canShowNavigation('communications-settings', 'client')).toBe(false);
+  expect(canShowNavigation('communications-settings', 'medical_staff', { communications: [] })).toBe(false);
+});
 
 it('respects route-to-role preferences and supported legacy role-to-route preferences', () => {
   expect(canShowNavigation('payment-requests', 'admin', { 'payment-requests': [] })).toBe(false);

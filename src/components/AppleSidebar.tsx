@@ -364,6 +364,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
       }];
     }
     const setup: MenuItem[] = [];
+    if (canShowNavigation('communications-settings', navigationRole, preferences)) setup.push({ id: 'communications-settings', label: NAVIGATION['communications-settings'].label, Icon: Fi.FiMail });
     const readiness: MenuItem[] = [];
     const daily = roleSections.map(section => ({ ...section, items: section.items
       .filter(item => canShowNavigation(item.id, navigationRole, preferences))

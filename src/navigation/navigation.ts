@@ -22,6 +22,7 @@ export const NAVIGATION: Record<string, { label: string; description: string; se
   'medical-review-requests': { label: 'Review Requests', description: 'Review submitted medical records.' },
   'review-requests': { label: 'Review Requests', description: 'Review submitted medical records.' },
   communications: { label: 'Communications', description: 'Send client emails and review message history.', aliases: 'Comms' },
+  'communications-settings': { label: 'Communications', description: 'Manage the medical-review email master switch.', setup: true, aliases: 'Email master switch' },
   'client-forms': { label: 'Client Forms', description: 'Review food, medication and questionnaire submissions.' },
   'retreat-staffing': { label: 'Helpers & Cooks', description: 'See and assign the team for each retreat.' },
   users: { label: 'User Management', description: 'Manage staff accounts and access.', setup: true, aliases: 'Users' },
@@ -32,16 +33,16 @@ export const NAVIGATION: Record<string, { label: string; description: string; se
   tasks: { label: 'General Tasks', description: 'Manage the general task queue.' },
 };
 
-const operational = ['launcher', 'clients', 'potential-clients', 'screening', 'bookings', 'retreats', 'retreat-staffing', 'ceremonies', 'reminders', 'communications', 'contact-book'];
+const operational = ['launcher', 'clients', 'potential-clients', 'screening', 'bookings', 'retreats', 'retreat-staffing', 'ceremonies', 'reminders', 'communications', 'communications-settings', 'contact-book'];
 const roleRoutes: Record<string, string[]> = {
   medical_staff: [...operational, 'workflow', 'flow-tasks', 'medical-dashboard', 'medical-artifacts', 'medical-tracking', 'medical-review-requests', 'review-requests', 'medical', 'medical-retreats', 'client-forms', 'client-medications', 'retreat-flow', 'retreat-flow-library', 'booking-flow', 'booking-step-deadlines', 'scheduled-reminders', 'booking-documents', 'booking-document-types', 'file-uploads', 'assistant', 'needs-attention', 'ir-notifications'],
   medical_advisor: ['medical-dashboard', 'review-requests', 'medical-review-requests'],
   facilitator: [...operational, 'houses', 'booster-offers', 'integration'],
-  user: ['launcher', 'clients', 'potential-clients', 'reminders', 'communications', 'contact-book'],
+  user: ['launcher', 'clients', 'potential-clients', 'reminders', 'communications', 'communications-settings', 'contact-book'],
   helper: ['current-retreat'],
 };
 export type NavigationPreferences = Record<string, string[]>;
-const aliasFor = (id: string) => id === 'review-requests' ? 'medical-review-requests' : id === 'potential-clients' ? 'clients' : id;
+const aliasFor = (id: string) => id === 'communications-settings' ? 'communications' : id === 'review-requests' ? 'medical-review-requests' : id === 'potential-clients' ? 'clients' : id;
 
 // Visibility preferences can narrow the routes a role can open, never grant access.
 // Support both the route->roles format saved by PermissionsMatrix and older role->routes data.

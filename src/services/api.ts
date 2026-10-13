@@ -631,6 +631,7 @@ export const communicationsApi = {
   deleteAsset: (id: string) => api.delete(`/communications/assets/${id}`),
   getSettings: (config: any = {}) => api.get<MailSettings>('/communications/settings', config),
   saveSettings: (data: Partial<MailSettings>) => api.patch<MailSettings>('/communications/settings', data),
+  saveMedicalEmailMasterSwitch: (enabled: boolean) => api.patch<MailSettings>('/communications/settings/email-master-switch', { enabled }),
   getAuthUrl: () => api.get<{ authUrl: string; state: string; redirectUri: string }>('/communications/gmail/auth-url'),
   disconnect: () => api.post<MailSettings>('/communications/gmail/disconnect', {}),
   testConnection: () => api.post<{ settings: MailSettings; profile: Record<string, any> }>('/communications/gmail/test', {}),

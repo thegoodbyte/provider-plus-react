@@ -1,5 +1,6 @@
 import ExternalResourcesPage from './ExternalResourcesPage';
 import IntegrationProviderSettings from './IntegrationProviderSettings';
+import CommunicationsSettingsPage from './CommunicationsSettingsPage';
 import IntegrationLibrary from './IntegrationLibrary';
 import EnvironmentBanner from './EnvironmentBanner';
 import ServicePaymentRequestPage from './ServicePaymentRequestPage';
@@ -237,6 +238,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
     if (route === 'communications') return 'communications';
+    if (route === 'communications-settings') return 'communications-settings';
     if (route === 'client-forms') return 'client-forms';
     if (route === 'assistant') return 'assistant';
     if (route === 'requirements') return 'requirements';
@@ -800,6 +802,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="revolut-payment-links" element={<ProtectedRoute requiredRole={['admin']}><RevolutPaymentLinksPage /></ProtectedRoute>} />
                       <Route path="payment-requests/:id/edit" element={<PaymentRequestEditorPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
+                      <Route path="communications-settings" element={<ProtectedRoute requiredRole={['admin', 'medical_staff', 'facilitator', 'user']}><CommunicationsSettingsPage /></ProtectedRoute>} />
                       <Route path="assistant" element={<AssistantPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="referrals" element={<ReferralsPage />} />
@@ -917,6 +920,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="reminders" element={<RemindersPage />} />
                         <Route path="contact-book" element={<ContactBookPage />} />
                         <Route path="communications" element={<CommunicationsPage />} />
+                      <Route path="communications-settings" element={<ProtectedRoute requiredRole={['admin', 'medical_staff', 'facilitator', 'user']}><CommunicationsSettingsPage /></ProtectedRoute>} />
                         <Route path="assistant" element={<AssistantPage />} />
                       </Routes>
                     )}
@@ -966,6 +970,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
+                      <Route path="communications-settings" element={<ProtectedRoute requiredRole={['admin', 'medical_staff', 'facilitator', 'user']}><CommunicationsSettingsPage /></ProtectedRoute>} />
                     </Routes>
                   </ProtectedRoute>
                 } />
@@ -982,6 +987,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
+                      <Route path="communications-settings" element={<ProtectedRoute requiredRole={['admin', 'medical_staff', 'facilitator', 'user']}><CommunicationsSettingsPage /></ProtectedRoute>} />
                     </Routes>
                   </ProtectedRoute>
                 } />
@@ -1017,6 +1023,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical/review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/medical/review-groups/:id" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewGroupPage /></ProtectedRoute>} />
                 <Route path="/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
+                <Route path="/communications-settings" element={<ProtectedRoute requiredRole={['admin', 'medical_staff', 'facilitator', 'user']}><CommunicationsSettingsPage /></ProtectedRoute>} />
                 <Route path="/admin/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/medical/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/assistant" element={<ProtectedRoute requiredRole={['admin', 'medical_staff']}><AssistantPage /></ProtectedRoute>} />
