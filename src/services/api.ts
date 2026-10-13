@@ -528,6 +528,9 @@ export const paymentsApi = {
   getReceipt: (id: string) => api.get<import('../types').PaymentReceipt>(`/payments/receipts/${id}`),
   updateReceipt: (id: string, data: Partial<import('../types').PaymentReceipt>) => api.patch<import('../types').PaymentReceipt>(`/payments/receipts/${id}`, data),
   deleteReceipt: (id: string) => api.delete(`/payments/receipts/${id}`),
+  downloadReceiptPdf: (id: string, allocationId: string) => api.get(`/payments/receipts/${id}/pdf`, { params: { allocationId }, responseType: 'blob' }),
+  regenerateReceiptPdf: (id: string, allocationId: string) => api.post(`/payments/receipts/${id}/regenerate-pdf`, { allocationId }),
+  recordReceiptWhatsApp: (id: string, allocationId: string) => api.post(`/payments/receipts/${id}/whatsapp-sent`, { allocationId }),
   sendReceipt: (id: string, data: { allocationId: string; to?: string; attachPdf?: boolean; attachBookingConfirmation?: boolean }) => api.post(`/payments/receipts/${id}/send`, data),
   update: (id: string, data: Partial<Payment>) => {
     cacheService.clearPattern('payments:');

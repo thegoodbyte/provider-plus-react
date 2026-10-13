@@ -463,6 +463,7 @@ const PaymentEditorPage: React.FC = () => {
             </p>
           </div>
         </div>
+        {isView && loadedPayment?.receiptId && <button type="button" className="rounded border px-4 py-2 text-blue-700" onClick={() => navigate(`/admin/payments/receipts?receiptId=${typeof loadedPayment.receiptId === 'string' ? loadedPayment.receiptId : loadedPayment.receiptId?._id}`)}>Payment receipt and delivery history</button>}
         {isView && id && (
           <button
             type="button"

@@ -710,6 +710,10 @@ export interface Payment {
 }
 
 export interface PaymentReceipt {
+  pdfMetadata?: Record<string, { generatedAt: string; sha256: string; fileName: string }>;
+  pdfGenerationFailed?: boolean;
+  deliveryHistory?: Array<{ channel: string; status: string; at: string; to: string; actor?: string; allocationId: string }>;
+
   _id?: string;
   display_id?: number;
   paymentRequestId?: string | PaymentRequest;

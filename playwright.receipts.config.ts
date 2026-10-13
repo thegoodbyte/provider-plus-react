@@ -1,0 +1,2 @@
+import { defineConfig } from '@playwright/test';
+export default defineConfig({ testDir: './e2e', testMatch: 'payment-receipts.spec.ts', workers: 1, use: { baseURL: 'http://127.0.0.1:4390' }, projects: [{ name: 'desktop', use: { viewport: { width: 1440, height: 1000 } } }, { name: 'mobile', use: { viewport: { width: 390, height: 844 }, isMobile: true } }], webServer: { command: 'npm start', port: 4390, reuseExistingServer: false, env: { PORT: '4390', REACT_APP_API_URL: 'http://127.0.0.1:4391', REACT_APP_PROVIDER_PLUS_API_URL: 'http://127.0.0.1:4391' } } });
