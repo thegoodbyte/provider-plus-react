@@ -1,6 +1,6 @@
 import { newRequestId } from '../utils/requestId';
 import ReferralPaymentHistory from './ReferralPaymentHistory';
-import React, { FormEvent, useEffect, useMemo, useState } from 'react';
+import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { referralsApi } from '../services/api';
@@ -31,6 +31,9 @@ const ReferralsPage: React.FC = () => {
   const [sort, setSort] = useState<'client' | 'retreat' | 'referral'>('referral');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
+  const editorRef = useRef<HTMLFormElement>(null);
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
   const [payoutRows, setPayoutRows] = useState<ReferralReportRow[]>([]);
   const [paying, setPaying] = useState(false);
@@ -52,7 +55,7 @@ const ReferralsPage: React.FC = () => {
   };
 
   useEffect(() => { void load(); }, []);
-  const reset = () => { setForm(empty); setEditingId(''); setError(''); };
+  const reset = () => { setForm(empty); setEditingId(''); setError(''); setSavedMessage(''); };
   const addRule = () => setForm(current => ({ ...current, rateSchedule: [...(current.rateSchedule || []), emptyRule()] }));
   const removeRule = (index: number) => setForm(current => ({ ...current, rateSchedule: (current.rateSchedule || []).filter((_, i) => i !== index) }));
   const updateRule = (index: number, patch: Partial<ReferralRateRule>) => setForm(current => ({
@@ -65,14 +68,21 @@ const ReferralsPage: React.FC = () => {
   });
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving) return;
+    setSavedMessage('');
     if (!form.name.trim()) return setError('Referral name is required.');
     if (!/^[A-Za-z]{2}$/.test(form.referralCode)) return setError('Referral code must contain exactly two letters.');
+    setSaving(true);
+    setError('');
     try {
-      editingId ? await referralsApi.update(editingId, { ...form, influenceCommissionPercentage: form.influenceCommissionPercentage === '' ? null : form.influenceCommissionPercentage }) : await referralsApi.create({ ...form, influenceCommissionPercentage: form.influenceCommissionPercentage === '' ? null : form.influenceCommissionPercentage });
-      reset();
+      const response = editingId ? await referralsApi.update(editingId, { ...form, influenceCommissionPercentage: form.influenceCommissionPercentage === '' ? null : form.influenceCommissionPercentage }) : await referralsApi.create({ ...form, influenceCommissionPercentage: form.influenceCommissionPercentage === '' ? null : form.influenceCommissionPercentage });
+      if (!editingId && response.data?._id) setEditingId(response.data._id);
       await load();
+      setSavedMessage('Referral saved. Rate schedule and commission packages are saved together.');
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Could not save referral.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -137,10 +147,11 @@ const ReferralsPage: React.FC = () => {
         {selectedReferral && <button type="button" onClick={() => setSelectedReferral('')} className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 font-bold text-slate-700">Show all referrals</button>}
       </div>
     </div>
-    {error && <div className="mb-4 rounded-xl bg-red-50 p-3 font-semibold text-red-700">{error}</div>}
+    {error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 font-semibold text-red-700">{error}</div>}
 
-    <form onSubmit={save} className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <form ref={editorRef} aria-label="Referral settings" onSubmit={save} onChange={() => setSavedMessage('')} onInvalidCapture={() => { setSavedMessage(''); setError('Complete the required fields and check the dates, prices and percentages before saving.'); }} className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">{editingId ? 'Edit referral' : 'Add referral'}</h2>{editingId && <button type="button" onClick={reset} aria-label="Cancel editing"><X size={20} /></button>}</div>
+      <p className="mb-3 text-sm text-slate-600">To change an existing partner, choose its Edit commission settings button below. Save buttons store all settings for the partner shown here.</p>
       <div className="grid gap-3 md:grid-cols-5">
         <input value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Name *" className="min-h-12 rounded-xl border border-slate-300 px-3" required />
         <input value={form.referralCode} maxLength={2} onChange={event => setForm({ ...form, referralCode: event.target.value.replace(/[^a-z]/gi, '').toUpperCase() })} placeholder="Code (AD) *" className="min-h-12 rounded-xl border border-slate-300 px-3 uppercase" required />
@@ -154,9 +165,16 @@ const ReferralsPage: React.FC = () => {
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.allowRepeatBookingCredit} onChange={event => setForm({ ...form, allowRepeatBookingCredit: event.target.checked })} />Allow explicitly credited repeat bookings</label>
       </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200 p-3">
-        <div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-bold text-slate-700">Rate schedule (optional)</h3><button type="button" onClick={addRule} className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold">+ Add rate rule</button></div>
-        <p className="mb-3 text-xs text-slate-500">When a rule's date range covers a booking's registration date, its rate wins over the default commission %. Use price tiers when the rate changes by booking price within the same period.</p>
+      <section aria-label="How commission rules work" className="mt-4 rounded-xl bg-blue-50 p-4 text-sm text-slate-700">
+        <h3 className="font-bold text-slate-900">Which commission rule applies?</h3>
+        <p className="mt-2"><strong>Commission packages are recommended for new agreements.</strong> Name each package, choose its booking dates and currency, then set a percentage, price tiers or a fixed amount. For example: “Summer 10%” for EUR bookings from June through August.</p>
+        <p className="mt-2">When any packages exist, they replace the default percentage and rate schedule. A booking outside their dates or currencies shows “Needs configuration”; it does not fall back to another rate. Package dates use Prague time and include the end date.</p>
+        <p className="mt-2">The rate schedule is the older percentage-only option. You do not need to configure both. An explicit influence percentage takes priority for influenced bookings. Recorded payments keep their original amounts and package details.</p>
+      </section>
+      <ReferralPackagesEditor value={form.commissionPackages} onChange={commissionPackages => setForm({ ...form, commissionPackages })} saveAction={<button type="submit" disabled={saving} className="mt-3 min-h-11 rounded-lg bg-blue-600 px-4 font-bold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save commission packages'}</button>} />
+      <section aria-label="Rate schedule" className="mt-4 rounded-xl border border-slate-200 p-3">
+        <div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-bold text-slate-700">Rate schedule (legacy percentage rules)</h3><button type="button" onClick={addRule} className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold">+ Add rate rule</button></div>
+        <p className="mb-3 text-xs text-slate-500">Use this for existing percentage-only agreements when no commission packages are configured. It selects a percentage by booking registration date and price tier, then falls back to the default percentage if no rule matches. Client or retreat percentage overrides still take priority. Price thresholds use the booking currency; these rules have no currency filter.</p>
         {(form.rateSchedule || []).map((rule, ruleIndex) => <div key={ruleIndex} className="mb-2 rounded-lg bg-slate-50 p-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
         <label className="text-xs font-semibold text-slate-600">From<input type="date" value={rule.effectiveFrom} onChange={event => updateRule(ruleIndex, { effectiveFrom: event.target.value })} className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 px-2" required /></label>
@@ -172,13 +190,13 @@ const ReferralsPage: React.FC = () => {
             <button type="button" onClick={() => addTier(ruleIndex)} className="text-xs font-bold text-blue-700 hover:underline">+ Add price tier</button>
           </div>
         </div>)}
-        {!(form.rateSchedule || []).length && <p className="text-sm text-slate-400">No dated rate rules — the default commission % always applies.</p>}
-      </div>
-
-      <ReferralPackagesEditor value={form.commissionPackages} onChange={commissionPackages => setForm({ ...form, commissionPackages })} />
+        {!(form.rateSchedule || []).length && <p className="text-sm text-slate-400">No dated rate rules. Without packages or other overrides, the default commission % applies.</p>}
+        {form.commissionPackages.length > 0 && <p className="my-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Commission packages are configured, so this rate schedule is saved but does not apply. Remove all packages to use the rate schedule again.</p>}
+        <button type="submit" disabled={saving} className="mt-3 min-h-11 rounded-lg bg-blue-600 px-4 font-bold text-white disabled:opacity-50">{saving ? 'Saving…' : 'Save rate schedule'}</button>
+      </section>
       <textarea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} placeholder="Notes" className="mt-3 min-h-20 w-full rounded-xl border border-slate-300 p-3" />
       <label className="mt-3 flex items-center gap-2"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} /> Active</label>
-      <button className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl bg-blue-600 px-5 font-bold text-white"><Plus size={19} />{editingId ? 'Save changes' : 'Add referral'}</button>
+      <div className="sticky bottom-0 z-10 mt-4 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white py-3"><button type="submit" disabled={saving} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-blue-600 px-5 font-bold text-white"><Plus size={19} />{saving ? 'Saving…' : editingId ? 'Save changes' : 'Add referral'}</button><span className="text-xs text-slate-500">Saves the partner, rates and packages together.</span>{savedMessage && <p role="status" className="w-full text-sm font-semibold text-emerald-700">{savedMessage}</p>}</div>
     </form>
     {editingId && <ReferralPortalAccountEditor key={editingId} referralId={editingId} defaultEmail={form.email} />}
 
@@ -189,7 +207,7 @@ const ReferralsPage: React.FC = () => {
         return <div key={row._id} role="button" tabIndex={0} onClick={() => setSelectedReferral(selected ? '' : row._id || '')} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setSelectedReferral(selected ? '' : row._id || ''); }} className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-4 shadow-sm transition ${selected ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-300'}`}>
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 font-black text-blue-800">{row.referralCode || initials(row.name) || '--'}</span>
           <div className="min-w-0 flex-1"><div className="font-bold text-slate-950">{row.name} {row.isActive === false && <span className="text-xs text-slate-400">Inactive</span>}</div><div className="text-sm text-slate-500">{Number(row.defaultCommissionPercentage || 0)}% commission · {count} booking{count === 1 ? '' : 's'}</div></div>
-          <button type="button" aria-label={`Edit ${row.name}`} onClick={event => { event.stopPropagation(); setEditingId(row._id || ''); setForm({ name: row.name, referralCode: row.referralCode || initials(row.name).slice(0, 2), defaultCommissionPercentage: Number(row.defaultCommissionPercentage || 0), influenceCommissionPercentage: row.influenceCommissionPercentage ?? '', allowRepeatBookingCredit: row.allowRepeatBookingCredit !== false, email: row.email || '', phone: row.phone || '', notes: row.notes || '', isActive: row.isActive !== false, commissionPackages: row.commissionPackages || [], rateSchedule: (row.rateSchedule || []).map(rule => ({ ...rule, effectiveFrom: toDateInput(rule.effectiveFrom), effectiveTo: toDateInput(rule.effectiveTo) })) }); }} className="rounded-lg p-2 hover:bg-slate-100"><Pencil size={18} /></button>
+          <button type="button" aria-label={`Edit ${row.name}`} onClick={event => { event.stopPropagation(); setSavedMessage(''); setError(''); setEditingId(row._id || ''); editorRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); setForm({ name: row.name, referralCode: row.referralCode || initials(row.name).slice(0, 2), defaultCommissionPercentage: Number(row.defaultCommissionPercentage || 0), influenceCommissionPercentage: row.influenceCommissionPercentage ?? '', allowRepeatBookingCredit: row.allowRepeatBookingCredit !== false, email: row.email || '', phone: row.phone || '', notes: row.notes || '', isActive: row.isActive !== false, commissionPackages: row.commissionPackages || [], rateSchedule: (row.rateSchedule || []).map(rule => ({ ...rule, effectiveFrom: toDateInput(rule.effectiveFrom), effectiveTo: toDateInput(rule.effectiveTo) })) }); }} className="rounded-lg p-2 hover:bg-slate-100"><Pencil size={18} /><span className="ml-1 text-xs font-semibold">Edit commission settings</span></button>
           <button type="button" aria-label={`Delete ${row.name}`} onClick={async event => { event.stopPropagation(); if (row._id && window.confirm(`Delete referral “${row.name}”?`)) { await referralsApi.delete(row._id); if (selectedReferral === row._id) setSelectedReferral(''); await load(); } }} className="rounded-lg p-2 text-red-600 hover:bg-red-50"><Trash2 size={18} /></button>
           <ChevronRight className={`text-slate-400 transition ${selected ? 'rotate-90' : ''}`} size={20} />
         </div>;

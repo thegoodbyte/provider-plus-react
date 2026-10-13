@@ -443,8 +443,9 @@ export const referralsApi = {
   getPayouts: () => api.get<RetreatExpense[]>('/referrals/payouts'),
   voidPayout: (id: string, reason: string) => api.post<RetreatExpense>(`/referrals/payouts/${id}/void`, { reason }),
   createPayout: (data: { requestId?: string; referralId: string; retreatId: string; bookingIds: string[]; expenseDate?: string; paymentMethod?: string; paymentAccount?: string; reference?: string; notes?: string }) => api.post<RetreatExpense>('/referrals/payouts', data),
-  create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data),
-  update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data),
+  // The settings form owns save errors; the global overlay would remount it and lose edits.
+  create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data, { suppressGlobalError: true } as ReadOptions),
+  update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data, { suppressGlobalError: true } as ReadOptions),
   delete: (id: string) => api.delete(`/referrals/${id}`),
 };
 

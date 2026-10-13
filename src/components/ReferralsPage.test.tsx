@@ -22,6 +22,56 @@ describe('ReferralsPage payout workflow', () => {
     (referralsApi.createPayout as jest.Mock).mockResolvedValue({ data: { _id: 'expense' } });
   });
 
+  it('shows section save buttons, explains precedence and keeps saved settings open', async () => {
+    const commissionPackages = [{ key: 'summer', name: 'Summer 10%', effectiveFrom: '2026-06-01', bookingCurrency: 'EUR', kind: 'percentage', ratePercent: 10 }];
+    (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [{ ...partner, commissionPackages }] });
+    view();
+    await screen.findAllByText('Eva Novak');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Partners' }));
+    const packages = screen.getByRole('region', { name: 'Commission packages' });
+    expect(within(packages).getByRole('button', { name: 'Save commission packages' })).toBeVisible();
+    expect(screen.getByText(/this rate schedule is saved but does not apply/)).toBeVisible();
+    fireEvent.change(within(packages).getByLabelText('Rate %'), { target: { value: '15' } });
+    fireEvent.click(within(packages).getByRole('button', { name: 'Save commission packages' }));
+    await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ commissionPackages: [expect.objectContaining({ ratePercent: 15 })], rateSchedule: [] })));
+    expect(await screen.findByText('Referral saved. Rate schedule and commission packages are saved together.')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Edit referral' })).toBeVisible();
+    expect(within(packages).getByLabelText('Rate %')).toHaveValue(15);
+    fireEvent.change(within(packages).getByLabelText('Rate %'), { target: { value: '16' } });
+    expect(screen.queryByText('Referral saved. Rate schedule and commission packages are saved together.')).not.toBeInTheDocument();
+  });
+
+  it('saves a rate from its section and preserves edits on failure for retry', async () => {
+    view();
+    await screen.findAllByText('Eva Novak');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Partners' }));
+    const rates = screen.getByRole('region', { name: 'Rate schedule' });
+    fireEvent.click(within(rates).getByRole('button', { name: '+ Add rate rule' }));
+    fireEvent.change(within(rates).getByLabelText('Rate %'), { target: { value: '12' } });
+    (referralsApi.update as jest.Mock).mockRejectedValueOnce({ response: { data: { message: 'Could not store settings. Retry.' } } });
+    fireEvent.click(within(rates).getByRole('button', { name: 'Save rate schedule' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not store settings. Retry.');
+    expect(within(rates).getByLabelText('Rate %')).toHaveValue(12);
+    expect(screen.queryByText('Referral saved. Rate schedule and commission packages are saved together.')).not.toBeInTheDocument();
+    fireEvent.click(within(rates).getByRole('button', { name: 'Save rate schedule' }));
+    await screen.findByText('Referral saved. Rate schedule and commission packages are saved together.');
+    expect(referralsApi.update).toHaveBeenLastCalledWith('r1', expect.objectContaining({ rateSchedule: [expect.objectContaining({ tiers: [{ minPrice: 0, ratePercent: 12 }] })] }));
+  });
+
+  it('disables every save action while saving to prevent duplicate submissions', async () => {
+    let complete: (value: any) => void = () => {};
+    (referralsApi.update as jest.Mock).mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    view();
+    await screen.findAllByText('Eva Novak');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Partners' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save commission packages' }));
+    expect(screen.getAllByRole('button', { name: 'Saving…' })).toHaveLength(3);
+    screen.getAllByRole('button', { name: 'Saving…' }).forEach(button => expect(button).toBeDisabled());
+    expect(referralsApi.update).toHaveBeenCalledTimes(1);
+    complete({ data: partner });
+    await screen.findByText('Referral saved. Rate schedule and commission packages are saved together.');
+  });
+
   it('saves influence rates and repeat-credit rules, including an explicit zero', async () => {
     view();
     await screen.findAllByText('Eva Novak');
