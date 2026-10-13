@@ -1284,7 +1284,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <SpaRoundedIcon className="retreat-tab-icon"/><span>Integration</span>
           </button>
         )}
-        {['admin','facilitator'].includes(authService.getUser()?.role || '') && <button className={`tab-btn ${activeTab === 'closeout' ? 'active' : ''}`} onClick={() => handleTabChange('closeout')} role="tab" aria-selected={activeTab === 'closeout'}><TaskAltRoundedIcon className="retreat-tab-icon"/><span>Closeout</span></button>}
+        {isTabAvailableForRetreat('closeout', retreat) && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <button className={`tab-btn ${activeTab === 'closeout' ? 'active' : ''}`} onClick={() => handleTabChange('closeout')} role="tab" aria-selected={activeTab === 'closeout'}><TaskAltRoundedIcon className="retreat-tab-icon"/><span>Closeout</span></button>}
       </div>
 
       <div className="retreat-detail-tab-content">
