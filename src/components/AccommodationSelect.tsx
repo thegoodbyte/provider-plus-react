@@ -9,12 +9,16 @@ export default function AccommodationSelect({
   onChange,
   disabled = false,
   preference = false,
+  offeredOptions,
+  optionDescriptions,
 }: {
   value?: string;
   clientId?: string;
   onChange: (key: string, legacy: string) => void;
   disabled?: boolean;
   preference?: boolean;
+  offeredOptions?: AccommodationOption[];
+  optionDescriptions?: Record<string, string>;
 }) {
   const [options, setOptions] = useState<AccommodationOption[]>([]);
   const [suggested, setSuggested] = useState<{
@@ -24,6 +28,9 @@ export default function AccommodationSelect({
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
+    if (offeredOptions) {
+      return;
+    }
     roomInventoryApi
       .options()
       .then((r) => {
@@ -35,7 +42,7 @@ export default function AccommodationSelect({
     return () => {
       active = false;
     };
-  }, []);
+  }, [offeredOptions]);
   useEffect(() => {
     let active = true;
     setSuggested(null);
@@ -53,9 +60,12 @@ export default function AccommodationSelect({
     };
   }, [clientId]);
   const selected = value === undefined ? suggested?.key || "" : value;
+  const displayedOptions = offeredOptions || options;
   const missing =
     selected &&
-    !options.some((option) => option.key === selected && option.active);
+    !displayedOptions.some(
+      (option) => option.key === selected && option.active,
+    );
   return (
     <label className="block text-sm font-medium text-gray-700">
       {preference ? "Desired accommodation" : "Accommodation"}
@@ -64,18 +74,21 @@ export default function AccommodationSelect({
         value={selected}
         disabled={disabled}
         onChange={(event) => {
-          const option = options.find(
+          const option = displayedOptions.find(
             (item) => item.key === event.target.value,
           );
           onChange(event.target.value, option?.legacyRoomType || "unspecified");
         }}
       >
         <option value="">Not decided</option>
-        {options
+        {displayedOptions
           .filter((option) => option.active)
           .map((option) => (
             <option key={option.key} value={option.key}>
               {option.labels.en}
+              {optionDescriptions?.[option.key]
+                ? ` — ${optionDescriptions[option.key]}`
+                : ""}
             </option>
           ))}
         {missing && (

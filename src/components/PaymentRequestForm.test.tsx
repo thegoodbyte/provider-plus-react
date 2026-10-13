@@ -1,4 +1,4 @@
-jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { options: async () => ({data:[]}), preference: async () => ({data:{key:''}}) } }));
+jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { paymentAccommodation: async () => ({ data: { options: [], rooms: [], configured: false, house: null } }), options: async () => ({data:[]}), preference: async () => ({data:{key:''}}) } }));
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PaymentRequestForm, { calculateRoomAdjustedPrice } from './PaymentRequestForm';

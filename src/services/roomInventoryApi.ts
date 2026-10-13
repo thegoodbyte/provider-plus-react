@@ -8,6 +8,32 @@ export type AccommodationOption = {
   legacyRoomType?: string;
   prices: Record<string, number>;
 };
+export type PaymentAccommodationInventory = {
+  retreatId: string;
+  house: { _id: string; name: string } | null;
+  configured: boolean;
+  houseChanged: boolean;
+  unallocatedConfirmed: number;
+  checkedAt: string;
+  options: Array<
+    AccommodationOption & {
+      supported: boolean;
+      availableUnits: number | null;
+      unit: "rooms" | "beds";
+    }
+  >;
+  rooms: Array<{
+    roomId: string;
+    name: string;
+    floor: string;
+    beds: number | null;
+    hasBathroom: boolean;
+    occupied: number;
+    freeBeds: number | null;
+    exclusiveUse: boolean;
+    status: string;
+  }>;
+};
 export const roomInventoryApi = {
   options: () => api.get<AccommodationOption[]>("/room-inventory/options"),
   saveOptions: (options: AccommodationOption[]) =>
@@ -15,6 +41,10 @@ export const roomInventoryApi = {
   preference: (clientId: string) =>
     api.get("/room-inventory/preference/" + clientId),
   view: (retreatId: string) => api.get("/room-inventory/retreat/" + retreatId),
+  paymentAccommodation: (retreatId: string) =>
+    api.get<PaymentAccommodationInventory>(
+      "/room-inventory/payment-accommodation/" + retreatId,
+    ),
   configure: (retreatId: string, body: any) =>
     api.patch("/room-inventory/retreat/" + retreatId, body),
   quote: (bookingId: string, body: any) =>

@@ -1,4 +1,4 @@
-import AccommodationSelect from './AccommodationSelect';
+import PaymentAccommodation from './PaymentAccommodation';
 import React, { useEffect, useState } from 'react';
 import { PaymentRequest, PaymentRequestLineItem, Client, Retreat, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -642,7 +642,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <h3 className="font-semibold text-slate-900">Accommodation choice</h3>
               <p className="mt-1 text-xs text-slate-600">This choice is copied into the booking when you create it from this payment request.</p>
               <div className="mt-3 grid gap-4 md:grid-cols-3">
-                <AccommodationSelect clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as NonNullable<PaymentRequest['roomType']> }))} />
+                <PaymentAccommodation retreatId={formData.retreatId} clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as NonNullable<PaymentRequest['roomType']> }))} />
                 <label className="text-sm font-medium text-gray-700">Adjustment<select value={formData.roomAdjustmentType} onChange={event => handleChange('roomAdjustmentType', event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="none">No adjustment</option><option value="discount">Discount</option><option value="surcharge">Surcharge</option></select></label>
                 <label className="text-sm font-medium text-gray-700">Adjustment amount<input type="number" min="0" step="0.01" value={formData.roomAdjustmentAmount} onChange={event => handleChange('roomAdjustmentAmount', Number(event.target.value))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /></label>
               </div>
