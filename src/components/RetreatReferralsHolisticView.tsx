@@ -612,10 +612,6 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
                                       <span className="font-bold text-slate-800">
                                         {new Date(booking.firstPaymentDate).toLocaleDateString('cs-CZ')}
                                       </span>
-                                    ) : (booking as any).paidAt ? (
-                                      <span className="font-bold text-slate-800">
-                                        {new Date((booking as any).paidAt).toLocaleDateString('cs-CZ')}
-                                      </span>
                                     ) : (
                                       <span className="text-slate-400">—</span>
                                     )}
@@ -732,17 +728,15 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
 
                               {/* Column 6: Paid Date */}
                               <td className="p-3">
-                                {(booking as any).paidAt ? (
-                                  <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">
-                                    Paid: {new Date((booking as any).paidAt).toISOString().split('T')[0]}
-                                  </span>
-                                ) : (booking as any).firstPaymentDate ? (
-                                  <span className="text-xs font-medium text-slate-600">
-                                    {new Date((booking as any).firstPaymentDate).toISOString().split('T')[0]}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-slate-400">Unpaid</span>
-                                )}
+                                <div data-testid={`referral-payment-${bId}`}>
+                                  {((booking as any).referralPayments || []).length ? (booking as any).referralPayments.map((payment: any) => (
+                                    <div key={payment.expenseId} className="mb-2 text-xs text-emerald-800">
+                                      <div className="font-bold">{payment.paidAt ? String(payment.paidAt).slice(0, 10) : 'Date not recorded'}</div>
+                                      <div>{Number(payment.amount).toLocaleString()} {payment.currency}</div>
+                                      <div>{({ bank_transfer: 'Bank transfer', cash: 'Cash', card: 'Card', other: 'Other' } as Record<string, string>)[payment.paymentMethod] || payment.paymentMethod || 'Method not recorded'}</div>
+                                    </div>
+                                  )) : null}
+                                </div>
                               </td>
 
                               {/* Column 7: Booking Paid Amount */}

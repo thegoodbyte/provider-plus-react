@@ -319,4 +319,14 @@ describe('RetreatReferralsHolisticView component', () => {
     expect(screen.getByText('Booking date:')).toBeInTheDocument();
     expect(screen.getByText(new Date('2026-09-15T00:00:00.000Z').toLocaleDateString('cs-CZ'))).toBeInTheDocument();
   });
+  it('does not confuse client payments or legacy paidAt with referral payouts', () => {
+    render(<MemoryRouter><RetreatReferralsHolisticView {...defaultProps} bookings={[{...mockBookings[0], firstPaymentDate:'2026-09-15', paidAt:'2026-09-16'} as any]} /></MemoryRouter>);
+    expect(screen.getByTestId(`referral-payment-${mockBookings[0]._id}`)).toBeEmptyDOMElement();
+  });
+  it('shows each actual allocation date, amount, currency and method', () => {
+    render(<MemoryRouter><RetreatReferralsHolisticView {...defaultProps} bookings={[{...mockBookings[0], referralPayments:[{expenseId:'e1',paidAt:'2026-10-01',amount:100,currency:'PLN',paymentMethod:'cash'},{expenseId:'e2',paidAt:'2026-10-13',amount:50,currency:'EUR',paymentMethod:'bank_transfer'}]} as any]} /></MemoryRouter>);
+    const cell=screen.getByTestId(`referral-payment-${mockBookings[0]._id}`);
+    for (const text of ['2026-10-01','100 PLN','Cash','2026-10-13','50 EUR','Bank transfer']) expect(cell).toHaveTextContent(text);
+  });
+
 });

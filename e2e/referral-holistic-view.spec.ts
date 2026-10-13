@@ -34,7 +34,7 @@ test.describe('PPVC-777 & PPVC-781 Referral Holistic Assignment View', () => {
       backgroundColor: '#f4b285',
     };
 
-    const bookings = [
+    const bookings: any[] = [
       {
         _id: 'b-past-1',
         retreatId: pastRetreat._id,
@@ -112,6 +112,21 @@ test.describe('PPVC-777 & PPVC-781 Referral Holistic Assignment View', () => {
     await expect(page.getByText('Dana Babicova')).toBeVisible();
     await expect(page.getByText('Jan Kowalski')).toBeVisible();
     await expect(page.getByText('Booking date:').first()).toBeVisible();
+
+    // PPVC-785: client payment does not populate referral payout date.
+    await expect(page.getByTestId('referral-payment-b-past-1')).toBeEmpty();
+    bookings[0].referralPayments = [{ expenseId: 'payout-1', paidAt: '2026-10-01', amount: 150, currency: 'EUR', paymentMethod: 'cash' }, { expenseId: 'payout-2', paidAt: '2026-10-13', amount: 50, currency: 'EUR', paymentMethod: 'bank_transfer' }];
+    await page.reload();
+    const payoutCell = page.getByTestId('referral-payment-b-past-1');
+    await expect(payoutCell).toContainText('2026-10-01');
+    await expect(payoutCell).toContainText('150 EUR');
+    await expect(payoutCell).toContainText('Cash');
+    await expect(payoutCell).toContainText('50 EUR');
+    await expect(payoutCell).toContainText('Bank transfer');
+    // API returns no active allocation after a payout is voided.
+    bookings[0].referralPayments = [];
+    await page.reload();
+    await expect(page.getByTestId('referral-payment-b-past-1')).toBeEmpty();
 
     // 4. Test Retreat filter dropdown
     const retreatFilter = page.getByLabel('Filter by Retreat');
