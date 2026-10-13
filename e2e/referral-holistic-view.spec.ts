@@ -78,6 +78,7 @@ test.describe('PPVC-777 & PPVC-781 Referral Holistic Assignment View', () => {
       const url = new URL(request.url());
 
       if (url.port === '3000') return route.continue();
+      if (url.pathname === '/environment/status') return route.fulfill({ json: { environment: 'local', production: false, enabledJobs: [] } });
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === '/retreats' && request.method() === 'GET') {
         return route.fulfill({ json: [pastRetreat, futureRetreat] });
@@ -98,13 +99,14 @@ test.describe('PPVC-777 & PPVC-781 Referral Holistic Assignment View', () => {
       return route.fulfill({ json: [] });
     });
 
+    page.on('pageerror', error => console.log('Browser error:', error.message));
     // 1. Navigate to holistic referrals view
     await page.goto('/admin/retreats?view=referrals');
 
     // 2. Verify all retreats (past and future) are rendered
     await expect(page.getByRole('heading', { name: 'Holistic Booking Referral Assignment' })).toBeVisible();
-    await expect(page.getByText('SBR-2026')).toBeVisible();
-    await expect(page.getByText('AIR-2026')).toBeVisible();
+    await expect(page.getByText('SBR-2026', { exact: true })).toBeVisible();
+    await expect(page.getByText('AIR-2026', { exact: true })).toBeVisible();
 
     // 3. Verify client names and "Booking date" displays
     await expect(page.getByText('Dana Babicova')).toBeVisible();
@@ -116,13 +118,13 @@ test.describe('PPVC-777 & PPVC-781 Referral Holistic Assignment View', () => {
     await retreatFilter.selectOption(futureRetreat._id);
 
     // Only future retreat is visible; past retreat is filtered out
-    await expect(page.getByText('AIR-2026')).toBeVisible();
-    await expect(page.getByText('SBR-2026')).not.toBeVisible();
+    await expect(page.getByText('AIR-2026', { exact: true })).toBeVisible();
+    await expect(page.getByText('SBR-2026', { exact: true })).not.toBeVisible();
 
     // Reset retreat filter to All Retreats
     await retreatFilter.selectOption('');
-    await expect(page.getByText('SBR-2026')).toBeVisible();
-    await expect(page.getByText('AIR-2026')).toBeVisible();
+    await expect(page.getByText('SBR-2026', { exact: true })).toBeVisible();
+    await expect(page.getByText('AIR-2026', { exact: true })).toBeVisible();
 
     // 5. Test Partner filter dropdown
     const partnerFilter = page.getByLabel('Filter by Referral Partner');
