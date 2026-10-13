@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, Edit3, Lock, RotateCcw, Save, Search, Users, X } from 'lucide-react';
+import { Check, Copy, Edit3, Lock, Save, Search, X } from 'lucide-react';
 import { Referral, Retreat, RetreatClient, REFERRAL_ATTRIBUTION_OPTIONS } from '../types';
 import { formatRetreatCalendarDate } from './RetreatsGrid.helpers';
 import { bookingsApi } from '../services/api';
+import { formatRefereeId } from '../utils/refereeId';
 
 type Props = {
   retreats: Retreat[];
@@ -25,20 +26,37 @@ const money = (booking: any) =>
     ? `${Number(booking.totalAmount).toLocaleString()} ${booking.currency || ''}`.trim()
     : '—';
 
+export type BookingAttributionState = {
+  partnerId: string | null;
+  attribution: string;
+  verifiedDate?: string | null;
+  paymentNote?: string;
+};
+
 export function computeInitialBookingAttribution(
   booking: RetreatClient,
   allBookingsForClient: RetreatClient[]
-): { partnerId: string | null; attribution: string } {
+): BookingAttributionState {
+  const verifiedDate = booking.referralVerifiedDate
+    ? new Date(booking.referralVerifiedDate).toISOString().split('T')[0]
+    : null;
+  const paymentNote = booking.referralPaymentNote || '';
+
   // 1. If booking already has an explicit attribution set in DB, preserve it
   if (booking.referralAttribution) {
     const rawPartner = (booking as any).referralPartnerId;
     const partnerId = rawPartner && typeof rawPartner === 'object' ? rawPartner._id : rawPartner || null;
-    return { partnerId: partnerId ? String(partnerId) : null, attribution: booking.referralAttribution };
+    return {
+      partnerId: partnerId ? String(partnerId) : null,
+      attribution: booking.referralAttribution,
+      verifiedDate,
+      paymentNote,
+    };
   }
 
   // 2. If it's a booster, default to SELF
   if (booking.bookingType === 'booster') {
-    return { partnerId: null, attribution: 'self' };
+    return { partnerId: null, attribution: 'self', verifiedDate, paymentNote };
   }
 
   // 3. Check client booking order (first vs repeat)
@@ -52,7 +70,7 @@ export function computeInitialBookingAttribution(
 
   if (!isFirst) {
     // Second booking or later defaults to SELF
-    return { partnerId: null, attribution: 'self' };
+    return { partnerId: null, attribution: 'self', verifiedDate, paymentNote };
   }
 
   // First booking by client: take referral from client profile if present
@@ -60,10 +78,16 @@ export function computeInitialBookingAttribution(
   if (client && typeof client === 'object' && client.referralId) {
     const partnerId = typeof client.referralId === 'object' ? client.referralId._id : client.referralId;
     const attribution = client.referralAttributionType === 'self_identified' ? 'self_identified' : 'direct';
-    return { partnerId: partnerId ? String(partnerId) : null, attribution };
+    const autoVerifiedDate = verifiedDate || (booking as any).registrationDate || new Date().toISOString().split('T')[0];
+    return {
+      partnerId: partnerId ? String(partnerId) : null,
+      attribution,
+      verifiedDate: autoVerifiedDate ? new Date(autoVerifiedDate).toISOString().split('T')[0] : null,
+      paymentNote,
+    };
   }
 
-  return { partnerId: null, attribution: 'unknown' };
+  return { partnerId: null, attribution: 'unknown', verifiedDate, paymentNote };
 }
 
 export const RetreatReferralsHolisticView: React.FC<Props> = ({
@@ -85,11 +109,10 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
   const [saving, setSaving] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Staged updates: bookingId -> { partnerId: string | null, attribution: string }
-  const [stagedEdits, setStagedEdits] = useState<
-    Record<string, { partnerId: string | null; attribution: string }>
-  >({});
+  // Staged updates: bookingId -> BookingAttributionState
+  const [stagedEdits, setStagedEdits] = useState<Record<string, BookingAttributionState>>({});
 
   // Group all non-cancelled bookings by clientId to evaluate booking order
   const clientBookingsMap = useMemo(() => {
@@ -104,7 +127,7 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
   }, [bookings, getId]);
 
   // Compute effective state for each booking (DB + staged edits)
-  const getBookingState = (booking: RetreatClient) => {
+  const getBookingState = (booking: RetreatClient): BookingAttributionState => {
     const bId = getId(booking);
     if (stagedEdits[bId]) {
       return stagedEdits[bId];
@@ -141,12 +164,30 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
             )[0]?._id
           ) === String(booking._id);
 
+        const client: any = booking.clientId;
+        const refereeId = formatRefereeId({
+          firstName: client?.firstName || client?.fname,
+          lastName: client?.lastName || client?.lname,
+          phone: client?.phone,
+          retreatCode: getCode(retreat),
+          bookingNumber: booking.bookingNumber,
+        });
+
+        // Determine if this booking is already referred by someone else
+        const isLockedToOtherPartner = Boolean(
+          selectedPartnerId && state.partnerId && state.partnerId !== selectedPartnerId
+        );
+
         return {
           booking,
           partnerId: state.partnerId,
           attribution: state.attribution,
+          verifiedDate: state.verifiedDate,
+          paymentNote: state.paymentNote,
           isModified,
           isFirst,
+          refereeId,
+          isLockedToOtherPartner,
         };
       });
 
@@ -158,7 +199,8 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
         const name = getClientName(row.booking).toLowerCase();
         const num = String(row.booking.bookingNumber || '').toLowerCase();
         const cId = String(getClientDisplayId(row.booking)).toLowerCase();
-        return name.includes(query) || num.includes(query) || cId.includes(query);
+        const refId = row.refereeId.toLowerCase();
+        return name.includes(query) || num.includes(query) || cId.includes(query) || refId.includes(query);
       });
 
       return {
@@ -177,6 +219,7 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
     stagedEdits,
     clientBookingsMap,
     getId,
+    getCode,
     getClientName,
     getClientDisplayId,
   ]);
@@ -193,6 +236,16 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
     });
   };
 
+  const handleCopyRefereeId = async (id: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (e) {
+      console.warn('Could not copy referee ID to clipboard', e);
+    }
+  };
+
   const handlePartnerChange = (bookingId: string, partnerId: string | null) => {
     setStagedEdits((cur) => {
       const prev = cur[bookingId] || getBookingState(bookings.find((b) => getId(b) === bookingId)!);
@@ -201,11 +254,12 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
         [bookingId]: {
           ...prev,
           partnerId: partnerId || null,
-          // If partner is selected and attribution was none/unknown/self, default to direct
           attribution:
             partnerId && (prev.attribution === 'unknown' || prev.attribution === 'self')
               ? 'direct'
               : prev.attribution,
+          verifiedDate:
+            partnerId && !prev.verifiedDate ? new Date().toISOString().split('T')[0] : prev.verifiedDate,
         },
       };
     });
@@ -219,8 +273,33 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
         [bookingId]: {
           ...prev,
           attribution,
-          // If self, clear partnerId
           partnerId: attribution === 'self' ? null : prev.partnerId,
+        },
+      };
+    });
+  };
+
+  const handleVerifiedDateChange = (bookingId: string, date: string) => {
+    setStagedEdits((cur) => {
+      const prev = cur[bookingId] || getBookingState(bookings.find((b) => getId(b) === bookingId)!);
+      return {
+        ...cur,
+        [bookingId]: {
+          ...prev,
+          verifiedDate: date || null,
+        },
+      };
+    });
+  };
+
+  const handlePaymentNoteChange = (bookingId: string, note: string) => {
+    setStagedEdits((cur) => {
+      const prev = cur[bookingId] || getBookingState(bookings.find((b) => getId(b) === bookingId)!);
+      return {
+        ...cur,
+        [bookingId]: {
+          ...prev,
+          paymentNote: note,
         },
       };
     });
@@ -246,6 +325,8 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
         referralPartnerId: state.partnerId,
         referralAttribution: state.attribution,
         referralEvidence: 'Assigned via holistic referrals view',
+        referralVerifiedDate: state.verifiedDate || undefined,
+        referralPaymentNote: state.paymentNote || undefined,
       }));
 
       await bookingsApi.batchUpdateReferralAttribution(updates);
@@ -289,7 +370,7 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
             <p className="mt-1 text-sm text-slate-500">
               {selectedPartner
                 ? `Showing bookings and attribution status associated with ${selectedPartner.name} (${selectedPartner.referralCode || 'Partner'}).`
-                : 'Holistically view and assign referral partners and attribution types across every retreat.'}
+                : 'Holistically view, assign, and verify referral partners, payout references, and attribution types across retreats.'}
             </p>
           </div>
 
@@ -341,7 +422,7 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search client name, booking or ID…"
+              placeholder="Search client, ID, booking, or referee ID…"
               aria-label="Search bookings in referral view"
               className="min-h-10 w-full rounded-xl border border-slate-300 pl-10 pr-3 text-sm focus:border-blue-500 focus:outline-none"
             />
@@ -378,8 +459,8 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
       {/* Edit Mode Notice */}
       {isEditMode && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm font-medium text-amber-900 shadow-sm">
-          <strong>Screen locked in Edit Mode:</strong> Update the Referral Partner and Attribution Type dropdowns
-          below. When finished, click <strong>Save Changes</strong> in the floating bar at the bottom.
+          <strong>Screen locked in Edit Mode:</strong> Update the Referral Partner, Attribution Type, Verified Date,
+          and Payment Note below. If a booking is already referred by another partner, its dropdown is locked to protect attribution integrity.
         </div>
       )}
 
@@ -427,29 +508,44 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
               {/* Bookings Table */}
               {!isCollapsed && (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200">
+                  <table className="min-w-full divide-y divide-slate-200 text-left">
                     <thead>
-                      <tr className="bg-slate-50 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                      <tr className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
                         <th className="p-3">Bookings</th>
+                        <th className="p-3">Referee ID</th>
                         <th className="p-3">Referral Partner</th>
-                        <th className="p-3">Attribution Type</th>
-                        <th className="p-3 text-right">Amount</th>
+                        <th className="p-3">Attribution</th>
+                        <th className="p-3">Verified Date</th>
+                        <th className="p-3">Paid Date</th>
+                        <th className="p-3 text-right">Booking Paid</th>
+                        <th className="p-3">Payment Note</th>
                         {isEditMode && <th className="p-3 text-center">Status</th>}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {group.filtered.map(({ booking, partnerId, attribution, isModified, isFirst }) => {
-                        const bId = getId(booking);
-                        const assignedPartner = referrals.find((r) => r._id === partnerId);
+                    <tbody className="divide-y divide-slate-100 text-sm">
+                      {group.filtered.map(
+                        ({
+                          booking,
+                          partnerId,
+                          attribution,
+                          verifiedDate,
+                          paymentNote,
+                          isModified,
+                          isFirst,
+                          refereeId,
+                          isLockedToOtherPartner,
+                        }) => {
+                          const bId = getId(booking);
+                          const assignedPartner = referrals.find((r) => r._id === partnerId);
+                          const isCopied = copiedId === bId;
 
-                        return (
-                          <tr
-                            key={bId}
-                            className={`transition ${isModified ? 'bg-amber-50/50' : 'hover:bg-slate-50/60'}`}
-                          >
-                            {/* Column 1: Bookings */}
-                            <td className="p-3">
-                              <div className="flex items-start gap-2">
+                          return (
+                            <tr
+                              key={bId}
+                              className={`transition ${isModified ? 'bg-amber-50/50' : 'hover:bg-slate-50/60'}`}
+                            >
+                              {/* Column 1: Bookings & Client */}
+                              <td className="p-3">
                                 <div>
                                   <Link
                                     to={`/${routePrefix}/clients/${getId(booking.clientId)}`}
@@ -457,7 +553,7 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
                                   >
                                     {getClientName(booking)}
                                   </Link>
-                                  <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
                                     <Link
                                       to={`/${routePrefix}/bookings/${bId}`}
                                       className="font-semibold text-blue-700 hover:underline"
@@ -465,96 +561,187 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
                                       #{booking.bookingNumber || bId.slice(-6)}
                                     </Link>
                                     <span>·</span>
-                                    <span>Client #{getClientDisplayId(booking)}</span>
+                                    <span>#{getClientDisplayId(booking)}</span>
                                     <span>·</span>
                                     {booking.bookingType === 'booster' ? (
-                                      <span className="rounded bg-indigo-50 px-1.5 py-0.5 font-bold text-indigo-700">
+                                      <span className="rounded bg-indigo-50 px-1 py-0.5 font-bold text-indigo-700">
                                         Booster
                                       </span>
                                     ) : isFirst ? (
-                                      <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-bold text-emerald-700">
-                                        1st booking
+                                      <span className="rounded bg-emerald-50 px-1 py-0.5 font-bold text-emerald-700">
+                                        1st
                                       </span>
                                     ) : (
-                                      <span className="rounded bg-purple-50 px-1.5 py-0.5 font-bold text-purple-700">
+                                      <span className="rounded bg-purple-50 px-1 py-0.5 font-bold text-purple-700">
                                         Repeat
                                       </span>
                                     )}
                                   </div>
                                 </div>
-                              </div>
-                            </td>
+                              </td>
 
-                            {/* Column 2: Referral Partner */}
-                            <td className="p-3">
-                              {isEditMode ? (
-                                <select
-                                  aria-label={`Referral partner for ${getClientName(booking)}`}
-                                  value={partnerId || ''}
-                                  onChange={(e) => handlePartnerChange(bId, e.target.value || null)}
-                                  className="min-h-10 w-full min-w-[200px] rounded-lg border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
-                                >
-                                  <option value="">None / Unassigned</option>
-                                  {referrals.map((r) => (
-                                    <option key={r._id} value={r._id}>
-                                      {r.referralCode ? `[${r.referralCode}] ` : ''}
-                                      {r.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : assignedPartner ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-black text-blue-800">
-                                    {assignedPartner.referralCode || '--'}
-                                  </span>
-                                  <span className="font-semibold text-slate-900">{assignedPartner.name}</span>
+                              {/* Column 2: Referee ID (Copyable String) */}
+                              <td className="p-3">
+                                <div className="flex items-center gap-1.5">
+                                  <code className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-800">
+                                    {refereeId}
+                                  </code>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyRefereeId(bId, refereeId)}
+                                    title="Copy Referee ID for payment reference"
+                                    aria-label={`Copy Referee ID ${refereeId}`}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                  >
+                                    {isCopied ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                                  </button>
                                 </div>
-                              ) : (
-                                <span className="text-sm font-medium text-slate-400">— None —</span>
-                              )}
-                            </td>
+                              </td>
 
-                            {/* Column 3: Attribution Type */}
-                            <td className="p-3">
-                              {isEditMode ? (
-                                <select
-                                  aria-label={`Attribution type for ${getClientName(booking)}`}
-                                  value={attribution}
-                                  onChange={(e) => handleAttributionChange(bId, e.target.value)}
-                                  className="min-h-10 rounded-lg border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
-                                >
-                                  {REFERRAL_ATTRIBUTION_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                      {opt.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                getAttributionBadge(attribution)
-                              )}
-                            </td>
-
-                            {/* Amount */}
-                            <td className="p-3 text-right font-bold text-slate-900">{money(booking)}</td>
-
-                            {/* Status indicator in edit mode */}
-                            {isEditMode && (
-                              <td className="p-3 text-center">
-                                {isModified ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-                                    ● Modified
-                                  </span>
+                              {/* Column 3: Referral Partner */}
+                              <td className="p-3">
+                                {isEditMode ? (
+                                  isLockedToOtherPartner ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <input
+                                        type="text"
+                                        disabled
+                                        value={assignedPartner?.name || 'Referred by another partner'}
+                                        aria-label={`Locked referral partner for ${getClientName(booking)}`}
+                                        className="min-h-10 w-full min-w-[180px] rounded-lg border border-slate-200 bg-slate-100 px-2.5 text-xs font-bold text-slate-500 cursor-not-allowed opacity-80"
+                                      />
+                                      <span title="Locked because booking is assigned to a different partner">
+                                        <Lock size={14} className="text-slate-400" />
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <select
+                                      aria-label={`Referral partner for ${getClientName(booking)}`}
+                                      value={partnerId || ''}
+                                      onChange={(e) => handlePartnerChange(bId, e.target.value || null)}
+                                      className="min-h-10 w-full min-w-[180px] rounded-lg border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
+                                    >
+                                      <option value="">None / Unassigned</option>
+                                      {referrals.map((r) => (
+                                        <option key={r._id} value={r._id}>
+                                          {r.referralCode ? `[${r.referralCode}] ` : ''}
+                                          {r.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  )
+                                ) : assignedPartner ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-black text-blue-800">
+                                      {assignedPartner.referralCode || '--'}
+                                    </span>
+                                    <span className="font-semibold text-slate-900">{assignedPartner.name}</span>
+                                  </div>
                                 ) : (
-                                  <span className="text-xs text-slate-400">Unchanged</span>
+                                  <span className="text-sm font-medium text-slate-400">— None —</span>
                                 )}
                               </td>
-                            )}
-                          </tr>
-                        );
-                      })}
+
+                              {/* Column 4: Attribution Type */}
+                              <td className="p-3">
+                                {isEditMode ? (
+                                  isLockedToOtherPartner ? (
+                                    <div className="opacity-80">
+                                      {getAttributionBadge(attribution)}
+                                    </div>
+                                  ) : (
+                                    <select
+                                      aria-label={`Attribution type for ${getClientName(booking)}`}
+                                      value={attribution}
+                                      onChange={(e) => handleAttributionChange(bId, e.target.value)}
+                                      className="min-h-10 rounded-lg border border-slate-300 bg-white px-2.5 text-sm font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
+                                    >
+                                      {REFERRAL_ATTRIBUTION_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                          {opt.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  )
+                                ) : (
+                                  getAttributionBadge(attribution)
+                                )}
+                              </td>
+
+                              {/* Column 5: Verified Date */}
+                              <td className="p-3">
+                                {isEditMode ? (
+                                  <input
+                                    type="date"
+                                    value={verifiedDate || ''}
+                                    aria-label={`Verified date for ${getClientName(booking)}`}
+                                    onChange={(e) => handleVerifiedDateChange(bId, e.target.value)}
+                                    className="min-h-10 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:outline-none"
+                                  />
+                                ) : verifiedDate ? (
+                                  <span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                                    {verifiedDate}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-slate-400">—</span>
+                                )}
+                              </td>
+
+                              {/* Column 6: Paid Date */}
+                              <td className="p-3">
+                                {(booking as any).paidAt ? (
+                                  <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-800">
+                                    Paid: {new Date((booking as any).paidAt).toISOString().split('T')[0]}
+                                  </span>
+                                ) : (booking as any).firstPaymentDate ? (
+                                  <span className="text-xs font-medium text-slate-600">
+                                    {new Date((booking as any).firstPaymentDate).toISOString().split('T')[0]}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-slate-400">Unpaid</span>
+                                )}
+                              </td>
+
+                              {/* Column 7: Booking Paid Amount */}
+                              <td className="p-3 text-right font-bold text-slate-900">{money(booking)}</td>
+
+                              {/* Column 8: Payment Note */}
+                              <td className="p-3">
+                                {isEditMode ? (
+                                  <input
+                                    type="text"
+                                    value={paymentNote || ''}
+                                    placeholder="Note / ref…"
+                                    aria-label={`Payment note for ${getClientName(booking)}`}
+                                    onChange={(e) => handlePaymentNoteChange(bId, e.target.value)}
+                                    className="min-h-10 w-full min-w-[140px] rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:border-blue-500 focus:outline-none"
+                                  />
+                                ) : paymentNote ? (
+                                  <span className="text-xs font-medium text-slate-700">{paymentNote}</span>
+                                ) : (
+                                  <span className="text-xs text-slate-400">—</span>
+                                )}
+                              </td>
+
+                              {/* Status indicator in edit mode */}
+                              {isEditMode && (
+                                <td className="p-3 text-center">
+                                  {isModified ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                                      ● Modified
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-slate-400">Unchanged</span>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        }
+                      )}
                       {!group.filtered.length && (
                         <tr>
-                          <td colSpan={isEditMode ? 5 : 4} className="p-4 text-center text-sm text-slate-400">
+                          <td colSpan={isEditMode ? 9 : 8} className="p-4 text-center text-sm text-slate-400">
                             No bookings match the selected partner or search filters.
                           </td>
                         </tr>

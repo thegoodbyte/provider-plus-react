@@ -351,6 +351,8 @@ export interface RetreatClient {
   referralAttribution?: 'inherit' | 'self' | 'direct' | 'self_identified' | 'declined' | 'unknown' | 'influenced' | string;
   referralPartnerId?: string;
   referralEvidence?: string;
+  referralVerifiedDate?: string | Date;
+  referralPaymentNote?: string;
   referralAttributionHistory?: Array<{ at: string; actor: string; from: any; to: any; evidence: string }>;
 
   _id?: string;

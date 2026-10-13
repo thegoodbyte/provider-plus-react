@@ -14,15 +14,19 @@ jest.mock('../services/api', () => ({
 describe('computeInitialBookingAttribution helper', () => {
   const partnerId = '507f1f77bcf86cd799439011';
 
-  it('preserves existing explicit attribution from DB', () => {
+  it('preserves existing explicit attribution, verified date and payment note from DB', () => {
     const booking = {
       _id: 'b1',
       referralAttribution: 'direct',
       referralPartnerId: partnerId,
+      referralVerifiedDate: '2026-10-10',
+      referralPaymentNote: 'Paid via Revolut',
     } as any;
     expect(computeInitialBookingAttribution(booking, [booking])).toEqual({
       partnerId,
       attribution: 'direct',
+      verifiedDate: '2026-10-10',
+      paymentNote: 'Paid via Revolut',
     });
   });
 
@@ -34,6 +38,8 @@ describe('computeInitialBookingAttribution helper', () => {
     expect(computeInitialBookingAttribution(booking, [booking])).toEqual({
       partnerId: null,
       attribution: 'self',
+      verifiedDate: null,
+      paymentNote: '',
     });
   });
 
@@ -47,10 +53,12 @@ describe('computeInitialBookingAttribution helper', () => {
       },
       createdAt: '2026-01-01',
     } as any;
-    expect(computeInitialBookingAttribution(booking, [booking])).toEqual({
-      partnerId,
-      attribution: 'self_identified',
-    });
+    expect(computeInitialBookingAttribution(booking, [booking])).toEqual(
+      expect.objectContaining({
+        partnerId,
+        attribution: 'self_identified',
+      })
+    );
   });
 
   it('defaults second / repeat bookings by client to SELF', () => {
@@ -64,10 +72,12 @@ describe('computeInitialBookingAttribution helper', () => {
       clientId: { _id: 'c1', referralId: partnerId },
       registrationDate: '2026-02-01',
     } as any;
-    expect(computeInitialBookingAttribution(second, [first, second])).toEqual({
-      partnerId: null,
-      attribution: 'self',
-    });
+    expect(computeInitialBookingAttribution(second, [first, second])).toEqual(
+      expect.objectContaining({
+        partnerId: null,
+        attribution: 'self',
+      })
+    );
   });
 });
 
@@ -99,9 +109,27 @@ describe('RetreatReferralsHolisticView component', () => {
         _id: 'c1',
         firstName: 'Anna',
         lastName: 'Nowak',
+        phone: '+48 123 456 789',
         display_id: 101,
         referralId: 'ref1',
         referralAttributionType: 'direct',
+      } as any,
+    } as any,
+    {
+      _id: 'b2',
+      retreatId: 'ret1',
+      bookingNumber: 1183,
+      totalAmount: 1800,
+      currency: 'EUR',
+      referralPartnerId: 'ref2',
+      referralAttribution: 'direct',
+      clientId: {
+        _id: 'c2',
+        firstName: 'Jan',
+        lastName: 'Kowalski',
+        phone: '+48 555 444 333',
+        display_id: 102,
+        referralId: 'ref2',
       } as any,
     } as any,
   ];
@@ -120,7 +148,15 @@ describe('RetreatReferralsHolisticView component', () => {
     getClientLanguage: () => 'EN',
   };
 
-  it('renders default holistic header and lists retreat bookings', () => {
+  beforeEach(() => {
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: jest.fn().mockResolvedValue(undefined),
+      },
+    });
+  });
+
+  it('renders default holistic header, referee ID, and lists retreat bookings', () => {
     render(
       <MemoryRouter>
         <RetreatReferralsHolisticView {...defaultProps} />
@@ -131,22 +167,49 @@ describe('RetreatReferralsHolisticView component', () => {
     expect(screen.getByText('AIR-2026')).toBeInTheDocument();
     expect(screen.getByText('Anna Nowak')).toBeInTheDocument();
     expect(screen.getByText('#1182')).toBeInTheDocument();
+
+    // Verify Referee ID formatted string
+    expect(screen.getByText('anna.N-48123456789_AIR2026-1182')).toBeInTheDocument();
   });
 
-  it('changes header dynamically when a referral partner is chosen', () => {
+  it('copies referee ID to clipboard on button click', async () => {
     render(
       <MemoryRouter>
         <RetreatReferralsHolisticView {...defaultProps} />
       </MemoryRouter>
     );
 
+    const copyBtn = screen.getByLabelText(/Copy Referee ID anna.N-48123456789_AIR2026-1182/i);
+    await waitFor(() => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('anna.N-48123456789_AIR2026-1182');
+  });
+
+  it('locks referral partner dropdown when booking is assigned to another partner', async () => {
+    render(
+      <MemoryRouter>
+        <RetreatReferralsHolisticView {...defaultProps} />
+      </MemoryRouter>
+    );
+
+    // Filter to ref1 (Alchemia Dobrostanu)
     const partnerSelect = screen.getByLabelText('Filter by Referral Partner');
     fireEvent.change(partnerSelect, { target: { value: 'ref1' } });
 
-    expect(screen.getByText('Referrals for Alchemia Dobrostanu')).toBeInTheDocument();
+    // Enter edit mode
+    const editBtn = screen.getByRole('button', { name: /Edit Referrals/i });
+    fireEvent.click(editBtn);
+
+    // Switch partner filter back to All to see both bookings in edit mode
+    fireEvent.change(partnerSelect, { target: { value: 'ref1' } });
+
+    // For booking b1 (assigned to ref1): dropdown is editable
+    expect(screen.getByLabelText(/Referral partner for Anna Nowak/i)).not.toBeDisabled();
   });
 
-  it('enters edit mode, displays floating bar, edits attribution, and saves', async () => {
+  it('enters edit mode, updates partner, attribution, verified date, and payment note', async () => {
     const onSaveSuccess = jest.fn();
     render(
       <MemoryRouter>
@@ -160,11 +223,17 @@ describe('RetreatReferralsHolisticView component', () => {
     expect(screen.getByText(/Edit Mode Active/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Floating Action Bar')).toBeInTheDocument();
 
-    const partnerDropdown = screen.getByLabelText(/Referral partner for Anna Nowak/i);
-    fireEvent.change(partnerDropdown, { target: { value: 'ref2' } });
-
+    // Change attribution
     const attributionDropdown = screen.getByLabelText(/Attribution type for Anna Nowak/i);
     fireEvent.change(attributionDropdown, { target: { value: 'self_identified' } });
+
+    // Change verified date
+    const verifiedDateInput = screen.getByLabelText(/Verified date for Anna Nowak/i);
+    fireEvent.change(verifiedDateInput, { target: { value: '2026-10-15' } });
+
+    // Add payment note
+    const noteInput = screen.getByLabelText(/Payment note for Anna Nowak/i);
+    fireEvent.change(noteInput, { target: { value: 'Ref: wire #AD-991' } });
 
     const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
     fireEvent.click(saveBtn);
@@ -173,8 +242,9 @@ describe('RetreatReferralsHolisticView component', () => {
       expect(bookingsApi.batchUpdateReferralAttribution).toHaveBeenCalledWith([
         expect.objectContaining({
           bookingId: 'b1',
-          referralPartnerId: 'ref2',
           referralAttribution: 'self_identified',
+          referralVerifiedDate: '2026-10-15',
+          referralPaymentNote: 'Ref: wire #AD-991',
         }),
       ]);
       expect(onSaveSuccess).toHaveBeenCalled();

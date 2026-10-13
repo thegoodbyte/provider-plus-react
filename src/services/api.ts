@@ -398,6 +398,8 @@ export const bookingsApi = {
     referralAttribution: string;
     referralPartnerId?: string | null;
     referralEvidence?: string;
+    referralVerifiedDate?: string | Date;
+    referralPaymentNote?: string;
   }>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('referrals:');
