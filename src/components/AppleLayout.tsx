@@ -1,3 +1,4 @@
+import ExternalResourcesPage from './ExternalResourcesPage';
 import IntegrationProviderSettings from './IntegrationProviderSettings';
 import IntegrationLibrary from './IntegrationLibrary';
 import EnvironmentBanner from './EnvironmentBanner';
@@ -652,6 +653,7 @@ const AppleLayout: React.FC = () => {
               <div className="workspace-account-menu" onClick={(event) => { if ((event.target as HTMLElement).closest('button')) accountRef.current?.removeAttribute('open'); }}>
                 <div className="workspace-account-info"><strong>{[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Your account'}</strong><small>{userEmail}</small></div>
                 <button type="button" onClick={() => setShowSettings(true)}>Currency converter</button>
+                {user?.role === 'admin' && !isImpersonating && <button type="button" onClick={() => navigate('/admin/external-resources')}>External resources and integrations</button>}
                 {user?.role === 'admin' && !isImpersonating && <button type="button" onClick={async () => { await startMedicalStaffPreview(); navigate('/medical/launcher'); }}>Medical View</button>}
                 {isImpersonating && <button type="button" onClick={() => { stopImpersonation(); navigate('/admin/launcher'); }}>{isUserImpersonation ? 'Return to Admin' : 'Exit Medical View'}</button>}
                 {canChangeOwnPassword && <button type="button" onClick={() => navigate('/users/change-password')}>Change Password</button>}
@@ -811,7 +813,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client-forms" element={<ClientFormsPage />} />
                       <Route path="analytics" element={<AnalyticsPage />} />
                       <Route path="users" element={<UserManagement />} />
-                      <Route path="external-resources" element={<IntegrationProviderSettings />} />
+                      <Route path="external-resources" element={<ProtectedRoute requiredRole={['admin']}><ExternalResourcesPage /></ProtectedRoute>} />
                       <Route path="audit-logs" element={<AuditLogsPage />} />
                       <Route path="backups" element={<DataBackupPage />} />
                       <Route path="tasks" element={<Tasks />} />
