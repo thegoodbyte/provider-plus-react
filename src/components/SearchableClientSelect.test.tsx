@@ -2,12 +2,19 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import SearchableClientSelect from './SearchableClientSelect';
 
 const clients: any[] = [
-  { _id: 'c1', firstName: 'Ada', lastName: 'Lovelace', display_id: 1206, email: 'ada@example.com' },
+  { _id: 'c1', firstName: 'Ada', lastName: 'Lovelace', display_id: 1206, email: 'ada@example.com', phone: '\u202A+48\u00A0665 587 456\u202C' },
   { _id: 'c2', firstName: 'Emil', lastName: 'Karkocha', display_id: 1205, email: 'emil@example.com' },
   { _id: 'c3', firstName: 'No', lastName: 'Number' },
 ];
 
 describe('SearchableClientSelect', () => {
+  it.each(['665587456', '0048 665 587 456', '+48 (665) 587-456'])('finds a legacy WhatsApp phone using %s', (search) => {
+    render(<SearchableClientSelect clients={clients} onChange={jest.fn()} />);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: search } });
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.queryByText('Emil Karkocha')).not.toBeInTheDocument();
+  });
+
   it('shows and clears the selected client with the primary callback', () => {
     const onClientSelect = jest.fn();
     render(<SearchableClientSelect clients={clients} selectedClientId="c1" onClientSelect={onClientSelect} />);

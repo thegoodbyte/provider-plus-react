@@ -1,3 +1,4 @@
+import { matchesPhoneSearch } from '../utils/phoneUtils';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Client } from '../types';
 import { FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
@@ -64,7 +65,8 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
              displayIdWithHash.includes(term) ||
              displayId.includes(numericTerm) ||
              displayId.includes(term) ||
-             email.includes(term);
+             email.includes(term) ||
+             matchesPhoneSearch(client.phone, client.phoneCountryCode, term);
     }).slice(0, maxVisibleClients);
   }, [clients, searchTerm]);
 

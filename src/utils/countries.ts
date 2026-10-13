@@ -1,3 +1,5 @@
+import { sanitizePhoneNumber } from './phoneUtils';
+
 export interface Country {
   code: string;
   name: string;
@@ -144,7 +146,7 @@ export const searchCountries = (query: string): Country[] => {
  * shorter, unrelated prefix.
  */
 export const findCountryByPhoneNumber = (phone: string): Country | undefined => {
-  const digits = (phone || '').trim();
+  const digits = sanitizePhoneNumber(phone);
   if (!digits.startsWith('+')) return undefined;
   const candidates = [...COUNTRIES].sort((a, b) => b.phonePrefix.length - a.phonePrefix.length);
   return candidates.find(country => digits.startsWith(country.phonePrefix));

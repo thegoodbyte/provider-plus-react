@@ -6,6 +6,14 @@ describe('findCountryByPhoneNumber', () => {
     expect(findCountryByPhoneNumber('+420777123456')?.code).toBe('CZ');
   });
 
+  it('handles WhatsApp phone numbers with bidi controls and NBSP', () => {
+    expect(findCountryByPhoneNumber('‪+48\u00A0665\u00A0587\u00A0456‬')?.code).toBe('PL');
+  });
+
+  it('handles macOS option+shift+= typo of ± instead of +', () => {
+    expect(findCountryByPhoneNumber('±48 601549620')?.code).toBe('PL');
+  });
+
   it('prefers the longest matching prefix so a 3-digit code is not shadowed by a shorter one', () => {
     expect(findCountryByPhoneNumber('+421 900 111 222')?.code).toBe('SK');
   });

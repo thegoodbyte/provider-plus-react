@@ -1,3 +1,4 @@
+import { matchesPhoneSearch } from '../utils/phoneUtils';
 import React, { useState, useEffect, useRef } from 'react';
 import { Client } from '../types';
 import { clientWorkflowStatusLabels, normalizeClientWorkflowStatus } from '../utils/clientWorkflowStatus';
@@ -40,7 +41,7 @@ export const SearchableClientDropdown: React.FC<SearchableClientDropdownProps> =
       return fullName.includes(search) ||
              displayId.includes(search) ||
              (client.email && client.email.toLowerCase().includes(search)) ||
-             (client.phone && client.phone.includes(search));
+             matchesPhoneSearch(client.phone, client.phoneCountryCode, search);
     });
     setFilteredClients(filtered);
   }, [clients, searchTerm]);

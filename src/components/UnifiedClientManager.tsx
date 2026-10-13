@@ -1,3 +1,4 @@
+import { matchesPhoneSearch, sanitizePhoneNumber } from '../utils/phoneUtils';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDialogFocus } from '../hooks/useDialogFocus';
@@ -311,7 +312,7 @@ const UnifiedClientManager: React.FC = () => {
         client.firstName?.toLowerCase().includes(term) ||
         client.lastName?.toLowerCase().includes(term) ||
         client.email?.toLowerCase().includes(term) ||
-        client.phone?.toLowerCase().includes(term) ||
+        matchesPhoneSearch(client.phone, client.phoneCountryCode, term) ||
         client.display_id?.toString().includes(term)
       );
     }
@@ -401,6 +402,8 @@ const UnifiedClientManager: React.FC = () => {
 
         return acc;
       }, {} as any);
+
+      if (cleanData.phone !== undefined) cleanData.phone = sanitizePhoneNumber(cleanData.phone);
 
       if (selectedClient?._id && !formData.loginPin?.trim()) {
         delete cleanData.loginPin;

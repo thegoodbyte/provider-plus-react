@@ -1,3 +1,4 @@
+import { matchesPhoneSearch } from '../utils/phoneUtils';
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Spin, Button, message } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
@@ -39,12 +40,11 @@ const SearchableClientSelector: React.FC<SearchableClientSelectorProps> = ({
       const term = searchTerm.toLowerCase();
       const filtered = clients.filter(client => {
         const fullName = `${client.firstName || ''} ${client.lastName || ''}`.toLowerCase();
-        const phone = client.phone?.toLowerCase() || '';
         const displayId = client.display_id?.toString() || '';
 
         return (
           fullName.includes(term) ||
-          phone.includes(term) ||
+          matchesPhoneSearch(client.phone, client.phoneCountryCode, term) ||
           displayId.includes(term)
         );
       });
