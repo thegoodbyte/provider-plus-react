@@ -103,6 +103,7 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
   getClientDisplayId,
 }) => {
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('');
+  const [selectedRetreatId, setSelectedRetreatId] = useState<string>('');
   const [search, setSearch] = useState<string>('');
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -138,11 +139,16 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
   };
 
   const selectedPartner = referrals.find((r) => r._id === selectedPartnerId);
+  const selectedRetreat = retreats.find((r) => getId(r) === selectedRetreatId);
 
   // Group bookings by retreat
   const groups = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return retreats.map((retreat, index) => {
+    const targetRetreats = selectedRetreatId
+      ? retreats.filter((r) => getId(r) === selectedRetreatId)
+      : retreats;
+
+    return targetRetreats.map((retreat, index) => {
       const retreatId = getId(retreat);
       const retreatBookings = bookings
         .filter((b) => getId(b.retreatId) === retreatId && (b as any).status !== 'cancelled')
@@ -216,6 +222,7 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
     bookings,
     search,
     selectedPartnerId,
+    selectedRetreatId,
     stagedEdits,
     clientBookingsMap,
     getId,
@@ -368,13 +375,35 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
               {selectedPartner ? `Referrals for ${selectedPartner.name}` : 'Holistic Booking Referral Assignment'}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {selectedPartner
+              {selectedRetreat
+                ? `Showing bookings for ${getCode(selectedRetreat) || selectedRetreat.name}${selectedPartner ? ` attributed to ${selectedPartner.name}` : ''}.`
+                : selectedPartner
                 ? `Showing bookings and attribution status associated with ${selectedPartner.name} (${selectedPartner.referralCode || 'Partner'}).`
                 : 'Holistically view, assign, and verify referral partners, payout references, and attribution types across retreats.'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label htmlFor="retreat-filter-select" className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Retreat:
+              </label>
+              <select
+                id="retreat-filter-select"
+                aria-label="Filter by Retreat"
+                value={selectedRetreatId}
+                onChange={(e) => setSelectedRetreatId(e.target.value)}
+                className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 font-semibold text-slate-800 shadow-sm focus:border-blue-500 focus:outline-none max-w-[260px]"
+              >
+                <option value="">All Retreats ({retreats.length})</option>
+                {retreats.map((r) => (
+                  <option key={getId(r)} value={getId(r)}>
+                    {getCode(r) || r.name} {r.startDate ? `(${formatRetreatCalendarDate(r.startDate)})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-center gap-2">
               <label htmlFor="partner-filter-select" className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Partner:
@@ -575,6 +604,20 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
                                       <span className="rounded bg-purple-50 px-1 py-0.5 font-bold text-purple-700">
                                         Repeat
                                       </span>
+                                    )}
+                                  </div>
+                                  <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                                    <span className="font-semibold text-slate-600">Booking date:</span>
+                                    {booking.firstPaymentDate ? (
+                                      <span className="font-bold text-slate-800">
+                                        {new Date(booking.firstPaymentDate).toLocaleDateString('cs-CZ')}
+                                      </span>
+                                    ) : (booking as any).paidAt ? (
+                                      <span className="font-bold text-slate-800">
+                                        {new Date((booking as any).paidAt).toLocaleDateString('cs-CZ')}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-400">—</span>
                                     )}
                                   </div>
                                 </div>

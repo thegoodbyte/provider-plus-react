@@ -250,4 +250,73 @@ describe('RetreatReferralsHolisticView component', () => {
       expect(onSaveSuccess).toHaveBeenCalled();
     });
   });
+
+  it('filters by retreat using the retreat filter dropdown', () => {
+    const multiRetreatProps = {
+      ...defaultProps,
+      retreats: [
+        mockRetreats[0],
+        {
+          _id: 'ret2',
+          name: 'Summer Iboga Retreat',
+          code: 'SMR-2026',
+          startDate: '2026-07-10',
+          endDate: '2026-07-17',
+          location: 'Praha',
+        } as any,
+      ],
+      bookings: [
+        mockBookings[0],
+        {
+          _id: 'b-summer',
+          retreatId: 'ret2',
+          bookingNumber: 1199,
+          totalAmount: 1200,
+          currency: 'EUR',
+          clientId: {
+            _id: 'c-sum',
+            firstName: 'Marek',
+            lastName: 'Novak',
+            display_id: 109,
+          } as any,
+        } as any,
+      ],
+    };
+
+    render(
+      <MemoryRouter>
+        <RetreatReferralsHolisticView {...multiRetreatProps} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('AIR-2026')).toBeInTheDocument();
+    expect(screen.getByText('SMR-2026')).toBeInTheDocument();
+
+    const retreatSelect = screen.getByLabelText('Filter by Retreat');
+    fireEvent.change(retreatSelect, { target: { value: 'ret2' } });
+
+    expect(screen.queryByText('AIR-2026')).not.toBeInTheDocument();
+    expect(screen.getByText('SMR-2026')).toBeInTheDocument();
+  });
+
+  it('displays Booking date under client metadata based on first payment date', () => {
+    const paidBookingProps = {
+      ...defaultProps,
+      bookings: [
+        {
+          ...mockBookings[0],
+          firstPaymentDate: '2026-09-15T00:00:00.000Z',
+        },
+      ],
+    };
+
+    render(
+      <MemoryRouter>
+        <RetreatReferralsHolisticView {...paidBookingProps} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Booking date:')).toBeInTheDocument();
+    expect(screen.getByText(new Date('2026-09-15T00:00:00.000Z').toLocaleDateString('cs-CZ'))).toBeInTheDocument();
+  });
 });

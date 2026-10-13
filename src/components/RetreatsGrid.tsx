@@ -504,7 +504,7 @@ const RetreatsGrid: React.FC = () => {
 
       {viewMode === 'referrals' ? (
         <RetreatReferralsHolisticView
-          retreats={operationalRetreats}
+          retreats={retreats.filter((r) => r.status !== 'cancelled')}
           bookings={bookings}
           referrals={referrals}
           onSaveSuccess={fetchRetreats}

@@ -353,6 +353,8 @@ export interface RetreatClient {
   referralEvidence?: string;
   referralVerifiedDate?: string | Date;
   referralPaymentNote?: string;
+  firstPaymentDate?: string | Date;
+  paidAt?: string | Date;
   referralAttributionHistory?: Array<{ at: string; actor: string; from: any; to: any; evidence: string }>;
 
   _id?: string;
