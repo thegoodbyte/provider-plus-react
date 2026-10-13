@@ -740,6 +740,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               <option value="checked-out">Checked Out</option>
               <option value="cancelled">Cancelled</option>
             </select>
+            {['conditional', 'pending'].includes(formData.status) && (
+              <p className="mt-2 text-sm text-gray-600">This status does not reserve a spot or room. Saving releases the room assignment and keeps the agreed accommodation and price. After confirming again, allocate a currently available room in the Rooms tab.</p>
+            )}
           </div>
         </div>
 
