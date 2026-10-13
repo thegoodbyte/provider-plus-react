@@ -393,6 +393,16 @@ export const bookingsApi = {
   },
   getConfirmationPdf: (id: string, language: 'en' | 'cz' | 'pl') =>
     api.get(`/bookings/${id}/confirmation-pdf?language=${language}`, { responseType: 'blob' }),
+  batchUpdateReferralAttribution: async (updates: Array<{
+    bookingId: string;
+    referralAttribution: string;
+    referralPartnerId?: string | null;
+    referralEvidence?: string;
+  }>) => {
+    cacheService.clearPattern('bookings:');
+    cacheService.clearPattern('referrals:');
+    return api.patch<{ updatedCount: number }>('/bookings/batch-referral-attribution', { updates });
+  },
   checkIn: (id: string) => {
     cacheService.clearPattern('bookings:');
     return api.patch<RetreatClient>(`/bookings/${id}/check-in`, {});

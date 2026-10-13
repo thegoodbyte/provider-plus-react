@@ -337,8 +337,18 @@ export interface Client {
   lname?: string;
 }
 
+export const REFERRAL_ATTRIBUTION_OPTIONS = [
+  { value: 'direct', label: 'DIRECT' },
+  { value: 'self_identified', label: 'Self-Identified' },
+  { value: 'declined', label: 'Declined' },
+  { value: 'unknown', label: 'Unknown' },
+  { value: 'self', label: 'SELF' },
+] as const;
+
+export type ReferralAttributionValue = typeof REFERRAL_ATTRIBUTION_OPTIONS[number]['value'];
+
 export interface RetreatClient {
-  referralAttribution?: 'inherit' | 'self' | 'direct' | 'influenced';
+  referralAttribution?: 'inherit' | 'self' | 'direct' | 'self_identified' | 'declined' | 'unknown' | 'influenced' | string;
   referralPartnerId?: string;
   referralEvidence?: string;
   referralAttributionHistory?: Array<{ at: string; actor: string; from: any; to: any; evidence: string }>;

@@ -2,14 +2,15 @@ import { countOccupyingRetreatBookings } from './RetreatsGrid.helpers';
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
-import { retreatsApi, housesApi, bookingsApi, bookingFlowApi } from '../services/api';
-import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate } from '../types';
+import { retreatsApi, housesApi, bookingsApi, bookingFlowApi, referralsApi } from '../services/api';
+import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate, Referral } from '../types';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
 import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatEndDateFromStart, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import './RetreatsListRedesign.css';
 import RetreatHolisticView from './RetreatHolisticView';
+import RetreatReferralsHolisticView from './RetreatReferralsHolisticView';
 import { isCancelledBookingStatus } from './retreatClientVisibility';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -22,9 +23,10 @@ const RetreatsGrid: React.FC = () => {
   const location = useLocation();
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'holistic' | 'requirements'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'holistic' | 'requirements' | 'referrals'>('list');
   const [isLoadingStepData, setIsLoadingStepData] = useState(false);
   const [retreatMatrices, setRetreatMatrices] = useState<Record<string, { items: BookingFlowItem[]; templates: BookingFlowTemplate[] }>>({});
   const [selectedBookingStepKey, setSelectedBookingStepKey] = useState('');
@@ -53,9 +55,10 @@ const RetreatsGrid: React.FC = () => {
   const fetchRetreats = async () => {
     try {
       setIsLoading(true);
-      const [retreatsResponse, bookingsResponse] = await Promise.all([
+      const [retreatsResponse, bookingsResponse, referralsResponse] = await Promise.all([
         retreatsApi.getAll(),
         bookingsApi.getAll(),
+        referralsApi.getAll(),
       ]);
       const sortedRetreats = [...(retreatsResponse.data || [])].sort((a, b) => {
         const aTime = a.startDate ? new Date(a.startDate).getTime() : Number.MAX_SAFE_INTEGER;
@@ -64,14 +67,24 @@ const RetreatsGrid: React.FC = () => {
       });
       setRetreats(sortedRetreats);
       setBookings(bookingsResponse.data || []);
+      setReferrals(referralsResponse.data || []);
     } catch (error) {
       console.error('Error fetching retreats:', error);
       setRetreats([]);
       setBookings([]);
+      setReferrals([]);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const viewParam = params.get('view');
+    if (viewParam === 'referrals' || viewParam === 'holistic' || viewParam === 'requirements' || viewParam === 'list') {
+      setViewMode(viewParam);
+    }
+  }, [location.search]);
 
   const fetchHouses = async () => {
     try {
@@ -434,6 +447,13 @@ const RetreatsGrid: React.FC = () => {
             >
               Requirements
             </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('referrals')}
+              className={viewMode === 'referrals' ? 'is-active' : ''}
+            >
+              Referrals View
+            </button>
             <Link
               to={`/${routePrefix}/booking-step-deadlines`}
               className=""
@@ -482,7 +502,21 @@ const RetreatsGrid: React.FC = () => {
         </select>
       </div>}
 
-      {viewMode === 'holistic' || viewMode === 'requirements' ? (
+      {viewMode === 'referrals' ? (
+        <RetreatReferralsHolisticView
+          retreats={operationalRetreats}
+          bookings={bookings}
+          referrals={referrals}
+          onSaveSuccess={fetchRetreats}
+          routePrefix={routePrefix}
+          getId={getObjectId}
+          getCode={getRetreatCodeValue}
+          getTown={getRetreatTown}
+          getClientName={getClientName}
+          getClientDisplayId={getClientDisplayId}
+          getClientLanguage={getClientLanguage}
+        />
+      ) : viewMode === 'holistic' || viewMode === 'requirements' ? (
         <><RetreatHolisticView requirementsMode={viewMode === 'requirements'} retreats={operationalRetreats} options={bookingStepOptions} selectedKey={selectedBookingStepKey} onSelect={setSelectedBookingStepKey} matrices={retreatMatrices} getId={getObjectId} getBookings={getRetreatBookings} getCode={getRetreatCodeValue} getTown={getRetreatTown} getClientName={getClientName} getClientDisplayId={getClientDisplayId} getClientLanguage={getClientLanguage} routePrefix={routePrefix} />{false && <div className="space-y-6">
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">

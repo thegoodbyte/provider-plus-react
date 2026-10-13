@@ -16,7 +16,7 @@ import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 
 type BookingFormData = {
-  referralAttribution: 'inherit' | 'self' | 'direct' | 'influenced';
+  referralAttribution: 'inherit' | 'self' | 'direct' | 'self_identified' | 'declined' | 'unknown' | 'influenced';
   referralPartnerId: string;
   referralEvidence: string;
 
@@ -218,7 +218,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
       if (currentBooking) {
         setFormData({
-          referralAttribution: currentBooking.referralAttribution || 'inherit',
+          referralAttribution: (currentBooking.referralAttribution || 'inherit') as BookingFormData['referralAttribution'],
           referralPartnerId: currentBooking.referralPartnerId || '',
           referralEvidence: currentBooking.referralEvidence || '',
           clientId: typeof currentBooking.clientId === 'string' ? currentBooking.clientId : (currentBooking.clientId as any)?._id || '',

@@ -126,7 +126,10 @@ const ReferralsPage: React.FC = () => {
   return <div className="mx-auto max-w-7xl p-4">
     <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div><h1 className="text-3xl font-black text-slate-950">Referrals</h1><p className="text-slate-500">Manage referral partners and see every client and retreat attributed to them.</p></div>
-      {selectedReferral && <button type="button" onClick={() => setSelectedReferral('')} className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 font-bold text-slate-700">Show all referrals</button>}
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => navigate(`${routePrefix}/retreats?view=referrals`)} className="min-h-11 rounded-xl border border-blue-600 bg-blue-50 px-4 font-bold text-blue-700 hover:bg-blue-100">Holistic Retreats View</button>
+        {selectedReferral && <button type="button" onClick={() => setSelectedReferral('')} className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 font-bold text-slate-700">Show all referrals</button>}
+      </div>
     </div>
     {error && <div className="mb-4 rounded-xl bg-red-50 p-3 font-semibold text-red-700">{error}</div>}
 

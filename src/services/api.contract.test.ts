@@ -73,7 +73,16 @@ describe('API endpoint contracts', () => {
     expect(transport.post).toHaveBeenCalledWith(
       '/retreat-expenses/expense-1/receipt',
       expect.any(FormData),
-      { headers: { 'Content-Type': 'multipart/form-data' } },
+      expect.objectContaining({ headers: { 'Content-Type': 'multipart/form-data' } }),
+    );
+  });
+
+  it('sends batch referral attribution updates via PATCH', async () => {
+    const updates = [{ bookingId: 'b1', referralAttribution: 'direct', referralPartnerId: 'p1' }];
+    await endpoints.bookingsApi.batchUpdateReferralAttribution(updates);
+    expect(transport.patch).toHaveBeenCalledWith(
+      '/bookings/batch-referral-attribution',
+      { updates },
     );
   });
 });
