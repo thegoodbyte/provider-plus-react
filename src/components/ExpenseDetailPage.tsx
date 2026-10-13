@@ -1,3 +1,4 @@
+import ReferralExpenseDetails from './ReferralExpenseDetails';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Image, Pencil } from 'lucide-react';
@@ -50,6 +51,7 @@ const ExpenseDetailPage: React.FC = () => {
           </button>
         )}
       </div>
+      <ReferralExpenseDetails expense={expense} prefix={prefix} />
       {expense.receiptS3Key && id && <ExpenseReceiptItems expenseId={id} currency={expense.currency} />}
     </div>
   );

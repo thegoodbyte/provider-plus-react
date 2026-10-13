@@ -65,10 +65,14 @@ const ExpensesPage: React.FC = () => {
       return createdDifference || new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime();
     });
     return sorted.filter((expense) => {
+      if (quickFilter === 'referral' && !expense.referralPayoutItems?.length) return false;
       if (quickFilter === 'week' && Date.now() - new Date(expense.expenseDate).getTime() > 7 * 86400000) return false;
       if (quickFilter.startsWith('type:') && idOf(expense.expenseTypeId) !== quickFilter.slice(5)) return false;
       if (!needle) return true;
       return [
+      ...(expense.tags || []),
+      expense.referralPayment?.referralCode,
+      expense.referralPayment?.referralName,
       expense.vendor,
       expense.description,
       expense.currency,
@@ -116,6 +120,7 @@ const ExpensesPage: React.FC = () => {
         </button>
       </div>
 
+      <button className="mb-3 min-h-11 rounded-lg border px-3" aria-pressed={quickFilter === 'referral'} onClick={() => setQuickFilter(quickFilter === 'referral' ? 'all' : 'referral')}>Referral payments</button>
       {error && <div className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{error}</div>}
 
       <label className="mb-4 flex min-h-14 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-100">
