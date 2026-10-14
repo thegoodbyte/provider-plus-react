@@ -958,38 +958,43 @@ const ClientDetailsPage: React.FC = () => {
                   </span>
                 )}
               </div>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
+              <div className="client-header-actions mt-4 flex flex-nowrap items-center gap-2 sm:flex-wrap">
                 <button
                   onClick={handleOpenIbogaReady}
                   disabled={openingIbogaReady}
-                  className="inline-flex items-center gap-2 rounded-md bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-md sm:h-auto sm:w-auto bg-sky-700 p-2 text-sm sm:px-3 font-medium text-white hover:bg-sky-800 disabled:cursor-wait disabled:opacity-60"
+                  aria-label={openingIbogaReady ? 'Opening IbogaReady' : 'View in IbogaReady'}
                   title="Open a 20-minute, read-only and audited client support session"
                 >
                   <Icon icon={FiExternalLink} className="h-4 w-4" />
-                  {openingIbogaReady ? 'Opening…' : 'View in IbogaReady'}
+                  <span className="hidden sm:inline">{openingIbogaReady ? 'Opening…' : 'View in IbogaReady'}</span>
                 </button>
                 <button
+                  aria-label="Screening"
+                  title="Screening"
                   onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-md sm:h-auto sm:w-auto border border-gray-200 bg-white p-2 text-sm sm:px-3 font-medium text-gray-700 hover:bg-gray-50"
                 >
                   <Icon icon={FiPlus} className="h-4 w-4" />
-                  Screening
+                  <span className="hidden sm:inline">Screening</span>
                 </button>
                 <button
+                  aria-label={creatingPreCallLink ? 'Creating pre-call intake link' : 'Pre-call intake link'}
+                  title="Pre-call intake link"
                   onClick={handleCreatePreCallLink}
                   disabled={creatingPreCallLink}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-md sm:h-auto sm:w-auto border border-gray-200 bg-white p-2 text-sm sm:px-3 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                 >
                   <Icon icon={FiMessageSquare} className="h-4 w-4" />
-                  {creatingPreCallLink ? 'Creating…' : 'Pre-call intake link'}
+                  <span className="hidden sm:inline">{creatingPreCallLink ? 'Creating…' : 'Pre-call intake link'}</span>
                 </button>
                 <button
                   onClick={() => navigate(`/admin/clients/${clientId}/edit`)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
                   aria-label="Edit client"
                   title="Edit client"
                 >
-                  <Icon icon={FiEdit2} className="h-5 w-5" />
+                  <Icon icon={FiEdit2} className="h-4 w-4" />
                 </button>
               </div>
             </div>
