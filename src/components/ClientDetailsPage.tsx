@@ -1,3 +1,4 @@
+import FormsInvitation from './FormsInvitation';
 import ArtifactReviewStatus, { useArtifactReviews } from './ArtifactReviewStatus';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -1106,6 +1107,7 @@ const ClientDetailsPage: React.FC = () => {
                       </button>
                     </dd>
                   </div>
+                  <FormsInvitation client={client} />
                   {loginPinMessage && (
                     <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
                       {loginPinMessage}
