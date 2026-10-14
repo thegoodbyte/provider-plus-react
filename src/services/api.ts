@@ -438,6 +438,8 @@ export const bookingsApi = {
 export const retreatClientsApi = bookingsApi;
 
 export const referralsApi = {
+  getAssignmentNotifications: (id: string) => api.get<any[]>(`/referrals/${id}/assignment-notifications`, { suppressGlobalError: true } as ReadOptions),
+  retryAssignmentNotification: (id: string, clientId: string, eventId: string) => api.post<any[]>(`/referrals/${id}/assignment-notifications/${clientId}/${eventId}/retry`, {}, { suppressGlobalError: true } as ReadOptions),
   getAll: (options?: ReadOptions) => api.get<Referral[]>('/referrals', options),
   getReport: (options?: ReadOptions) => api.get<ReferralReportRow[]>('/referrals/report', options),
   getPayouts: () => api.get<RetreatExpense[]>('/referrals/payouts', { suppressGlobalError: true } as ReadOptions),

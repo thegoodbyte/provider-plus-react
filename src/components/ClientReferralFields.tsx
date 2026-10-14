@@ -10,7 +10,7 @@ type Props = {
   className?: string;
 };
 
-const objectId = (value?: string | { _id?: string }) => typeof value === 'object' ? value?._id || '' : value || '';
+const objectId = (value?: string | { _id?: string } | null) => typeof value === 'object' ? value?._id || '' : value || '';
 const clientLabel = (client?: Partial<Client>) => client
   ? `${client.firstName || ''} ${client.lastName || ''}`.trim() + (client.display_id ? ` · #${client.display_id}` : '')
   : '';

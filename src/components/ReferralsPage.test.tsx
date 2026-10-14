@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import ReferralsPage from './ReferralsPage';
 import { api, referralsApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ api: { get: jest.fn().mockResolvedValue({ data: null }), put: jest.fn().mockResolvedValue({ data: {} }) }, referralsApi: { getAll: jest.fn(), getReport: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), createPayout: jest.fn(), getPayouts: jest.fn() } }));
+jest.mock('../services/api', () => ({ api: { get: jest.fn().mockResolvedValue({ data: null }), put: jest.fn().mockResolvedValue({ data: {} }) }, referralsApi: { getAssignmentNotifications: jest.fn(), getAll: jest.fn(), getReport: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), createPayout: jest.fn(), getPayouts: jest.fn() } }));
 
 const partner = { _id: 'r1', name: 'Ada Partners', referralCode: 'AP', defaultCommissionPercentage: 10, email: 'ada@example.com', isActive: true };
 const row = (overrides: any = {}) => ({ bookingId: 'b1', bookingNumber: 101, clientId: 'c1', clientDisplayId: 501, clientName: 'Eva Novak', clientEmail: 'eva@example.com', referralId: 'r1', referralName: 'Ada Partners', referralCode: 'AP', retreatId: 't1', retreatCode: 'SEP-26', commissionPercentage: 10, amountOwed: 450, owedCurrency: 'EUR', paid: false, ...overrides });
@@ -14,6 +14,7 @@ describe('ReferralsPage payout workflow', () => {
     jest.clearAllMocks();
     (api.get as jest.Mock).mockResolvedValue({ data: null });
     (api.put as jest.Mock).mockResolvedValue({ data: {} });
+    (referralsApi.getAssignmentNotifications as jest.Mock).mockResolvedValue({ data: [] });
     (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [partner] });
     (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [row(), row({ bookingId: 'b2', bookingNumber: 102, clientName: 'Jan Kowalski', amountOwed: 300 })] });
     (referralsApi.create as jest.Mock).mockResolvedValue({ data: partner });

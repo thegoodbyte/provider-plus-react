@@ -1,3 +1,4 @@
+import ReferralAssignmentNotifications from './ReferralAssignmentNotifications';
 import React, { FormEvent, useEffect, useState } from 'react';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -6,11 +7,11 @@ import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { ReferralPackagesEditor } from './ReferralPackagesEditor';
 import { ReferralCommissionPackage, Referral, ReferralRateRule } from '../types';
 const emptyRule = (): ReferralRateRule => ({ effectiveFrom: today(), effectiveTo: '', tiers: [{ minPrice: 0, ratePercent: 0 }], notes: '' });
-const empty = { name: '', referralCode: '', defaultCommissionPercentage: 0, influenceCommissionPercentage: '' as number | '', allowRepeatBookingCredit: true, email: '', phone: '', notes: '', isActive: true, rateSchedule: [] as ReferralRateRule[], commissionPackages: [] as ReferralCommissionPackage[] };
+const empty = { assignmentNotificationsEnabled: false, assignmentNotificationLanguage: 'en', name: '', referralCode: '', defaultCommissionPercentage: 0, influenceCommissionPercentage: '' as number | '', allowRepeatBookingCredit: true, email: '', phone: '', notes: '', isActive: true, rateSchedule: [] as ReferralRateRule[], commissionPackages: [] as ReferralCommissionPackage[] };
 const toDateInput = (value?: string | null) => (value ? new Date(value).toISOString().slice(0, 10) : '');
 function today() { return new Date().toISOString().slice(0, 10); }
 
-const toForm = (referral?: Referral) => referral ? { name: referral.name, referralCode: referral.referralCode || '', defaultCommissionPercentage: Number(referral.defaultCommissionPercentage || 0), influenceCommissionPercentage: referral.influenceCommissionPercentage ?? '' as number | '', allowRepeatBookingCredit: referral.allowRepeatBookingCredit !== false, email: referral.email || '', phone: referral.phone || '', notes: referral.notes || '', isActive: referral.isActive !== false, commissionPackages: referral.commissionPackages || [], rateSchedule: (referral.rateSchedule || []).map(rule => ({ ...rule, effectiveFrom: toDateInput(rule.effectiveFrom), effectiveTo: toDateInput(rule.effectiveTo) })) } : empty;
+const toForm = (referral?: Referral) => referral ? { assignmentNotificationsEnabled: referral.assignmentNotificationsEnabled === true, assignmentNotificationLanguage: referral.assignmentNotificationLanguage || 'en', name: referral.name, referralCode: referral.referralCode || '', defaultCommissionPercentage: Number(referral.defaultCommissionPercentage || 0), influenceCommissionPercentage: referral.influenceCommissionPercentage ?? '' as number | '', allowRepeatBookingCredit: referral.allowRepeatBookingCredit !== false, email: referral.email || '', phone: referral.phone || '', notes: referral.notes || '', isActive: referral.isActive !== false, commissionPackages: referral.commissionPackages || [], rateSchedule: (referral.rateSchedule || []).map(rule => ({ ...rule, effectiveFrom: toDateInput(rule.effectiveFrom), effectiveTo: toDateInput(rule.effectiveTo) })) } : empty;
 export default function ReferralEditorPage({ referral, base, onSaved }: { referral?: Referral; base: string; onSaved: () => Promise<void> }) {
   const navigate = useNavigate();
   const editingId = referral?._id || '';
@@ -64,7 +65,15 @@ export default function ReferralEditorPage({ referral, base, onSaved }: { referr
     <form aria-label="Referral settings" onSubmit={save} onChange={() => { setSavedMessage(''); setDirty(true); }} onInvalidCapture={() => { setSavedMessage(''); setError('Complete the required fields and check the dates, prices and percentages before saving.'); }} className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <fieldset disabled={saving} className="min-w-0">
       <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">Partner details</h2></div>
-      <p className="mb-3 text-sm text-slate-600">Save buttons store the partner details, rates and packages together. Portal access is managed on its own screen.</p>
+      <section aria-label="Assignment email settings" className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h3 className="font-semibold">Referral assignment emails</h3>
+        <label className="mt-3 flex items-center gap-2"><input type="checkbox" checked={form.assignmentNotificationsEnabled} onChange={event => setForm({ ...form, assignmentNotificationsEnabled: event.target.checked })} />Notify this partner when a client is assigned</label>
+        <label className="mt-3 block text-sm">Notification language<select className="ml-3 rounded-lg border border-slate-300 bg-white p-2" value={form.assignmentNotificationLanguage} onChange={event => setForm({ ...form, assignmentNotificationLanguage: event.target.value })}><option value="en">English</option><option value="cz">Czech</option><option value="pl">Polish</option><option value="ru">Russian</option></select></label>
+        <p className="mt-3 text-sm text-slate-600">Applies to new signups and saved referral changes. Uses the active portal account email, or the partner contact email if no account exists. Inactive partners or portal accounts are blocked. Unchanged assignments and removals do not send email.</p>
+        <p className="mt-2 text-sm text-slate-600">Edit or install the referral_assignment templates in Communications. Use only clientFirstName, clientLastName, partnerName and portalUrl placeholders. A matching active language template is required. Messages confirm attribution only.</p>
+        <p className="mt-2 text-sm text-slate-600">Save these settings before assigning a client. Existing disabled notifications are sent only if you explicitly retry them.</p>
+      </section>
+      <p className="mb-3 text-sm text-slate-600">Save buttons store the partner details, assignment email settings, rates and packages together. Portal access is managed on its own screen.</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <input aria-label="Partner name" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Name *" className="min-h-12 rounded-xl border border-slate-300 px-3" required />
         <input aria-label="Referral code" value={form.referralCode} maxLength={2} onChange={event => setForm({ ...form, referralCode: event.target.value.replace(/[^a-z]/gi, '').toUpperCase() })} placeholder="Code (AD) *" className="min-h-12 rounded-xl border border-slate-300 px-3 uppercase" required />
@@ -112,5 +121,6 @@ export default function ReferralEditorPage({ referral, base, onSaved }: { referr
       <div className="sticky bottom-0 z-10 mt-4 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-white py-3"><button type="submit" disabled={saving} className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-blue-600 px-5 font-bold text-white"><Plus size={19} />{saving ? 'Saving…' : editingId ? 'Save changes' : 'Add referral'}</button><span className="text-xs text-slate-500">Saves the partner, rates and packages together.</span>{savedMessage && <p role="status" className="w-full text-sm font-semibold text-emerald-700">{savedMessage}</p>}</div>
       </fieldset>
     </form>
+    {editingId && <ReferralAssignmentNotifications referralId={editingId} />}
   </div>;
 }

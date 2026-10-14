@@ -402,6 +402,7 @@ const UnifiedClientManager: React.FC = () => {
       }, {} as any);
 
       if (cleanData.phone !== undefined) cleanData.phone = sanitizePhoneNumber(cleanData.phone);
+      if (selectedClient?._id && !getObjectId(formData.referralId)) cleanData.referralId = null;
 
       if (selectedClient?._id && !formData.loginPin?.trim()) {
         delete cleanData.loginPin;

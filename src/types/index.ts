@@ -154,6 +154,8 @@ export interface ReferralCommissionPackage {
 }
 
 export interface Referral {
+  assignmentNotificationsEnabled?: boolean;
+  assignmentNotificationLanguage?: string;
   influenceCommissionPercentage?: number | null;
   allowRepeatBookingCredit?: boolean;
 
@@ -241,7 +243,7 @@ export interface Client {
   conversionDate?: Date | string;
   firstContactDate?: Date | string;
   source?: string;
-  referralId?: string | Referral;
+  referralId?: string | Referral | null;
   referralPersonType?: 'existing_client' | 'someone_else';
   referralClientId?: string | Client;
   referralPersonName?: string;

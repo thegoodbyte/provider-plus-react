@@ -269,7 +269,7 @@ const ClientEditPage: React.FC = () => {
         dietaryRestrictions: formData.dietaryRestrictions,
         notes: formData.notes,
         source: normalizeOptionalValue(formData.source),
-        referralId: typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId,
+        referralId: (typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId) || null,
         referralPersonType: formData.referralPersonType,
         referralClientId: typeof formData.referralClientId === 'object' ? formData.referralClientId?._id : formData.referralClientId,
         referralPersonName: normalizeOptionalValue(formData.referralPersonName),
