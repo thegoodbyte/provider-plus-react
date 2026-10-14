@@ -20,6 +20,7 @@ test.describe('PPVC-491 referral payouts', () => {
       const request = route.request();
       const url = new URL(request.url());
       if (url.port === '3000') return route.continue();
+      if (url.pathname === '/environment/status') return route.fulfill({ json: { environment: 'development', production: false, enabledJobs: [] } });
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === '/referrals' && request.method() === 'GET') return route.fulfill({ json: [referral] });
       if (url.pathname === '/referrals/report') return route.fulfill({ json: payout ? report.map(row => ({ ...row, paid: true, expenseId: 'expense-1', paidAt: '2026-08-14' })) : report });
@@ -30,9 +31,10 @@ test.describe('PPVC-491 referral payouts', () => {
       return route.fulfill({ json: [] });
     });
 
-    await page.goto('/admin/referrals');
-    await expect(page.getByRole('heading', { name: 'Referrals' })).toBeVisible();
-    await page.getByRole('button', { name: /^AP Ada Partners/ }).click();
+    page.on('pageerror', error => console.error('Browser error:', error.message));
+    await page.goto('/admin/referrals/commissions');
+    await expect(page.getByRole('heading', { name: 'Commissions', exact: true })).toBeVisible();
+    await page.getByLabel('Filter by referral').selectOption('referral-1');
     await expect(page.getByRole('heading', { name: 'Clients referred by Ada Partners' })).toBeVisible();
     await expect(page.getByText(/€750\.00/).first()).toBeVisible();
 
@@ -40,7 +42,7 @@ test.describe('PPVC-491 referral payouts', () => {
     await page.getByRole('checkbox', { name: 'Select commission for booking 1402' }).check();
     await page.getByRole('button', { name: 'Pay selected (2)' }).click();
     await expect(page.getByRole('dialog')).toContainText('€750.00');
-    await page.getByLabel('Account').fill('Revolut EUR');
+    await page.getByRole('dialog').getByLabel('Account', { exact: true }).fill('Revolut EUR');
     await page.getByLabel('Reference').fill('REF-2026-08');
     await page.getByLabel('Notes').fill('August partner payout');
     await page.getByRole('button', { name: 'Record paid expense' }).click();
@@ -54,6 +56,8 @@ test.describe('PPVC-491 referral payouts', () => {
       reference: 'REF-2026-08',
       notes: 'August partner payout',
     });
+    await expect(page.getByRole('heading', { name: 'Referral payment history' })).toBeVisible();
+    await page.getByRole('link', { name: 'Commissions and clients' }).click();
     await expect(page.getByRole('button', { name: 'Paid · view expense' })).toHaveCount(2);
   });
 });

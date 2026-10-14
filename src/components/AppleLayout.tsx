@@ -805,7 +805,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="communications-settings" element={<ProtectedRoute requiredRole={['admin', 'medical_staff', 'facilitator', 'user']}><CommunicationsSettingsPage /></ProtectedRoute>} />
                       <Route path="assistant" element={<AssistantPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
-                      <Route path="referrals" element={<ReferralsPage />} />
+                      <Route path="referrals/*" element={<ReferralsPage />} />
                       <Route path="requirements" element={<RequirementsGrid />} />
                       <Route path="permissions" element={<PermissionsMatrix />} />
                       <Route path="client-medications" element={<ClientMedicationsGrid />} />
@@ -1030,8 +1030,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/admin/assistant" element={<ProtectedRoute requiredRole={['admin']}><AssistantPage /></ProtectedRoute>} />
                 <Route path="/medical/assistant" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><AssistantPage /></ProtectedRoute>} />
                 <Route path="/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
-                <Route path="/referrals" element={<ProtectedRoute requiredRole={['admin']}><ReferralsPage /></ProtectedRoute>} />
-                <Route path="/admin/referrals" element={<ProtectedRoute requiredRole={['admin']}><ReferralsPage /></ProtectedRoute>} />
+                <Route path="/referrals/*" element={<ProtectedRoute requiredRole={['admin']}><ReferralsPage /></ProtectedRoute>} />
+                <Route path="/admin/referrals/*" element={<ProtectedRoute requiredRole={['admin']}><ReferralsPage /></ProtectedRoute>} />
                 <Route path="/admin/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/medical/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/staff/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />

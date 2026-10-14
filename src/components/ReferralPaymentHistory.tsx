@@ -28,11 +28,11 @@ export default function ReferralPaymentHistory({ prefix, initialReferral = '', o
     <h2 className="text-xl font-black">Referral payment history</h2>
     <p className="mb-4 text-sm text-slate-500">Recorded payments and their linked retreat expenses. Voided records remain visible for corrections.</p>
     <div className="mb-4 flex flex-wrap gap-2">
-      <input aria-label="Search referral payments" placeholder="Referral code, client, booking or reference" value={query} onChange={e => setQuery(e.target.value)} className="min-h-11 rounded-lg border px-3" />
-      <select aria-label="Payment referral" value={referral} onChange={e => setReferral(e.target.value)} className="min-h-11 rounded-lg border px-3"><option value="">All referrals</option>{referrals.map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select>
-      <select aria-label="Payment retreat" value={retreat} onChange={e => setRetreat(e.target.value)} className="min-h-11 rounded-lg border px-3"><option value="">All retreats</option>{retreats.map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select>
-      <select aria-label="Payment record status" value={status} onChange={e => setStatus(e.target.value)} className="min-h-11 rounded-lg border px-3"><option value="all">All records</option><option value="paid">Paid</option><option value="voided">Voided</option></select>
-      <button onClick={() => void load()} className="min-h-11 rounded-lg border px-3">Refresh payments</button>
+      <input aria-label="Search referral payments" placeholder="Referral code, client, booking or reference" value={query} onChange={e => setQuery(e.target.value)} className="min-h-11 max-w-full rounded-lg border px-3" />
+      <select aria-label="Payment referral" value={referral} onChange={e => setReferral(e.target.value)} className="min-h-11 max-w-full rounded-lg border px-3"><option value="">All referrals</option>{referrals.map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select>
+      <select aria-label="Payment retreat" value={retreat} onChange={e => setRetreat(e.target.value)} className="min-h-11 max-w-full rounded-lg border px-3"><option value="">All retreats</option>{retreats.map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select>
+      <select aria-label="Payment record status" value={status} onChange={e => setStatus(e.target.value)} className="min-h-11 max-w-full rounded-lg border px-3"><option value="all">All records</option><option value="paid">Paid</option><option value="voided">Voided</option></select>
+      <button onClick={() => void load()} className="min-h-11 max-w-full rounded-lg border px-3">Refresh payments</button>
     </div>
     <div className="mb-4 flex flex-wrap gap-3">{Object.entries(totals).map(([c, n]) => <div key={c} className="rounded-lg bg-emerald-50 p-3"><span>Recorded paid · {c}</span><strong className="block text-xl">{money(n, c)}</strong></div>)}</div>
     {error && <p role="alert" className="mb-3 text-red-700">{error}</p>}

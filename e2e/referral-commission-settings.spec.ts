@@ -47,7 +47,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
         return /^(localhost|127\.0\.0\.1)$/.test(host) ? route.continue() : route.abort();
       });
       await page.goto('/admin/referrals');
-      await page.getByRole('button', { name: `Edit ${name}`, exact: true }).click();
+      await page.getByRole('link', { name: `Edit ${name}`, exact: true }).click();
       const rates = page.getByRole('region', { name: 'Rate schedule', exact: true });
       const packages = page.getByRole('region', { name: 'Commission packages', exact: true });
       await expect(packages.getByRole('button', { name: 'Save commission packages' })).toBeVisible();
@@ -62,7 +62,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       const report = async () => (await (await request.get(apiUrl + '/referrals/report', { headers })).json()).find((row: any) => row.bookingId === String(ids.booking));
       expect((await report()).commissionPercentage).toBe(12);
       await page.reload();
-      await page.getByRole('button', { name: `Edit ${name}`, exact: true }).click();
+      await expect(page.getByRole('form', { name: 'Referral settings' })).toBeVisible();
       await expect(rates.getByLabel('Rate %', { exact: true })).toHaveValue('12');
       await packages.getByRole('button', { name: 'Add commission package' }).click();
       // Native validation must identify missing required fields instead of appearing to save.
@@ -92,7 +92,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       await rates.getByRole('button', { name: 'Save rate schedule' }).scrollIntoViewIfNeeded();
       await page.screenshot({ path: path.join(output, `settings-rates-${viewport.width}.png`) });
       await page.reload();
-      await page.getByRole('button', { name: `Edit ${name}`, exact: true }).click();
+      await expect(page.getByRole('form', { name: 'Referral settings' })).toBeVisible();
       await expect(packages.getByLabel('Name', { exact: true })).toHaveValue('Summer 20%');
       await expect(rates).toContainText('this rate schedule is saved but does not apply');
       // Fixed packages use their payout amount/currency instead of the percentage.

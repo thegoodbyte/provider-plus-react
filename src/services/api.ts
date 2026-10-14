@@ -438,15 +438,15 @@ export const bookingsApi = {
 export const retreatClientsApi = bookingsApi;
 
 export const referralsApi = {
-  getAll: () => api.get<Referral[]>('/referrals'),
-  getReport: () => api.get<ReferralReportRow[]>('/referrals/report'),
+  getAll: (options?: ReadOptions) => api.get<Referral[]>('/referrals', options),
+  getReport: (options?: ReadOptions) => api.get<ReferralReportRow[]>('/referrals/report', options),
   getPayouts: () => api.get<RetreatExpense[]>('/referrals/payouts'),
   voidPayout: (id: string, reason: string) => api.post<RetreatExpense>(`/referrals/payouts/${id}/void`, { reason }),
-  createPayout: (data: { requestId?: string; referralId: string; retreatId: string; bookingIds: string[]; expenseDate?: string; paymentMethod?: string; paymentAccount?: string; reference?: string; notes?: string }) => api.post<RetreatExpense>('/referrals/payouts', data),
+  createPayout: (data: { requestId?: string; referralId: string; retreatId: string; bookingIds: string[]; expenseDate?: string; paymentMethod?: string; paymentAccount?: string; reference?: string; notes?: string }) => api.post<RetreatExpense>('/referrals/payouts', data, { suppressGlobalError: true } as ReadOptions),
   // The settings form owns save errors; the global overlay would remount it and lose edits.
   create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data, { suppressGlobalError: true } as ReadOptions),
   update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data, { suppressGlobalError: true } as ReadOptions),
-  delete: (id: string) => api.delete(`/referrals/${id}`),
+  delete: (id: string) => api.delete(`/referrals/${id}`, { suppressGlobalError: true } as ReadOptions),
 };
 
 export const expenseTypesApi = {
