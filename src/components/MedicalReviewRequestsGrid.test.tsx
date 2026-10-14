@@ -6,7 +6,7 @@ import { usersApi } from '../services/usersApi';
 
 jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: { role: 'admin' } }) }));
 jest.mock('../services/api', () => ({
-  medicalReviewRequestsApi: { getAll: jest.fn(), getGroups: jest.fn() },
+  medicalReviewRequestsApi: { getAll: jest.fn(), getGroups: jest.fn(), downloadForWhatsapp: jest.fn() },
   medicalTrackingApi: { getAll: jest.fn() }, clientsApi: { getAll: jest.fn() }, retreatsApi: { getAll: jest.fn() },
 }));
 jest.mock('../services/usersApi', () => ({ usersApi: { getAll: jest.fn() } }));
@@ -78,4 +78,15 @@ it('keeps status filtering in All and Grouped views', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'All', exact: true }));
   expect(screen.getAllByText('#7902').length).toBeGreaterThan(0);
   expect(screen.queryByText('#7901')).not.toBeInTheDocument();
+});
+
+
+it('downloads the selected WhatsApp request and keeps failures available for retry', async () => {
+  (medicalReviewRequestsApi.downloadForWhatsapp as jest.Mock).mockRejectedValue({ response: { data: { message: 'No downloadable documents are attached to this medical review request.' } } });
+  await openWhatsApp();
+  fireEvent.click(screen.getByRole('button', { name: 'Download MRR #7901 for WhatsApp' }));
+  expect(await screen.findByText('No downloadable documents are attached to this medical review request.')).toBeInTheDocument();
+  expect(medicalReviewRequestsApi.downloadForWhatsapp).toHaveBeenCalledWith('waiting');
+  expect(screen.getByRole('button', { name: 'Download MRR #7901 for WhatsApp' })).toBeEnabled();
+  expect(screen.getByText('#7902')).toBeInTheDocument();
 });

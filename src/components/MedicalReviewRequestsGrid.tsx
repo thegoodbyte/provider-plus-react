@@ -226,6 +226,28 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     );
   };
 
+  const [downloadingRequestId, setDownloadingRequestId] = useState('');
+  const downloadSingleRequest = async (request: EnrichedReviewRequest) => {
+    if (!request._id || downloadingRequestId) return;
+    setDownloadingRequestId(request._id);
+    try {
+      const { data } = await medicalReviewRequestsApi.downloadForWhatsapp(request._id);
+      window.location.assign(data.url);
+    } catch (error) {
+      showError(apiErrorMessage(error, 'Unable to download this MRR. Please try again.'));
+    } finally {
+      setDownloadingRequestId('');
+    }
+  };
+  const downloadAction = (request: EnrichedReviewRequest) => canManageRequests && (
+    <button type="button" onClick={() => void downloadSingleRequest(request)} disabled={Boolean(downloadingRequestId)}
+      aria-label={`Download MRR #${request.display_id} for WhatsApp`}
+      className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50">
+      <Icon icon={FiDownload} className="h-3.5 w-3.5" />
+      {downloadingRequestId === request._id ? 'Preparing…' : 'Download for WhatsApp'}
+    </button>
+  );
+
   const whatsappAction = (request: EnrichedReviewRequest) => canManageRequests && (
     <button
       type="button"
@@ -1387,6 +1409,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               >
                                 Open review
                               </button>
+                              {downloadAction(request)}
                               {whatsappAction(request)}
                               {notifyAction(request)}
                             {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && (
@@ -1503,7 +1526,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             >
                               Open review
                             </button>
-                            {whatsappAction(request)}
+                            {downloadAction(request)}
+                              {whatsappAction(request)}
                             {notifyAction(request)}
                             {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>}
                             {canDeleteRequests && (
@@ -1559,6 +1583,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         <th className="px-4 py-2">Answered date</th>
                         <th className="px-4 py-2">Result</th>
                         <th className="px-4 py-2">Note</th>
+                        {canManageRequests && <th className="px-4 py-2">Download</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -1583,6 +1608,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                                 : <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Awaiting answer</span>}
                             </td>
                             <td className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={request.reviewNotes || ''}>{noteExcerpt(request.reviewNotes)}</td>
+                            {canManageRequests && <td className="px-4 py-2">{downloadAction(request)}</td>}
                           </tr>
                         );
                       })}
@@ -1702,7 +1728,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       >
                         <Icon icon={FiEye} />
                       </button>
-                      {whatsappAction(request)}
+                      {downloadAction(request)}
+                              {whatsappAction(request)}
                       {notifyAction(request)}
                       {canManageRequests && (
                         <button
