@@ -42,7 +42,7 @@ describe('ReferralsPage payout workflow', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Edit Ada Partners' }));
     expect(await screen.findByRole('form', { name: 'Referral settings' })).toBeVisible();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Referral portal access' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Referral portal access' })).toBeInTheDocument();
   });
 
   it('keeps the editor usable when commission summaries are unavailable and does not request a report', async () => {
@@ -168,6 +168,7 @@ describe('ReferralsPage payout workflow', () => {
     fireEvent.change(within(dialog).getByLabelText('Account'), { target: { value: 'Revolut' } });
     fireEvent.change(within(dialog).getByLabelText('Reference'), { target: { value: 'REF-1' } });
     fireEvent.change(within(dialog).getByLabelText('Notes'), { target: { value: 'Paid together' } });
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Record paid expense' })).toBeEnabled());
     fireEvent.submit(within(dialog).getByRole('button', { name: 'Record paid expense' }).closest('form')!);
     await waitFor(() => expect(referralsApi.createPayout).toHaveBeenCalledWith(expect.objectContaining({ referralId: 'r1', retreatId: 't1', bookingIds: ['b1', 'b2'], paymentAccount: 'Revolut', reference: 'REF-1', notes: 'Paid together' })));
   });
@@ -221,16 +222,14 @@ describe('ReferralsPage payout workflow', () => {
     expect(screen.getByText('Jan Kowalski')).toBeInTheDocument();
   });
 
-  it('shows and searches friend attribution for friend-referred clients', async () => {
+  it('keeps friend-attribution search after removing its column', async () => {
     (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [
       row({ referredByType: 'friend_client', referredByLabel: 'Arek Kowal' }),
       row({ bookingId: 'b2', bookingNumber: 102, clientName: 'Jan Kowalski', referredByType: 'friend_name', referredByLabel: 'Basia' }),
     ] });
     view();
     await screen.findAllByText('Eva Novak');
-    expect(screen.getByText('Arek Kowal')).toBeInTheDocument();
-    expect(screen.getByText('Basia')).toBeInTheDocument();
-    expect(screen.getByText('(not a client)')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Referred by' })).toBeNull();
 
     fireEvent.change(screen.getByPlaceholderText(/Search client or referred-by/i), { target: { value: 'Basia' } });
 

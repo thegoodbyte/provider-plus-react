@@ -443,13 +443,14 @@ export const bookingsApi = {
 export const retreatClientsApi = bookingsApi;
 
 export const referralsApi = {
+  quotePayout: (data: { referralId: string; retreatId: string; bookingIds: string[]; expenseDate: string }) => api.post<any>('/referrals/payouts/quote', data),
   getAssignmentNotifications: (id: string) => api.get<any[]>(`/referrals/${id}/assignment-notifications`, { suppressGlobalError: true } as ReadOptions),
   retryAssignmentNotification: (id: string, clientId: string, eventId: string) => api.post<any[]>(`/referrals/${id}/assignment-notifications/${clientId}/${eventId}/retry`, {}, { suppressGlobalError: true } as ReadOptions),
   getAll: (options?: ReadOptions) => api.get<Referral[]>('/referrals', options),
   getReport: (options?: ReadOptions) => api.get<ReferralReportRow[]>('/referrals/report', options),
   getPayouts: () => api.get<RetreatExpense[]>('/referrals/payouts', { suppressGlobalError: true } as ReadOptions),
   voidPayout: (id: string, reason: string) => api.post<RetreatExpense>(`/referrals/payouts/${id}/void`, { reason }, { suppressGlobalError: true } as ReadOptions),
-  createPayout: (data: { requestId?: string; referralId: string; retreatId: string; bookingIds: string[]; expenseDate?: string; paymentMethod?: string; paymentAccount?: string; reference?: string; notes?: string }) => api.post<RetreatExpense>('/referrals/payouts', data, { suppressGlobalError: true } as ReadOptions),
+  createPayout: (data: { expectedPayoutAmount?: number; expectedPayoutCurrency?: string; requestId?: string; referralId: string; retreatId: string; bookingIds: string[]; expenseDate?: string; paymentMethod?: string; paymentAccount?: string; reference?: string; notes?: string }) => api.post<RetreatExpense>('/referrals/payouts', data, { suppressGlobalError: true } as ReadOptions),
   // The settings form owns save errors; the global overlay would remount it and lose edits.
   create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data, { suppressGlobalError: true } as ReadOptions),
   update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data, { suppressGlobalError: true } as ReadOptions),

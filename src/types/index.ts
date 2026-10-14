@@ -146,6 +146,7 @@ export interface ReferralCommissionPackage {
 }
 
 export interface Referral {
+  payoutCurrency?: string;
   commissionMode?: 'dated_percentage';
   assignmentNotificationsEnabled?: boolean;
   assignmentNotificationLanguage?: string;
@@ -167,6 +168,7 @@ export interface Referral {
 }
 
 export interface ReferralReportRow {
+  payoutCurrency?: string; payoutAmount?: number; payoutEstimate?: boolean; payoutConversionIssue?: string; exchangeRate?: number; exchangeRateDate?: string; exchangeRateSource?: string;
   /** Canonical payment reference supplied by the referral report. */
   refereeId?: string;
   attributionType?: string;
@@ -650,6 +652,7 @@ export interface RetreatExpense {
   tags?: string[];
   referralPayment?: { referralId?: string; retreatId?: string; retreatCode?: string; referralName?: string; referralCode?: string; recordedBy?: string; recordedAt?: string; originalAmount?: number; voidedAt?: string; voidReason?: string; voidedBy?: string };
   referralPayoutItems?: Array<{
+    payoutAmount?: number; payoutCurrency?: string; exchangeRate?: number; exchangeRateDate?: string; exchangeRateSource?: string; paymentDate?: string;
     bookingId: string;
     clientId: string;
     referralId: string;

@@ -27,7 +27,7 @@ it('retains readable text and provides recovery if clipboard is unavailable', as
  expect(await dialog.findByText(/Could not copy the reference/)).toBeVisible();expect(dialog.getByText(reference)).toBeVisible();
  expect(referralsApi.createPayout).not.toHaveBeenCalled();
 });
-it('updates selected totals and preserves individual grouped references', () => {
+it('updates selected totals and preserves individual grouped references', async () => {
  view();fireEvent.click(screen.getByLabelText('Select commission for booking 1184'));
  expect(screen.getByRole('region', { name: 'Selected payment total' })).toHaveTextContent('1,700.00');
  fireEvent.click(screen.getByLabelText('Select commission for booking 1185'));
@@ -35,7 +35,7 @@ it('updates selected totals and preserves individual grouped references', () => 
  fireEvent.click(screen.getByRole('button', { name: 'Pay selected (2)' }));
  const dialog=within(screen.getByRole('dialog'));expect(dialog.getByLabelText('Reference')).toHaveValue(reference+'; '+second.refereeId);
  expect(dialog.getByText(reference)).toBeVisible();expect(dialog.getByText(second.refereeId)).toBeVisible();
- expect(screen.getByRole('dialog')).toHaveTextContent('2,000.00');
+ await waitFor(() => expect(screen.getByRole('dialog')).toHaveTextContent('2,000.00'));
 });
 it('shows retreat totals and pay action without requiring a referral filter, excluding paid rows', () => {
  view([first, second, { ...first, bookingId:'paid', bookingNumber:999, amountOwed:99999, paid:true }]);

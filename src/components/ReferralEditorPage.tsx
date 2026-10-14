@@ -1,3 +1,4 @@
+import { ReferralPortalAccountEditor } from './ReferralPortalAccountEditor';
 import { FormEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Referral } from '../types';
@@ -9,7 +10,7 @@ import { datePackageEditorState, prepareDatePackages } from './referralDatePacka
 
 export default function ReferralEditorPage({ referral, base, onSaved }: { referral?: Referral; base: string; onSaved: () => Promise<void> }) {
   const navigate = useNavigate(); const location = useLocation(); const editingId = referral?._id || '';
-  const [form, updateForm] = useState(() => ({ name: referral?.name || '', referralCode: referral?.referralCode || '', email: referral?.email || '', phone: referral?.phone || '', notes: referral?.notes || '', isActive: referral?.isActive !== false, allowRepeatBookingCredit: referral?.allowRepeatBookingCredit !== false, assignmentNotificationsEnabled: referral?.assignmentNotificationsEnabled === true, assignmentNotificationLanguage: referral?.assignmentNotificationLanguage || 'en' }));
+  const [form, updateForm] = useState(() => ({ payoutCurrency: referral?.payoutCurrency ?? (referral ? '' : 'USD'), name: referral?.name || '', referralCode: referral?.referralCode || '', email: referral?.email || '', phone: referral?.phone || '', notes: referral?.notes || '', isActive: referral?.isActive !== false, allowRepeatBookingCredit: referral?.allowRepeatBookingCredit !== false, assignmentNotificationsEnabled: referral?.assignmentNotificationsEnabled === true, assignmentNotificationLanguage: referral?.assignmentNotificationLanguage || 'en' }));
   const [agreement, setAgreement] = useState(() => datePackageEditorState(referral));
   const [saving, setSaving] = useState(false); const [dirty, setDirty] = useState(false); const [error, setError] = useState('');
   const [savedMessage, setSavedMessage] = useState(location.state?.referralSaved ? 'Referral saved.' : '');
@@ -48,6 +49,7 @@ export default function ReferralEditorPage({ referral, base, onSaved }: { referr
           <input aria-label="Contact email" type="email" placeholder="Email" className={field} value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} />
           <input aria-label="Contact phone" placeholder="Phone" className={field} value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} />
         </div>
+        <label className="my-4 block text-sm font-semibold">Preferred payout currency<select aria-label="Preferred payout currency" className={`${field} mt-1`} value={form.payoutCurrency} onChange={event => setForm({ ...form, payoutCurrency: event.target.value })}><option value="">Original commission currency</option>{['USD','EUR','PLN','CZK'].map(currency => <option key={currency} value={currency}>{currency}</option>)}</select><span className="mt-1 block text-xs font-normal text-slate-500">Original commissions stay unchanged. Conversion uses the published payment-date rate; saved payouts keep their recorded rate.</span></label>
         {agreement.blocked ? <section aria-label="Existing commission agreement" className="my-5 rounded-xl bg-slate-50 p-4">
           <h3 className="font-semibold">Existing commission agreement</h3>
           <p className="mt-2 text-sm text-slate-600">This agreement uses fixed amounts, price tiers or a currency restriction. It stays active until you replace it with dated percentages. Recorded payments stay as saved.</p>
@@ -71,6 +73,7 @@ export default function ReferralEditorPage({ referral, base, onSaved }: { referr
         </div>
       </fieldset>
     </form>
+    {editingId && <ReferralPortalAccountEditor referralId={editingId} defaultEmail={referral?.email || ''} />}
     {editingId && <ReferralAssignmentNotifications referralId={editingId} />}
   </div>;
 }
