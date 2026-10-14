@@ -396,8 +396,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     const filtered = requests.filter((request) => {
       if (!matchesReviewRequestFilters(request, { searchTerm, typeFilter, dateFrom, dateTo })) return false;
       if (filterStatus !== 'all' && normalizeReviewStatus(request.status) !== filterStatus) return false;
-      if (pendingOnly && !isPendingReview(request)) return false;
-      if (filterAdvisorId !== 'all' && getAssigneeId(request) !== filterAdvisorId) return false;
+      const pending = isPendingReview(request) || (activeView === 'whatsapp' && request.whatsappStatus !== 'responded');
+      if (pendingOnly && !pending) return false;
+      const advisorId = activeView === 'whatsapp' ? whatsappAdvisorId(request) : getAssigneeId(request);
+      if (filterAdvisorId !== 'all' && advisorId !== filterAdvisorId) return false;
       return true;
     });
     return [...filtered].sort((a, b) => {
@@ -406,16 +408,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         || date(b) - date(a)
         || Number(b.display_id || 0) - Number(a.display_id || 0);
     });
-  }, [dateFrom, dateTo, filterAdvisorId, filterStatus, pendingOnly, requests, searchTerm, typeFilter]);
+  }, [activeView, dateFrom, dateTo, filterAdvisorId, filterStatus, pendingOnly, requests, searchTerm, typeFilter]);
 
-  // PPVC-695: a holistic, per-retreat overview of every MRR handled via
-  // WhatsApp, so an admin can see at a glance how many were sent vs. still
-  // need a reviewed answer, retreat by retreat. Only the search/type/date
-  // filters from the shared filter bar apply here -- status/pending/advisor
-  // filters are for the queue-triage views, not this summary.
+  // Apply the shared controls before grouping so rows and counts reflect the same filters.
   const whatsappHandledGroups = useMemo(
-    () => groupWhatsappHandledByRetreat(requests, retreatOptions, { searchTerm, typeFilter, dateFrom, dateTo }),
-    [dateFrom, dateTo, requests, retreatOptions, searchTerm, typeFilter],
+    () => groupWhatsappHandledByRetreat(filteredRequests, retreatOptions),
+    [filteredRequests, retreatOptions],
   );
 
   const groupedRequestIds = useMemo(() => {
@@ -1024,8 +1022,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           onChange={(event) => setFilterStatus(event.target.value as typeof filterStatus)}
           className="w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
-          {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
-            <option key={status} value={status}>{status}</option>
+          {(['all', 'pending', 'in_review', 'awaiting_whatsapp', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed', 'wont_do'] as const).map((status) => (
+            <option key={status} value={status}>{status === 'awaiting_whatsapp' ? 'Awaiting answer (WhatsApp)' : status === 'wont_do' ? 'Won’t do' : status}</option>
           ))}
         </select>
         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
@@ -1533,7 +1531,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         <div className="space-y-6">
           {whatsappHandledGroups.length === 0 && (
             <div className="rounded-lg border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500">
-              No MRRs have been handled via WhatsApp yet.
+              No WhatsApp-handled MRRs match the current filters.
             </div>
           )}
           {whatsappHandledGroups.map((group) => {
@@ -1545,7 +1543,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   <div className="text-base font-semibold text-gray-900">{group.retreatName}</div>
                   <div className="flex flex-wrap gap-2 text-xs font-medium">
                     <span className="rounded-full bg-gray-100 px-2 py-1 text-gray-700">{group.requests.length} handled via WhatsApp</span>
-                    {awaiting > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">{awaiting} awaiting answer</span>}
+                    {awaiting > 0 && <span className="rounded-full bg-blue-100 px-2 py-1 text-blue-800">{awaiting} awaiting answer</span>}
                     {answered > 0 && <span className="rounded-full bg-green-100 px-2 py-1 text-green-800">{answered} answered</span>}
                   </div>
                 </div>
@@ -1582,7 +1580,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             <td className="px-4 py-2">
                               {request.whatsappStatus === 'responded'
                                 ? <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass[normalizeReviewStatus(request.status)] || 'bg-gray-100 text-gray-700'}`}>{whatsappDecisionLabels[request.whatsappDecision || ''] || request.whatsappDecision || '—'}</span>
-                                : <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Awaiting answer</span>}
+                                : <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Awaiting answer</span>}
                             </td>
                             <td className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={request.reviewNotes || ''}>{noteExcerpt(request.reviewNotes)}</td>
                           </tr>
