@@ -11,6 +11,7 @@ import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
 import { AlertTriangle, Ban, ChevronDown, CircleHelp, FileText, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
+  getMedicalReviewClientDisplayId,
   composeWhatsappReviewNotes,
   extractWhatsappNotes,
   findReviewerTranslation,
@@ -1654,6 +1655,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     : reviewContext?.client?.screeningData
       ? [reviewContext.client.screeningData]
       : [];
+  const selectedClientDisplayId = getMedicalReviewClientDisplayId(selected, reviewContext?.client);
   const selectedClientName = selected
     ? typeof selected.clientId === 'string'
       ? selected.clientId
@@ -1760,7 +1762,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
             {isDetailView && selected ? (
               <>
-                <span className="sm:hidden">{profileHref ? <a href={profileHref} className="text-blue-700 underline" onClick={(event) => event.stopPropagation()}>{selectedClientName}</a> : selectedClientName}{getId(selected.clientId) ? ` · ID ${getId(selected.clientId)}` : ''}{selectedClientAge ? ` · ${selectedClientAge} yo` : ''}{selectedClientGender ? ` · ${selectedClientGender}` : ''}</span>
+                <span className="sm:hidden">{profileHref ? <a href={profileHref} className="text-blue-700 underline" onClick={(event) => event.stopPropagation()}>{selectedClientName}</a> : selectedClientName}{selectedClientDisplayId ? ` · ID ${selectedClientDisplayId}` : ''}{selectedClientAge ? ` · ${selectedClientAge} yo` : ''}{selectedClientGender ? ` · ${selectedClientGender}` : ''}</span>
                 <span className="hidden sm:inline">Medical Review</span>
               </>
           ) : 'Medical Review Requests'}
@@ -1769,7 +1771,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <div className="mt-1">
                   <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">
                     {profileHref ? <a href={profileHref} className="text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900">{selectedClientName}</a> : selectedClientName}
-                    {getId(selected.clientId) && <span className="ml-2 text-xs font-normal text-gray-500">ID: {getId(selected.clientId)}</span>}
+                    {selectedClientDisplayId && <span className="ml-2 text-xs font-normal text-gray-500">ID: {selectedClientDisplayId}</span>}
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-600"><MedicalDocumentTypeIcon type={selected.requestType} fallbackType={selected.documentType} />{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
                   {retreatStartDate && <div className="mt-1 text-xs font-medium text-gray-500">Retreat starts {retreatStartDate}</div>}

@@ -252,3 +252,17 @@ describe('extractWhatsappNotes', () => {
     expect(extractWhatsappNotes(makeRequest({ reviewChannel: undefined, reviewNotes: 'OK' }))).toBe('');
   });
 });
+
+
+describe('numeric MRR client display ID (PPVC-793)', () => {
+  const { getMedicalReviewClientDisplayId } = require('./MedicalReviewRequestsPage.helpers');
+  it('uses the populated numeric ID and never displays the Mongo ID', () => {
+    expect(getMedicalReviewClientDisplayId({ clientId: { _id: 'mongo-hash', display_id: 1201 } })).toBe('1201');
+    expect(getMedicalReviewClientDisplayId({ clientId: 'mongo-hash', clientDisplayId: 1201 })).toBe('1201');
+    expect(getMedicalReviewClientDisplayId({ clientId: 'mongo-hash' }, { display_id: 1201 })).toBe('1201');
+    expect(getMedicalReviewClientDisplayId({ clientId: 'mongo-hash' })).toBeUndefined();
+  });
+  it.each([0, -1, 'hash', '', null, undefined])('does not render invalid ID %s', value => {
+    expect(getMedicalReviewClientDisplayId({ clientId: { _id: 'hash', display_id: value } })).toBeUndefined();
+  });
+});

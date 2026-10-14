@@ -311,3 +311,13 @@ export const splitMedicalReviewRequestsByTimeline = (
     followingRequests: followingRequests.sort(sortByTimeline),
   };
 };
+
+
+/** Internal object IDs remain in links; only the client’s numeric display ID is shown. */
+export const getMedicalReviewClientDisplayId = (request?: MedicalReviewRequest | null, contextClient?: { display_id?: number | string } | null): string | undefined => {
+  const client = request && typeof request.clientId === 'object' ? request.clientId : undefined;
+  for (const value of [client?.display_id, request?.clientDisplayId, contextClient?.display_id]) {
+    if (value !== undefined && value !== null && /^[1-9]\d*$/.test(String(value))) return String(value);
+  }
+  return undefined;
+};

@@ -12,7 +12,7 @@ jest.mock('../services/api', () => ({
 }));
 
 it.each(['admin', 'medical_advisor'])('renders saved translated messages at the bottom of the MRR for %s outside hidden legacy layouts', async role => {
-  const request: any = { _id: 'mrr-1325', display_id: 1325, requestType: 'medications_review', status: 'pending', clientId: { _id: 'client-1', firstName: 'Test', lastName: 'Client' }, artifactIds: [] };
+  const request: any = { _id: 'mrr-1325', display_id: 1325, requestType: 'medications_review', status: 'pending', clientId: { _id: 'client-1', firstName: 'Test', lastName: 'Client', display_id: 1201 }, artifactIds: [] };
   (useAuth as jest.Mock).mockReturnValue({ user: { role, email: 'staff@example.com' } });
   (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({ data: [request] });
   (medicalReviewRequestsApi.getQueue as jest.Mock).mockResolvedValue({ data: [request] });
@@ -23,6 +23,8 @@ it.each(['admin', 'medical_advisor'])('renders saved translated messages at the 
   const route = role === 'admin' ? '/admin/medical-review-requests' : '/medical/review-requests';
   render(<MemoryRouter initialEntries={[`${route}/mrr-1325`]}><Routes><Route path={`${route}/:id`} element={<MedicalReviewRequestsPage />} /></Routes></MemoryRouter>);
   expect(await screen.findByText('Proszę przesłać nowe zdjęcie.')).toBeInTheDocument();
+  expect(screen.getByText('ID: 1201')).toBeInTheDocument();
+  expect(screen.queryByText('ID: client-1')).not.toBeInTheDocument();
   const history = screen.getByRole('region', { name: 'Client message history' });
   expect(history.closest('.mrr-desktop-legacy')).toBeNull();
   expect(history.closest('.md\\:hidden')).toBeNull();
