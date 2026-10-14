@@ -1,3 +1,4 @@
+import MedicalReviewListRow from './MedicalReviewListRow';
 import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
 import MedicalReviewWhatsAppForm from './MedicalReviewWhatsAppForm';
 import { NAVIGATION } from '../navigation/navigation';
@@ -953,14 +954,37 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     return <LoadingSpinner message="Loading medical review requests..." />;
   }
 
+  const renderReviewRow = (request: EnrichedReviewRequest, packet?: MedicalReviewGroup) => <MedicalReviewListRow
+    requestId={<button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="text-sm font-semibold text-blue-700 hover:underline">#{request.display_id || '—'}</button>}
+    client={clientCell(request)} retreat={request.retreatName} type={<MedicalReviewTypeBadge requestType={request.requestType} />}
+    status={<span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}><Icon icon={statusIcon[request.status] || FiClock} className="h-3.5 w-3.5" />{String(request.status || 'unknown').replace(/_/g, ' ')}</span>}
+    details={<>
+      <div><dt>Stage · attempt</dt><dd>{String(request.documentStage || '—').replace(/_/g, ' ')} · {request.attemptNumber || 1}</dd></div>
+      <div><dt>Created</dt><dd>{formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</dd></div>
+      <div><dt>Artifact received</dt><dd>{request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'} · {request.artifactReceivedVia || 'Unknown'}</dd></div>
+      <div><dt>Medical advisor</dt><dd>{getAssignee(request).name}</dd>{getAssignee(request).email && <dd>{getAssignee(request).email}</dd>}</div>
+      <div><dt>Advisor delivery</dt><dd className={request.advisorDeliveryStatus === 'sent' ? 'text-emerald-700' : 'text-amber-700'}>{request.advisorDeliveryStatus === 'sent' ? 'Sent to advisor' : 'Not sent'}</dd></div>
+      <div><dt>Source</dt><dd>{request.source || 'Provider Plus CRM'}</dd></div>
+    </>}
+    actions={<>
+      <button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">Open review</button>
+      {followUpAction(request)}{downloadAction(request)}{whatsappAction(request)}{notifyAction(request)}
+      {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Mark sent</button>}
+      {packet ? canManageRequests && <button type="button" onClick={() => removeRequestFromPacket(packet, request._id || '')} className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" aria-label="Remove from packet">Remove from packet</button> : activeView === 'all' && <>
+        {canManageRequests && <button type="button" onClick={() => navigate(`${basePath}/${request._id}/edit`)} className="rounded-md border border-gray-200 px-3 py-2 text-xs" title="Edit">Edit</button>}
+        {canDeleteRequests && <button type="button" onClick={() => handleDelete(request._id!)} className="rounded-md border border-red-200 px-3 py-2 text-xs text-red-700" title="Delete">Delete</button>}
+      </>}
+    </>}
+  />;
+
   return (
-    <div className="h-full overflow-x-hidden p-6">
+    <div className="mrr-queue h-full p-3 sm:p-6">
       <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['medical-review-requests'].label}</h1>
           <p className="text-sm text-gray-600">Queue and audit trail for EKG and liver panel review rounds.</p>
-          <div className="mt-3 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+          <div className="mrr-view-tabs mt-3 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
             <button
               type="button"
               onClick={() => setActiveView('grouped')}
@@ -984,7 +1008,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="mrr-queue-toolbar flex flex-wrap items-center gap-2">
           <button
             onClick={loadData}
             className="inline-flex w-auto shrink-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -1014,14 +1038,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       </div>
 
       <div className="mb-4 flex items-center justify-end gap-2">
-        <div className="grid w-full flex-1 gap-2 lg:grid-cols-[minmax(280px,1fr)_160px_170px_170px]">
+        <div className="mrr-queue-filters grid min-w-0 w-full flex-1 grid-cols-2 gap-2 xl:grid-cols-[minmax(0,1fr)_160px_170px_170px]">
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Search client, retreat, request #, type, notes..."
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            aria-label="Search review requests"
+            className="col-span-2 xl:col-span-1 min-w-0 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           <select
+            aria-label="Review type"
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value as MedicalReviewTypeFilter)}
             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1034,13 +1060,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             <option value="general">General</option>
           </select>
           <input
-            type="date"
+            type="date" aria-label="Created from"
             value={dateFrom}
             onChange={(event) => setDateFrom(event.target.value)}
             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           <input
-            type="date"
+            type="date" aria-label="Created to"
             value={dateTo}
             onChange={(event) => setDateTo(event.target.value)}
             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1048,7 +1074,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+      <div className="mb-4 flex flex-wrap items-center justify-start gap-2">
         <label htmlFor="review-status-filter" className="text-sm font-medium text-gray-700">Status</label>
         <select
           id="review-status-filter"
@@ -1386,66 +1412,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           event.dataTransfer.setData('text/plain', request._id || '');
                         }}
                         onDragEnd={handleRequestDragEnd}
-                        className={`grid gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 md:items-center ${statusRowClass[request.status] || 'bg-white'} ${packetAssignmentUnlocked ? 'cursor-grab md:grid-cols-[32px_150px_minmax(0,1fr)_220px_150px_180px] active:cursor-grabbing' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_180px]'}`}
+                        className={`${statusRowClass[request.status] || 'bg-white'} ${packetAssignmentUnlocked ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       >
-                          {packetAssignmentUnlocked && <div className="text-gray-400" title="Drag MRR to another packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
-                          <div className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => navigate(`${basePath}/${request._id}`)}
-                              className="text-left text-sm font-semibold text-blue-700 hover:underline"
-                            >
-                              #{request.display_id || '-'}
-                            </button>
-                            <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
-                            <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-400">Stage: {request.documentStage || '—'}</div>
-                            <div className="mt-1 text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
-                            <div className="mt-1 text-xs text-gray-500">Received {request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'} · {request.artifactReceivedVia || 'Unknown'}</div>
-                          </div>
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-gray-900">{clientCell(request)}</div>
-                            <div className="truncate text-xs text-gray-500">{request.retreatName}</div>
-                          </div>
-                          <div className="min-w-0">
-                            <MedicalReviewTypeBadge requestType={request.requestType} />
-                          </div>
-                          <div>
-                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                              <Icon icon={statusIcon[request.status] || FiClock} className="h-3.5 w-3.5" />
-                              {String(request.status || 'unknown').replace(/_/g, ' ')}
-                            </span>
-                          </div>
-                          <div className="text-xs font-medium"><span className={request.advisorDeliveryStatus === 'sent' ? 'text-emerald-700' : 'text-amber-700'}>{request.advisorDeliveryStatus === 'sent' ? 'Sent to advisor' : 'Not sent'}</span></div>
-                          <div className="flex justify-start md:justify-end">
-                            <div className="flex flex-wrap gap-2 md:justify-end">
-                              <button
-                                type="button"
-                                onClick={() => navigate(`${basePath}/${request._id}`)}
-                                className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                              >
-                                Open review
-                              </button>
-                              {followUpAction(request)}
-                              {downloadAction(request)}
-                              {whatsappAction(request)}
-                              {notifyAction(request)}
-                            {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && (
-                                <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100" title="Mark as sent to medical advisor"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>
-                              )}
-                              {canManageRequests && (
-                                <button
-                                  type="button"
-                                  onClick={() => removeRequestFromPacket(group, request._id || '')}
-                                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                                  title="Remove from packet"
-                                  aria-label="Remove from packet"
-                                >
-                                  <Icon icon={FiTrash2} className="h-4 w-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                        {packetAssignmentUnlocked && <div className="mrr-row-drag" title="Drag MRR to a packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
+                        {renderReviewRow(request, group)}
+                      </div>
                       )) : group.requests?.length ? (
                         <div className="px-4 py-6 text-center text-sm text-gray-500">No requests in this packet match “{packetSearch}”.</div>
                       ) : (
@@ -1504,63 +1475,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           event.dataTransfer.setData('text/plain', request._id || '');
                         }}
                         onDragEnd={handleRequestDragEnd}
-                        className={`grid gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 md:items-center ${statusRowClass[request.status] || 'bg-white'} ${packetAssignmentUnlocked ? 'cursor-grab md:grid-cols-[32px_150px_minmax(0,1fr)_220px_150px_130px] active:cursor-grabbing' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
+                        className={`${statusRowClass[request.status] || 'bg-white'} ${packetAssignmentUnlocked ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       >
-                        {packetAssignmentUnlocked && <div className="text-gray-400" title="Drag MRR to a packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
-                        <div className="min-w-0">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`${basePath}/${request._id}`)}
-                            className="text-left text-sm font-semibold text-blue-700 hover:underline"
-                          >
-                            #{request.display_id || '-'}
-                          </button>
-                          <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
-                          <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-400">Stage: {request.documentStage || '—'}</div>
-                          <div className="mt-1 text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
-                          <div className="mt-1 text-xs text-gray-500">Received {request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'} · {request.artifactReceivedVia || 'Unknown'}</div>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-gray-900">{clientCell(request)}</div>
-                          <div className="truncate text-xs text-gray-500">{request.retreatName}</div>
-                        </div>
-                        <div className="min-w-0">
-                          <MedicalReviewTypeBadge requestType={request.requestType} />
-                        </div>
-                        <div>
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                            <Icon icon={statusIcon[request.status] || FiClock} className="h-3.5 w-3.5" />
-                            {String(request.status || 'unknown').replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                        <div className="text-xs font-medium"><span className={request.advisorDeliveryStatus === 'sent' ? 'text-emerald-700' : 'text-amber-700'}>{request.advisorDeliveryStatus === 'sent' ? 'Sent to advisor' : 'Not sent'}</span></div>
-                        <div className="flex justify-start md:justify-end">
-                          <div className="flex flex-wrap gap-2 md:justify-end">
-                            <button
-                              type="button"
-                              onClick={() => navigate(`${basePath}/${request._id}`)}
-                              className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                            >
-                              Open review
-                            </button>
-                            {followUpAction(request)}
-                              {downloadAction(request)}
-                              {whatsappAction(request)}
-                            {notifyAction(request)}
-                            {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>}
-                            {canDeleteRequests && (
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(request._id || '')}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                                title="Delete request"
-                                aria-label="Delete request"
-                              >
-                                <Icon icon={FiTrash2} className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                        {packetAssignmentUnlocked && <div className="mrr-row-drag" title="Drag MRR to a packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
+                        {renderReviewRow(request)}
                       </div>
                     ))}
                   </div>
@@ -1590,7 +1508,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   </div>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-[900px] w-full divide-y divide-gray-100 text-sm">
+                  <table className="mrr-whatsapp-table divide-y divide-gray-100 text-sm">
                     <thead className="bg-white text-left text-xs font-semibold uppercase text-gray-500">
                       <tr>
                         <th className="px-4 py-2">MRR #</th>
@@ -1610,23 +1528,23 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         const advisorLabel = advisor ? [advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email : '—';
                         return (
                           <tr key={request._id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2">
+                            <td data-label="MRR #" className="px-4 py-2">
                               <button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="font-semibold text-blue-700 hover:underline">
                                 #{request.display_id}
                               </button>
                             </td>
-                            <td className="px-4 py-2"><MedicalReviewTypeBadge requestType={request.requestType} /></td>
-                            <td className="px-4 py-2">{clientCell(request)}</td>
-                            <td className="px-4 py-2">{formatMedicalReviewCreatedAt(request.whatsappSentAt)}</td>
-                            <td className="px-4 py-2">{advisorLabel}</td>
-                            <td className="px-4 py-2">{request.whatsappRespondedAt ? formatMedicalReviewCreatedAt(request.whatsappRespondedAt) : '—'}</td>
-                            <td className="px-4 py-2">
+                            <td data-label="Type" className="px-4 py-2"><MedicalReviewTypeBadge requestType={request.requestType} /></td>
+                            <td data-label="Client" className="px-4 py-2">{clientCell(request)}</td>
+                            <td data-label="WhatsApp sent" className="px-4 py-2">{formatMedicalReviewCreatedAt(request.whatsappSentAt)}</td>
+                            <td data-label="Medical advisor" className="px-4 py-2">{advisorLabel}</td>
+                            <td data-label="Answered date" className="px-4 py-2">{request.whatsappRespondedAt ? formatMedicalReviewCreatedAt(request.whatsappRespondedAt) : '—'}</td>
+                            <td data-label="Result" className="px-4 py-2">
                               {request.whatsappStatus === 'responded'
                                 ? <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass[normalizeReviewStatus(request.status)] || 'bg-gray-100 text-gray-700'}`}>{whatsappDecisionLabels[request.whatsappDecision || ''] || request.whatsappDecision || '—'}</span>
                                 : <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Awaiting answer</span>}
                             </td>
-                            <td className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={request.reviewNotes || ''}>{noteExcerpt(request.reviewNotes)}</td>
-                            {canManageRequests && <td className="px-4 py-2">{followUpAction(request)}
+                            <td data-label="Note" className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={request.reviewNotes || ''}>{noteExcerpt(request.reviewNotes)}</td>
+                            {canManageRequests && <td data-label="Actions" className="px-4 py-2">{followUpAction(request)}
                               {downloadAction(request)}</td>}
                           </tr>
                         );
@@ -1639,146 +1557,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           })}
         </div>
       ) : (
-        <>
-      <div className="space-y-3 overflow-x-hidden md:hidden">
-        {filteredRequests.map((request) => {
-          const retreatLabel = request.retreatName || 'Unknown Retreat';
-          return (
-            <div key={`mobile-${request._id}`} className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="grid w-full grid-cols-[88px_minmax(0,1fr)_44px] gap-3">
-                <div className="min-w-0 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`${basePath}/${request._id}`)}
-                    className="block max-w-full text-left text-lg font-semibold leading-tight text-blue-700 hover:underline"
-                  >
-                    #{request.display_id || '—'}
-                  </button>
-                  <MedicalReviewTypeBadge requestType={request.requestType} className="max-w-full justify-start text-[11px]" />
-                  <div className="text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
-                </div>
-
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <ClientAvatar client={request.clientRecord} name={request.clientName || ''} />
-                    <div className="min-w-0 truncate text-base font-semibold text-gray-900">{clientCell(request)}</div>
-                  </div>
-                  <div className="truncate text-sm text-gray-500">{retreatLabel}</div>
-                </div>
-
-                <div className="flex flex-col items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`${basePath}/${request._id}`)}
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50"
-                    title="View"
-                  >
-                    <Icon icon={FiEye} className="h-5 w-5" />
-                  </button>
-                  <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                    {request.status}
-                  </span>
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">{followUpAction(request)}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="hidden overflow-hidden rounded-lg border border-gray-200 bg-white md:block">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Request #</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Client</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Retreat</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Stage</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Attempt</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Artifact received</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Assignee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Source</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Advisor delivery</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredRequests.map((request) => (
-                <tr key={request._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-blue-600">
-                    <button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="hover:underline">#{request.display_id || '—'}</button>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="flex items-center gap-2">
-                      <ClientAvatar client={request.clientRecord} name={request.clientName || ''} />
-                      <span>{clientCell(request)}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{request.retreatName}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <MedicalReviewTypeBadge requestType={request.requestType} />
-                  </td>
-                  <td className="px-6 py-4 text-sm capitalize text-gray-700">{String(request.documentStage || '—').replace(/_/g, ' ')}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{request.attemptNumber || 1}</td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">{formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</td>
-                  <td className="px-6 py-4 text-sm text-gray-700"><div>{request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'}</div><div className="text-xs text-gray-500">{request.artifactReceivedVia || 'Unknown'}</div></td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="font-medium">{getAssignee(request).name}</div>
-                    {getAssignee(request).email && <div className="text-xs text-gray-500">{getAssignee(request).email}</div>}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                      {request.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{request.source || 'Provider Plus CRM'}</td>
-                  <td className="px-6 py-4 text-sm">
-                    {request.advisorDeliveryStatus === 'sent' ? <span className="font-medium text-emerald-700">Sent</span> : <button type="button" onClick={() => void markAdvisorSent(request._id || '')} disabled={!canManageRequests || !isPendingReview(request)} className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 disabled:opacity-40"><Icon icon={FiSend} className="h-3 w-3" />Mark sent</button>}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => navigate(`${basePath}/${request._id}`)}
-                        className="icon-action-btn icon-action-btn-view"
-                        title="View"
-                      >
-                        <Icon icon={FiEye} />
-                      </button>
-                      {followUpAction(request)}
-                              {downloadAction(request)}
-                              {whatsappAction(request)}
-                      {notifyAction(request)}
-                      {canManageRequests && (
-                        <button
-                          onClick={() => navigate(`${basePath}/${request._id}/edit`)}
-                          className="icon-action-btn icon-action-btn-edit"
-                          title="Edit"
-                        >
-                          <Icon icon={FiEdit2} />
-                        </button>
-                      )}
-                      {canDeleteRequests && (
-                        <button
-                          onClick={() => handleDelete(request._id!)}
-                          className="icon-action-btn icon-action-btn-danger"
-                          title="Delete"
-                        >
-                          <Icon icon={FiTrash2} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          {filteredRequests.map(request => <div key={request._id} className={statusRowClass[request.status] || 'bg-white'}>{renderReviewRow(request)}</div>)}
         </div>
-      </div>
-        </>
       )}
 
       {whatsappRequest && (
