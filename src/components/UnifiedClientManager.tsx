@@ -13,6 +13,7 @@ import SearchableLanguageSelector from './SearchableLanguageSelector';
 import { detectPhoneLocaleAutofill } from '../utils/countries';
 import { useClientProfilePictureUrl } from './useClientProfilePictureUrl';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { clientSaveErrorMessage } from '../utils/clientSaveErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import {
@@ -329,9 +330,6 @@ const UnifiedClientManager: React.FC = () => {
   }, [clients, filterStatus, searchTerm, sortField, sortDirection, getClientRetreatCode]);
 
   const handleSave = async () => {
-    console.log('=== SAVE STARTED ===');
-    console.log('Original formData:', JSON.stringify(formData, null, 2));
-
     if (!formData.firstName?.trim() || !formData.lastName?.trim() || !formData.phone?.trim()) {
       showError('First name, last name, and phone are required.');
       return;
@@ -409,20 +407,13 @@ const UnifiedClientManager: React.FC = () => {
         delete cleanData.loginPin;
       }
 
-      console.log('Cleaned data being sent:', JSON.stringify(cleanData, null, 2));
-      console.log('Is update?', !!selectedClient?._id, 'ID:', selectedClient?._id);
-
       if (selectedClient?._id) {
-        console.log('Calling update API...');
-        const updateResult = await clientsApi.update(selectedClient._id, cleanData);
-        console.log('Update API response:', updateResult);
+        await clientsApi.update(selectedClient._id, cleanData, { suppressGlobalError: true });
         if (profilePictureFile) {
           await clientsApi.uploadProfilePicture(selectedClient._id, profilePictureFile);
         }
       } else {
-        console.log('Calling create API...');
-        const createResult = await clientsApi.quickAdd(cleanData);
-        console.log('Create API response:', createResult);
+        const createResult = await clientsApi.quickAdd(cleanData, { suppressGlobalError: true });
         const createdClientId = (createResult.data as Client)?._id;
         if (profilePictureFile && createdClientId) {
           await clientsApi.uploadProfilePicture(createdClientId, profilePictureFile);
@@ -433,13 +424,7 @@ const UnifiedClientManager: React.FC = () => {
       resetForm();
       showSuccess(selectedClient?._id ? 'Client updated successfully.' : 'Client created successfully.');
     } catch (error: any) {
-      console.error('=== SAVE ERROR ===');
-      console.error('Error object:', error);
-      console.error('Error response data:', error?.response?.data);
-      console.error('Error response status:', error?.response?.status);
-      console.error('Error message:', error?.message);
-
-      showError(apiErrorMessage(error, 'Could not save this client.'));
+      showError(clientSaveErrorMessage(error));
     }
   };
 
@@ -592,7 +577,7 @@ const UnifiedClientManager: React.FC = () => {
 
   return (
     <div className="p-3 max-w-full">
-      <Toast toast={toast} onDismiss={dismissToast} />
+      {!showForm && <Toast toast={toast} onDismiss={dismissToast} />}
       {/* Header */}
       <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 className="text-2xl font-bold text-apple-gray-900">Clients</h1>
@@ -989,6 +974,7 @@ const UnifiedClientManager: React.FC = () => {
               </div>
             </div>
           </div>
+          <Toast toast={toast} onDismiss={dismissToast} />
         </div>
       )}
     </div>

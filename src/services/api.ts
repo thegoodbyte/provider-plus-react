@@ -180,14 +180,14 @@ export const clientsApi = {
     const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
     return api.post<Client>('/clients', safeData);
   },
-  quickAdd: (data: Partial<Client>) => {
+  quickAdd: (data: Partial<Client>, options?: ReadOptions) => {
     cacheService.clearPattern('clients:');
     const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
-    return api.post<Client>('/clients/quick-add', safeData);
+    return api.post<Client>('/clients/quick-add', safeData, options);
   },
-  update: (id: string, data: Partial<Client>) => {
+  update: (id: string, data: Partial<Client>, options?: ReadOptions) => {
     cacheService.clearPattern('clients:');
-    return api.patch<Client>(`/clients/${id}`, data);
+    return api.patch<Client>(`/clients/${id}`, data, options);
   },
   delete: (id: string) => {
     cacheService.clearPattern('clients:');

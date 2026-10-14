@@ -24,7 +24,7 @@ const Toast: React.FC<ToastProps> = ({ toast, onDismiss, durationMs = 6000 }) =>
   const isError = toast.type === 'error';
 
   return (
-    <div className="fixed top-4 right-4 z-50 w-full max-w-sm">
+    <div className="fixed top-4 right-4 z-50 w-[calc(100%_-_2rem)] max-w-sm">
       <div
         role={isError ? 'alert' : 'status'}
         className={`flex items-start gap-3 rounded-lg border px-4 py-3 shadow-lg ${isError ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800'}`}
