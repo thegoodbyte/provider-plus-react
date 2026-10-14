@@ -167,6 +167,8 @@ export interface Referral {
 }
 
 export interface ReferralReportRow {
+  /** Canonical payment reference supplied by the referral report. */
+  refereeId?: string;
   attributionType?: string;
   attributionEvidence?: string;
 

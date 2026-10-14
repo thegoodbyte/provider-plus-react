@@ -8,7 +8,7 @@ test.describe('PPVC-491 referral payouts', () => {
     });
   });
 
-  test('filters a partner and records selected commissions as a paid expense', async ({ page }) => {
+  test('filters a partner and records selected commissions as a paid expense', async ({ page, baseURL }) => {
     const referral = { _id: 'referral-1', name: 'Ada Partners', referralCode: 'AP', defaultCommissionPercentage: 10, isActive: true };
     const report = [
       { bookingId: 'booking-1', bookingNumber: 1401, clientId: 'client-1', clientDisplayId: 501, clientName: 'Eva Novak', clientEmail: 'eva@example.com', referralId: referral._id, referralName: referral.name, referralCode: referral.referralCode, retreatId: 'retreat-1', retreatCode: 'JNO-09', commissionPercentage: 10, amountOwed: 450, owedCurrency: 'EUR', paid: false },
@@ -19,7 +19,7 @@ test.describe('PPVC-491 referral payouts', () => {
     await page.route('**', async route => {
       const request = route.request();
       const url = new URL(request.url());
-      if (url.port === '3000') return route.continue();
+      if (url.origin === new URL(baseURL!).origin) return route.continue();
       if (url.pathname === '/environment/status') return route.fulfill({ json: { environment: 'development', production: false, enabledJobs: [] } });
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === '/referrals' && request.method() === 'GET') return route.fulfill({ json: [referral] });
