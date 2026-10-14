@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { bookingFlowApi, housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
+import { BookingType } from '../constants/eventTypes';
 import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, resolveRoomTypeDisplay } from './BookingConfirmationPDF.helpers';
 
 interface BookingConfirmationPDFProps {
@@ -17,10 +18,10 @@ export const getBookingConfirmationPolicy = (
   capabilities?: { requiresMedicalScreening?: boolean; hasCeremonies?: boolean },
 ) => {
   const normalizedType = String(bookingType || '').toLowerCase();
-  const isBooster = normalizedType === 'booster';
+  const isBooster = normalizedType === BookingType.BOOSTER;
   const isNonMedical =
-    normalizedType === 'learning_weekend' ||
-    normalizedType === 'workshop' ||
+    normalizedType === BookingType.LEARNING_WEEKEND ||
+    normalizedType === BookingType.WORKSHOP ||
     capabilities?.requiresMedicalScreening === false;
   return {
     booster: isBooster,
@@ -492,13 +493,13 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const t = translations[language];
   const requirementLabels = [t.ekgStatus, t.liverStatus, t.contractStatus];
   const requirementRowsWithLabels = requirementRows
-    .filter((row: any) => !(booking?.bookingType === 'booster' && /contract|agreement/i.test(String(row.key || row.label || ''))))
+    .filter((row: any) => !(booking?.bookingType === BookingType.BOOSTER && /contract|agreement/i.test(String(row.key || row.label || ''))))
     .map((row, index) => ({
       ...row,
-      label: booking?.bookingType === 'booster'
+      label: booking?.bookingType === BookingType.BOOSTER
         ? `${language === 'pl' ? 'Opcjonalne' : language === 'cz' ? 'Volitelné' : 'Optional'} ${requirementLabels[index] || row.label}`
         : (requirementLabels[index] || row.label),
-      complete: booking?.bookingType === 'booster' ? true : row.complete,
+      complete: booking?.bookingType === BookingType.BOOSTER ? true : row.complete,
     }));
   const bookingStatusText = requirementStatus.status === 'confirmed' ? t.confirmedStatus : t.conditionalStatus;
   const bookingStatusColor = requirementStatus.status === 'confirmed' ? '#047857' : '#92400e';
@@ -653,7 +654,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const requiredDepositUsd = requiredDeposit && bookingTotalUsd
     ? roundUpCurrency((requiredDeposit / bookingTotal) * bookingTotalUsd)
     : null;
-  const isBoosterBooking = booking?.bookingType === 'booster';
+  const isBoosterBooking = booking?.bookingType === BookingType.BOOSTER;
   const retreatStartDate = parseRetreatDate(isBoosterBooking
     ? (booking.checkInDate || booking.check_in_date || booking.boosterStartDate || booking.booster_start_date || booking.arrivalDate || booking.arrival_date || booking.startDate || booking.ceremonyId?.date || retreat?.startDate || retreat?.dates?.startDate)
     : (retreat?.startDate || retreat?.dates?.startDate));

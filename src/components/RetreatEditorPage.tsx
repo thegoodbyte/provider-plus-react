@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiDollarSign, FiSave, FiUsers } from 'react-icons/fi';
 import { housesApi, retreatsApi } from '../services/api';
-import { EventTypeConfig, House, Retreat } from '../types';
+import { House, Retreat } from '../types';
 import { formatDateForInput } from './retreatDetailUtils';
 import LoadingSpinner from './LoadingSpinner';
+import { EventType, EventTypeConfig, EVENT_CONFIGS } from '../constants/eventTypes';
 
 const Icon: React.FC<{ component: any }> = ({ component }) => React.createElement(component);
 
@@ -14,12 +15,6 @@ const shortDate = (value?: string | Date) => { const date = value ? new Date(val
 const retreatLength = (start?: string | Date, end?: string | Date) => start && end ? Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000)) : 0;
 const daysUntil = (value?: string | Date) => value ? Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000)) : 0;
 
-const DEFAULT_EVENT_CONFIGS: Record<string, EventTypeConfig> = {
-  regular: { type: 'regular', label: '7-Night Iboga Retreat', codePrefix: 'F', hasCeremonies: true, requiresMedicalScreening: true, hasDrugScreening: true, hasAccommodation: true, defaultCeremonyCount: 2, availableTabs: [] },
-  booster: { type: 'booster', label: 'Booster', codePrefix: 'B', hasCeremonies: true, requiresMedicalScreening: false, hasDrugScreening: true, hasAccommodation: true, defaultCeremonyCount: 1, availableTabs: [] },
-  learning_weekend: { type: 'learning_weekend', label: 'Bwiti Learning Weekend', codePrefix: 'W', hasCeremonies: false, requiresMedicalScreening: false, hasDrugScreening: false, hasAccommodation: true, defaultCeremonyCount: 0, availableTabs: [] },
-  workshop: { type: 'workshop', label: 'Bwiti Workshop', codePrefix: 'W', hasCeremonies: false, requiresMedicalScreening: false, hasDrugScreening: false, hasAccommodation: true, defaultCeremonyCount: 0, availableTabs: [] },
-};
 const PALETTE = ['#2563eb', '#38a9df', '#34998c', '#a8b58f', '#78d10f', '#f59e0b', '#df8b4d', '#c73d0b', '#e61b4d', '#8257ee', '#6366e9', '#a8a29e'];
 
 const RetreatEditorPage: React.FC = () => {
@@ -39,7 +34,7 @@ const RetreatEditorPage: React.FC = () => {
   const [plPrices, setPlPrices] = useState({ closeShared: 9500, closePrivate: 10500, closeEnsuite: 11500, midShared: 8500, midPrivate: 9500, midEnsuite: 10500, farShared: 7500, farPrivate: 8500, farEnsuite: 9500, addictionSupport: 1500 });
   const [plIncluded, setPlIncluded] = useState('');
   const [error, setError] = useState('');
-  const [eventConfigs, setEventConfigs] = useState<Record<string, EventTypeConfig>>(DEFAULT_EVENT_CONFIGS);
+  const [eventConfigs, setEventConfigs] = useState<Record<EventType, EventTypeConfig>>(EVENT_CONFIGS);
 
   useEffect(() => {
     const eventTypesPromise = retreatsApi.getEventTypes?.();
@@ -111,7 +106,7 @@ const RetreatEditorPage: React.FC = () => {
         name: form.name.trim(), code, retreatCode: code, location_town: town, location: town,
         houseId: idOf(form.houseId) || undefined, ceremonyCount: Number(form.ceremonyCount || 2),
         capacity: Number(form.capacity), currentOccupancy: Number(form.currentOccupancy || 0),
-        type: form.type || 'regular', description: form.description || '', startDate: form.startDate,
+        type: form.type || EventType.REGULAR, description: form.description || '', startDate: form.startDate,
         startTime: form.startTime || undefined, endDate: form.endDate, endTime: form.endTime || undefined,
         status: form.status || 'upcoming', backgroundColor: form.backgroundColor, textColor: form.textColor,
         helpers: form.helpers || '', showOnSite: form.showOnSite !== false,
@@ -160,7 +155,7 @@ const RetreatEditorPage: React.FC = () => {
         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-300 pt-4 md:grid-cols-3">
           <div><span className={label}>Length</span><strong>{nights} nights</strong></div>
           <div className="md:border-l md:border-gray-300 md:pl-5"><span className={label}>Starts in</span><strong className="text-amber-700">{startsIn} days</strong></div>
-          {(eventConfigs[form.type || 'regular'] || DEFAULT_EVENT_CONFIGS.regular).requiresMedicalScreening && (
+          {(eventConfigs[form.type || EventType.REGULAR] || EVENT_CONFIGS[EventType.REGULAR]).requiresMedicalScreening && (
             <div className="col-span-2 md:col-span-1 md:border-l md:border-gray-300 md:pl-5"><span className={label}>Medical cut-off</span><strong>{shortDate(new Date(new Date(form.startDate || '').getTime() - 7 * 86_400_000))}</strong><span className="ml-1 text-xs text-gray-500">7 days before</span></div>
           )}
         </div>
@@ -170,12 +165,12 @@ const RetreatEditorPage: React.FC = () => {
         <label className="md:col-span-3"><span className={label}>House</span><select className={field} value={idOf(form.houseId)} onChange={(e) => selectHouse(e.target.value)}><option value="">Select a house</option>{houses.map((house) => <option key={house._id} value={house._id}>{house.name}{house.address ? ` — ${house.address}` : ''}</option>)}</select></label>
         <label className="md:col-span-3"><span className={label}>Location town *</span><input className={field} value={form.location_town || form.location || ''} onChange={(e) => set({ location_town: e.target.value, location: e.target.value })}/></label>
         <label><span className={label}>Capacity *</span><input className={field} type="number" min="1" value={form.capacity ?? ''} onChange={(e) => set({ capacity: Number(e.target.value) || undefined })}/></label>
-        {(eventConfigs[form.type || 'regular'] || DEFAULT_EVENT_CONFIGS.regular).hasCeremonies && (
+        {(eventConfigs[form.type || EventType.REGULAR] || EVENT_CONFIGS[EventType.REGULAR]).hasCeremonies && (
           <label><span className={label}>Ceremonies</span><input className={field} type="number" min="1" value={form.ceremonyCount ?? 2} onChange={(e) => set({ ceremonyCount: Math.max(1, Number(e.target.value) || 2) })}/></label>
         )}
-        <label><span className={label}>Type</span><select className={field} value={form.type || 'regular'} onChange={(e) => {
+        <label><span className={label}>Type</span><select className={field} value={form.type || EventType.REGULAR} onChange={(e) => {
           const nextType = e.target.value as Retreat['type'];
-          const cap = eventConfigs[nextType || 'regular'] || DEFAULT_EVENT_CONFIGS.regular;
+          const cap = eventConfigs[nextType || EventType.REGULAR] || EVENT_CONFIGS[EventType.REGULAR];
           set({
             type: nextType,
             ceremonyCount: cap.hasCeremonies ? (form.ceremonyCount && form.ceremonyCount > 0 ? form.ceremonyCount : cap.defaultCeremonyCount) : 0,

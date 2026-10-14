@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { bookingFlowApi, bookingsApi, communicationsApi, retreatsApi } from '../services/api';
+import { BookingType } from '../constants/eventTypes';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
@@ -229,7 +230,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const clientName = getClientName(client) || 'N/A';
   const clientDisplayId = getClientDisplayId(client, booking);
   const clientId = getObjectId(client);
-  const bookingTypeCode = booking.bookingType === 'booster' ? 'B' : 'F';
+  const bookingTypeCode = booking.bookingType === BookingType.BOOSTER ? 'B' : 'F';
   const retreatCode = getRetreatCode(retreat);
   const retreatId = getObjectId(retreat);
   const retreatAddress = getRetreatAddress(retreat);

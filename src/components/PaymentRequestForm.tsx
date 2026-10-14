@@ -1,6 +1,7 @@
 import PaymentAccommodation from './PaymentAccommodation';
 import React, { useEffect, useState } from 'react';
 import { PaymentRequest, PaymentRequestLineItem, Client, Retreat, Ceremony } from '../types';
+import { BookingType } from '../constants/eventTypes';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchableBookingSelect from './SearchableBookingSelect';
@@ -93,7 +94,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     clientId: resolveId(paymentRequest?.clientId),
     retreatId: resolveId(paymentRequest?.retreatId),
     bookingId: resolveId(paymentRequest?.bookingId),
-    bookingType: paymentRequest?.bookingType || 'full_retreat',
+    bookingType: paymentRequest?.bookingType || BookingType.FULL_RETREAT,
     accommodationKey: paymentRequest?.accommodationKey ?? (paymentRequest?.roomType && paymentRequest.roomType !== 'unspecified' ? paymentRequest.roomType : paymentRequest ? '' : undefined) as string | undefined,
     roomType: paymentRequest?.roomType || 'unspecified',
     roomAdjustmentType: paymentRequest?.roomAdjustmentType || 'none',
@@ -369,7 +370,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       setFormError('Please fill in all required fields.');
       return;
     }
-    if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
+    if (formData.bookingType === BookingType.BOOSTER && !formData.ceremonyNumber) {
       setFormError('Please select the ceremony for this booster.');
       return;
     }
@@ -429,8 +430,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         roomType: formData.roomType as PaymentRequest['roomType'],
         roomAdjustmentType: formData.roomAdjustmentType as PaymentRequest['roomAdjustmentType'],
         roomAdjustmentAmount: Number(formData.roomAdjustmentAmount || 0),
-        ceremonyId: formData.bookingType === 'booster' ? formData.ceremonyId : undefined,
-        ceremonyNumber: formData.bookingType === 'booster' ? Number(formData.ceremonyNumber) : undefined,
+        ceremonyId: formData.bookingType === BookingType.BOOSTER ? formData.ceremonyId : undefined,
+        ceremonyNumber: formData.bookingType === BookingType.BOOSTER ? Number(formData.ceremonyNumber) : undefined,
         paymentDate: formData.paymentDate,
         paymentType: formData.paymentType as PaymentRequest['paymentType'],
         requestType: formData.requestType as PaymentRequest['requestType'],
@@ -551,11 +552,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             {selectedRetreat && (
               <div className="md:col-span-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
                 <span className="font-semibold">
-                  {formData.bookingType === 'booster'
+                  {formData.bookingType === BookingType.BOOSTER
                     ? `Booster${formData.ceremonyNumber ? ` — Ceremony ${formData.ceremonyNumber}` : ' — ceremony not selected'}`
                     : 'Full retreat'}
                 </span>
-                {formData.bookingType === 'booster' && (
+                {formData.bookingType === BookingType.BOOSTER && (
                   <span className="ml-2">{ceremonyDate ? `· Ceremony date: ${ceremonyDate}` : '· Ceremony date not set'}</span>
                 )}
                 <div className="mt-1 text-xs text-indigo-700">
@@ -599,27 +600,27 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   value={formData.bookingType}
                   onChange={(event) => setFormData((prev) => ({
                     ...prev,
-                    bookingType: (event.target.value as 'full_retreat' | 'booster' | 'learning_weekend' | 'workshop') || 'full_retreat',
-                    ceremonyId: event.target.value === 'booster' ? prev.ceremonyId : '',
-                    ceremonyNumber: event.target.value === 'booster' ? prev.ceremonyNumber : '',
+                    bookingType: (event.target.value as BookingType) || BookingType.FULL_RETREAT,
+                    ceremonyId: event.target.value === BookingType.BOOSTER ? prev.ceremonyId : '',
+                    ceremonyNumber: event.target.value === BookingType.BOOSTER ? prev.ceremonyNumber : '',
                   }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="full_retreat">Full retreat</option>
-                  <option value="booster">Booster in this retreat</option>
-                  <option value="learning_weekend">Bwiti Learning Weekend</option>
-                  <option value="workshop">Workshop</option>
+                  <option value={BookingType.FULL_RETREAT}>Full retreat</option>
+                  <option value={BookingType.BOOSTER}>Booster in this retreat</option>
+                  <option value={BookingType.LEARNING_WEEKEND}>Bwiti Learning Weekend</option>
+                  <option value={BookingType.WORKSHOP}>Workshop</option>
                 </select>
               ) : (
                 <div className="min-h-[42px] rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-800">
-                  {formData.bookingType === 'booster' ? 'Booster in this retreat' :
-                   formData.bookingType === 'learning_weekend' ? 'Bwiti Learning Weekend' :
-                   formData.bookingType === 'workshop' ? 'Workshop' : 'Full retreat'}
+                  {formData.bookingType === BookingType.BOOSTER ? 'Booster in this retreat' :
+                   formData.bookingType === BookingType.LEARNING_WEEKEND ? 'Bwiti Learning Weekend' :
+                   formData.bookingType === BookingType.WORKSHOP ? 'Workshop' : 'Full retreat'}
                 </div>
               )}
             </div>
 
-            {formData.bookingType === 'booster' && (
+            {formData.bookingType === BookingType.BOOSTER && (
               <div>
                 <label htmlFor="ceremonyNumber" className="block text-sm font-medium text-gray-700 mb-2">Ceremony *</label>
                 <select

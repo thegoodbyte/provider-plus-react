@@ -1,16 +1,7 @@
 import type { ClientWorkflowStatus } from '../config/clientWorkflowStatus';
+import type { BookingType, EventType, EventTypeConfig } from '../constants/eventTypes';
 
-export interface EventTypeConfig {
-  type: 'regular' | 'booster' | 'learning_weekend' | 'workshop';
-  label: string;
-  codePrefix: string;
-  hasCeremonies: boolean;
-  requiresMedicalScreening: boolean;
-  hasDrugScreening: boolean;
-  hasAccommodation: boolean;
-  defaultCeremonyCount: number;
-  availableTabs: string[];
-}
+export type { EventTypeConfig };
 
 export interface Retreat {
   _id?: string;
@@ -32,7 +23,7 @@ export interface Retreat {
   helpers?: string;
   retreatStaff?: RetreatStaffAssignment[];
   status?: 'active' | 'completed' | 'cancelled' | 'upcoming';
-  type?: 'regular' | 'booster' | 'learning_weekend' | 'workshop';
+  type?: EventType;
   capabilities?: EventTypeConfig;
   backgroundColor?: string; // Added for custom background color
   textColor?: string;
@@ -367,7 +358,7 @@ export interface RetreatClient {
   retreatId: string;
   clientId: string;
   paymentRequestId?: string | PaymentRequest;
-  bookingType?: 'full_retreat' | 'booster' | 'learning_weekend' | 'workshop'; // Type of booking
+  bookingType?: BookingType; // Type of booking
   ceremonyId?: string | Ceremony;
   ceremonyNumber?: number;
   contractGateOverride?: boolean | null;
@@ -1798,7 +1789,7 @@ export interface PaymentRequest {
   source?: 'manual' | 'booking_payment_plan';
   clientId: string;
   retreatId: string;
-  bookingType?: 'full_retreat' | 'booster' | 'learning_weekend' | 'workshop';
+  bookingType?: BookingType;
   accommodationKey?: string;
   accommodationLabel?: string;
   roomType?: 'shared' | 'private' | 'private_ensuite' | 'unspecified';

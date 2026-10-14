@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import { boosterOffersApi, bookingsApi, ceremoniesApi, retreatsApi } from '../services/api';
 import { BoosterOffer, Ceremony, Retreat, RetreatClient } from '../types';
+import { BookingType } from '../constants/eventTypes';
 import { isCancelledBookingStatus } from './retreatClientVisibility';
 import { formatCalendarDate } from '../utils/dateFormat';
 
@@ -24,14 +25,14 @@ const BoosterOffersPage: React.FC = () => {
   const boosterSpotsFor = (retreat: Retreat) => {
     const active = activeBookingsFor(idOf(retreat));
     const ceremonyCount = Math.max(1, Number(retreat.ceremonyCount || 2));
-    const used = active.reduce((sum, booking) => sum + (booking.bookingType === 'booster' ? 1 : ceremonyCount), 0);
+    const used = active.reduce((sum, booking) => sum + (booking.bookingType === BookingType.BOOSTER ? 1 : ceremonyCount), 0);
     return Math.max(0, Number(retreat.capacity || 0) * ceremonyCount - used);
   };
   const selectedBookings = activeBookingsFor(retreatId);
-  const fullRetreatBookings = selectedBookings.filter((booking) => booking.bookingType !== 'booster').length;
+  const fullRetreatBookings = selectedBookings.filter((booking) => booking.bookingType !== BookingType.BOOSTER).length;
   const totalBoosterSpots = selectedRetreat ? boosterSpotsFor(selectedRetreat) : 0;
   const ceremonyRemaining = (ceremony: Ceremony, index: number) => {
-    const boosterBookings = selectedBookings.filter((booking) => booking.bookingType === 'booster' && (
+    const boosterBookings = selectedBookings.filter((booking) => booking.bookingType === BookingType.BOOSTER && (
       idOf(booking.ceremonyId) === idOf(ceremony) || (!booking.ceremonyId && Number(booking.ceremonyNumber) === index + 1)
     )).length;
     return Math.max(0, Number(selectedRetreat?.capacity || 0) - fullRetreatBookings - boosterBookings);

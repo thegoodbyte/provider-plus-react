@@ -8,6 +8,7 @@ import React, { lazy, useState, useEffect, useCallback, useMemo, useRef } from '
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, communicationsApi, bookingFlowApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment, EmailAsset, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
+import { BookingType, EventType } from '../constants/eventTypes';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
@@ -86,8 +87,8 @@ export function isTabAvailableForRetreat(tab: RetreatDetailTab, retreat?: Retrea
   if (Array.isArray(retreat.capabilities?.availableTabs) && retreat.capabilities.availableTabs.length > 0) {
     return retreat.capabilities.availableTabs.includes(tab);
   }
-  const type = retreat.type || 'regular';
-  if (type === 'learning_weekend' || type === 'workshop') {
+  const type = retreat.type || EventType.REGULAR;
+  if (type === EventType.LEARNING_WEEKEND || type === EventType.WORKSHOP) {
     return !['ceremonies', 'drugScreening', 'holisticView'].includes(tab);
   }
   return true;
@@ -109,7 +110,7 @@ interface RetreatClientData {
   _id: string;
   bookingNumber?: number | string;
   bookingHash?: string;
-  bookingType?: 'full_retreat' | 'booster';
+  bookingType?: BookingType;
   ceremonyNumber?: number;
   paymentRequestId?: string;
   clientId: string;
@@ -357,7 +358,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           _id: booking._id,
           bookingNumber: booking.bookingNumber || booking.display_id || booking.displayId,
           bookingHash: booking.bookingHash,
-          bookingType: booking.bookingType || 'full_retreat',
+          bookingType: booking.bookingType || BookingType.FULL_RETREAT,
           ceremonyNumber: booking.ceremonyNumber,
           paymentRequestId: getObjectId(booking.paymentRequestId),
           clientId: booking.clientId?._id || booking.clientId || '', // Store the actual client ID
@@ -1468,7 +1469,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {client.bookingType === 'booster' ? (
+                        {client.bookingType === BookingType.BOOSTER ? (
                           <span className="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800" title={`Booster · Ceremony ${client.ceremonyNumber || '—'}`}>
                             B{client.ceremonyNumber ? client.ceremonyNumber : ''}
                           </span>
@@ -2420,7 +2421,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 <select
                   id="retreat-type"
                   name="type"
-                  value={retreatFormData.type || 'regular'}
+                  value={retreatFormData.type || EventType.REGULAR}
                   onChange={handleRetreatInputChange}
                 >
                   <option value="regular">Regular</option>

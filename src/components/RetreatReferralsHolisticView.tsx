@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Copy, Edit3, Lock, Save, Search, X } from 'lucide-react';
 import { Referral, Retreat, RetreatClient, REFERRAL_ATTRIBUTION_OPTIONS } from '../types';
+import { BookingType } from '../constants/eventTypes';
 import { formatRetreatCalendarDate } from './RetreatsGrid.helpers';
 import { bookingsApi } from '../services/api';
 import { formatRefereeId } from '../utils/refereeId';
@@ -55,7 +56,7 @@ export function computeInitialBookingAttribution(
   }
 
   // 2. If it's a booster, default to SELF
-  if (booking.bookingType === 'booster') {
+  if (booking.bookingType === BookingType.BOOSTER) {
     return { partnerId: null, attribution: 'self', verifiedDate, paymentNote };
   }
 
@@ -592,7 +593,7 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
                                     <span>·</span>
                                     <span>#{getClientDisplayId(booking)}</span>
                                     <span>·</span>
-                                    {booking.bookingType === 'booster' ? (
+                                    {booking.bookingType === BookingType.BOOSTER ? (
                                       <span className="rounded bg-indigo-50 px-1 py-0.5 font-bold text-indigo-700">
                                         Booster
                                       </span>

@@ -4,6 +4,7 @@ import { authService } from '../services/authService';
 import { referralsApi, bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
 import { roomInventoryApi } from '../services/roomInventoryApi';
 import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
+import { BookingType } from '../constants/eventTypes';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
@@ -28,7 +29,7 @@ type BookingFormData = {
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   status: 'pending' | 'confirmed' | 'conditional' | 'checked-in' | 'checked-out' | 'cancelled';
   bookingNumber: string;
-  bookingType: 'full_retreat' | 'booster' | 'learning_weekend' | 'workshop';
+  bookingType: BookingType;
   ceremonyId: string;
   ceremonyNumber: string;
   checkInDate: string;
@@ -78,7 +79,7 @@ const emptyForm = (): BookingFormData => ({
   currency: 'EUR',
   status: 'pending',
   bookingNumber: '',
-  bookingType: 'full_retreat',
+  bookingType: BookingType.FULL_RETREAT,
   ceremonyId: '',
   ceremonyNumber: '',
   checkInDate: '',
@@ -229,7 +230,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           currency: (currentBooking.currency || 'EUR') as BookingFormData['currency'],
           status: normalizeBookingStatus(currentBooking.status),
           bookingNumber: currentBooking.bookingNumber?.toString() || '',
-          bookingType: currentBooking.bookingType || 'full_retreat',
+          bookingType: currentBooking.bookingType || BookingType.FULL_RETREAT,
           ceremonyId: typeof currentBooking.ceremonyId === 'string' ? currentBooking.ceremonyId : currentBooking.ceremonyId?._id || '',
           ceremonyNumber: currentBooking.ceremonyNumber?.toString() || '',
           checkInDate: toDateTimeInput(currentBooking.checkInDate),
@@ -306,10 +307,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         amountPaid: prev.amountPaid,
         currency: paymentRequest?.currency ? paymentRequest.currency : prev.currency,
         bookingType: paymentRequest?.bookingType || prev.bookingType,
-        ceremonyId: paymentRequest?.bookingType === 'booster'
+        ceremonyId: paymentRequest?.bookingType === BookingType.BOOSTER
           ? resolveId(paymentRequest.ceremonyId)
           : prev.ceremonyId,
-        ceremonyNumber: paymentRequest?.bookingType === 'booster'
+        ceremonyNumber: paymentRequest?.bookingType === BookingType.BOOSTER
           ? String(paymentRequest.ceremonyNumber || '')
           : prev.ceremonyNumber,
         accommodationKey: paymentRequest?.accommodationKey ?? (paymentRequest?.roomType && paymentRequest.roomType !== 'unspecified' ? paymentRequest.roomType : prev.accommodationKey),
@@ -382,8 +383,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         status: formData.status,
         bookingNumber: Number.isFinite(bookingNumber) ? bookingNumber : undefined,
         bookingType: formData.bookingType,
-        ceremonyId: formData.bookingType === 'booster' ? (formData.ceremonyId || undefined) : undefined,
-        ceremonyNumber: formData.bookingType === 'booster' ? Number(formData.ceremonyNumber) : undefined,
+        ceremonyId: formData.bookingType === BookingType.BOOSTER ? (formData.ceremonyId || undefined) : undefined,
+        ceremonyNumber: formData.bookingType === BookingType.BOOSTER ? Number(formData.ceremonyNumber) : undefined,
         registrationDate: booking?.registrationDate || new Date().toISOString(),
         checkInDate: formData.checkInDate ? new Date(formData.checkInDate).toISOString() : undefined,
         checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
@@ -404,11 +405,11 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         const valid = await validateBookingNumber(String(payload.bookingNumber));
         if (!valid) return;
       }
-      if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
+      if (formData.bookingType === BookingType.BOOSTER && !formData.ceremonyNumber) {
         showError('Please select the ceremony this booster guest will attend.');
         return;
       }
-      if (formData.bookingType === 'booster' && formData.ceremonyNumber && !formData.ceremonyId) {
+      if (formData.bookingType === BookingType.BOOSTER && formData.ceremonyNumber && !formData.ceremonyId) {
         showError(`Ceremony ${formData.ceremonyNumber} does not have a ceremony record yet for this retreat. Add it on the Ceremonies tab before booking a booster guest for it.`);
         return;
       }
@@ -521,18 +522,18 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
                 onChange={(e) => setFormData((prev) => ({
                   ...prev,
                   bookingType: e.target.value as BookingFormData['bookingType'],
-                  ceremonyId: e.target.value === 'booster' ? prev.ceremonyId : '',
-                  ceremonyNumber: e.target.value === 'booster' ? prev.ceremonyNumber : '',
+                  ceremonyId: e.target.value === BookingType.BOOSTER ? prev.ceremonyId : '',
+                  ceremonyNumber: e.target.value === BookingType.BOOSTER ? prev.ceremonyNumber : '',
                 }))}
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="full_retreat">Full 7-day retreat</option>
-                <option value="booster">Booster within this retreat</option>
-                <option value="learning_weekend">Bwiti Learning Weekend</option>
-                <option value="workshop">Workshop</option>
+                <option value={BookingType.FULL_RETREAT}>Full 7-day retreat</option>
+                <option value={BookingType.BOOSTER}>Booster within this retreat</option>
+                <option value={BookingType.LEARNING_WEEKEND}>Bwiti Learning Weekend</option>
+                <option value={BookingType.WORKSHOP}>Workshop</option>
               </select>
             </div>
-            {formData.bookingType === 'booster' && (
+            {formData.bookingType === BookingType.BOOSTER && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Ceremony attending *</label>
                 <select

@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { retreatsApi, housesApi, bookingsApi, bookingFlowApi, referralsApi } from '../services/api';
 import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate, Referral } from '../types';
+import { EventType } from '../constants/eventTypes';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
 import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatEndDateFromStart, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
@@ -480,7 +481,7 @@ const RetreatsGrid: React.FC = () => {
                 status: 'upcoming',
                 capacity: 20,
                 currentOccupancy: 0,
-                type: 'regular',
+                type: EventType.REGULAR,
                 startTime: '18:00',
                 endTime: '21:00'
               });
@@ -817,7 +818,7 @@ const RetreatsGrid: React.FC = () => {
                 </select>
               </div>
 
-              {formData.type !== 'learning_weekend' && formData.type !== 'workshop' && (
+              {formData.type !== EventType.LEARNING_WEEKEND && formData.type !== EventType.WORKSHOP && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Number of ceremonies</label>
                   <input type="number" min="1" value={formData.ceremonyCount ?? 2}
@@ -845,10 +846,10 @@ const RetreatsGrid: React.FC = () => {
                     Type
                   </label>
                   <select
-                    value={formData.type || 'regular'}
+                    value={formData.type || EventType.REGULAR}
                     onChange={(e) => {
                       const newType = e.target.value as Retreat['type'];
-                      const isNoCeremony = newType === 'learning_weekend' || newType === 'workshop';
+                      const isNoCeremony = newType === EventType.LEARNING_WEEKEND || newType === EventType.WORKSHOP;
                       setFormData({
                         ...formData,
                         type: newType,
@@ -857,10 +858,10 @@ const RetreatsGrid: React.FC = () => {
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="regular">Regular</option>
-                    <option value="booster">Booster</option>
-                    <option value="learning_weekend">Bwiti Learning Weekend</option>
-                    <option value="workshop">Workshop</option>
+                    <option value={EventType.REGULAR}>Regular</option>
+                    <option value={EventType.BOOSTER}>Booster</option>
+                    <option value={EventType.LEARNING_WEEKEND}>Bwiti Learning Weekend</option>
+                    <option value={EventType.WORKSHOP}>Workshop</option>
                   </select>
                 </div>
               </div>
@@ -974,7 +975,7 @@ const RetreatsGrid: React.FC = () => {
                       status: formData.status || 'upcoming' as 'upcoming' | 'active' | 'completed' | 'cancelled',
                       capacity: formData.capacity ?? 20,
                       currentOccupancy: formData.currentOccupancy || 0,
-                      type: formData.type || 'regular' as 'regular' | 'booster',
+                      type: formData.type || EventType.REGULAR,
                       ceremonyCount: formData.ceremonyCount ?? 2,
                       description: formData.description || '',
                       startDate: formData.startDate,
@@ -1069,7 +1070,7 @@ const RetreatsGrid: React.FC = () => {
                 </select>
               </div>
 
-              {formData.type !== 'learning_weekend' && formData.type !== 'workshop' && (
+              {formData.type !== EventType.LEARNING_WEEKEND && formData.type !== EventType.WORKSHOP && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Number of ceremonies</label>
                   <input type="number" min="1" value={formData.ceremonyCount ?? 2}
@@ -1097,10 +1098,10 @@ const RetreatsGrid: React.FC = () => {
                     Type
                   </label>
                   <select
-                    value={formData.type || 'regular'}
+                    value={formData.type || EventType.REGULAR}
                     onChange={(e) => {
                       const newType = e.target.value as Retreat['type'];
-                      const isNoCeremony = newType === 'learning_weekend' || newType === 'workshop';
+                      const isNoCeremony = newType === EventType.LEARNING_WEEKEND || newType === EventType.WORKSHOP;
                       setFormData({
                         ...formData,
                         type: newType,
@@ -1109,10 +1110,10 @@ const RetreatsGrid: React.FC = () => {
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="regular">Regular</option>
-                    <option value="booster">Booster</option>
-                    <option value="learning_weekend">Bwiti Learning Weekend</option>
-                    <option value="workshop">Workshop</option>
+                    <option value={EventType.REGULAR}>Regular</option>
+                    <option value={EventType.BOOSTER}>Booster</option>
+                    <option value={EventType.LEARNING_WEEKEND}>Bwiti Learning Weekend</option>
+                    <option value={EventType.WORKSHOP}>Workshop</option>
                   </select>
                 </div>
               </div>
@@ -1231,7 +1232,7 @@ const RetreatsGrid: React.FC = () => {
                         ceremonyCount: formData.ceremonyCount,
                         capacity: Number(formData.capacity),
                         currentOccupancy: Number(formData.currentOccupancy || 0),
-                        type: formData.type || 'regular',
+                        type: formData.type || EventType.REGULAR,
                         description: formData.description || '',
                         startDate: formData.startDate,
                         startTime: formData.startTime || undefined,
