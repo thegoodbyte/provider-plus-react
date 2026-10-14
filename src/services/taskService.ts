@@ -56,6 +56,8 @@ export interface Task {
     status?: string;
   };
   reminderKind?: string;
+  notifyClient?: boolean;
+  visibleToClient?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +80,8 @@ export interface CreateTaskDto {
   sourceId?: string;
   bookingFlowItemId?: string;
   reminderKind?: string;
+  notifyClient?: boolean;
+  visibleToClient?: boolean;
 }
 
 export interface TaskFilters {

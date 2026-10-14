@@ -122,6 +122,34 @@ describe('TaskForm', () => {
     expect(screen.getByText(/Booking #hash/)).toBeInTheDocument();
   });
 
+  it('defaults client-only notify/visible toggles and a WhatsApp source, and lets staff turn them off (PPVC-795)', async () => {
+    const onSubmit = jest.fn();
+    render(<TaskForm onSubmit={onSubmit} onCancel={jest.fn()} />);
+    expect(screen.queryByLabelText('Source')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Type *'), { target: { value: 'client' } });
+    await waitFor(() => expect(screen.getByText('Ready clientId')).toBeInTheDocument());
+    expect(screen.getByLabelText('Source')).toHaveValue('');
+    const notifyToggle = screen.getByLabelText('Email client on status change') as HTMLInputElement;
+    const visibleToggle = screen.getByLabelText('Visible in client portal') as HTMLInputElement;
+    expect(notifyToggle.checked).toBe(true);
+    expect(visibleToggle.checked).toBe(true);
+
+    fireEvent.change(screen.getByLabelText('Task Name *'), { target: { value: 'Follow up on WhatsApp' } });
+    fireEvent.change(screen.getByLabelText('Search for a client...'), { target: { value: 'client-1' } });
+    fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'whatsapp' } });
+    fireEvent.click(notifyToggle);
+
+    fireEvent.submit(screen.getByRole('button', { name: 'Create Task' }).closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'client', clientId: 'client-1', sourceType: 'whatsapp', notifyClient: false, visibleToClient: true,
+    }));
+
+    fireEvent.change(screen.getByLabelText('Type *'), { target: { value: 'generic' } });
+    expect(screen.queryByLabelText('Source')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Email client on status change')).not.toBeInTheDocument();
+  });
+
   it('stops loading and logs API failures without crashing the form', async () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     (clients.getAll as jest.Mock).mockRejectedValue(new Error('offline'));

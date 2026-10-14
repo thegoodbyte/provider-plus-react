@@ -39,6 +39,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     bookingId: bookingId || '',
     tags: [],
     notes: '',
+    sourceType: '',
+    notifyClient: true,
+    visibleToClient: true,
   });
 
   const [tagInput, setTagInput] = useState('');
@@ -72,6 +75,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         bookingId: typeof task.bookingId === 'string' ? task.bookingId : (task.bookingId?._id || task.bookingId?.id || ''),
         tags: task.tags,
         notes: task.notes || '',
+        sourceType: task.sourceType || '',
+        notifyClient: task.notifyClient ?? true,
+        visibleToClient: task.visibleToClient ?? true,
       });
     } else {
       // Set type based on context
@@ -124,6 +130,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     setFormData(prev => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked,
     }));
   };
 
@@ -251,6 +265,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       retreatId: formData.retreatId || undefined,
       bookingId: formData.bookingId || undefined,
       notes: formData.notes || undefined,
+      sourceType: formData.sourceType || undefined,
     };
 
     onSubmit(submitData);
@@ -329,6 +344,39 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 loading={loadingClients}
               />
             </div>
+          )}
+
+          {formData.type === 'client' && (
+            <>
+              <div className="form-group">
+                <label htmlFor="sourceType">Source</label>
+                <select id="sourceType" name="sourceType" value={formData.sourceType || ''} onChange={handleChange}>
+                  <option value="">Not specified</option>
+                  <option value="whatsapp">WhatsApp message</option>
+                </select>
+              </div>
+
+              <div className="form-row">
+                <label>
+                  <input
+                    type="checkbox"
+                    name="notifyClient"
+                    checked={formData.notifyClient ?? true}
+                    onChange={handleCheckboxChange}
+                  />
+                  {' '}Email client on status change
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="visibleToClient"
+                    checked={formData.visibleToClient ?? true}
+                    onChange={handleCheckboxChange}
+                  />
+                  {' '}Visible in client portal
+                </label>
+              </div>
+            </>
           )}
 
           {formData.type === 'retreat' && (
