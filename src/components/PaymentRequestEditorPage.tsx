@@ -248,7 +248,7 @@ const PaymentRequestEditorPage: React.FC = () => {
 
           {paymentRequest.status === 'cancelled' && (
             <div className="mb-6 rounded-lg border border-red-300 bg-red-50 p-5">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center rounded-full bg-red-200 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-800">
                   Cancelled (Storno)
                 </span>
