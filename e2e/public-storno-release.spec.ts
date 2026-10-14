@@ -1,0 +1,6 @@
+import {test,expect} from '@playwright/test';
+for(const width of [1440,390])for(const [language,title]of [['en','Invoice Cancelled'],['cz','Faktura stornována'],['pl','Faktura anulowana']])test(`public cancelled invoice ${language}/${width}`,async({page})=>{
+ await page.setViewportSize({width,height:1000});let reads=0;
+ await page.route('**/*',async route=>{if(!['xhr','fetch'].includes(route.request().resourceType()))return route.continue();const path=new URL(route.request().url()).pathname;if(path.includes('/payment-requests/public/deposit/')){reads++;expect(route.request().method()).toBe('GET');return route.fulfill({json:{firstName:'Synthetic',language,status:'cancelled',cancellationReason:'Client did not pay',requestedAmount:500,currency:'EUR'}});}return route.fulfill({json:[]});});
+ await page.goto(`http://localhost:4401/clients/payment/request/synthetic?lang=${language}`);await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();expect(reads).toBeGreaterThan(0);await expect(page.getByRole('link',{name:'info@ibogaspirit.cz',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/Pay|Zaplat|Zapła/})).toHaveCount(0);await page.screenshot({path:`../storno-public-${language}-${width}.png`,fullPage:true});
+});
