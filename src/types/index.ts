@@ -151,9 +151,11 @@ export interface ReferralCommissionPackage {
   key: string; name: string; effectiveFrom: string; effectiveTo?: string;
   bookingCurrency: string; kind: 'percentage' | 'fixed'; ratePercent?: number;
   tiers?: ReferralRateTier[]; amount?: number; currency?: string;
+  rates?: { effectiveFrom: string; ratePercent?: number }[];
 }
 
 export interface Referral {
+  commissionMode?: 'dated_percentage';
   assignmentNotificationsEnabled?: boolean;
   assignmentNotificationLanguage?: string;
   influenceCommissionPercentage?: number | null;

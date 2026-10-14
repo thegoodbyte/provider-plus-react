@@ -37,7 +37,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
       return json([]);
     });
     page.on('pageerror', error => console.error('Browser error:', error.message));
-    const output = path.resolve(__dirname, '../../../ppvc-779-validation'); fs.mkdirSync(output, { recursive: true });
+    const output = path.resolve(__dirname, '../../ppvc-806-validation/navigation'); fs.mkdirSync(output, { recursive: true });
     await page.goto('/admin/referrals');
     await expect(page.getByRole('heading', { name: 'Referral partners' })).toBeVisible();
     await expect(page.getByRole('form')).toHaveCount(0);
@@ -75,11 +75,11 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.getByLabel('Contact phone').fill('+420 777 123 456');
     failSave = true;
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-    await expect(page.getByRole('alert').filter({ hasText: 'Temporary save failure' })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'Could not save referral. The service is temporarily unavailable.' })).toBeVisible();
     await expect(page.getByLabel('Contact phone')).toHaveValue('+420 777 123 456');
     failSave = false;
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-    await expect(page.getByText('Referral saved. Rate schedule and commission packages are saved together.', { exact: true })).toBeVisible();
+    await expect(page.getByText('Referral saved.', { exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByLabel('Contact phone')).toHaveValue('+420 777 123 456');
     await page.getByRole('button', { name: 'Back to partner', exact: false }).click();
@@ -95,7 +95,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.getByLabel('Referral code', { exact: true }).fill('NP');
     await page.getByRole('button', { name: 'Add referral', exact: true }).click();
     await expect(page).toHaveURL(/\/referrals\/r3\/edit$/);
-    await expect(page.getByText('Referral saved. Rate schedule and commission packages are saved together.', { exact: true })).toBeVisible();
+    await expect(page.getByText('Referral saved.', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Back to partner', exact: false }).click();
     page.once('dialog', dialog => dialog.accept());
     await page.getByRole('button', { name: 'Delete New partner' }).click();

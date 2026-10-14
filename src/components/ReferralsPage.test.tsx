@@ -77,63 +77,82 @@ describe('ReferralsPage payout workflow', () => {
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
   });
 
-  it('shows section save buttons, explains precedence and keeps saved settings open', async () => {
-    const commissionPackages = [{ key: 'summer', name: 'Summer 10%', effectiveFrom: '2026-06-01', bookingCurrency: 'EUR', kind: 'percentage', ratePercent: 10 }];
-    (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [{ ...partner, commissionPackages }] });
+
+
+
+
+  it('provides one date-based setup and saves 19% followed by 20%', async () => {
     view('/admin/referrals/r1/edit');
     await screen.findByRole('heading', { name: 'Edit Ada Partners' });
-    const packages = screen.getByRole('region', { name: 'Commission packages' });
-    expect(within(packages).getByRole('button', { name: 'Save commission packages' })).toBeVisible();
-    expect(screen.getByText(/this rate schedule is saved but does not apply/)).toBeVisible();
-    fireEvent.change(within(packages).getByLabelText('Rate %'), { target: { value: '15' } });
-    fireEvent.click(within(packages).getByRole('button', { name: 'Save commission packages' }));
-    await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ commissionPackages: [expect.objectContaining({ ratePercent: 15 })], rateSchedule: [] })));
-    expect(await screen.findByText('Referral saved. Rate schedule and commission packages are saved together.')).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Partner details' })).toBeVisible();
-    expect(within(packages).getByLabelText('Rate %')).toHaveValue(15);
-    fireEvent.change(within(packages).getByLabelText('Rate %'), { target: { value: '16' } });
-    expect(screen.queryByText('Referral saved. Rate schedule and commission packages are saved together.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Rate schedule' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Influence commission/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add commission package' }));
+    fireEvent.change(screen.getByLabelText('Package From'), { target: { value: '2026-01-01' } });
+    fireEvent.change(screen.getByLabelText('Package To (blank = ongoing)'), { target: { value: '2026-12-31' } });
+    fireEvent.change(screen.getByLabelText('Starting percentage'), { target: { value: '19' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add percentage change' }));
+    fireEvent.change(screen.getByLabelText('Rate From'), { target: { value: '2026-06-15' } });
+    fireEvent.change(screen.getByLabelText('New percentage'), { target: { value: '20' } });
+    expect(screen.getByText('2026-01-01 to 2026-06-14 · 19%')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ commissionMode: 'dated_percentage', commissionPackages: [expect.objectContaining({ bookingCurrency: '*', rates: [{ effectiveFrom: '2026-01-01', ratePercent: 19 }, { effectiveFrom: '2026-06-15', ratePercent: 20 }] })] })));
+    expect(await screen.findByText('Referral saved.')).toBeInTheDocument();
   });
 
-  it('saves a rate from its section and preserves edits on failure for retry', async () => {
+  it('preserves percentages after a failed save and permits retry', async () => {
     view('/admin/referrals/r1/edit');
     await screen.findByRole('heading', { name: 'Edit Ada Partners' });
-    const rates = screen.getByRole('region', { name: 'Rate schedule' });
-    fireEvent.click(within(rates).getByRole('button', { name: '+ Add rate rule' }));
-    fireEvent.change(within(rates).getByLabelText('Rate %'), { target: { value: '12' } });
-    (referralsApi.update as jest.Mock).mockRejectedValueOnce({ response: { data: { message: 'Could not store settings. Retry.' } } });
-    fireEvent.click(within(rates).getByRole('button', { name: 'Save rate schedule' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not store settings. Retry.');
-    expect(within(rates).getByLabelText('Rate %')).toHaveValue(12);
-    expect(screen.queryByText('Referral saved. Rate schedule and commission packages are saved together.')).not.toBeInTheDocument();
-    fireEvent.click(within(rates).getByRole('button', { name: 'Save rate schedule' }));
-    await screen.findByText('Referral saved. Rate schedule and commission packages are saved together.');
-    expect(referralsApi.update).toHaveBeenLastCalledWith('r1', expect.objectContaining({ rateSchedule: [expect.objectContaining({ tiers: [{ minPrice: 0, ratePercent: 12 }] })] }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add commission package' }));
+    fireEvent.change(screen.getByLabelText('Package From'), { target: { value: '2026-06-15' } });
+    fireEvent.change(screen.getByLabelText('Starting percentage'), { target: { value: '20' } });
+    (referralsApi.update as jest.Mock).mockRejectedValueOnce({ response: { status: 503 } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save referral. The service is temporarily unavailable.');
+    expect(screen.getByLabelText('Starting percentage')).toHaveValue(20);
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByText('Referral saved.');
   });
 
-  it('disables every save action while saving to prevent duplicate submissions', async () => {
+  it('has one save button and blocks duplicate submissions while pending', async () => {
     let complete: (value: any) => void = () => {};
     (referralsApi.update as jest.Mock).mockImplementation(() => new Promise(resolve => { complete = resolve; }));
     view('/admin/referrals/r1/edit');
     await screen.findByRole('heading', { name: 'Edit Ada Partners' });
-    fireEvent.click(screen.getByRole('button', { name: 'Save commission packages' }));
-    expect(screen.getAllByRole('button', { name: 'Saving…' })).toHaveLength(3);
-    screen.getAllByRole('button', { name: 'Saving…' }).forEach(button => expect(button).toBeDisabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(screen.getAllByRole('button', { name: 'Saving…' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
     expect(referralsApi.update).toHaveBeenCalledTimes(1);
     complete({ data: partner });
-    await screen.findByText('Referral saved. Rate schedule and commission packages are saved together.');
+    await screen.findByText('Referral saved.');
   });
 
-  it('saves influence rates and repeat-credit rules, including an explicit zero', async () => {
+  it('keeps an existing fixed/currency agreement unchanged until explicitly replaced', async () => {
+    const existing = { ...partner, influenceCommissionPercentage: 0, commissionPackages: [{ key: 'fixed', name: 'Fixed USD', kind: 'fixed', amount: 500, currency: 'USD', bookingCurrency: '*', effectiveFrom: '2026-01-01' }] };
+    (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [existing] });
     view('/admin/referrals/r1/edit');
     await screen.findByRole('heading', { name: 'Edit Ada Partners' });
-    fireEvent.change(screen.getByLabelText(/Influence commission %/), { target: { value: '20' } });
-    fireEvent.click(screen.getByLabelText('Allow explicitly credited repeat bookings'));
+    expect(screen.getByRole('region', { name: 'Existing commission agreement' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Contact phone'), { target: { value: '+420 777 123 456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ influenceCommissionPercentage: 20, allowRepeatBookingCredit: false })));
-    fireEvent.change(screen.getByLabelText(/Influence commission %/), { target: { value: '0' } });
+    await waitFor(() => expect(referralsApi.update).toHaveBeenCalled());
+    const body = (referralsApi.update as jest.Mock).mock.calls[0][1];
+    expect(body).not.toHaveProperty('commissionPackages');
+    expect(body).not.toHaveProperty('influenceCommissionPercentage');
+    fireEvent.click(screen.getByRole('button', { name: 'Use date-based percentages' }));
+    expect(screen.getByRole('region', { name: 'Commission packages' })).toBeInTheDocument();
+  });
+
+  it('rejects overlapping package dates before calling the API', async () => {
+    view('/admin/referrals/r1/edit');
+    await screen.findByRole('heading', { name: 'Edit Ada Partners' });
+    for (let index = 0; index < 2; index++) {
+      fireEvent.click(screen.getByRole('button', { name: 'Add commission package' }));
+      fireEvent.change(screen.getAllByLabelText('Package From')[index], { target: { value: '2026-06-15' } });
+      fireEvent.change(screen.getAllByLabelText('Starting percentage')[index], { target: { value: '20' } });
+    }
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(referralsApi.update).toHaveBeenLastCalledWith('r1', expect.objectContaining({ influenceCommissionPercentage: 0 })));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Package dates overlap');
+    expect(referralsApi.update).not.toHaveBeenCalled();
   });
 
   it('filters a partner, totals commissions, and records selected bookings', async () => {
@@ -226,47 +245,6 @@ describe('ReferralsPage payout workflow', () => {
     expect(screen.getByText(new Date('2026-07-15T00:00:00.000Z').toLocaleDateString())).toBeInTheDocument();
   });
 
-  it('lets an admin build a dated, price-tiered rate schedule for a referral partner', async () => {
-    view('/admin/referrals/new');
-    await screen.findByRole('form', { name: 'Referral settings' });
-
-    fireEvent.click(screen.getByRole('button', { name: '+ Add rate rule' }));
-    const [fromInput, toInput] = screen.getAllByLabelText(/^From$|^To \(blank = ongoing\)$/);
-    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-09-01' } });
-    fireEvent.change(screen.getByLabelText('To (blank = ongoing)'), { target: { value: '' } });
-    fireEvent.change(screen.getByLabelText(/From price/i), { target: { value: '0' } });
-    fireEvent.change(screen.getByLabelText(/Rate %/i), { target: { value: '10' } });
-    fireEvent.click(screen.getByRole('button', { name: '+ Add price tier' }));
-    const rateInputs = screen.getAllByLabelText(/Rate %/i);
-    const priceInputs = screen.getAllByLabelText(/From price/i);
-    fireEvent.change(priceInputs[1], { target: { value: '8500' } });
-    fireEvent.change(rateInputs[1], { target: { value: '20' } });
-
-    fireEvent.change(screen.getByPlaceholderText('Name *'), { target: { value: 'Alchemia Dobrostanu' } });
-    fireEvent.change(screen.getByPlaceholderText('Code (AD) *'), { target: { value: 'AD' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add referral' }));
-
-    await waitFor(() => expect(referralsApi.create).toHaveBeenCalledWith(expect.objectContaining({
-      rateSchedule: [expect.objectContaining({
-        effectiveFrom: '2026-09-01',
-        tiers: [{ minPrice: 0, ratePercent: 10 }, { minPrice: 8500, ratePercent: 20 }],
-      })],
-    })));
-    expect(fromInput).toBeDefined();
-    expect(toInput).toBeDefined();
-  });
-  it('saves a fixed USD package with configurable booking dates', async () => {
-    view('/admin/referrals/r1/edit');
-    await screen.findByRole('heading', { name: 'Edit Ada Partners' });
-    fireEvent.click(screen.getByRole('button', { name: 'Add commission package' }));
-    fireEvent.change(screen.getByLabelText('Key'), { target: { value: 'C' } });
-    fireEvent.change(screen.getByLabelText('Name', { exact: true }), { target: { value: 'Package C' } });
-    fireEvent.change(screen.getByLabelText('Calculation'), { target: { value: 'fixed' } });
-    fireEvent.change(screen.getByLabelText('From', { exact: true }), { target: { value: '2026-09-23' } });
-    fireEvent.change(screen.getByLabelText('Amount', { exact: true }), { target: { value: '500' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ commissionPackages: [expect.objectContaining({ key: 'C', effectiveFrom: '2026-09-23', kind: 'fixed', amount: 500, currency: 'USD' })] })));
-  });
   it('provisions a separate partner account without changing the referral record', async () => {
     view('/admin/referrals/r1/access');
     await screen.findByRole('heading', { name: 'Portal access' });
