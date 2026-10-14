@@ -1,18 +1,18 @@
 import { expect, test } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-const defaults = JSON.parse(fs.readFileSync(path.resolve('../ppvc-805-api/src/communications/seeds/email-templates.json'), 'utf8')).filter((item: any) => item.templateKey === 'prospect_forms_invitation');
+const defaults = JSON.parse(fs.readFileSync(path.resolve('../api/src/communications/seeds/email-templates.json'), 'utf8')).filter((item: any) => item.templateKey === 'prospect_forms_invitation');
 const client = { firstName: 'Synthetic', email: 'prospect@example.test', loginPin: '654321' };
 const links = { clientPortal: 'https://ibogaready.com/login', questionnaire: 'https://ibogaready.com/workflow?step=screening_questionnaire', healthQuestionnaire: 'https://ibogaready.com/workflow?step=questionnaire' };
 const interpolate = (text: string) => text.replace(/\{\{([^}]+)\}\}/g, (_, key) => key.trim().split('.').reduce((value: any, part: string) => value?.[part], { client, links }) || '');
 for (const width of [1440,390]) for (const language of ['en','cz','pl']) {
- test(`forms invitation ${language}/${width} previews and explicitly sends`, async ({ page }) => {
+ test(`forms invitation ${language}/${width} previews and explicitly sends`, async ({ page, baseURL }) => {
   await page.setViewportSize({ width, height: 1000 });
   let sends = 0;
   await page.route('**/*', async route => {
    if (!['xhr','fetch'].includes(route.request().resourceType())) return route.continue();
    const url = new URL(route.request().url());
-   const reply = (data: any) => route.fulfill({ json: data, headers: { 'Access-Control-Allow-Origin': 'http://localhost:4385', 'Access-Control-Allow-Credentials': 'true' } });
+   const reply = (data: any) => route.fulfill({ json: data, headers: { 'Access-Control-Allow-Origin': baseURL!, 'Access-Control-Allow-Credentials': 'true' } });
    if (url.pathname === '/communications/templates') return reply(defaults.map((item: any) => ({ ...item, _id: item.language })));
    if (url.pathname === '/communications/settings') return reply({ senderName: 'Test team', senderEmail: 'team@example.test', autoCcEnabled: false });
    if (url.pathname === '/communications/preview') {

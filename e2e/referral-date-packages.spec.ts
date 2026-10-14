@@ -9,7 +9,7 @@ test.describe.configure({ mode: 'serial' });
 for (const width of [1440, 390]) test(`dated commission saving and real calculation at ${width}px`, async ({ page, request, baseURL }) => {
   test.setTimeout(90000);
   expect(new URL(baseURL!).hostname).toMatch(/^(localhost|127\.0\.0\.1)$/);
-  const root = path.resolve(__dirname, '../..');
+  const root = path.resolve(__dirname, '../../..');
   const mongoose = require(path.join(root, 'ppvc-806-api/node_modules/mongoose'));
   const credentials = JSON.parse(fs.readFileSync(path.join(root, 'ppvc-660-db-refresh/db-refresh-private/local-credentials.json'), 'utf8'));
   const uri = new URL(credentials.appUri);
