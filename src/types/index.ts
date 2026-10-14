@@ -1344,6 +1344,9 @@ export interface FileUpload {
 }
 
 export interface MedicalReviewRequest {
+  followUpRequired?: boolean;
+  followUpUpdatedAt?: string;
+  followUpUpdatedBy?: string;
   _id?: string;
   display_id?: number;
   advisorDeliveryStatus?: 'unsent' | 'sent';

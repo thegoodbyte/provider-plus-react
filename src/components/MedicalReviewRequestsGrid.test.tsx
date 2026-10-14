@@ -13,7 +13,7 @@ jest.mock('../services/usersApi', () => ({ usersApi: { getAll: jest.fn() } }));
 
 beforeEach(() => {
   (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({ data: [
-    { _id: 'waiting', display_id: 7901, status: 'awaiting_whatsapp', reviewChannel: 'whatsapp', whatsappStatus: 'awaiting_response', whatsappAdvisorUserId: 'advisor', assignedToUserId: 'other', retreatId: 'retreat', requestType: 'ekg_review' },
+    { _id: 'waiting', display_id: 7901, status: 'awaiting_whatsapp', followUpRequired: true, reviewChannel: 'whatsapp', whatsappStatus: 'awaiting_response', whatsappAdvisorUserId: 'advisor', assignedToUserId: 'other', retreatId: 'retreat', requestType: 'ekg_review' },
     { _id: 'approved', display_id: 7902, status: 'approved', reviewChannel: 'whatsapp', whatsappStatus: 'responded', whatsappDecision: 'OK', retreatId: 'retreat', requestType: 'liver_panel_review' },
     { _id: 'declined', display_id: 7903, status: 'rejected', reviewChannel: 'whatsapp', whatsappStatus: 'responded', whatsappDecision: 'NOT OK', retreatId: 'other-retreat', requestType: 'ekg_review' },
     { _id: 'internal', display_id: 7904, status: 'approved', reviewChannel: 'internal', requestType: 'ekg_review' },
@@ -89,4 +89,15 @@ it('downloads the selected WhatsApp request and keeps failures available for ret
   expect(medicalReviewRequestsApi.downloadForWhatsapp).toHaveBeenCalledWith('waiting');
   expect(screen.getByRole('button', { name: 'Download MRR #7901 for WhatsApp' })).toBeEnabled();
   expect(screen.getByText('#7902')).toBeInTheDocument();
+});
+
+
+it('opens the bookmarked follow-up queue with only flagged MRRs', async () => {
+  render(<MemoryRouter initialEntries={['/admin/medical-review-requests?followUp=1']}><MedicalReviewRequestsGrid /></MemoryRouter>);
+  const filter = await screen.findByLabelText('Follow-up only');
+  expect(filter).toBeChecked();
+  expect(screen.getAllByText('#7901').length).toBeGreaterThan(0);
+  expect(screen.queryByText('#7902')).not.toBeInTheDocument();
+  fireEvent.click(filter);
+  expect(screen.getAllByText('#7902').length).toBeGreaterThan(0);
 });

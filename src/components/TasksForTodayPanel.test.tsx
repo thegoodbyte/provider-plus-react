@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TasksForTodayPanel from './TasksForTodayPanel';
 import { assistantApi } from '../services/api';
@@ -57,4 +57,13 @@ describe('TasksForTodayPanel', () => {
 
     expect(await screen.findByText(/all caught up/i)).toBeInTheDocument();
   });
+});
+
+
+it('opens a flagged MRR directly and offers the complete follow-up queue', async () => {
+  (useAuth as jest.Mock).mockReturnValue({ user: { role: 'medical_staff' } });
+  (assistantApi.getTasksForToday as jest.Mock).mockResolvedValue({ data: { retreats: [], tasks: [{ severity: 'high', category: 'review', clientName: 'Dana Babicova', reviewLink: '/admin/medical-review-requests/mrr', bookingLink: '/admin/medical-review-requests/mrr', message: 'MRR #7911 flagged for follow-up', retreatId: '' }] } });
+  view();
+  expect(await screen.findByText('MRR #7911 flagged for follow-up')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'View all MRR follow-ups' })).toBeInTheDocument();
 });

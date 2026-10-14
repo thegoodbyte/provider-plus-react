@@ -1,3 +1,4 @@
+import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
 import MedicalReviewFileDownload, { MedicalReviewDownloadContext } from './MedicalReviewFileDownload';
 import MedicalReviewClientMessages from './MedicalReviewClientMessages';
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
@@ -1769,6 +1770,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </h1>
               {isDetailView && selected ? (
                 <div className="mt-1">
+                  <MedicalReviewFollowUpButton request={selected} onSaved={changes => {
+                    setSelected(current => current ? { ...current, ...changes } : current);
+                    setRequests(current => current.map(item => item._id === selected._id ? { ...item, ...changes } : item));
+                  }} />
                   <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">
                     {profileHref ? <a href={profileHref} className="text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900">{selectedClientName}</a> : selectedClientName}
                     {selectedClientDisplayId && <span className="ml-2 text-xs font-normal text-gray-500">ID: {selectedClientDisplayId}</span>}

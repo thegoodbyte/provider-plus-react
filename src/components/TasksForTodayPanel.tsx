@@ -62,7 +62,7 @@ const TasksForTodayPanel: React.FC = () => {
                 <li key={`${task.bookingLink}-${task.category}-${index}`} className={`severity-${task.severity}`}>
                   <Icon size={14} />
                   <div className="tasks-today-item-body">
-                    <button type="button" onClick={() => openLink(task.clientLink || task.bookingLink)}>{task.clientName}</button>
+                    <button type="button" onClick={() => openLink(task.reviewLink || task.clientLink || task.bookingLink)}>{task.clientName}</button>
                     <span className="tasks-today-item-message">{task.message}</span>
                   </div>
                   {task.retreatName && <span className="tasks-today-item-retreat">{task.retreatName}</span>}
@@ -70,6 +70,7 @@ const TasksForTodayPanel: React.FC = () => {
               );
             })}
           </ul>
+          {data.tasks.some(task => task.reviewLink) && <button type="button" onClick={() => navigate('/admin/medical-review-requests?followUp=1')}>View all MRR follow-ups</button>}
           {hiddenCount > 0 && <div className="tasks-today-more">+{hiddenCount} more</div>}
         </>
       )}

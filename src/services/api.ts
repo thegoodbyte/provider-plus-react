@@ -1283,6 +1283,10 @@ export const usersApi = {
 };
 
 export const medicalReviewRequestsApi = {
+  setFollowUp: (id: string, followUpRequired: boolean) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<Partial<MedicalReviewRequest>>(`/medical-review-requests/${encodeURIComponent(id)}/follow-up`, { followUpRequired }, { suppressGlobalError: true } as any);
+  },
   downloadForWhatsapp: (id: string) => api.get<{ url: string; fileName: string; fileCount: number }>(`/medical-review-requests/${encodeURIComponent(id)}/whatsapp-download`, { suppressGlobalError: true } as any),
   downloadArtifact: (id: string, artifactId: string, fileKey: string) => api.get<{ url: string; fileName: string }>(`/medical-review-requests/${id}/artifacts/${artifactId}/download`, { params: { fileKey } }),
   getRequestTypes: () => api.get<Array<{ key: NonNullable<MedicalReviewRequest['requestType']>; label: string }>>('/medical-review-requests/request-types'),
@@ -1976,6 +1980,7 @@ export type AssistantTask = {
   clientName: string;
   clientLink?: string;
   bookingLink: string;
+  reviewLink?: string;
   message: string;
 };
 

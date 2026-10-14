@@ -1,3 +1,4 @@
+import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
 import MedicalReviewWhatsAppForm from './MedicalReviewWhatsAppForm';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -155,8 +156,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [dateTo, setDateTo] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | MedicalReviewRequest['status']>('all');
   const [pendingOnly, setPendingOnly] = useState(false);
+  const [followUpOnly, setFollowUpOnly] = useState(new URLSearchParams(location.search).get('followUp') === '1');
   const [filterAdvisorId, setFilterAdvisorId] = useState('all');
-  const [activeView, setActiveView] = useState<'grouped' | 'all' | 'whatsapp'>('grouped');
+  const [activeView, setActiveView] = useState<'grouped' | 'all' | 'whatsapp'>(new URLSearchParams(location.search).get('followUp') === '1' ? 'all' : 'grouped');
   const [advisors, setAdvisors] = useState<User[]>([]);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState('');
@@ -247,6 +249,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       {downloadingRequestId === request._id ? 'Preparing…' : 'Download for WhatsApp'}
     </button>
   );
+
+  const followUpAction = (request: EnrichedReviewRequest) => <MedicalReviewFollowUpButton request={request}
+    onSaved={(changes) => setRequests(current => current.map(item => item._id === request._id ? { ...item, ...changes } : item))} />;
 
   const whatsappAction = (request: EnrichedReviewRequest) => canManageRequests && (
     <button
@@ -416,6 +421,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
 
   const filteredRequests = useMemo(() => {
     const filtered = requests.filter((request) => {
+      if (followUpOnly && !request.followUpRequired) return false;
       if (!matchesReviewRequestFilters(request, { searchTerm, typeFilter, dateFrom, dateTo })) return false;
       if (filterStatus !== 'all' && normalizeReviewStatus(request.status) !== filterStatus) return false;
       const pending = isPendingReview(request) || (activeView === 'whatsapp' && request.whatsappStatus !== 'responded');
@@ -430,7 +436,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         || date(b) - date(a)
         || Number(b.display_id || 0) - Number(a.display_id || 0);
     });
-  }, [activeView, dateFrom, dateTo, filterAdvisorId, filterStatus, pendingOnly, requests, searchTerm, typeFilter]);
+  }, [activeView, dateFrom, dateTo, filterAdvisorId, filterStatus, followUpOnly, pendingOnly, requests, searchTerm, typeFilter]);
+
+  useEffect(() => {
+    const followUp = new URLSearchParams(location.search).get('followUp') === '1';
+    setFollowUpOnly(followUp);
+    if (followUp) setActiveView('all');
+  }, [location.search]);
 
   // Apply the shared controls before grouping so rows and counts reflect the same filters.
   const whatsappHandledGroups = useMemo(
@@ -1057,6 +1069,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           />
           Pending only
         </label>
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input type="checkbox" checked={followUpOnly} onChange={event => setFollowUpOnly(event.target.checked)} />
+          Follow-up only
+        </label>
         {canManageRequests && (
           <>
             <label htmlFor="review-advisor-filter" className="text-sm font-medium text-gray-700">Advisor</label>
@@ -1409,6 +1425,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               >
                                 Open review
                               </button>
+                              {followUpAction(request)}
                               {downloadAction(request)}
                               {whatsappAction(request)}
                               {notifyAction(request)}
@@ -1526,7 +1543,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             >
                               Open review
                             </button>
-                            {downloadAction(request)}
+                            {followUpAction(request)}
+                              {downloadAction(request)}
                               {whatsappAction(request)}
                             {notifyAction(request)}
                             {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>}
@@ -1608,7 +1626,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                                 : <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Awaiting answer</span>}
                             </td>
                             <td className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={request.reviewNotes || ''}>{noteExcerpt(request.reviewNotes)}</td>
-                            {canManageRequests && <td className="px-4 py-2">{downloadAction(request)}</td>}
+                            {canManageRequests && <td className="px-4 py-2">{followUpAction(request)}
+                              {downloadAction(request)}</td>}
                           </tr>
                         );
                       })}
@@ -1661,6 +1680,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   </span>
                 </div>
               </div>
+              <div className="mt-3 flex flex-wrap gap-2">{followUpAction(request)}</div>
             </div>
           );
         })}
@@ -1728,7 +1748,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       >
                         <Icon icon={FiEye} />
                       </button>
-                      {downloadAction(request)}
+                      {followUpAction(request)}
+                              {downloadAction(request)}
                               {whatsappAction(request)}
                       {notifyAction(request)}
                       {canManageRequests && (
