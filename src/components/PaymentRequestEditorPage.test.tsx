@@ -9,8 +9,10 @@ import {
 jest.mock('../services/api', () => ({
   paymentRequestsApi: {
     getOne: jest.fn(), create: jest.fn(), update: jest.fn(), link: jest.fn(),
-    getNextDisplayIdFresh: jest.fn(), getAllFresh: jest.fn(),
+    getNextDisplayIdFresh: jest.fn(), getAllFresh: jest.fn(), cancel: jest.fn(),
+    getIdentityChange: jest.fn().mockResolvedValue({ data: null }),
   },
+  auditLogsApi: { getAll: jest.fn().mockResolvedValue({ data: { items: [] } }) },
   paymentsApi: { getPlanSettings: jest.fn().mockResolvedValue({ data: { depositPercentage: 40, balanceDueDaysBeforeRetreat: 30 } }), getReceipt: jest.fn(), getByClient: jest.fn(), convertToUsd: jest.fn() },
   clientsApi: { getAll: jest.fn() },
   retreatsApi: { getAll: jest.fn() },
@@ -124,5 +126,60 @@ describe('PaymentRequestEditorPage', () => {
     await waitFor(() => expect(paymentRequestsApi.create).toHaveBeenCalledTimes(1));
     expect(paymentRequestsApi.link).not.toHaveBeenCalled();
     await screen.findByText('Payment requests list');
+  });
+
+  it('allows staff to cancel an invoice (storno) with a reason in view mode', async () => {
+    const existing = {
+      _id: 'req-1', invoiceNumber: 'INV-1086', status: 'pending',
+      requestedAmount: 905, currency: 'EUR', clientId: client1, retreatId: retreat1,
+    };
+    (paymentRequestsApi.getOne as jest.Mock).mockResolvedValue({ data: existing });
+    (paymentRequestsApi.cancel as jest.Mock).mockResolvedValue({
+      data: { ...existing, status: 'cancelled', cancellationReason: 'Client did not pay', cancelledAt: '2026-10-14' },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/admin/payment-requests/req-1']}>
+        <Routes>
+          <Route path="/admin/payment-requests/:id" element={<PaymentRequestEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Invoice INV-1086' })).toBeInTheDocument();
+    const stornoButton = screen.getByRole('button', { name: 'Cancel Invoice (Storno)' });
+    fireEvent.click(stornoButton);
+
+    expect(screen.getByRole('heading', { name: 'Cancel Invoice (Storno)' })).toBeInTheDocument();
+    expect(screen.getByText(/Are you sure you want to cancel Invoice #INV-1086\?/)).toBeInTheDocument();
+
+    const confirmButton = screen.getByRole('button', { name: 'Confirm Cancellation' });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => expect(paymentRequestsApi.cancel).toHaveBeenCalledWith('req-1', 'Client did not pay'));
+    expect(await screen.findByText('Cancelled (Storno)')).toBeInTheDocument();
+    expect(screen.getByText('Reason: Client did not pay')).toBeInTheDocument();
+  });
+
+  it('displays cancellation details when viewing an already cancelled invoice', async () => {
+    const cancelled = {
+      _id: 'req-2', invoiceNumber: 'INV-1087', status: 'cancelled',
+      cancellationReason: 'Booking cancelled by guest', cancelledBy: 'admin@example.com',
+      requestedAmount: 500, currency: 'EUR', clientId: client1, retreatId: retreat1,
+    };
+    (paymentRequestsApi.getOne as jest.Mock).mockResolvedValue({ data: cancelled });
+
+    render(
+      <MemoryRouter initialEntries={['/admin/payment-requests/req-2']}>
+        <Routes>
+          <Route path="/admin/payment-requests/:id" element={<PaymentRequestEditorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Cancelled (Storno)')).toBeInTheDocument();
+    expect(screen.getByText('Reason: Booking cancelled by guest')).toBeInTheDocument();
+    expect(screen.getByText(/by admin@example.com/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel Invoice (Storno)' })).not.toBeInTheDocument();
   });
 });

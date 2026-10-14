@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import { paymentRequestsApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ paymentRequestsApi: { getAllFresh: jest.fn() } }));
+jest.mock('../services/api', () => ({ paymentRequestsApi: { getAllFresh: jest.fn(), cancel: jest.fn() } }));
 jest.mock('./ClientAvatar', () => () => null);
 jest.mock('./EmailComposeModal', () => () => null);
 
@@ -61,4 +61,22 @@ it('filters paid, unpaid and paid without any booking, including joint-request l
   expect(screen.getByRole('status')).toHaveTextContent('3 of 7');
   expect(screen.queryByText('CANCELLED')).not.toBeInTheDocument();
   expect(screen.queryByText('PAID-NO-BOOKING')).not.toBeInTheDocument();
+});
+
+it('allows cancelling an invoice (storno) from the grid actions', async () => {
+  (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [
+    { _id: 'req-1', invoiceNumber: 'INV-ACTIVE', status: 'pending', requestedAmount: 1500, currency: 'EUR' },
+  ] });
+  (paymentRequestsApi.cancel as jest.Mock).mockResolvedValue({ data: { _id: 'req-1', status: 'cancelled' } });
+  mount();
+
+  const cancelButton = await screen.findByTitle('Cancel invoice (Storno)');
+  fireEvent.click(cancelButton);
+
+  expect(screen.getByRole('heading', { name: 'Cancel Invoice (Storno)' })).toBeInTheDocument();
+  expect(screen.getByText(/Are you sure you want to cancel Invoice #INV-ACTIVE\?/)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Confirm Cancellation' }));
+  await screen.findByText('Invoice cancelled (storno).');
+  expect(paymentRequestsApi.cancel).toHaveBeenCalledWith('req-1', 'Client did not pay');
 });

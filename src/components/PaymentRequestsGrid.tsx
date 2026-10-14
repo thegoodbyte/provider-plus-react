@@ -5,7 +5,7 @@ import { paymentRequestsApi, serviceRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiDollarSign, FiChevronDown, FiEye, FiCopy, FiExternalLink, FiSettings } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiDollarSign, FiChevronDown, FiEye, FiCopy, FiExternalLink, FiSettings, FiSlash } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 import { paymentRequestFinancialSummary } from './bookingFinancialSummary';
@@ -61,6 +61,9 @@ const PaymentRequestsGrid: React.FC = () => {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [sortKey, setSortKey] = useState<PaymentRequestSortKey>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [cancellingRequest, setCancellingRequest] = useState<any | null>(null);
+  const [cancelReason, setCancelReason] = useState('Client did not pay');
+  const [cancelling, setCancelling] = useState(false);
 
   const fetchPaymentRequests = async () => {
     try {
@@ -87,6 +90,27 @@ const PaymentRequestsGrid: React.FC = () => {
     } catch (error) {
       console.error('Error deleting payment request:', error);
       showError(apiErrorMessage(error, 'Could not delete this payment request.'));
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancellingRequest?._id) return;
+    setCancelling(true);
+    try {
+      await paymentRequestsApi.cancel(cancellingRequest._id, cancelReason);
+      setPaymentRequests((current) =>
+        current.map((req) =>
+          req._id === cancellingRequest._id
+            ? { ...req, status: 'cancelled', cancellationReason: cancelReason, cancelledAt: new Date() }
+            : req
+        )
+      );
+      setCancellingRequest(null);
+      showSuccess('Invoice cancelled (storno).');
+    } catch (error: any) {
+      showError(apiErrorMessage(error, 'Unable to cancel this invoice.'));
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -382,10 +406,14 @@ const PaymentRequestsGrid: React.FC = () => {
                     </td>
                     <td data-label="Currency" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{request.currency}</td>
                     <td data-label="Status" className="px-4 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
+                        title={request.status === 'cancelled' && request.cancellationReason ? `Cancelled: ${request.cancellationReason}` : undefined}
+                      >
                         {request.status === 'paid' && <Icon icon={FiCheckCircle} className="w-3 h-3" />}
                         {request.status === 'pending' && <Icon icon={FiClock} className="w-3 h-3" />}
                         {request.status === 'overdue' && <Icon icon={FiAlertTriangle} className="w-3 h-3" />}
+                        {request.status === 'cancelled' && <Icon icon={FiSlash} className="w-3 h-3" />}
                         {request.status}
                       </span>
                     </td>
@@ -420,6 +448,18 @@ const PaymentRequestsGrid: React.FC = () => {
                         >
                           <Icon icon={FiEdit2} />
                         </button>
+                        {request.status !== 'cancelled' && request.status !== 'paid' && (
+                          <button
+                            onClick={() => {
+                              setCancellingRequest(request);
+                              setCancelReason('Client did not pay');
+                            }}
+                            className="icon-action-btn icon-action-btn-danger"
+                            title="Cancel invoice (Storno)"
+                          >
+                            <Icon icon={FiSlash} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(request._id)}
                           className="icon-action-btn icon-action-btn-danger"
@@ -511,6 +551,59 @@ const PaymentRequestsGrid: React.FC = () => {
             </div>
           )}
         />
+      )}
+
+      {cancellingRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Cancel Invoice (Storno)</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to cancel Invoice #{cancellingRequest.invoiceNumber || cancellingRequest.display_id}? The public payment link will show this invoice as cancelled and disable payment.
+            </p>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700">Reason for cancellation</label>
+              <select
+                value={['Client did not pay', 'Booking cancelled', 'Duplicate invoice', 'Changed terms / reissued'].includes(cancelReason) ? cancelReason : 'custom'}
+                onChange={(e) => {
+                  if (e.target.value !== 'custom') setCancelReason(e.target.value);
+                  else setCancelReason('');
+                }}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="Client did not pay">Client did not pay</option>
+                <option value="Booking cancelled">Booking cancelled</option>
+                <option value="Duplicate invoice">Duplicate invoice</option>
+                <option value="Changed terms / reissued">Changed terms / reissued</option>
+                <option value="custom">Other (enter below)</option>
+              </select>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Enter or customize cancellation reason..."
+                rows={2}
+                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={() => setCancellingRequest(null)}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Keep Invoice
+              </button>
+              <button
+                type="button"
+                disabled={cancelling || !cancelReason.trim()}
+                onClick={handleConfirmCancel}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

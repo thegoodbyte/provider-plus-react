@@ -68,6 +68,9 @@ const PaymentRequestEditorPage: React.FC = () => {
   const [activity, setActivity] = useState<any[]>([]);
   const [identityReview, setIdentityReview] = useState<any>(null);
   const [identityReviewLoading, setIdentityReviewLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('Client did not pay');
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     const loadRequest = async () => {
@@ -171,6 +174,21 @@ const PaymentRequestEditorPage: React.FC = () => {
     } finally { setIdentityReviewLoading(false); }
   };
 
+  const handleCancelRequest = async () => {
+    if (!id) return;
+    setCancelling(true);
+    try {
+      const response = await paymentRequestsApi.cancel(id, cancelReason);
+      setPaymentRequest(response.data);
+      setShowCancelModal(false);
+      showSuccess('Invoice cancelled (storno).');
+    } catch (error: any) {
+      showError(apiErrorMessage(error, 'Unable to cancel this invoice.'));
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner message={id ? 'Loading payment request...' : 'Loading form...'} />;
   }
@@ -194,13 +212,24 @@ const PaymentRequestEditorPage: React.FC = () => {
             Back
           </button>
           <div className="flex gap-2">
-            {!linkedPaymentId && paymentRequest.status !== 'paid' && <button
-                type="button"
-                onClick={() => navigate(`/admin/payments/new?paymentRequestId=${id}`, { state: { returnTo: '/admin/payment-requests' } })}
-                className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
-              >
-                Add Payment
-              </button>}
+            {!linkedPaymentId && paymentRequest.status !== 'paid' && paymentRequest.status !== 'cancelled' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/admin/payments/new?paymentRequestId=${id}`, { state: { returnTo: '/admin/payment-requests' } })}
+                  className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
+                >
+                  Add Payment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(true)}
+                  className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                >
+                  Cancel Invoice (Storno)
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => navigate(`/admin/payment-requests/${id}/edit`)}
@@ -216,6 +245,32 @@ const PaymentRequestEditorPage: React.FC = () => {
             <div className="text-sm font-semibold uppercase tracking-wide text-gray-500">Payment Request</div>
             <h1 className="mt-1 text-3xl font-semibold text-gray-900">Invoice {invoiceNumber}</h1>
           </div>
+
+          {paymentRequest.status === 'cancelled' && (
+            <div className="mb-6 rounded-lg border border-red-300 bg-red-50 p-5">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-red-200 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-800">
+                  Cancelled (Storno)
+                </span>
+                {paymentRequest.cancelledAt && (
+                  <span className="text-xs text-red-700">
+                    on {formatDate(paymentRequest.cancelledAt)}
+                  </span>
+                )}
+                {paymentRequest.cancelledBy && (
+                  <span className="text-xs text-red-700">
+                    by {paymentRequest.cancelledBy}
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 text-sm font-semibold text-red-900">
+                Reason: {paymentRequest.cancellationReason || 'Client did not pay'}
+              </p>
+              <p className="mt-1 text-xs text-red-700">
+                The public link will inform clients that this invoice has been cancelled due to non-payment and provide contact details for a new reservation.
+              </p>
+            </div>
+          )}
 
           {identityReview?.change?.status === 'pending' && <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-5">
             <div className="text-sm font-semibold uppercase tracking-wide text-amber-800">Identity change pending review</div>
@@ -382,6 +437,59 @@ const PaymentRequestEditorPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        {showCancelModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-900">Cancel Invoice (Storno)</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                Are you sure you want to cancel Invoice #{invoiceNumber}? The public payment link will show this invoice as cancelled and disable payment.
+              </p>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700">Reason for cancellation</label>
+                <select
+                  value={['Client did not pay', 'Booking cancelled', 'Duplicate invoice', 'Changed terms / reissued'].includes(cancelReason) ? cancelReason : 'custom'}
+                  onChange={(e) => {
+                    if (e.target.value !== 'custom') setCancelReason(e.target.value);
+                    else setCancelReason('');
+                  }}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="Client did not pay">Client did not pay</option>
+                  <option value="Booking cancelled">Booking cancelled</option>
+                  <option value="Duplicate invoice">Duplicate invoice</option>
+                  <option value="Changed terms / reissued">Changed terms / reissued</option>
+                  <option value="custom">Other (enter below)</option>
+                </select>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Enter or customize cancellation reason..."
+                  rows={2}
+                  className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={cancelling}
+                  onClick={() => setShowCancelModal(false)}
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Keep Invoice
+                </button>
+                <button
+                  type="button"
+                  disabled={cancelling || !cancelReason.trim()}
+                  onClick={handleCancelRequest}
+                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

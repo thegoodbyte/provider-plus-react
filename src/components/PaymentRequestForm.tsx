@@ -110,6 +110,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     currency: paymentRequest?.currency || 'EUR',
     note: paymentRequest?.note || paymentRequest?.notes || '',
     status: paymentRequest?.status || 'pending',
+    cancellationReason: paymentRequest?.cancellationReason || (paymentRequest?.status === 'cancelled' ? 'Client did not pay' : ''),
     dueDate: paymentRequest?.dueDate ? toDateInputValue(paymentRequest.dueDate) : '',
     paidDate: paymentRequest?.paidDate ? toDateInputValue(paymentRequest.paidDate) : '',
     isUrgent: paymentRequest?.isUrgent || false,
@@ -330,6 +331,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
   const handleChange = (field: string, value: any) => {
     if (field === 'requestedAmount' && formData.requestType === 'deposit') setDepositOverridden(true);
+    if (field === 'status' && value === 'cancelled' && !formData.cancellationReason) {
+      setFormData(prev => ({ ...prev, status: value, cancellationReason: 'Client did not pay' }));
+      return;
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -1001,6 +1006,35 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
+
+            {formData.status === 'cancelled' && (
+              <div className="md:col-span-2 rounded-md border border-red-200 bg-red-50 p-4">
+                <label htmlFor="cancellationReason" className="block text-sm font-medium text-red-900 mb-2">
+                  Cancellation Reason (Storno) *
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2 mb-2">
+                  {['Client did not pay', 'Booking cancelled', 'Duplicate invoice', 'Changed terms / reissued'].map((reason) => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => handleChange('cancellationReason', reason)}
+                      className={`text-left text-xs px-3 py-1.5 rounded border transition-colors ${formData.cancellationReason === reason ? 'border-red-600 bg-red-100 font-semibold text-red-900' : 'border-red-200 bg-white text-red-700 hover:bg-red-50'}`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  id="cancellationReason"
+                  type="text"
+                  value={formData.cancellationReason || ''}
+                  onChange={(e) => handleChange('cancellationReason', e.target.value)}
+                  placeholder="e.g. Client did not pay"
+                  className="w-full px-3 py-2 border border-red-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 bg-white text-sm"
+                  required
+                />
+              </div>
+            )}
 
             <div className="flex items-center pt-7">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">

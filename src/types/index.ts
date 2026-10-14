@@ -1823,6 +1823,9 @@ export interface PaymentRequest {
   lastReminderAt?: Date | string;
   remindersSent?: number;
   isUrgent?: boolean;
+  cancellationReason?: string;
+  cancelledAt?: Date | string;
+  cancelledBy?: string;
   paymentInstructions?: string;
   revolutPaymentLink?: string;
   createdBy?: string;

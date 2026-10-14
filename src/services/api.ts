@@ -607,6 +607,10 @@ export const paymentRequestsApi = {
     cacheService.clearPattern('payment-requests:');
     return api.delete(`/payment-requests/${id}`);
   },
+  cancel: (id: string, reason?: string) => {
+    cacheService.clearPattern('payment-requests:');
+    return api.post<PaymentRequest>(`/payment-requests/${id}/cancel`, { reason });
+  },
   markAsPaid: (id: string, paymentId: string) => {
     cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('payments:');
