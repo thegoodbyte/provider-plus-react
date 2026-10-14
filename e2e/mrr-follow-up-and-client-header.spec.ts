@@ -40,7 +40,7 @@ for (const width of [1440, 390, 320]) {
     const flag = page.getByRole('button', { name: 'Flag for follow-up: MRR #7931' });
     failFlag = true;
     await flag.click();
-    await expect(page.getByRole('alert').filter({ hasText: 'Temporary flag failure' })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'Unable to save follow-up flag. The service is temporarily unavailable.' })).toBeVisible();
     await expect(flag).toHaveAttribute('aria-pressed', 'false');
     failFlag = false;
     await flag.click();

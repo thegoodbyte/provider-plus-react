@@ -46,7 +46,7 @@ for (const width of [1440, 390]) {
     await expect(toast).toHaveCount(0);
     await editor.getByLabel('Email', { exact: true }).fill('failure@example.invalid');
     await editor.getByRole('button', { name: 'Update Client' }).click();
-    await expect(toast).toHaveText('Temporarily unavailable. Please retry.');
+    await expect(toast).toHaveText('Failed to save client. The service is temporarily unavailable.');
     await expect(editor.getByLabel('First Name')).toHaveValue('Edited');
     await editor.getByLabel('Email', { exact: true }).fill('unique@example.invalid');
     await editor.getByRole('button', { name: 'Update Client' }).click();
