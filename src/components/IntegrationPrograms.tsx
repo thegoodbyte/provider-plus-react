@@ -1,3 +1,6 @@
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useEffect, useState } from "react";
 import {
   BookingOption,
@@ -18,8 +21,7 @@ const clientName = (e: Enrollment) =>
   ]
     .filter(Boolean)
     .join(" ") || "Client";
-const message = (e: any) =>
-  e.response?.data?.message || e.message || "Unable to save. Please try again.";
+const message = (e: any) => apiErrorMessage(e, 'Could not save the integration program.');
 
 export function ProgramFields({
   value: c,
@@ -378,6 +380,7 @@ export function ProgramFields({
 }
 
 export default function IntegrationPrograms() {
+  const { toast, showError, dismiss } = useToast();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [defaults, setDefaults] = useState<
     { _id: string; programId: string }[]
@@ -414,7 +417,7 @@ export default function IntegrationPrograms() {
     try {
       await operation();
     } catch (e) {
-      setError(message(e));
+      showError(message(e));
     } finally {
       setBusy(false);
     }
@@ -467,6 +470,7 @@ export default function IntegrationPrograms() {
   };
   return (
     <section className="integration-programs" aria-label="Integration programs">
+      <Toast toast={toast} onDismiss={dismiss} />
       <h3>Programs & enrollments</h3>
       <p>
         Build a reviewed plan, publish a version, then enroll clients with a

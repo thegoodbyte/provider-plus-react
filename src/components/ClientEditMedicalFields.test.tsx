@@ -52,6 +52,20 @@ describe.each(['page', 'modal'])('client edit %s medical fields', (variant) => {
   const option = await screen.findByRole('option', { name: 'Self' });
   fireEvent.change(option.closest('select')!, { target: { value: selfId } });
   fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
-  await waitFor(() => expect(clientsApi.update).toHaveBeenCalledWith(client._id, expect.objectContaining({ display_id: 1201, referralId: selfId, source: 'Self', allergies: 'Test allergy' })));
+  await waitFor(() => expect(clientsApi.update).toHaveBeenCalledWith(client._id, expect.objectContaining({ display_id: 1201, referralId: selfId, source: 'Self', allergies: 'Test allergy' }), { suppressGlobalError: true }));
   expect(await screen.findByText('Saved client')).toBeInTheDocument();
  });
+
+it.each(['page', 'modal'])('keeps a duplicate-email rejection local in the %s editor', async variant => {
+  (clientsApi.getOne as jest.Mock).mockResolvedValue({ data: { ...client, email: 'original@example.invalid' } });
+  (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [] });
+  (clientsApi.update as jest.Mock).mockRejectedValue({ response: { status: 400, data: { message: 'Email taken@example.invalid is already registered.' } } });
+  render(<MemoryRouter initialEntries={['/clients/' + client._id + '/edit']}>
+    {variant === 'modal' ? <ClientEditModal client={{ ...client, email: 'original@example.invalid' } as any} onClose={jest.fn()} onSave={jest.fn()} /> : <Routes><Route path="/clients/:clientId/edit" element={<ClientEditPage />} /></Routes>}
+  </MemoryRouter>);
+  const email = await screen.findByLabelText(/^Email/);
+  fireEvent.change(email, { target: { value: 'taken@example.invalid' } });
+  fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Duplicate email');
+  expect(email).toHaveValue('taken@example.invalid');
+});

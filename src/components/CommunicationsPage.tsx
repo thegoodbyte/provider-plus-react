@@ -1,3 +1,4 @@
+import { emailSendFeedback } from '../utils/emailSendFeedback';
 import EmailSafetySettings from './EmailSafetySettings';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiDownload, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
@@ -582,9 +583,11 @@ const CommunicationsPage: React.FC = () => {
       }
 
       const response = await communicationsApi.sendEmail(payload);
-      await loadAll();
+      const feedback = emailSendFeedback(response.data);
+      if (feedback.type === 'error') { showError(feedback.text); return; }
       setActiveTab('sent');
-      showSuccess(formatSentEmailReceipt(response.data));
+      await loadAll().catch(() => undefined);
+      showSuccess(feedback.text);
     } catch (error) {
       console.error('Error sending email:', error);
       showError(apiErrorMessage(error, 'Email send failed.'));

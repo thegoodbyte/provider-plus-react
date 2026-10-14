@@ -12,8 +12,8 @@ it.each([
   [503, 'Email service is unavailable.'],
   [500, 'Duplicate email index is unavailable.'],
 ])('retains other server errors (%s, %s)', (status, message) => {
-  expect(clientSaveErrorMessage({ response: { status, data: { message } } })).toBe(message);
+  expect(clientSaveErrorMessage({ response: { status, data: { message } } })).toBe(status >= 500 ? 'Failed to save client. The service is temporarily unavailable.' : message);
 });
 it('provides fallback feedback', () => {
-  expect(clientSaveErrorMessage({})).toBe('Failed to save client. Please try again.');
+  expect(clientSaveErrorMessage({})).toBe('Failed to save client.');
 });

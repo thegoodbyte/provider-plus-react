@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { createContext, useContext, useState } from 'react';
 import { medicalReviewRequestsApi } from '../services/api';
 export const MedicalReviewDownloadContext = createContext('');
@@ -17,7 +18,7 @@ export default function MedicalReviewFileDownload({ artifactId, fileKey }: { art
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
-    } catch { setError('Unable to download document. Please try again.'); }
+    } catch (error) { setError(apiErrorMessage(error, 'Could not download this document.')); }
     finally { setLoading(false); }
   };
   return <span className="no-print inline-flex flex-wrap items-center gap-2"><button type="button" disabled={loading} onClick={download} className="min-h-9 font-semibold text-blue-700 hover:text-blue-900 disabled:opacity-50">{loading ? 'Preparing…' : 'Download'}</button>{error && <span role="alert" className="text-red-700">{error}</span>}</span>;

@@ -55,7 +55,7 @@ describe('ReferralsPage payout workflow', () => {
   it('shows missing partner and retryable list failures without creating an empty edit form', async () => {
     (referralsApi.getAll as jest.Mock).mockRejectedValueOnce(new Error('Temporary list failure'));
     view('/admin/referrals/missing/edit');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Temporary list failure');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load referral partners.');
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Retry', exact: true }));
     await screen.findByText('This referral partner could not be found.');

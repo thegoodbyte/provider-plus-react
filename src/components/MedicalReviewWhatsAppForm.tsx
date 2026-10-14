@@ -1,3 +1,6 @@
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useState } from 'react';
 import { MedicalReviewRequest } from '../types';
 import { User } from '../services/usersApi';
@@ -22,6 +25,7 @@ export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, 
   const [decision, setDecision] = useState(request.whatsappDecision || '');
   const [advisorNote, setAdvisorNote] = useState(request.reviewNotes || '');
   const [saving, setSaving] = useState(false);
+  const { toast, showError, dismiss } = useToast();
   const [error, setError] = useState('');
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -46,11 +50,12 @@ export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, 
       const response = await medicalReviewRequestsApi.update(request._id, payload);
       onSaved(response.data);
     } catch (error: any) {
-      setError(error?.response?.data?.message || 'Could not save WhatsApp status. Please try again.');
+      showError(apiErrorMessage(error, 'Could not save the WhatsApp status.'));
     } finally { setSaving(false); }
   };
   const fieldClass = 'mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2';
   return <ResponsiveModal isOpen onClose={() => { if (!saving) onClose(); }} title={`WhatsApp · MRR #${request.display_id || '—'}`} size="md">
+    <Toast toast={toast} onDismiss={dismiss} />
     <form onSubmit={save} className="space-y-4 p-4">
       <p className="text-sm text-gray-600">Record the WhatsApp status, then save to return to the list and continue with the next MRR.</p>
       <fieldset disabled={saving} className="space-y-4">

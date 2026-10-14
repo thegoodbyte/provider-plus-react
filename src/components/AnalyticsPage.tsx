@@ -34,7 +34,7 @@ const AnalyticsPage: React.FC = () => {
         if (!cancelled) setBookings(response.data || []);
       } catch (err) {
         console.error('Error loading bookings for analytics:', err);
-        if (!cancelled) setError('Could not load booking data. Please try again.');
+        if (!cancelled) setError('Could not load booking data.');
       } finally {
         if (!cancelled) setLoading(false);
       }

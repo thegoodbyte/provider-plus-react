@@ -27,7 +27,7 @@ export default function MedicalReviewAutomationSettings() {
         setAdvisors(users.data.filter(user => user.role === 'medical_advisor' && user.isActive !== false));
         setPackets(groups.data);
       })
-      .catch(() => { if (active) setError('Could not load review automation settings. Reopen Settings to try again.'); });
+      .catch(() => { if (active) setError('Could not load review automation settings.'); });
     return () => { active = false; };
   }, [admin]);
   const change = (source: 'ir' | 'website', values: Partial<ReviewSourceRule>) => {

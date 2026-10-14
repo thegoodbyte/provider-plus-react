@@ -38,7 +38,7 @@ export const authService = {
         if (response.status === 401) {
           throw new Error('Invalid credentials');
         } else if (response.status >= 500) {
-          throw new Error('Server error. Please try again later.');
+          throw new Error('Sign-in service is temporarily unavailable.');
         } else {
           throw new Error(`Error: ${response.statusText}`);
         }
@@ -60,6 +60,7 @@ export const authService = {
       // Re-throw the error if it's already our custom error
       if (error.message === 'Invalid credentials' ||
           error.message === 'CONNECTION_ERROR' ||
+          error.message === 'Sign-in service is temporarily unavailable.' ||
           error.message.startsWith('Server error') ||
           error.message.startsWith('Error:')) {
         throw error;

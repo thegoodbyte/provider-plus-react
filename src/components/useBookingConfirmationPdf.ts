@@ -6,7 +6,7 @@ import { BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 export const useBookingConfirmationPdf = (bookingId: string, booking: any, language: BookingConfirmationLanguage) => {
   const [generating, setGenerating] = useState(false); const [previewing, setPreviewing] = useState(false); const [previewPhase, setPreviewPhase] = useState<'loading' | 'generating' | null>(null); const [previewUrl, setPreviewUrl] = useState(''); const [previewFileName, setPreviewFileName] = useState('');
   const store = useCallback((blob: Blob, name: string) => bookingsApi.storeConfirmationPdf(bookingId, language, blob, name), [bookingId, language]);
-  const download = useCallback(async () => { if (!booking) return; setGenerating(true); try { const result = await createBookingConfirmationPdf({ booking, language }); await store(result.blob, result.fileName); result.pdf.save(result.fileName); } catch { message.error('Could not generate the booking PDF. Please try again.'); } finally { setGenerating(false); } }, [booking, language, store]);
+  const download = useCallback(async () => { if (!booking) return; setGenerating(true); try { const result = await createBookingConfirmationPdf({ booking, language }); await store(result.blob, result.fileName); result.pdf.save(result.fileName); } catch { message.error('Could not generate the booking PDF.'); } finally { setGenerating(false); } }, [booking, language, store]);
   const preview = useCallback(async () => {
     if (!booking) return;
     setPreviewing(true);

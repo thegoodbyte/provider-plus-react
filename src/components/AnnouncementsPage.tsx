@@ -1,3 +1,6 @@
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import AnnouncementSchedules, { AnnouncementDateExample } from './AnnouncementSchedules';
 import EmailSafetySettings from './EmailSafetySettings';
 import React, {
@@ -122,6 +125,7 @@ const statusLabel = (status: string) =>
   })[status] || status;
 
 const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
+  const { toast, showError, dismiss } = useToast();
   const [scheduledTab, setScheduledTab] = useState(false);
   const [data, setData] = useState<Data | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -164,8 +168,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
     } catch (caught: any) {
       if (version === requestVersion.current)
         setError(
-          caught?.response?.data?.message ||
-            "Could not load announcements. Please try again.",
+          apiErrorMessage(caught, "Could not load announcements. Please try again."),
         );
     } finally {
       if (version === requestVersion.current) setLoading(false);
@@ -197,9 +200,8 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
       await work();
       await load();
     } catch (caught: any) {
-      setError(
-        caught?.response?.data?.message || caught?.message ||
-          "Could not save this change. Please try again.",
+      showError(
+        apiErrorMessage(caught, "Could not save this announcement."),
       );
     } finally {
       setBusy(false);
@@ -272,7 +274,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
       setPreview(response.data);
     } catch (caught: any) {
       setError(
-        caught?.response?.data?.message || "Could not preview this email.",
+        apiErrorMessage(caught, "Could not preview this email."),
       );
     } finally {
       setBusy(false);
@@ -307,7 +309,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
       });
     } catch (caught: any) {
       setError(
-        caught?.response?.data?.message || "Could not load the email log.",
+        apiErrorMessage(caught, "Could not load the email log."),
       );
     } finally {
       setBusy(false);
@@ -324,6 +326,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
     Date.now() - new Date(data.worker.lastFinishedAt).getTime() < 20 * 60_000;
   return (
     <section className="announcements">
+      <Toast toast={toast} onDismiss={dismiss} />
       <header className="announcement-header">
         <div>
           <span className="announcement-eyebrow">RETREAT COMMUNICATIONS</span>

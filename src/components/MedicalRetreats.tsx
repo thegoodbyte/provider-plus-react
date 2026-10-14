@@ -61,7 +61,7 @@ const MedicalRetreats: React.FC = () => {
       setRetreats(retreatsWithClients);
     } catch (error) {
       console.error('Error fetching retreats:', error);
-      setError('Error loading data. Please try again.');
+      setError('Error loading data.');
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+import { emailSendFeedback, uncertainWrite } from '../utils/emailSendFeedback';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FiLoader, FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi, communicationsApi } from '../services/api';
@@ -9,18 +10,6 @@ import Toast from './Toast';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
-};
-
-const formatSentEmailReceipt = (sentEmail: any) => {
-  const lines = [
-    `Email ${sentEmail?.status || 'queued'}.`,
-    sentEmail?.display_id ? `Log #${sentEmail.display_id}` : '',
-    sentEmail?.gmailMessageId ? `Gmail message ID: ${sentEmail.gmailMessageId}` : '',
-    (sentEmail?.cc || []).length ? `CC: ${(sentEmail.cc || []).join(', ')}` : 'CC: none',
-    (sentEmail?.attachments || []).length ? `Attachments: ${sentEmail.attachments.length}` : '',
-    sentEmail?.errorMessage ? `Error: ${sentEmail.errorMessage}` : '',
-  ].filter(Boolean);
-  return lines.join('\n');
 };
 
 const interpolateTemplate = (text: string | undefined, variables: Record<string, any> = {}) => {
@@ -142,6 +131,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   const [attachmentPreparing, setAttachmentPreparing] = useState(false);
   const [attachmentRetry, setAttachmentRetry] = useState(0);
   const attachmentAttemptRef = useRef('');
+  const [deliveryUncertain, setDeliveryUncertain] = useState(false);
   const [sending, setSending] = useState(false);
   const initialMessage = normalizeMessageFields(initialValues.bodyText);
   const [formData, setFormData] = useState({
@@ -410,6 +400,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     );
 
   const handleSend = async () => {
+    if (sending || deliveryUncertain) return;
     const to = formData.to.trim();
     const subject = formData.subject.trim();
 
@@ -451,12 +442,15 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         variables: preparedVariables,
         attachments: preparedAttachments.length > 0 ? preparedAttachments : undefined,
       });
-      await onSent?.(response.data);
-      showSuccess(formatSentEmailReceipt(response.data));
+      const feedback = emailSendFeedback(response.data);
+      if (feedback.type === 'error') { setDeliveryUncertain(feedback.uncertain); showError(feedback.text); return; }
+      try { await onSent?.(response.data); } catch { /* The accepted email remains successful even if the parent cannot refresh. */ }
+      showSuccess(feedback.text);
       setTimeout(onClose, 1200);
     } catch (error) {
       console.error('Error sending email:', error);
-      showError(apiErrorMessage(error, 'Email send failed.'));
+      setDeliveryUncertain(uncertainWrite(error));
+      showError(uncertainWrite(error) ? 'Email delivery could not be confirmed. Check sent messages before sending again.' : apiErrorMessage(error, 'Could not send this email.'));
     } finally {
       setSending(false);
     }
@@ -465,6 +459,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <Toast toast={toast} onDismiss={dismissToast} />
+      {deliveryUncertain && <p className="absolute bottom-4 rounded-lg bg-white p-3 text-sm"><a href="/admin/communications">Check sent messages in Communications</a></p>}
       {sending && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45" role="status" aria-live="polite" aria-label="Sending email"><div className="flex min-w-[220px] flex-col items-center gap-4 rounded-xl bg-white px-8 py-7 text-gray-900 shadow-2xl"><Icon icon={FiLoader} className="h-10 w-10 animate-spin text-blue-600" /><strong className="text-base">Sending email</strong><span className="text-center text-sm text-gray-500">Please keep this window open.</span></div></div>}
       <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
@@ -655,7 +650,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
           <button
             type="button"
             onClick={handleSend}
-            disabled={sending || (isBookingConfirmationEmail && (attachmentPreparing || attachments.length === 0))}
+            disabled={sending || deliveryUncertain || (isBookingConfirmationEmail && (attachmentPreparing || attachments.length === 0))}
             className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             <Icon icon={FiSend} className="h-4 w-4" />

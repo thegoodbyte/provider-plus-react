@@ -44,7 +44,7 @@ it('keeps unrelated error feedback and form values available for retry', async (
   (clientsApi.update as jest.Mock).mockRejectedValue({ response: { status: 503, data: { message: 'Temporarily unavailable. Please retry.' } } });
   const dialog = await openEditor();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Update Client' }));
-  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Temporarily unavailable. Please retry.');
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Failed to save client. The service is temporarily unavailable.');
   expect(within(dialog).getByLabelText('Email')).toHaveValue(client.email);
 });
 it('successfully saves an unchanged email', async () => {

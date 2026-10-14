@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -49,8 +50,7 @@ function StepCard({
       setSaved(true);
     } catch (e: any) {
       setError(
-        e.response?.data?.message ||
-          "Unable to save. Your changes are still here; try again.",
+        apiErrorMessage(e, "Unable to save. Your changes are still here; try again."),
       );
     } finally {
       setSaving(false);

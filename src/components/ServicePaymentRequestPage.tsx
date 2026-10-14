@@ -1,3 +1,6 @@
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { clientsApi, serviceRequestsApi } from "../services/api";
@@ -9,11 +12,9 @@ const money = (n: number, c: string) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: c }).format(
     n || 0,
   );
-const errorText = (e: any) =>
-  e?.response?.data?.message ||
-  e.message ||
-  "Unable to save. Please try again.";
+const errorText = (e: any) => apiErrorMessage(e, 'Could not save this payment request.');
 export default function ServicePaymentRequestPage() {
+  const { toast, showError, dismiss } = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
   const [settings, setSettings] = useState<any>(null),
@@ -130,9 +131,11 @@ export default function ServicePaymentRequestPage() {
     }
   };
   if (!settings && !error)
-    return <div className="service-request-page">Loading service billing…</div>;
+    return <div className="service-request-page">
+Loading service billing…</div>;
   return (
     <main className="service-request-page">
+      <Toast toast={toast} onDismiss={dismiss} />
       <header className="sr-heading">
         <div>
           <Link to="/admin/payment-requests">← Payment requests</Link>

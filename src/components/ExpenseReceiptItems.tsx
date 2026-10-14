@@ -1,3 +1,5 @@
+import { message } from 'antd';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Table } from 'antd';
 import { retreatExpensesApi } from '../services/api';
@@ -24,7 +26,7 @@ export default function ExpenseReceiptItems({ expenseId, currency }: { expenseId
   const itemize = async () => {
     setWorking(true); setError('');
     try { setResult((await retreatExpensesApi.itemizeReceipt(expenseId)).data); }
-    catch (err: any) { setError(err?.response?.data?.message || 'Could not itemize the receipt. Try again.'); }
+    catch (err: any) { message.error(apiErrorMessage(err, 'Could not itemize this receipt.')); }
     finally { setWorking(false); }
   };
   return <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6" aria-label="Receipt items">

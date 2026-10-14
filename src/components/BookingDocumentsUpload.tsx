@@ -1,3 +1,5 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { message } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ClipboardList, FileHeart, FileText, HeartPulse, Pill, RefreshCw, Scale, Stethoscope, Upload, Utensils } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
@@ -56,14 +58,7 @@ const getItemExpectedDocument = (item: BookingFlowItem) => normalizeKey(
   || ''
 );
 
-const getApiErrorMessage = (error: any) => {
-  const status = error?.response?.status;
-  const message = error?.response?.data?.message || error?.message;
-  if (status === 503 || /s3|storage|configured|configuration/i.test(message || '')) {
-    return 'Upload error: storage is misconfigured. Check Settings and configure the S3 bucket before uploading files.';
-  }
-  return message || 'Upload error. Please try again.';
-};
+const getApiErrorMessage = (error: any) => apiErrorMessage(error, 'Could not upload this file.');
 
 const formatBytes = (size?: number) => {
   if (!size) return '-';
@@ -216,8 +211,11 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       if (created.data._id) await medicalArtifactsApi.uploadFiles(created.data._id, Array.from(files));
       await loadDocuments();
       onUploadComplete?.();
+      return true;
     } catch (uploadError: any) {
       setError(getApiErrorMessage(uploadError));
+      message.error(getApiErrorMessage(uploadError));
+      return false;
     } finally {
       setUploadingType(null);
     }
@@ -271,8 +269,11 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
 
       await loadDocuments();
       onUploadComplete?.();
+      return true;
     } catch (uploadError: any) {
       setError(getApiErrorMessage(uploadError));
+      message.error(getApiErrorMessage(uploadError));
+      return false;
     } finally {
       setUploadingType(null);
     }
@@ -361,7 +362,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
                     <button type="button" onClick={openViewer}>View</button>
                     <a href={latestFile?.url || (latestDocument?._id && storedPath ? bookingDocumentsApi.getFileViewUrl(latestDocument._id, storedPath) : undefined)} target="_blank" rel="noreferrer">Download</a>
                   </>}
-                  <input id={inputId} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif" onChange={(event) => { handleUpload(section, event.target.files); event.target.value = ''; }} disabled={Boolean(uploadingType)} />
+                  <input id={inputId} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif" onChange={(event) => { const input = event.currentTarget; void handleUpload(section, input.files).then(saved => { if (saved) input.value = ''; }); }} disabled={Boolean(uploadingType)} />
                   <label htmlFor={inputId} className={received ? 'booking-documents-add' : 'booking-documents-upload'}><Upload size={14} />{uploadingType === section.type ? 'Uploading…' : received ? 'Add another' : 'Upload'}</label>
                 </div>
               </article>
@@ -391,7 +392,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
                 </div>
                 <div className="booking-documents-file">{received ? <><strong>{file?.fileName || row.title}</strong><span>Received {new Date(artifact?.receivedAt || artifact?.createdAt || 0).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {formatBytes(file?.size)}</span></> : <span>Nothing on file yet</span>}</div>
                 <div className="booking-documents-actions">
-                  <input id={inputId} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif" onChange={(event) => { handleMedicalUpload(row.type, event.target.files); event.target.value = ''; }} disabled={Boolean(uploadingType)} />
+                  <input id={inputId} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif" onChange={(event) => { const input = event.currentTarget; void handleMedicalUpload(row.type, input.files).then(saved => { if (saved) input.value = ''; }); }} disabled={Boolean(uploadingType)} />
                   <label htmlFor={inputId} className={received ? 'booking-documents-add' : 'booking-documents-upload'}><Upload size={14} />{uploadingType === row.type ? 'Uploading…' : received ? 'Add another' : 'Upload'}</label>
                 </div>
               </article>

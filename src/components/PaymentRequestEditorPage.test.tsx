@@ -24,6 +24,7 @@ jest.mock('../services/roomInventoryApi', () => ({
   roomInventoryApi: {
     options: () => Promise.resolve({ data: [] }),
     preference: () => Promise.resolve({ data: null }),
+    paymentAccommodation: () => Promise.resolve({ data: null }),
   },
 }));
 

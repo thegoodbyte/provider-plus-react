@@ -1,3 +1,6 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import React, { useState, useEffect } from 'react';
 import { usersApi, User, CreateUserData, UpdateUserData } from '../services/usersApi';
 import { useAuth } from '../context/AuthContext';
@@ -28,8 +31,8 @@ const UserManagement: React.FC = () => {
   const [resettingPasswordUser, setResettingPasswordUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
-  const [error, setError] = useState<string | null>(null);
-  const [showErrorModal, setShowErrorModal] = useState(false);
+  const { toast, showError, showSuccess, dismiss } = useToast();
+  const [validationError, setValidationError] = useState('');
   const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<CreateUserData & { confirmPassword: string; isActive: boolean }>>({
@@ -48,10 +51,7 @@ const UserManagement: React.FC = () => {
     fetchUsers();
   }, []);
 
-  const showError = (message: string) => {
-    setError(message);
-    setShowErrorModal(true);
-  };
+
 
   const fetchUsers = async () => {
     try {
@@ -66,20 +66,21 @@ const UserManagement: React.FC = () => {
   };
 
   const handleCreateUser = async () => {
+    setValidationError('');
     try {
       if (!formData.email || !formData.password) {
-        showError('Please fill in all required fields');
+        setValidationError('Email and password are required.');
         return;
       }
 
       const passwordError = validatePassword(formData.password);
       if (passwordError) {
-        showError(passwordError);
+        setValidationError(passwordError);
         return;
       }
 
       if (formData.password !== formData.confirmPassword) {
-        showError('Passwords do not match');
+        setValidationError('Passwords do not match.');
         return;
       }
 
@@ -95,16 +96,18 @@ const UserManagement: React.FC = () => {
       };
 
       await usersApi.create(userData);
+      showSuccess('User created.');
       await fetchUsers();
       setShowAddModal(false);
       resetForm();
     } catch (error: any) {
       console.error('Error creating user:', error);
-      showError(error.response?.data?.message || 'Error creating user. Please try again.');
+      showError(apiErrorMessage(error, 'Error creating user. Please try again.'));
     }
   };
 
   const handleUpdateUser = async () => {
+    setValidationError('');
     if (!editingUser) return;
 
     try {
@@ -120,12 +123,13 @@ const UserManagement: React.FC = () => {
       };
 
       await usersApi.update(editingUser._id, updateData);
+      showSuccess('User updated.');
       await fetchUsers();
       setEditingUser(null);
       resetForm();
     } catch (error: any) {
       console.error('Error updating user:', error);
-      showError(error.response?.data?.message || 'Error updating user. Please try again.');
+      showError(apiErrorMessage(error, 'Error updating user. Please try again.'));
     }
   };
 
@@ -141,10 +145,11 @@ const UserManagement: React.FC = () => {
 
     try {
       await usersApi.delete(user._id);
+      showSuccess('User deleted.');
       await fetchUsers();
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      showError(error.response?.data?.message || 'Error deleting user. Please try again.');
+      showError(apiErrorMessage(error, 'Error deleting user. Please try again.'));
     }
   };
 
@@ -214,22 +219,23 @@ const UserManagement: React.FC = () => {
   };
 
   const handlePasswordReset = async () => {
+    setValidationError('');
     if (!resettingPasswordUser) return;
 
     try {
       if (!formData.password) {
-        showError('Please enter a new password');
+        setValidationError('Enter a new password.');
         return;
       }
 
       const passwordError = validatePassword(formData.password);
       if (passwordError) {
-        showError(passwordError);
+        setValidationError(passwordError);
         return;
       }
 
       if (formData.password !== formData.confirmPassword) {
-        showError('Passwords do not match');
+        setValidationError('Passwords do not match.');
         return;
       }
 
@@ -239,14 +245,15 @@ const UserManagement: React.FC = () => {
       await fetchUsers();
       setResettingPasswordUser(null);
       resetForm();
-      showError('Password reset successfully!');
+      showSuccess('Password reset successfully.');
     } catch (error: any) {
       console.error('Error resetting password:', error);
-      showError(error.response?.data?.message || 'Error resetting password. Please try again.');
+      showError(apiErrorMessage(error, 'Error resetting password. Please try again.'));
     }
   };
 
   const resetForm = () => {
+    setValidationError('');
     setFormData({
       email: '',
       password: '',
@@ -497,6 +504,7 @@ const UserManagement: React.FC = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">Add New User</h2>
             <div className="space-y-4">
+              {validationError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-700">{validationError}</p>}
               <AppleInput
                 label="Email *"
                 type="email"
@@ -584,6 +592,7 @@ const UserManagement: React.FC = () => {
               </p>
             </div>
             <div className="space-y-4">
+              {validationError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-700">{validationError}</p>}
               <AppleInput
                 label="New Password *"
                 type="password"
@@ -635,6 +644,7 @@ const UserManagement: React.FC = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">Edit User</h2>
             <div className="space-y-4">
+              {validationError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-red-700">{validationError}</p>}
               <AppleInput
                 label="Email *"
                 type="email"
@@ -707,25 +717,7 @@ const UserManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Error Modal */}
-      {showErrorModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-lg font-semibold mb-4">Notification</h2>
-            <p className="text-gray-700 mb-6">{error}</p>
-            <div className="flex justify-end">
-              <AppleButton
-                onClick={() => {
-                  setShowErrorModal(false);
-                  setError(null);
-                }}
-              >
-                OK
-              </AppleButton>
-            </div>
-          </div>
-        </div>
-      )}
+      <Toast toast={toast} onDismiss={dismiss} />
     </div>
   );
 };

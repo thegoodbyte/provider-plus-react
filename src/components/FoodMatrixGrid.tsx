@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, ChefHat, Download, LayoutGrid, Mail, Table2, Utensils } from 'lucide-react';
 import { foodMatrixApi, FoodMatrixColumn, FoodMatrixData } from '../services/api';
@@ -38,7 +39,7 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
       const response = await foodMatrixApi.getPdf(retreatId, language || undefined);
       const url = URL.createObjectURL(response.data as Blob); const link = document.createElement('a');
       link.href = url; link.download = `food-matrix-${data?.retreatLabel || retreatId}${language ? `-${language}` : ''}.pdf`; link.click(); URL.revokeObjectURL(url);
-    } catch (error: any) { setMessage({ tone: 'error', text: error?.response?.data?.message || 'Unable to generate the PDF. Please try again.' }); }
+    } catch (error: any) { setMessage({ tone: 'error', text: apiErrorMessage(error, 'Unable to generate the PDF. Please try again.') }); }
     finally { setIsExporting(false); }
   };
 
@@ -47,7 +48,7 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
     try {
       setIsEmailing(true); setMessage(null); const response = await foodMatrixApi.emailCook(retreatId);
       setMessage({ tone: 'success', text: `Food Matrix emailed to ${response.data.cookName} at ${response.data.to}.` });
-    } catch (error: any) { setMessage({ tone: 'error', text: error?.response?.data?.message || 'Unable to email the Food Matrix.' }); }
+    } catch (error: any) { setMessage({ tone: 'error', text: apiErrorMessage(error, 'Unable to email the Food Matrix.') }); }
     finally { setIsEmailing(false); }
   };
 

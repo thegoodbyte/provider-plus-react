@@ -1,3 +1,6 @@
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { NAVIGATION, SETTINGS_LABEL, canShowNavigation, useNavigationPreferences } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -76,7 +79,7 @@ const ModuleLauncherPage: React.FC = () => {
   const [editMode, setEditMode] = useState(false);
   const [assignmentMap, setAssignmentMap] = useState<Record<string, 'inner' | 'outer' | 'hidden'>>({});
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  const { toast, showError, dismiss } = useToast();
   const preferences = useNavigationPreferences();
   const routePrefix = useMemo(() => getRoutePrefix(location.pathname, user?.role), [location.pathname, user?.role]);
 
@@ -274,14 +277,14 @@ const ModuleLauncherPage: React.FC = () => {
   const dailyGroups = Array.from(new Set(matchingTiles.filter(tile => !isSetup(tile)).map(tile => tile.section)));
   const saveConfiguration = async () => {
     setSaving(true);
-    setSaveError('');
+
     try {
       // Preserve preferences for hidden/non-visible modules and existing ring values.
       const next = { ...assignmentMap };
       tiles.forEach(tile => { next[tile.id] = next[tile.id] || 'inner'; });
       await launcherConfigApi.save(Object.entries(next).map(([moduleId, ring]) => ({ moduleId, ring })));
       setEditMode(false);
-    } catch { setSaveError('Unable to save shortcuts. Please try again.'); }
+    } catch (error) { showError(apiErrorMessage(error, 'Could not save your shortcuts.')); }
     finally { setSaving(false); }
   };
 
@@ -305,7 +308,7 @@ const ModuleLauncherPage: React.FC = () => {
 
       <TasksForTodayPanel />
 
-      {saveError && <p role="alert">{saveError}</p>}
+      <Toast toast={toast} onDismiss={dismiss} />
       <div className="launcher-directory-header"><div><h2>Find your focus</h2><p>Choose a workspace to get started.</p></div><div className="launcher-search"><Search size={17} aria-hidden="true" /><input type="search" aria-label="Find a shortcut" placeholder="Find a shortcut…" value={shortcutSearch} onChange={event => setShortcutSearch(event.target.value)} /></div></div>
       <section className="launcher-area" aria-labelledby="daily-work-title">
         <h2 id="daily-work-title" className="sr-only">Daily Work</h2>

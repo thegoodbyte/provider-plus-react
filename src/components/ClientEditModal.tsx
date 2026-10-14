@@ -1,3 +1,6 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import React, { useState, useEffect, useRef } from 'react';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
@@ -16,16 +19,14 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
   const [formData, setFormData] = useState<Client & { yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string; language?: 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER' }>({
     ...client
   });
+  const { toast, showError, dismiss } = useToast();
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
   const lastAutoDetectedCountry = useRef<string | null>(detectPhoneLocaleAutofill(client.phone || '')?.countryCode || null);
 
-  const getApiErrorMessage = (error: any, fallback: string) => {
-    const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
-    return Array.isArray(message) ? message.join(', ') : message || fallback;
-  };
+
 
   useEffect(() => {
     // Extract year from dateOfBirth if present
@@ -184,12 +185,12 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
       clientData.specialRequests = formData.specialRequests ?? '';
 
       // Update the client
-      const response = await clientsApi.update(client._id!, clientData);
+      const response = await clientsApi.update(client._id!, clientData, { suppressGlobalError: true });
       onSave(response.data);
       onClose();
     } catch (error: any) {
       console.error('Error updating client:', error);
-      setValidationErrors([getApiErrorMessage(error, 'Failed to update client. Please try again.')]);
+      showError(apiErrorMessage(error, 'Could not save this client.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -198,6 +199,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
+        <Toast toast={toast} onDismiss={dismiss} />
         <div className="modal-header">
           <h3>Edit Client Information</h3>
           <button className="close-btn" onClick={onClose}>×</button>

@@ -20,6 +20,11 @@ const api = axios.create({
 // Add auth token to requests
 api.interceptors.request.use(
   (config) => {
+    // Screens own mutation errors so their form/toast stays mounted and there
+    // is no competing application-wide error popup. Explicit policies win.
+    if (!['get', 'head', 'options'].includes(String(config.method || 'get').toLowerCase()) && (config as ReadOptions).suppressGlobalError === undefined) {
+      (config as ReadOptions).suppressGlobalError = true;
+    }
     const token = authService.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -174,7 +179,7 @@ export const housesApi = {
 export const clientsApi = {
   getAll: () => cachedGet<Client[]>('clients:all', () => api.get<Client[]>('/clients')),
   getBookingOptions: () => cachedGet<Client[]>('clients:booking-options', () => api.get<Client[]>('/clients/booking-options'), 30000),
-  getOne: (id: string) => cachedGet<Client>(`clients:${id}`, () => api.get<Client>(`/clients/${id}`)),
+  getOne: (id: string, options?: ReadOptions) => readGet<Client>(`clients:${id}`, `/clients/${id}`, options),
   create: (data: Omit<Client, '_id'>) => {
     cacheService.clearPattern('clients:');
     const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
@@ -471,7 +476,7 @@ export const paymentRequestTypesApi = {
 };
 
 export const retreatExpensesApi = {
-  getDetailItems: (id: string) => api.get<ExpenseReceiptItemization>(`/retreat-expenses/${id}/detail-items`),
+  getDetailItems: (id: string) => api.get<ExpenseReceiptItemization>(`/retreat-expenses/${id}/detail-items`, { suppressGlobalError: true } as ReadOptions),
   itemizeReceipt: (id: string) => api.post<ExpenseReceiptItemization>(`/retreat-expenses/${id}/itemize-receipt`, {}, { timeout: 120000 }),
   getAll: () => api.get<RetreatExpense[]>('/retreat-expenses'),
   getOne: (id: string) => api.get<RetreatExpense>(`/retreat-expenses/${id}`),

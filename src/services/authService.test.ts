@@ -39,7 +39,7 @@ describe('authService', () => {
 
   it.each([
     [401, '', 'Invalid credentials'],
-    [503, '', 'Server error. Please try again later.'],
+    [503, '', 'Sign-in service is temporarily unavailable.'],
     [400, 'Bad Request', 'Error: Bad Request'],
   ])('maps HTTP %s login errors', async (status, statusText, message) => {
     fetchMock.mockResolvedValue(response(false, status as number, {}, statusText as string));

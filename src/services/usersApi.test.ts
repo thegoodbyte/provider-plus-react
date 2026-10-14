@@ -14,7 +14,7 @@ describe('usersApi', () => {
     await expect(usersApi.getAll()).resolves.toEqual({ data: { marker: 'get' } });
     await usersApi.getById('u1');
     await usersApi.getProfile();
-    expect(mockedApi.get.mock.calls).toEqual([['/users'], ['/users/u1'], ['/users/profile']]);
+    expect(mockedApi.get.mock.calls).toEqual([['/users', { suppressGlobalError: true }], ['/users/u1'], ['/users/profile']]);
   });
 
   it('creates, updates and deletes users', async () => {

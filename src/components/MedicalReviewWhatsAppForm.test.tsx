@@ -48,6 +48,6 @@ test('keeps dialog open and displays a failed save for retry', async () => {
   const onSaved = jest.fn();
   render(<MedicalReviewWhatsAppForm request={request} advisors={advisors} onClose={jest.fn()} onSaved={onSaved} />);
   fireEvent.click(screen.getByText('Save and return to list'));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Could not save WhatsApp status');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the WhatsApp status.');
   expect(onSaved).not.toHaveBeenCalled();
 });

@@ -1,3 +1,5 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { message } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Eye, FileText, LoaderCircle, Pencil, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -69,14 +71,7 @@ const medicalTestSections: Array<{
   },
 ];
 
-const getApiErrorMessage = (error: any) => {
-  const status = error?.response?.status;
-  const message = error?.response?.data?.message || error?.message;
-  if (status === 503 || /s3|storage|configured|configuration/i.test(message || '')) {
-    return 'Upload error: storage is misconfigured. Check S3 settings before uploading files.';
-  }
-  return message || 'Upload error. Please try again.';
-};
+const getApiErrorMessage = (error: any) => apiErrorMessage(error, 'Could not upload this file.');
 
 const formatDate = (value?: Date | string) => {
   if (!value) return '-';
@@ -471,6 +466,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       setUploadTitle('');
     } catch (uploadError: any) {
       setError(getApiErrorMessage(uploadError));
+      message.error(getApiErrorMessage(uploadError));
     } finally {
       setUploadingType(null);
     }

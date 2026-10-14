@@ -23,7 +23,7 @@ it('retains history when retry fails', async () => {
   (referralsApi.retryAssignmentNotification as jest.Mock).mockRejectedValue(new Error('Retry unavailable'));
   render(<ReferralAssignmentNotifications referralId="r1" />);
   fireEvent.click(await screen.findByRole('button', { name: /Retry notification/ }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Retry unavailable');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not retry this notification.');
   expect(screen.getByText('Jane Guest')).toBeInTheDocument();
 });
 it.each(['sent', 'sending', 'uncertain', 'superseded'])('never offers automatic retry for %s', async status => {

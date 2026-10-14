@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiBell, FiCheck, FiExternalLink, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +36,7 @@ const ScopedNotificationsPage: React.FC<NotificationScope> = ({ clientId, bookin
     } catch (e: any) {
       if (version === requestVersion.current) {
         setRows([]);
-        setError(e.response?.data?.message || 'Unable to load notifications.');
+        setError(apiErrorMessage(e, 'Unable to load notifications.'));
       }
     } finally {
       if (version === requestVersion.current) setLoading(false);
@@ -63,7 +64,7 @@ const ScopedNotificationsPage: React.FC<NotificationScope> = ({ clientId, bookin
   const runAction = async (work: () => Promise<void>) => {
     setError('');
     try { await work(); }
-    catch (e: any) { setError(e.response?.data?.message || 'Unable to update notification. Please try again.'); }
+    catch (e: any) { setError(apiErrorMessage(e, 'Unable to update notification. Please try again.')); }
   };
   const retreatOptions = useMemo(() => Array.from(new Map(rows.filter(row => idOf(row.retreatId)).map(row => [idOf(row.retreatId), row.retreatId])).values()).sort((a, b) => String(a?.name || a?.code || '').localeCompare(String(b?.name || b?.code || ''))), [rows]);
   const documentTypeOptions = useMemo(() => Array.from(new Set(rows.map(documentTypeOf))).sort(), [rows]);
@@ -75,13 +76,13 @@ const ScopedNotificationsPage: React.FC<NotificationScope> = ({ clientId, bookin
   const toggleAllVisible = () => setSelectedIds(current => { const next = new Set(current); if (allVisibleSelected) visibleIds.forEach(id => next.delete(id)); else visibleIds.forEach(id => next.add(id)); return next; });
   const bulkSetRead = async (read: boolean) => { const ids = Array.from(selectedIds); if (!ids.length) return; setBulkUpdating(true); setError(''); try { await Promise.all(ids.map(id => api.patch(`/submission-notifications/${id}/${read ? 'read' : 'unread'}`))); const readAt = read ? new Date().toISOString() : undefined; setRows(current => current.map(item => selectedIds.has(item._id) ? { ...item, notificationReadAt: readAt } : item)); setSelectedIds(new Set()); window.dispatchEvent(new Event('notifications-updated')); } catch (e: any) { setError(e.response?.data?.message || `Unable to mark selected notifications ${read ? 'read' : 'unread'}.`); } finally { setBulkUpdating(false); } };
   const open = async (row: Notice) => { await markRead(row); const route = row.sourceRoute || fallbackRoute(row); if (/booking-documents(?:$|[/?])/.test(route) && row.bookingId?._id) { try { const kind = String(row.sourceId || '').split(':')[0].toLowerCase(); const response = await bookingDocumentsApi.getAll({ bookingId: row.bookingId._id, documentType: kind.includes('contract') ? 'contract' : undefined }); const document: any = (response.data || []).find((item: any) => item.files?.length); const file = document?.files?.[document.files.length - 1]; if (document?._id && (file?.s3Key || file?.filePath)) { const fileResponse = await bookingDocumentsApi.getFile(document._id, file.s3Key || file.filePath); setPreview({ url: URL.createObjectURL(fileResponse.data as Blob), name: file.originalFileName || file.fileName || document.title || 'Document preview', mimeType: file.mimeType }); return; } } catch { /* fall through */ } } navigate(route || (row.clientId?._id ? `/admin/clients/${row.clientId._id}` : '/admin/tasks')); };
-  const purgePastRetreats = async () => { setPurging(true); setError(''); setPurgeMessage(''); try { const response = await api.patch('/submission-notifications/purge-past-retreats'); const count = response.data?.markedCount || 0; setPurgeMessage(count ? `${count} past-retreat notification${count === 1 ? '' : 's'} marked read.` : 'No unread past-retreat notifications to purge.'); await load(); window.dispatchEvent(new Event('notifications-updated')); } catch (e: any) { setError(e.response?.data?.message || 'Unable to purge past-retreat notifications.'); } finally { setPurging(false); } };
+  const purgePastRetreats = async () => { setPurging(true); setError(''); setPurgeMessage(''); try { const response = await api.patch('/submission-notifications/purge-past-retreats'); const count = response.data?.markedCount || 0; setPurgeMessage(count ? `${count} past-retreat notification${count === 1 ? '' : 's'} marked read.` : 'No unread past-retreat notifications to purge.'); await load(); window.dispatchEvent(new Event('notifications-updated')); } catch (e: any) { setError(apiErrorMessage(e, 'Unable to purge past-retreat notifications.')); } finally { setPurging(false); } };
   // PPVC-685: archiving always also marks read server-side, so remove the
   // archived rows from the main list (and any lingering selection) rather
   // than just re-fetching -- avoids a flash of "now read" before the row
   // disappears on the next load.
-  const archiveSelected = async () => { const ids = Array.from(selectedIds); if (!ids.length) return; setArchiving(true); setError(''); try { await api.patch('/submission-notifications/archive', { ids }); setRows(current => current.filter(item => !selectedIds.has(item._id))); setSelectedIds(new Set()); await loadArchived(); window.dispatchEvent(new Event('notifications-updated')); } catch (e: any) { setError(e.response?.data?.message || 'Unable to archive selected notifications.'); } finally { setArchiving(false); } };
-  const unarchiveSelected = async () => { const ids = Array.from(archivedSelectedIds); if (!ids.length) return; setArchiving(true); setError(''); try { await Promise.all(ids.map(id => api.patch(`/submission-notifications/${id}/unarchive`))); setArchivedRows(current => current.filter(item => !archivedSelectedIds.has(item._id))); setArchivedSelectedIds(new Set()); await load(); window.dispatchEvent(new Event('notifications-updated')); } catch (e: any) { setError(e.response?.data?.message || 'Unable to unarchive selected notifications.'); } finally { setArchiving(false); } };
+  const archiveSelected = async () => { const ids = Array.from(selectedIds); if (!ids.length) return; setArchiving(true); setError(''); try { await api.patch('/submission-notifications/archive', { ids }); setRows(current => current.filter(item => !selectedIds.has(item._id))); setSelectedIds(new Set()); await loadArchived(); window.dispatchEvent(new Event('notifications-updated')); } catch (e: any) { setError(apiErrorMessage(e, 'Unable to archive selected notifications.')); } finally { setArchiving(false); } };
+  const unarchiveSelected = async () => { const ids = Array.from(archivedSelectedIds); if (!ids.length) return; setArchiving(true); setError(''); try { await Promise.all(ids.map(id => api.patch(`/submission-notifications/${id}/unarchive`))); setArchivedRows(current => current.filter(item => !archivedSelectedIds.has(item._id))); setArchivedSelectedIds(new Set()); await load(); window.dispatchEvent(new Event('notifications-updated')); } catch (e: any) { setError(apiErrorMessage(e, 'Unable to unarchive selected notifications.')); } finally { setArchiving(false); } };
   const toggleArchivedSelected = (id: string) => setArchivedSelectedIds(current => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const archivedVisibleIds = useMemo(() => archivedRows.map(row => row._id), [archivedRows]);
   const allArchivedSelected = archivedVisibleIds.length > 0 && archivedVisibleIds.every(id => archivedSelectedIds.has(id));

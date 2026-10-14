@@ -1,3 +1,6 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clientsApi, referralsApi } from '../services/api';
@@ -81,6 +84,7 @@ const ClientEditPage: React.FC = () => {
     specialRequests?: string;
     language?: 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER'
   }>({} as any);
+  const { toast, showError, dismiss } = useToast();
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
@@ -88,10 +92,7 @@ const ClientEditPage: React.FC = () => {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const lastAutoDetectedCountry = useRef<string | null>(null);
 
-  const getApiErrorMessage = (error: any, fallback: string) => {
-    const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
-    return Array.isArray(message) ? message.join(', ') : message || fallback;
-  };
+
 
   useEffect(() => {
     if (clientId) {
@@ -131,7 +132,7 @@ const ClientEditPage: React.FC = () => {
   const fetchClient = async () => {
     try {
       setIsLoading(true);
-      const response = await clientsApi.getOne(clientId!);
+      const response = await clientsApi.getOne(clientId!, { suppressGlobalError: true });
       const clientData = response.data;
       setClient(clientData);
 
@@ -295,12 +296,12 @@ const ClientEditPage: React.FC = () => {
       clientData.specialRequests = formData.specialRequests ?? '';
 
       // Update the client
-      await clientsApi.update(clientId!, clientData);
+      await clientsApi.update(clientId!, clientData, { suppressGlobalError: true });
 
       navigate(returnTo || clientDetailPath);
     } catch (error: any) {
       console.error('Error updating client:', error);
-      setValidationErrors([getApiErrorMessage(error, 'Failed to update client. Please try again.')]);
+      showError(apiErrorMessage(error, 'Could not save this client.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -326,6 +327,7 @@ const ClientEditPage: React.FC = () => {
 
   return (
     <div className="client-edit-page min-h-screen bg-white">
+      <Toast toast={toast} onDismiss={dismiss} />
       <div className="w-full">
       <div className="mb-6 px-4 py-4">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">

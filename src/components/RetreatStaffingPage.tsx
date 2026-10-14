@@ -24,7 +24,7 @@ export default function RetreatStaffingPage() {
       const response = await retreatsApi.getAll();
       setRetreats(response.data || []);
     } catch {
-      setError('Unable to load retreat staffing. Please try again.');
+      setError('Unable to load retreat staffing.');
     } finally {
       setLoading(false);
     }

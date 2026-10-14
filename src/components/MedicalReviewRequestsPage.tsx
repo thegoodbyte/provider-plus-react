@@ -959,7 +959,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         await medicalReviewRequestsApi.update(selected._id, { reviewChannel: 'whatsapp', whatsappStatus, whatsappAdvisorUserId, whatsappSentAt, whatsappRespondedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, whatsappDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, status: resultStatus as any, reviewDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, reviewedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, reviewNotes: whatsappStatus === 'responded' ? composeWhatsappReviewNotes(whatsappNotes) : undefined });
         await loadRequests();
       } catch (error: any) {
-        setValidationError(error?.response?.data?.message || 'Could not save WhatsApp status. Please try again.');
+        setValidationError(apiErrorMessage(error, 'Could not save WhatsApp status. Please try again.'));
       } finally { setSavingReview(false); setMessagesRefreshKey(value => value + 1); }
       return;
     }
@@ -1062,7 +1062,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       setClientVisibleAdminNote(response.data.clientVisibleAdminNote || '');
       setClientVisibleAdminNoteStatus(clientVisibleAdminNoteSource.trim() ? 'Client message saved.' : 'Client message removed.');
     } catch (error: any) {
-      setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to save the client message.');
+      setClientVisibleAdminNoteStatus(apiErrorMessage(error, 'Unable to save the client message.'));
     } finally {
       setSavingClientVisibleAdminNote(false);
     }
@@ -1071,7 +1071,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const handleEmailClientVisibleAdminNote = async () => {
     if (!selected?._id || !clientVisibleAdminNoteSource.trim()) { setClientVisibleAdminNoteStatus('Save a message before emailing it.'); return; }
     try { setEmailingClientVisibleAdminNote(true); await medicalReviewRequestsApi.updateClientVisibleAdminNote(selected._id, clientVisibleAdminNoteSource); const response = await medicalReviewRequestsApi.emailClientVisibleAdminNote(selected._id); setClientVisibleAdminNoteStatus(response.data.message || 'Client message emailed.'); }
-    catch (error: any) { setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to email the client message.'); }
+    catch (error: any) { setClientVisibleAdminNoteStatus(apiErrorMessage(error, 'Unable to email the client message.')); }
     finally { setEmailingClientVisibleAdminNote(false); setMessagesRefreshKey(value => value + 1); }
   };
   // PPVC-686: resend the localized "submitted for review" email on demand
@@ -1085,7 +1085,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       setNotifySubmissionStatus(response.data.message || 'Client notified that their document was submitted for review.');
       if (response.data.emailSent) setSelected((current) => current ? { ...current, clientNotificationCount: (current.clientNotificationCount || 0) + 1 } : current);
     } catch (error: any) {
-      setNotifySubmissionStatus(error?.response?.data?.message || 'Unable to notify the client.');
+      setNotifySubmissionStatus(apiErrorMessage(error, 'Unable to notify the client.'));
     } finally {
       setNotifyingSubmission(false);
       setMessagesRefreshKey(value => value + 1);

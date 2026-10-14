@@ -40,7 +40,7 @@ export interface UpdateUserData {
 export const usersApi = {
   // Get all users (admin only)
   async getAll(): Promise<{ data: User[] }> {
-    const response = await api.get('/users');
+    const response = await api.get('/users', { suppressGlobalError: true } as any);
     return response;
   },
 

@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import RetreatCloseout from './RetreatCloseout';
 import { quoteBookingUsd, retreatExpectedUsd } from './retreatUsdTotals';
 import RoomAllocationBoard from './RoomAllocationBoard';
@@ -433,7 +434,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         await fetchRetreatData(); // Refresh the data
       } catch (error) {
         console.error('Error deleting booking:', error);
-        message.error((error as any)?.response?.data?.message || 'Error deleting booking. Please try again.');
+        message.error(apiErrorMessage(error, 'Error deleting booking. Please try again.'));
       }
     }
   }, [fetchRetreatData]);
@@ -482,7 +483,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       await fetchRetreatData(); // Refresh the data
     } catch (error) {
       console.error('Error updating booking:', error);
-      message.error((error as any)?.response?.data?.message || 'Error updating booking. Please try again.');
+      message.error(apiErrorMessage(error, 'Error updating booking. Please try again.'));
     }
   }, [editingBookingId, editFormData, fetchRetreatData]);
 
@@ -532,7 +533,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       await fetchRetreatData(); // Refresh the data
     } catch (error: any) {
       console.error('Error updating retreat:', error);
-      message.error(error?.response?.data?.message || 'Error updating retreat. Please try again.');
+      message.error(apiErrorMessage(error, 'Error updating retreat. Please try again.'));
     }
   };
 
@@ -664,7 +665,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       void fetchRetreatData(false); // Refresh silently without holding the booking dialog open.
     } catch (error: any) {
       console.error('Error creating quick booking:', error);
-      message.error(error.response?.data?.message || 'Failed to create booking');
+      message.error(apiErrorMessage(error, 'Failed to create booking'));
     } finally {
       setQuickBookingLoading(false);
     }
@@ -827,7 +828,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       retreatEmailForm.resetFields();
     } catch (error: any) {
       console.error('Error sending retreat email:', error);
-      message.error(error?.response?.data?.message || 'Failed to send retreat email.');
+      message.error(apiErrorMessage(error, 'Failed to send retreat email.'));
     } finally {
       setRetreatEmailLoading(false);
     }
@@ -872,7 +873,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       await bookingsApi.update(clientId, { roomNumber: roomNumber || undefined });
       await fetchRetreatData(false);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Unable to assign the room.');
+      message.error(apiErrorMessage(error, 'Unable to assign the room.'));
     } finally {
       setAssigningRoomForClientId('');
     }
@@ -953,7 +954,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       await fetchRetreatData();
       message.success('Booking cancelled. Payment history was preserved.');
     } catch (error: any) {
-      message.error(error?.response?.data?.message || 'Unable to cancel the booking.');
+      message.error(apiErrorMessage(error, 'Unable to cancel the booking.'));
     } finally {
       setCancellationSaving(false);
     }

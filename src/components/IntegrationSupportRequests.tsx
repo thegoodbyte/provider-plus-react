@@ -1,3 +1,6 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { useToast } from '../hooks/useToast';
+import Toast from './Toast';
 import React, { useCallback, useEffect, useState } from 'react';
 import { integrationCalendarApi } from '../services/integrationCalendarApi';
 
@@ -11,6 +14,7 @@ export default function IntegrationSupportRequests({
   disabled?: boolean;
 }) {
   const [requests, setRequests] = useState<any[]>([]);
+  const { toast, showError, dismiss } = useToast();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
@@ -31,8 +35,8 @@ export default function IntegrationSupportRequests({
     try {
       await integrationCalendarApi.updateSupportRequest(id, status);
       await load();
-    } catch {
-      setError('Unable to update this support request. Please try again.');
+    } catch (failure) {
+      showError(apiErrorMessage(failure, 'Could not update this support request.'));
     } finally {
       setBusy(false);
     }
@@ -42,6 +46,7 @@ export default function IntegrationSupportRequests({
       className="integration-support-requests"
       aria-label="Client support requests"
     >
+      <Toast toast={toast} onDismiss={dismiss} />
       <h3>Client support requests</h3>
       <p>
         Arrange an individual call with the client, then schedule it in the

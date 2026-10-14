@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useState, useEffect } from 'react';
 import { ceremoniesApi } from '../services/api';
 import { Ceremony, Retreat } from '../types';
@@ -179,7 +180,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
       setModalVisible(false);
       loadCeremonies();
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Failed to save ceremony');
+      message.error(apiErrorMessage(error, 'Failed to save ceremony'));
       console.error('Error saving ceremony:', error);
     }
   };
@@ -201,7 +202,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
       )));
       message.success('Spiritual verification saved');
     } catch (error) {
-      message.error('Failed to save spiritual verification');
+      message.error(apiErrorMessage(error, 'Could not save spiritual verification.'));
       console.error('Error saving spiritual verification:', error);
     } finally {
       setSavingSpiritualNotes(false);
@@ -223,7 +224,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
       )));
       message.success('Ceremony report saved');
     } catch (error) {
-      message.error('Failed to save ceremony report');
+      message.error(apiErrorMessage(error, 'Could not save the ceremony report.'));
       console.error('Error saving ceremony report:', error);
     } finally {
       setSavingReportNotes(false);

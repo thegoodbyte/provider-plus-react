@@ -15,6 +15,6 @@ it('downloads using the complete server filename and the exact MRR/file associat
 it('shows failure and permits retry', async () => {
   (medicalReviewRequestsApi.downloadArtifact as jest.Mock).mockRejectedValue(new Error('offline'));
   view();fireEvent.click(screen.getByRole('button',{name:'Download'}));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Unable to download document');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not download this document.');
   expect(screen.getByRole('button',{name:'Download'})).toBeEnabled();
 });

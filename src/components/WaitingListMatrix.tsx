@@ -120,7 +120,7 @@ const WaitingListMatrix: React.FC = () => {
       await fetchWaitingListMatrix();
     } catch (error) {
       console.error('Error adding client to waiting list:', error);
-      showError(apiErrorMessage(error, 'Error adding client to waiting list. They may already be on the list.'));
+      showError(apiErrorMessage(error, 'Could not add this client to the waiting list.'));
     }
   };
 
