@@ -47,7 +47,7 @@ it('shows first-payment date instead of late booking registration and labels the
 it('always shows a separate USD equivalent even when payout preference is PLN',()=>{
  render(<MemoryRouter><ReferralCommissionsPage rows={[]} report={[{...row,payoutCurrency:'PLN',payoutAmount:850,amountOwed:850,usdEquivalent:215.5,usdEquivalentKind:'estimate',usdEquivalentRateDate:'2026-10-14',usdEquivalentSource:'ECB reference rate'}]} loading={false} base="/admin/referrals" onChanged={async()=>{}}/></MemoryRouter>);
  expect(screen.getByRole('columnheader',{name:'USD equivalent'})).toBeVisible();
- expect(screen.getByText(/215.50/)).toBeVisible();
+ expect(screen.getByText('$215.50', {exact:true})).toBeVisible();
  expect(screen.getByText('Estimated USD equivalent')).toBeVisible();
  expect(screen.getAllByText(/850.00/).length).toBeGreaterThan(0);
 });
@@ -55,4 +55,22 @@ it('shows USD conversion failure without replacing it with zero',()=>{
  render(<MemoryRouter><ReferralCommissionsPage rows={[]} report={[{...row,usdEquivalent:undefined,usdEquivalentIssue:'USD conversion unavailable. Try refreshing the report.'}]} loading={false} base="/admin/referrals" onChanged={async()=>{}}/></MemoryRouter>);
  expect(screen.getByText('USD conversion unavailable. Try refreshing the report.')).toBeVisible();
  expect(screen.queryByText('$0.00')).toBeNull();
+});
+
+it('updates the selected USD sum with each checkbox and excludes paid rows from owed totals',()=>{
+ const rows=[{...row,amountOwed:850,usdEquivalent:217.96},{...row,bookingId:'b2',bookingNumber:1241,amountOwed:675,usdEquivalent:173.08},{...row,bookingId:'paid',bookingNumber:999,paid:true,usdEquivalent:999}];
+ render(<MemoryRouter><ReferralCommissionsPage rows={[]} report={rows} loading={false} base="/admin/referrals" onChanged={async()=>{}}/></MemoryRouter>);
+ expect(screen.getByText('Estimated USD total: $391.04')).toBeVisible();
+ fireEvent.click(screen.getByRole('checkbox',{name:'Select commission for booking 1184'}));
+ const selected=within(screen.getByRole('region',{name:'Selected payment total'}));
+ expect(selected.getByText('Estimated USD total: $217.96')).toBeVisible();
+ fireEvent.click(screen.getByRole('checkbox',{name:'Select commission for booking 1241'}));
+ expect(selected.getByText('Estimated USD total: $391.04')).toBeVisible();
+ fireEvent.click(screen.getByRole('checkbox',{name:'Select commission for booking 1184'}));
+ expect(selected.getByText('Estimated USD total: $173.08')).toBeVisible();
+});
+it('never presents a partial USD sum as a complete total',()=>{
+ render(<MemoryRouter><ReferralCommissionsPage rows={[]} report={[{...row,usdEquivalent:217.96},{...row,bookingId:'b2',bookingNumber:1241,usdEquivalent:undefined}]} loading={false} base="/admin/referrals" onChanged={async()=>{}}/></MemoryRouter>);
+ fireEvent.click(screen.getByRole('checkbox',{name:'Select commission for booking 1184'}));fireEvent.click(screen.getByRole('checkbox',{name:'Select commission for booking 1241'}));
+ expect(within(screen.getByRole('region',{name:'Selected payment total'})).getByText('USD total unavailable · 1 of 2 conversions missing')).toBeVisible();
 });
