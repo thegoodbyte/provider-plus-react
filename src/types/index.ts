@@ -189,6 +189,7 @@ export interface ReferralReportRow {
   clientDisplayId?: number;
   clientName: string;
   clientEmail?: string;
+  clientPhone?: string;
   referralId: string;
   referralName: string;
   referralCode?: string;
