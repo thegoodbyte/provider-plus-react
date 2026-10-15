@@ -1,0 +1,17 @@
+import{test,expect}from'@playwright/test';
+for(const width of [1440,390])test('USD column remains present with original payout preference '+width,async({page})=>{
+ await page.setViewportSize({width,height:1000});let unavailable=false;
+ const partner={_id:'r1',name:'Synthetic Partner',referralCode:'SP',payoutCurrency:'PLN',isActive:true};
+ const base={bookingId:'b1',bookingNumber:1235,clientId:'c1',clientName:'Synthetic Client',referralId:'r1',referralName:partner.name,retreatId:'t1',retreatCode:'TEST',amountOwed:850,owedCurrency:'PLN',commissionPercentage:10,payoutCurrency:'PLN',payoutAmount:850,firstPaymentDate:'2026-05-04T00:00:00Z'};
+ await page.route('**/*',async route=>{const req=route.request();if(!['xhr','fetch'].includes(req.resourceType()))return route.continue();const path=new URL(req.url()).pathname;const json=(data:any)=>route.fulfill({json:data});
+ if(path==='/referrals')return json([partner]);
+ if(path==='/referrals/report')return json([{...base,...(unavailable?{usdEquivalentIssue:'USD conversion unavailable. Try refreshing the report.'}:{usdEquivalent:215.5,usdEquivalentKind:'estimate',usdEquivalentRateDate:'2026-10-14',usdEquivalentSource:'ECB reference rate'})},{...base,bookingId:'b2',bookingNumber:1236,clientName:'Recorded Client',paid:true,payoutCurrency:'USD',payoutAmount:211,usdEquivalent:211,usdEquivalentKind:'recorded',usdEquivalentRateDate:'2026-06-19'}]);
+ if(path==='/environment/status')return json({environment:'local',production:false,enabledJobs:[]});return json([]);
+ });
+ await page.goto('/admin/referrals/commissions');
+ const header=page.getByRole('columnheader',{name:'USD equivalent'});await header.scrollIntoViewIfNeeded();await expect(header).toBeVisible();
+ const row=page.getByRole('row').filter({hasText:'Synthetic Client'});
+ await expect(row).toContainText('850.00');await expect(row).toContainText('215.50');await expect(row).toContainText('Estimated USD equivalent');await expect(row).toContainText('2026-10-14');
+ await expect(page.getByRole('row').filter({hasText:'Recorded Client'})).toContainText('Recorded USD payout');
+ unavailable=true;await page.reload();await expect(page.getByText('USD conversion unavailable. Try refreshing the report.')).toBeVisible();await expect(page.getByRole('row').filter({hasText:'Recorded Client'})).toContainText('211.00');
+});

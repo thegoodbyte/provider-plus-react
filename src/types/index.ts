@@ -168,6 +168,7 @@ export interface Referral {
 }
 
 export interface ReferralReportRow {
+  usdEquivalent?: number; usdEquivalentKind?: 'estimate' | 'recorded' | 'equivalent'; usdEquivalentRateDate?: string; usdEquivalentSource?: string; usdEquivalentIssue?: string;
   payoutCurrency?: string; payoutAmount?: number; payoutEstimate?: boolean; payoutConversionIssue?: string; exchangeRate?: number; exchangeRateDate?: string; exchangeRateSource?: string;
   /** Canonical payment reference supplied by the referral report. */
   refereeId?: string;

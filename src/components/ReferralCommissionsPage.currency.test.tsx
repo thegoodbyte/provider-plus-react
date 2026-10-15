@@ -43,3 +43,16 @@ it('shows first-payment date instead of late booking registration and labels the
  expect(within(paidRow).queryByText(new Date('2026-07-08T12:00:00Z').toLocaleDateString(undefined,{timeZone:'Europe/Prague'}))).toBeNull();
  expect(screen.getByText('Registration date · no completed payment yet')).toBeVisible();
 });
+
+it('always shows a separate USD equivalent even when payout preference is PLN',()=>{
+ render(<MemoryRouter><ReferralCommissionsPage rows={[]} report={[{...row,payoutCurrency:'PLN',payoutAmount:850,amountOwed:850,usdEquivalent:215.5,usdEquivalentKind:'estimate',usdEquivalentRateDate:'2026-10-14',usdEquivalentSource:'ECB reference rate'}]} loading={false} base="/admin/referrals" onChanged={async()=>{}}/></MemoryRouter>);
+ expect(screen.getByRole('columnheader',{name:'USD equivalent'})).toBeVisible();
+ expect(screen.getByText(/215.50/)).toBeVisible();
+ expect(screen.getByText('Estimated USD equivalent')).toBeVisible();
+ expect(screen.getAllByText(/850.00/).length).toBeGreaterThan(0);
+});
+it('shows USD conversion failure without replacing it with zero',()=>{
+ render(<MemoryRouter><ReferralCommissionsPage rows={[]} report={[{...row,usdEquivalent:undefined,usdEquivalentIssue:'USD conversion unavailable. Try refreshing the report.'}]} loading={false} base="/admin/referrals" onChanged={async()=>{}}/></MemoryRouter>);
+ expect(screen.getByText('USD conversion unavailable. Try refreshing the report.')).toBeVisible();
+ expect(screen.queryByText('$0.00')).toBeNull();
+});
