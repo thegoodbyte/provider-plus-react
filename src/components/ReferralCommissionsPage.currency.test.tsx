@@ -74,3 +74,15 @@ it('never presents a partial USD sum as a complete total',()=>{
  fireEvent.click(screen.getByRole('checkbox',{name:'Select commission for booking 1184'}));fireEvent.click(screen.getByRole('checkbox',{name:'Select commission for booking 1241'}));
  expect(within(screen.getByRole('region',{name:'Selected payment total'})).getByText('USD total unavailable · 1 of 2 conversions missing')).toBeVisible();
 });
+
+it('requires manual quote details and submits the confirmed USD amount, source and exact time',async()=>{
+ view();fireEvent.click(screen.getByRole('button',{name:'Pay',exact:true}));const dialog=within(screen.getByRole('dialog'));
+ fireEvent.click(dialog.getByRole('checkbox',{name:'Enter actual USD payment / provider quote'}));
+ expect(dialog.getByRole('button',{name:'Record paid expense'})).toBeDisabled();
+ (referralsApi.quotePayout as jest.Mock).mockResolvedValue({data:{...quote,amount:216.57,manualFx:{source:'Revolut website',quotedAt:'2026-06-20T08:00:00.000Z',originalCurrency:'PLN',effectiveRate:216.57/1700}}});
+ fireEvent.change(dialog.getByLabelText('USD amount'),{target:{value:'216.57'}});
+ fireEvent.change(dialog.getByLabelText('Quote date and time'),{target:{value:'2026-06-20T10:00'}});
+ await waitFor(()=>expect(dialog.getByRole('button',{name:'Record paid expense'})).toBeEnabled());
+ fireEvent.click(dialog.getByRole('button',{name:'Record paid expense'}));
+ await waitFor(()=>expect(referralsApi.createPayout).toHaveBeenCalledWith(expect.objectContaining({manualUsdAmount:216.57,fxQuoteSource:'Revolut website',fxQuotedAt:new Date('2026-06-20T10:00').toISOString(),expectedPayoutAmount:216.57,expectedPayoutCurrency:'USD'})));
+});

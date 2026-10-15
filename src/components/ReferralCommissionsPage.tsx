@@ -25,6 +25,7 @@ function UsdTotal({ items }: { items: ReferralReportRow[] }) {
   const cents = items.reduce((sum, row) => sum + Math.round(row.usdEquivalent! * 100), 0);
   return <div className="mt-1 text-base font-bold text-blue-900">{items.some(row => !row.paid) ? 'Estimated USD total' : 'USD equivalent total'}: {money(cents / 100, 'USD')}</div>;
 }
+function localNow() { return new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16); }
 function today() { return new Date().toISOString().slice(0, 10); }
 export default function ReferralCommissionsPage({ rows, report, loading, base, onChanged }: { rows: Referral[]; report: ReferralReportRow[]; loading: boolean; base: string; onChanged: () => Promise<void> }) {
   const routePrefix = base.replace(/\/referrals$/, '');
@@ -54,6 +55,8 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
       setCopyFeedback({ text: 'Could not copy the reference. Select the reference text and copy it manually.', error: true });
     }
   };
+  const [manualFx, setManualFx] = useState({ enabled:false, amount:'', source:'Revolut website', quotedAt:localNow() });
+  const manualPayload = () => manualFx.enabled ? { manualUsdAmount:Number(manualFx.amount), fxQuoteSource:manualFx.source.trim(), fxQuotedAt:new Date(manualFx.quotedAt).toISOString() } : {};
   const [payoutForm, setPayoutForm] = useState({ expenseDate: today(), paymentMethod: 'bank_transfer', paymentAccount: '', reference: '', notes: '' });
   const dialogRef = useRef<HTMLDivElement>(null);
   useDialogFocus(payoutRows.length > 0, dialogRef, () => { if (!paying) setPayoutRows([]); });
@@ -94,6 +97,7 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
     setCopyFeedback(null);
     setPayoutQuote(null);
     setPayoutRows(outstanding);
+    setManualFx({enabled:false,amount:'',source:'Revolut website',quotedAt:localNow()});
     setPayoutRequestId(newRequestId());
     setPayoutForm({ expenseDate: today(), paymentMethod: 'bank_transfer', paymentAccount: '', reference: outstanding.map(row => row.refereeId).filter(Boolean).join('; '), notes: '' });
   };
@@ -101,12 +105,13 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
     if (!payoutRows.length) return;
     let active = true;
     setPayoutQuote(null); setQuoteError(''); setQuoteBusy(true);
-    const needsConversion = payoutRows.some(row => row.payoutCurrency && row.payoutCurrency !== row.owedCurrency);
+    if (manualFx.enabled && (!Number.isFinite(Number(manualFx.amount)) || Number(manualFx.amount) <= 0 || manualFx.source.trim().length < 3 || !Number.isFinite(Date.parse(manualFx.quotedAt)))) { setQuoteBusy(false); setQuoteError('Enter the USD amount, quote source and quote date/time.'); return; }
+    const needsConversion = manualFx.enabled || payoutRows.some(row => row.payoutCurrency && row.payoutCurrency !== row.owedCurrency);
     const localQuote = { amount: payoutRows.reduce((sum,row) => sum + row.amountOwed,0), currency: payoutRows[0].owedCurrency, originalTotals: { [payoutRows[0].owedCurrency]: payoutRows.reduce((sum,row) => sum + row.amountOwed,0) }, items: [] };
-    const pending = needsConversion ? referralsApi.quotePayout({ referralId: payoutRows[0].referralId, retreatId: payoutRows[0].retreatId, bookingIds: payoutRows.map(row => row.bookingId), expenseDate: payoutForm.expenseDate }).then(response => response.data) : Promise.resolve(localQuote);
+    const pending = needsConversion ? referralsApi.quotePayout({ referralId: payoutRows[0].referralId, retreatId: payoutRows[0].retreatId, bookingIds: payoutRows.map(row => row.bookingId), expenseDate: payoutForm.expenseDate, ...manualPayload() }).then(response => response.data) : Promise.resolve(localQuote);
     pending.then(quote => { if (active) setPayoutQuote(quote); }).catch(error => { if (active) setQuoteError(apiErrorMessage({ ...error, config: { ...error.config, method: 'get' } }, 'Could not load the payment-date conversion.')); }).finally(() => { if (active) setQuoteBusy(false); });
     return () => { active = false; };
-  }, [payoutRows, payoutForm.expenseDate, quoteVersion]);
+  }, [payoutRows, payoutForm.expenseDate, quoteVersion, manualFx.enabled, manualFx.amount, manualFx.source, manualFx.quotedAt]);
   const convertedSummary = (items: ReferralReportRow[]) => {
     if (items.length && items.every(row => row.payoutAmount !== undefined && row.payoutCurrency === row.owedCurrency)) return <p className="mt-1 text-xs text-slate-500">Payout currency matches the original commissions.</p>;
     const available = items.filter(row => row.payoutAmount !== undefined);
@@ -118,7 +123,7 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
     if (!payoutRows.length || paying || quoteBusy || !payoutQuote) return;
     setPaying(true);
     try {
-      await referralsApi.createPayout({ requestId: payoutRequestId, referralId: payoutRows[0].referralId, retreatId: payoutRows[0].retreatId, bookingIds: payoutRows.map(row => row.bookingId), ...payoutForm, ...(payoutRows.some(row => row.payoutCurrency && row.payoutCurrency !== row.owedCurrency) ? { expectedPayoutAmount: payoutQuote.amount, expectedPayoutCurrency: payoutQuote.currency } : {}) });
+      await referralsApi.createPayout({ requestId: payoutRequestId, referralId: payoutRows[0].referralId, retreatId: payoutRows[0].retreatId, bookingIds: payoutRows.map(row => row.bookingId), ...payoutForm, ...manualPayload(), ...((manualFx.enabled || payoutRows.some(row => row.payoutCurrency && row.payoutCurrency !== row.owedCurrency)) ? { expectedPayoutAmount: payoutQuote.amount, expectedPayoutCurrency: payoutQuote.currency } : {}) });
       setPayoutRows([]);
       await onChanged();
       navigate(`${base}/payments?referralId=${payoutRows[0].referralId}`);
@@ -151,6 +156,17 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
         <div className="mb-4 flex items-start justify-between"><div><h2 id="referral-payout-title" className="text-xl font-black">Record referral payment</h2><p className="text-sm">Record a payment already made. This does not transfer money.</p><p className="text-sm text-slate-500">{payoutRows[0].referralName} · {payoutRows[0].retreatCode || payoutRows[0].retreatName} · {payoutRows.length} commission item{payoutRows.length === 1 ? '' : 's'}</p></div><button type="button" disabled={paying} onClick={() => setPayoutRows([])} aria-label="Close payout"><X /></button></div>
         <p role="alert" className="mb-3 text-sm text-red-700">{error}</p><div className="mb-4 rounded-xl bg-emerald-50 p-4"><div className="text-xs font-bold uppercase text-emerald-700">Payment total</div><div className="text-2xl font-black text-emerald-950">{payoutQuote ? money(payoutQuote.amount, payoutQuote.currency) : 'Loading payment-date total…'}</div></div>
         {copyFeedback && <p role={copyFeedback.error ? 'alert' : 'status'} className={`mb-3 rounded-lg p-3 text-sm ${copyFeedback.error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-800'}`}>{copyFeedback.text}</p>}
+        <fieldset disabled={paying} className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
+          <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={manualFx.enabled} onChange={event=>{setPayoutQuote(null);setManualFx({...manualFx,enabled:event.target.checked});}} />Enter actual USD payment / provider quote</label>
+          {manualFx.enabled && <div className="mt-3 space-y-3">
+            <p className="text-sm">This overrides the estimated payout for this payment only. Original commissions and the partner’s currency preference stay unchanged. Combine one original currency per manual quote.</p>
+            <label className="block text-sm font-bold">USD amount<input type="number" min="0.01" max="1000000000" step="0.01" required value={manualFx.amount} onChange={event=>{setPayoutQuote(null);setManualFx({...manualFx,amount:event.target.value});}} className="mt-1 min-h-11 w-full rounded-lg border px-3" /></label>
+            <label className="block text-sm font-bold">Quote source<input required minLength={3} maxLength={200} value={manualFx.source} onChange={event=>{setPayoutQuote(null);setManualFx({...manualFx,source:event.target.value});}} className="mt-1 min-h-11 w-full rounded-lg border px-3" /></label>
+            <label className="block text-sm font-bold">Quote date and time<input type="datetime-local" required value={manualFx.quotedAt} onChange={event=>{setPayoutQuote(null);setManualFx({...manualFx,quotedAt:event.target.value});}} className="mt-1 min-h-11 w-full rounded-lg border px-3" /></label>
+            <p className="text-xs text-slate-600">Your local timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}. The exact UTC timestamp is saved with the payment.</p>
+            {payoutQuote?.manualFx && <p className="text-sm">Manual quote: {payoutQuote.manualFx.source} · {payoutQuote.manualFx.quotedAt} · 1 {payoutQuote.manualFx.originalCurrency} = {Number(payoutQuote.manualFx.effectiveRate).toFixed(6)} USD</p>}
+          </div>}
+        </fieldset>
         <button type="button" onClick={() => { setPayoutQuote(null); setQuoteVersion(value => value + 1); }} disabled={quoteBusy} className="mb-3 rounded-lg border px-3 py-2 text-sm">Refresh payment quote</button>
         {quoteError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-red-700">{quoteError}</p>}
         {payoutQuote && <div className="mb-4 text-sm text-slate-600">Original commissions: {Object.entries(payoutQuote.originalTotals).map(([currency,amount]) => money(Number(amount), currency)).join(' / ')}{payoutQuote.items?.some((item: any) => item.exchangeRateSource === 'ECB reference rate') && <div>ECB payment-date reference rates: {[...new Set(payoutQuote.items.map((item: any) => item.exchangeRateDate))].join(', ')}. If no rate was published that day, the preceding published rate is used.</div>}</div>}

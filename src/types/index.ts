@@ -651,9 +651,9 @@ export interface RetreatExpense {
   receiptNumber?: string;
   referralPayoutGroupKey?: string;
   tags?: string[];
-  referralPayment?: { referralId?: string; retreatId?: string; retreatCode?: string; referralName?: string; referralCode?: string; recordedBy?: string; recordedAt?: string; originalAmount?: number; voidedAt?: string; voidReason?: string; voidedBy?: string };
+  referralPayment?: { manualFx?: { source: string; quotedAt: string; usdAmount: number; originalCurrency: string; originalTotal: number; effectiveRate: number }; referralId?: string; retreatId?: string; retreatCode?: string; referralName?: string; referralCode?: string; recordedBy?: string; recordedAt?: string; originalAmount?: number; voidedAt?: string; voidReason?: string; voidedBy?: string };
   referralPayoutItems?: Array<{
-    payoutAmount?: number; payoutCurrency?: string; exchangeRate?: number; exchangeRateDate?: string; exchangeRateSource?: string; paymentDate?: string;
+    payoutAmount?: number; payoutCurrency?: string; exchangeRate?: number; exchangeRateDate?: string; exchangeRateSource?: string; exchangeRateQuotedAt?: string; paymentDate?: string;
     bookingId: string;
     clientId: string;
     referralId: string;
