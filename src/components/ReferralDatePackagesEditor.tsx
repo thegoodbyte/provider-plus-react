@@ -5,7 +5,7 @@ const field = 'mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white 
 export default function ReferralDatePackagesEditor({ value, onChange }: { value: ReferralCommissionPackage[]; onChange: (value: ReferralCommissionPackage[]) => void }) {
   const update = (index: number, patch: Partial<ReferralCommissionPackage>) => onChange(value.map((rule, i) => i === index ? { ...rule, ...patch } : rule));
   return <section aria-label="Commission packages" className="my-5 space-y-4">
-    <div><h3 className="text-lg font-bold">Commission packages</h3><p className="mt-1 text-sm text-slate-600">Choose the package dates, then its percentages. The booking registration date selects the rate, using Prague time. From and To dates are included. The same percentage applies to every booking currency.</p></div>
+    <div><h3 className="text-lg font-bold">Commission packages</h3><p className="mt-1 text-sm text-slate-600">Choose the package dates, then its percentages. The first completed payment date selects the rate, using Prague time. For bookings without a completed payment, the registration date is used until payment. From and To dates are included. The same percentage applies to every booking currency.</p></div>
     {value.map((rule, index) => <fieldset key={rule.key} className="min-w-0 rounded-xl border border-slate-200 p-4">
       <legend className="px-1 font-semibold">Package {index + 1}</legend>
       <div className="grid gap-3 sm:grid-cols-2">

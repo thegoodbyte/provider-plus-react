@@ -1,0 +1,19 @@
+import {test,expect} from '@playwright/test';
+for(const width of [1440,390])test('missing commission rule explains first-payment date and opens settings '+width,async({page})=>{
+ await page.setViewportSize({width,height:1000});
+ const id='507f1f77bcf86cd799439011';
+ const partner={_id:id,name:'Synthetic Partner',referralCode:'SP',isActive:true,commissionMode:'dated_percentage',commissionPackages:[]};
+ await page.route('**/*',async route=>{const req=route.request();if(!['xhr','fetch'].includes(req.resourceType()))return route.continue();const path=new URL(req.url()).pathname;const json=(data:any)=>route.fulfill({json:data});
+ if(path==='/referrals')return json([partner]);
+ if(path==='/referrals/report')return json([{bookingId:'b1',bookingNumber:1241,clientId:'c1',clientName:'Synthetic Client',referralId:id,referralName:partner.name,retreatId:'t1',retreatCode:'TEST',amountOwed:0,owedCurrency:'PLN',commissionPercentage:0,commissionIssue:'No commission package covers this booking date.',firstPaymentDate:'2026-03-21T12:00:00Z',registrationDate:'2026-07-10',packageName:'Needs configuration'}]);
+ if(path.endsWith('/portal-account'))return json({});
+ if(path==='/environment/status')return json({environment:'local',production:false,enabledJobs:[]});return json([]);
+ });
+ await page.goto('/admin/referrals/commissions');
+ await expect(page.getByText(/First completed payment: 21 Mar 2026/)).toBeVisible();
+ await expect(page.getByRole('button',{name:'Pay',exact:true})).toHaveCount(0);
+ await page.getByRole('link',{name:/Configure commission for Synthetic Partner/}).click();
+ await expect(page).toHaveURL(new RegExp('/referrals/'+id+'/edit'));
+ await expect(page.getByRole('region',{name:'Commission packages'})).toBeVisible();
+ await expect(page.getByText(/The first completed payment date selects the rate/)).toBeVisible();
+});

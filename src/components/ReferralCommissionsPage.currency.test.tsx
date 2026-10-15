@@ -21,3 +21,14 @@ it('blocks recording on rate failure and retries only the quote',async()=>{
 it('requests a fresh quote when the payment date changes',async()=>{
  view();fireEvent.click(screen.getByRole('button',{name:'Pay',exact:true}));await waitFor(()=>expect(referralsApi.quotePayout).toHaveBeenCalledTimes(1));fireEvent.change(screen.getByLabelText('Payment date'),{target:{value:'2026-06-20'}});await waitFor(()=>expect(referralsApi.quotePayout).toHaveBeenLastCalledWith(expect.objectContaining({expenseDate:'2026-06-20'})));
 });
+
+it('explains an uncovered first-payment date and links directly to partner settings without offering payment',()=>{
+ const missing={...row,commissionIssue:'No commission package covers this booking date.',commissionPercentage:0,firstPaymentDate:'2026-03-21T12:00:00.000Z',registrationDate:'2026-07-10',packageName:'Needs configuration'};
+ render(<MemoryRouter><ReferralCommissionsPage rows={[]} report={[missing]} loading={false} base="/admin/referrals" onChanged={async()=>{}}/></MemoryRouter>);
+ expect(screen.getByText(/First completed payment: 21 Mar 2026/)).toBeVisible();
+ expect(screen.getByText(/add or extend a package and enter the agreed percentage/)).toBeVisible();
+ expect(screen.getByRole('link',{name:/Configure commission for Partner, booking 1184/})).toHaveAttribute('href','/admin/referrals/r1/edit');
+ expect(screen.queryByRole('button',{name:'Pay',exact:true})).toBeNull();
+ expect(screen.queryByText(/· 0%/)).toBeNull();
+ expect(screen.getByRole('checkbox',{name:/Select commission/})).toBeDisabled();
+});
