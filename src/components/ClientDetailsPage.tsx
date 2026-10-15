@@ -1,3 +1,4 @@
+import { saveScreeningPdf } from '../utils/screeningPdfDownload';
 import FormsInvitation from './FormsInvitation';
 import ArtifactReviewStatus, { useArtifactReviews } from './ArtifactReviewStatus';
 import React, { useState, useEffect } from 'react';
@@ -1227,19 +1228,10 @@ const ClientDetailsPage: React.FC = () => {
                       if (!clientId) return;
                       clientsApi.downloadScreeningPdf(clientId)
                         .then((response) => {
-                          const blob = response.data as Blob;
-                          const url = URL.createObjectURL(blob);
-                          const link = document.createElement('a');
-                          link.href = url;
-                          link.target = '_blank';
-                          link.rel = 'noopener noreferrer';
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                          saveScreeningPdf(response, [client?.firstName, client?.lastName].filter(Boolean).join('-') || clientId);
                         })
                         .catch((error) => {
-                          console.error('Error downloading screening PDF:', error);
+                          showError(apiErrorMessage(error, 'Could not download screening PDF. Please try again.'));
                         });
                     }}
                     className="inline-flex h-10 px-3 items-center justify-center rounded-md bg-green-600 text-white shadow-sm hover:bg-green-700"

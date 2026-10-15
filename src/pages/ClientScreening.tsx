@@ -1,3 +1,4 @@
+import { saveScreeningPdf } from '../utils/screeningPdfDownload';
 import AccommodationSelect from '../components/AccommodationSelect';
 import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -1008,19 +1009,10 @@ const ClientScreening: React.FC = () => {
     if (!clientId) return;
     clientsApi.downloadScreeningPdf(clientId)
       .then((response) => {
-        const blob = response.data as Blob;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        saveScreeningPdf(response, [formData.firstName, formData.lastName].filter(Boolean).join('-') || clientId);
       })
       .catch((error) => {
-        console.error('Error downloading screening PDF:', error);
+        flashSaveMessage('Could not download screening PDF. Please try again.');
       });
   };
 
