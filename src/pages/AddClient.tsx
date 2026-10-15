@@ -91,44 +91,30 @@ const AddClient: React.FC = () => {
 
   // Fetch next display ID on mount
   useEffect(() => {
+    let active = true;
     const fetchNextDisplayId = async () => {
       try {
-        const response = await clientsApi.getAll();
-        const clients = response.data || [];
-        console.log('Fetched clients:', clients.length);
-
-        let maxDisplayId = 1000; // Default starting point
-
-        clients.forEach((client: any) => {
-          const displayId = client.display_id || 0;
-          const numericId = typeof displayId === 'string' ? parseInt(displayId) : displayId;
-          if (numericId && numericId > maxDisplayId) {
-            maxDisplayId = numericId;
-          }
-        });
-
-        const nextId = maxDisplayId + 1;
-        console.log('Setting next display_id to:', nextId);
-
-        setFormData(prev => {
-          const newData = {
+        const response = await clientsApi.getNextDisplayId();
+        if (active && response.data) {
+          const nextId = Number(response.data);
+          setFormData(prev => ({
             ...prev,
             display_id: nextId
-          };
-          console.log('Updated formData with display_id:', newData);
-          return newData;
-        });
+          }));
+        }
       } catch (err) {
         console.error('Error fetching next display ID:', err);
-        // Default to 1001 if error
-        setFormData(prev => ({
-          ...prev,
-          display_id: 1001
-        }));
+        if (active) {
+          setFormData(prev => ({
+            ...prev,
+            display_id: 1001
+          }));
+        }
       }
     };
 
     fetchNextDisplayId();
+    return () => { active = false; };
   }, []);
 
   const handleSave = async () => {

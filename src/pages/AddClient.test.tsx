@@ -24,6 +24,7 @@ describe('AddClient phone -> country/language autofill', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedClientsApi.getAll.mockResolvedValue({ data: [] } as any);
+    mockedClientsApi.getNextDisplayId.mockResolvedValue({ data: 1001 } as any);
     mockedReferralsApi.getAll.mockResolvedValue({ data: [] } as any);
     mockedUseAuth.mockReturnValue({ user: { role: 'admin' } });
   });
@@ -54,5 +55,38 @@ describe('AddClient phone -> country/language autofill', () => {
     // Continuing to type the same Polish number should not clobber the manual override.
     fireEvent.change(screen.getByPlaceholderText('Enter full number with country code'), { target: { value: '+48123456780' } });
     expect(screen.getByText('Germany')).toBeInTheDocument();
+  });
+
+  it('loads the next display_id from clientsApi.getNextDisplayId on mount', async () => {
+    mockedClientsApi.getNextDisplayId.mockResolvedValue({ data: 1015 } as any);
+    renderPage();
+
+    const displayIdInput = await screen.findByLabelText('Client ID');
+    expect(displayIdInput).toHaveValue(1015);
+  });
+
+  it('allows the user to overwrite the suggested display_id with a lower number and submits it', async () => {
+    mockedClientsApi.getNextDisplayId.mockResolvedValue({ data: 1050 } as any);
+    mockedClientsApi.create.mockResolvedValue({ data: { _id: 'new-client' } } as any);
+    renderPage();
+
+    const displayIdInput = await screen.findByLabelText('Client ID');
+    expect(displayIdInput).toHaveValue(1050);
+
+    // User overwrites with a lower number (1012)
+    fireEvent.change(displayIdInput, { target: { value: '1012' } });
+    expect(displayIdInput).toHaveValue(1012);
+
+    fireEvent.change(screen.getByPlaceholderText('Enter first name'), { target: { value: 'John' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter last name'), { target: { value: 'Doe' } });
+    fireEvent.change(screen.getByPlaceholderText('Enter full number with country code'), { target: { value: '+420777123456' } });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save Client' })[0]);
+
+    expect(mockedClientsApi.create).toHaveBeenCalledWith(expect.objectContaining({
+      display_id: 1012,
+      firstName: 'John',
+      lastName: 'Doe',
+    }));
   });
 });
