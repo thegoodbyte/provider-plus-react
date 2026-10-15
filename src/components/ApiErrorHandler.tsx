@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { FiAlertCircle } from 'react-icons/fi';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { canUseApiDebug, initializeApiDebug, setApiDebugEnabled } from '../utils/apiDebug';
 import { getForbiddenErrorPresentation } from '../utils/apiErrorPresentation';
-import './ApiErrorHandler.css';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 
 interface ApiError {
@@ -107,19 +107,24 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
   return (
     <ApiErrorContext.Provider value={{ error, clearError }}>
       {children}
-      {error && <div className={error.isPacketAccessError ? 'api-error-overlay' : 'api-feedback-banner'}>
-        {error.isPacketAccessError && <div className="api-error-backdrop" />}
-        <section role={error.isPacketAccessError ? 'alertdialog' : 'alert'} aria-modal={error.isPacketAccessError || undefined} aria-label={error.title || 'Connection and loading feedback'} className={error.isPacketAccessError ? 'api-error-modal' : 'api-feedback-card'}>
-          {error.title && <h2>{error.title}</h2>}
-          <p>{error.message}</p>
-          <div className="flex flex-wrap gap-3 mt-3">
-            {error.isPacketAccessError ? <button onClick={logout}>Sign out</button> : <>
-              {error.isNetworkError && <button onClick={handleRetry}>Check connection{retryCount > 0 ? ` (${retryCount})` : ''}</button>}
-              <button onClick={clearError}>Dismiss loading message</button>
-            </>}
-            {debugAllowed && <button onClick={() => { const enabled = setApiDebugEnabled(!debugEnabled, user); setDebugEnabled(enabled); }}>API debug: {debugEnabled ? 'on' : 'off'}</button>}
+      {error && <div className={error.isPacketAccessError ? 'fixed inset-0 z-[10000] flex items-center justify-center p-4' : 'fixed bottom-4 right-4 z-[10010] w-[calc(100%_-_2rem)] max-w-sm'}>
+        {error.isPacketAccessError && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" />}
+        <section role={error.isPacketAccessError ? 'alertdialog' : 'alert'} aria-modal={error.isPacketAccessError || undefined} aria-label={error.title || 'Connection and loading feedback'} className={error.isPacketAccessError ? 'relative z-[10001] w-full max-w-md rounded-xl bg-white p-6 shadow-2xl' : 'rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 shadow-lg'}>
+          <div className="flex items-start gap-3">
+            <FiAlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
+            <div className="min-w-0 flex-1">
+              {error.title && <h2 className="font-semibold text-slate-900">{error.title}</h2>}
+              <p className={error.isPacketAccessError ? 'mt-1 text-sm text-slate-600' : 'text-sm'}>{error.message}</p>
+            </div>
           </div>
-          {debugEnabled && <details><summary>Request details</summary><p>{error.method} {error.url} · {error.code}</p></details>}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {error.isPacketAccessError ? <button onClick={logout} className="min-h-10 rounded-lg bg-slate-700 px-4 text-sm font-semibold text-white hover:bg-slate-900">Sign out</button> : <>
+              {error.isNetworkError && <button onClick={handleRetry} className="min-h-9 rounded-lg border border-red-300 bg-white px-3 text-sm font-semibold text-red-700 hover:bg-red-100">Check connection{retryCount > 0 ? ` (${retryCount})` : ''}</button>}
+              <button onClick={clearError} className="min-h-9 rounded-lg border border-red-300 bg-white px-3 text-sm font-semibold text-red-700 hover:bg-red-100">Dismiss loading message</button>
+            </>}
+            {debugAllowed && <button onClick={() => { const enabled = setApiDebugEnabled(!debugEnabled, user); setDebugEnabled(enabled); }} className={`min-h-9 rounded-lg border px-3 text-sm font-semibold hover:bg-black/5 ${error.isPacketAccessError ? 'border-slate-300 text-slate-700' : 'border-red-300 text-red-700'}`}>API debug: {debugEnabled ? 'on' : 'off'}</button>}
+          </div>
+          {debugEnabled && <details className={`mt-3 text-xs ${error.isPacketAccessError ? 'text-slate-500' : 'text-red-700'}`}><summary>Request details</summary><p>{error.method} {error.url} · {error.code}</p></details>}
         </section>
       </div>}
     </ApiErrorContext.Provider>
