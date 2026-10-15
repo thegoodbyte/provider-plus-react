@@ -126,20 +126,65 @@ describe('ReferralsPage payout workflow', () => {
     await screen.findByText('Referral saved.');
   });
 
-  it('keeps an existing fixed/currency agreement unchanged until explicitly replaced', async () => {
+  it('PPVC-759: loads an existing tiered/fixed/currency agreement into the editable custom packages tab, not a read-only blocker', async () => {
     const existing = { ...partner, influenceCommissionPercentage: 0, commissionPackages: [{ key: 'fixed', name: 'Fixed USD', kind: 'fixed', amount: 500, currency: 'USD', bookingCurrency: '*', effectiveFrom: '2026-01-01' }] };
     (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [existing] });
     view('/admin/referrals/r1/edit');
     await screen.findByRole('heading', { name: 'Edit Ada Partners' });
-    expect(screen.getByRole('region', { name: 'Existing commission agreement' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Custom packages' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('region', { name: 'Commission packages' })).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Fixed USD')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Contact phone'), { target: { value: '+420 777 123 456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(referralsApi.update).toHaveBeenCalled());
     const body = (referralsApi.update as jest.Mock).mock.calls[0][1];
-    expect(body).not.toHaveProperty('commissionPackages');
+    expect(body).toMatchObject({ commissionMode: null, commissionPackages: [expect.objectContaining({ key: 'fixed', name: 'Fixed USD', amount: 500 })] });
     expect(body).not.toHaveProperty('influenceCommissionPercentage');
-    fireEvent.click(screen.getByRole('button', { name: 'Use date-based percentages' }));
-    expect(screen.getByRole('region', { name: 'Commission packages' })).toBeInTheDocument();
+  });
+
+  it('PPVC-759: a combined tiered + date-stepped deal can be built by switching to custom packages, and saves commissionMode: null', async () => {
+    view('/admin/referrals/r1/edit');
+    await screen.findByRole('heading', { name: 'Edit Ada Partners' });
+    expect(screen.getByRole('tab', { name: 'Dated percentages' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Add commission package' }));
+    fireEvent.change(screen.getByLabelText('Package From'), { target: { value: '2026-01-01' } });
+    fireEvent.change(screen.getByLabelText('Starting percentage'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom packages' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add commission package' }));
+    fireEvent.change(screen.getByLabelText('Key'), { target: { value: 'tiered-2026h2' } });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tiered from mid-2026' } });
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-06-15' } });
+    fireEvent.change(screen.getByLabelText('Booking currency'), { target: { value: '*' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add price tier' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add price tier' }));
+    const fromPrice = screen.getAllByLabelText('From price');
+    const ratePercent = screen.getAllByLabelText('Rate %');
+    fireEvent.change(fromPrice[0], { target: { value: '0' } });
+    fireEvent.change(ratePercent[0], { target: { value: '10' } });
+    fireEvent.change(fromPrice[1], { target: { value: '8500' } });
+    fireEvent.change(ratePercent[1], { target: { value: '20' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(referralsApi.update).toHaveBeenCalled());
+    const body = (referralsApi.update as jest.Mock).mock.calls[0][1];
+    expect(body).toMatchObject({
+      commissionMode: null,
+      commissionPackages: [expect.objectContaining({
+        key: 'tiered-2026h2', name: 'Tiered from mid-2026', bookingCurrency: '*',
+        tiers: [{ minPrice: 0, ratePercent: 10 }, { minPrice: 8500, ratePercent: 20 }],
+      })],
+    });
+  });
+
+  it('PPVC-759: switching between Dated percentages and Custom packages keeps both in progress edits, discarding neither', async () => {
+    view('/admin/referrals/r1/edit');
+    await screen.findByRole('heading', { name: 'Edit Ada Partners' });
+    fireEvent.click(screen.getByRole('button', { name: 'Add commission package' }));
+    fireEvent.change(screen.getByLabelText('Package From'), { target: { value: '2026-01-01' } });
+    fireEvent.change(screen.getByLabelText('Starting percentage'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('tab', { name: 'Custom packages' }));
+    expect(screen.queryByLabelText('Starting percentage')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('tab', { name: 'Dated percentages' }));
+    expect(screen.getByLabelText('Starting percentage')).toHaveValue(10);
   });
 
   it('rejects overlapping package dates before calling the API', async () => {

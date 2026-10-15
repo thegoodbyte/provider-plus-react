@@ -6,12 +6,15 @@ import { referralsApi } from '../services/api';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import ReferralAssignmentNotifications from './ReferralAssignmentNotifications';
 import ReferralDatePackagesEditor from './ReferralDatePackagesEditor';
+import { ReferralPackagesEditor } from './ReferralPackagesEditor';
 import { datePackageEditorState, prepareDatePackages } from './referralDatePackages';
 
 export default function ReferralEditorPage({ referral, base, onSaved }: { referral?: Referral; base: string; onSaved: () => Promise<void> }) {
   const navigate = useNavigate(); const location = useLocation(); const editingId = referral?._id || '';
   const [form, updateForm] = useState(() => ({ payoutCurrency: referral?.payoutCurrency ?? (referral ? '' : 'USD'), name: referral?.name || '', referralCode: referral?.referralCode || '', email: referral?.email || '', phone: referral?.phone || '', notes: referral?.notes || '', isActive: referral?.isActive !== false, allowRepeatBookingCredit: referral?.allowRepeatBookingCredit !== false, assignmentNotificationsEnabled: referral?.assignmentNotificationsEnabled === true, assignmentNotificationLanguage: referral?.assignmentNotificationLanguage || 'en' }));
   const [agreement, setAgreement] = useState(() => datePackageEditorState(referral));
+  const [customPackages, setCustomPackages] = useState(() => referral?.commissionMode !== 'dated_percentage' ? (referral?.commissionPackages || []) : []);
+  const [mode, setMode] = useState<'dated' | 'custom'>(() => agreement.blocked ? 'custom' : 'dated');
   const [saving, setSaving] = useState(false); const [dirty, setDirty] = useState(false); const [error, setError] = useState('');
   const [savedMessage, setSavedMessage] = useState(location.state?.referralSaved ? 'Referral saved.' : '');
   const setForm = (next: typeof form) => { setDirty(true); setSavedMessage(''); updateForm(next); };
@@ -26,7 +29,8 @@ export default function ReferralEditorPage({ referral, base, onSaved }: { referr
     if (!/^[A-Za-z]{2}$/.test(form.referralCode)) return setError('Referral code must contain exactly two letters.');
     let payload: Omit<Referral, '_id'> = { ...form };
     try {
-      if (agreement.activate && !agreement.blocked) payload = { ...payload, commissionMode: 'dated_percentage', commissionPackages: prepareDatePackages(agreement.packages) };
+      if (mode === 'custom') payload = { ...payload, commissionMode: null, commissionPackages: customPackages };
+      else if (agreement.activate) payload = { ...payload, commissionMode: 'dated_percentage', commissionPackages: prepareDatePackages(agreement.packages) };
     } catch (failure) { return setError((failure as Error).message); }
     setSaving(true);
     try {
@@ -50,11 +54,11 @@ export default function ReferralEditorPage({ referral, base, onSaved }: { referr
           <input aria-label="Contact phone" placeholder="Phone" className={field} value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} />
         </div>
         <label className="my-4 block text-sm font-semibold">Preferred payout currency<select aria-label="Preferred payout currency" className={`${field} mt-1`} value={form.payoutCurrency} onChange={event => setForm({ ...form, payoutCurrency: event.target.value })}><option value="">Original commission currency</option>{['USD','EUR','PLN','CZK'].map(currency => <option key={currency} value={currency}>{currency}</option>)}</select><span className="mt-1 block text-xs font-normal text-slate-500">Original commissions stay unchanged. Conversion uses the published payment-date rate; saved payouts keep their recorded rate.</span></label>
-        {agreement.blocked ? <section aria-label="Existing commission agreement" className="my-5 rounded-xl bg-slate-50 p-4">
-          <h3 className="font-semibold">Existing commission agreement</h3>
-          <p className="mt-2 text-sm text-slate-600">This agreement uses fixed amounts, price tiers or a currency restriction. It stays active until you replace it with dated percentages. Recorded payments stay as saved.</p>
-          <button type="button" className="mt-3 min-h-11 rounded-lg border bg-white px-4 font-semibold" onClick={() => { setAgreement({ packages: [], blocked: false, activate: true }); setDirty(true); setSavedMessage(''); }}>Use date-based percentages</button>
-        </section> : <>
+        <div className="my-3 flex gap-2" role="tablist" aria-label="Commission agreement type">
+          <button type="button" role="tab" aria-selected={mode === 'dated'} className={`min-h-11 rounded-lg border px-4 font-semibold ${mode === 'dated' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white'}`} onClick={() => { setMode('dated'); setDirty(true); setSavedMessage(''); }}>Dated percentages</button>
+          <button type="button" role="tab" aria-selected={mode === 'custom'} className={`min-h-11 rounded-lg border px-4 font-semibold ${mode === 'custom' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white'}`} onClick={() => { setMode('custom'); setDirty(true); setSavedMessage(''); }}>Custom packages</button>
+        </div>
+        {mode === 'custom' ? <ReferralPackagesEditor value={customPackages} onChange={packages => { setCustomPackages(packages); setDirty(true); setSavedMessage(''); }} /> : <>
           {!agreement.activate && referral && <p className="mt-4 rounded-lg bg-slate-50 p-3 text-sm">Current percentage: {referral.defaultCommissionPercentage || 0}%. Add a dated package to replace this agreement.</p>}
           <ReferralDatePackagesEditor value={agreement.packages} onChange={packages => { setAgreement({ packages, blocked: false, activate: true }); setDirty(true); setSavedMessage(''); }} />
         </>}

@@ -147,7 +147,7 @@ export interface ReferralCommissionPackage {
 
 export interface Referral {
   payoutCurrency?: string;
-  commissionMode?: 'dated_percentage';
+  commissionMode?: 'dated_percentage' | null;
   assignmentNotificationsEnabled?: boolean;
   assignmentNotificationLanguage?: string;
   influenceCommissionPercentage?: number | null;
