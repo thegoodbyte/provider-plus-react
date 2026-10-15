@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
@@ -6,7 +6,7 @@ import { usersApi } from '../services/usersApi';
 
 jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: { role: 'admin' } }) }));
 jest.mock('../services/api', () => ({
-  medicalReviewRequestsApi: { getAll: jest.fn(), getGroups: jest.fn(), downloadForWhatsapp: jest.fn() },
+  medicalReviewRequestsApi: { getAll: jest.fn(), getGroups: jest.fn(), downloadForWhatsapp: jest.fn(), update: jest.fn() },
   medicalTrackingApi: { getAll: jest.fn() }, clientsApi: { getAll: jest.fn() }, retreatsApi: { getAll: jest.fn() },
 }));
 jest.mock('../services/usersApi', () => ({ usersApi: { getAll: jest.fn() } }));
@@ -100,4 +100,51 @@ it('opens the bookmarked follow-up queue with only flagged MRRs', async () => {
   expect(screen.queryByText('#7902')).not.toBeInTheDocument();
   fireEvent.click(filter);
   expect(screen.getAllByText('#7902').length).toBeGreaterThan(0);
+});
+
+it('excludes WhatsApp-handled requests from packet pendingCount yellow badge', async () => {
+  (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({
+    data: [
+      { _id: 'r1', display_id: 8001, status: 'pending', reviewChannel: 'internal', retreatId: 'retreat' },
+      { _id: 'r2', display_id: 8002, status: 'awaiting_whatsapp', reviewChannel: 'whatsapp', whatsappStatus: 'awaiting_response', retreatId: 'retreat' },
+    ],
+  });
+  (medicalReviewRequestsApi.getGroups as jest.Mock).mockResolvedValue({
+    data: [
+      { _id: 'group-1', title: 'Test Retreat Packet', reviewRequestIds: ['r1', 'r2'], retreatId: 'retreat', endDate: '2026-12-31' },
+    ],
+  });
+
+  render(<MemoryRouter><MedicalReviewRequestsGrid /></MemoryRouter>);
+  const badge = await screen.findByTitle('1 pending medical review request');
+  expect(badge).toBeInTheDocument();
+  expect(badge).toHaveTextContent('1');
+});
+
+it('sends status awaiting_whatsapp and advisorDeliveryStatus sent when marking WhatsApp sent', async () => {
+  (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({
+    data: [
+      { _id: 'r1', display_id: 8001, status: 'pending', reviewChannel: 'internal', assignedToUserId: 'advisor', retreatId: 'retreat' },
+    ],
+  });
+  (medicalReviewRequestsApi.getGroups as jest.Mock).mockResolvedValue({
+    data: [
+      { _id: 'group-1', title: 'Test Retreat Packet', reviewRequestIds: ['r1'], retreatId: 'retreat', endDate: '2026-12-31' },
+    ],
+  });
+  (medicalReviewRequestsApi.update as jest.Mock).mockResolvedValue({ data: { _id: 'r1', status: 'awaiting_whatsapp' } });
+
+  render(<MemoryRouter><MedicalReviewRequestsGrid /></MemoryRouter>);
+  const packetHeader = await screen.findByText('Test Retreat Packet');
+  fireEvent.click(packetHeader);
+
+  const handleButton = await screen.findByRole('button', { name: 'Handle via WhatsApp' });
+  fireEvent.click(handleButton);
+
+  await waitFor(() => expect(medicalReviewRequestsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({
+    reviewChannel: 'whatsapp',
+    whatsappStatus: 'awaiting_response',
+    status: 'awaiting_whatsapp',
+    advisorDeliveryStatus: 'sent',
+  })));
 });

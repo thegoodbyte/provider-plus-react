@@ -469,9 +469,18 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         const requestsForGroup = (group.reviewRequestIds || [])
           .map((requestId) => requestById.get(requestId))
           .filter((request): request is EnrichedReviewRequest => Boolean(request));
+        const pendingCount = requestsForGroup.filter((request) =>
+          isPendingReview(request) &&
+          request.status !== 'awaiting_whatsapp' &&
+          request.advisorDeliveryStatus !== 'sent' &&
+          request.reviewChannel !== 'whatsapp' &&
+          (!request.whatsappStatus || request.whatsappStatus === 'not_sent') &&
+          !request.whatsappSentAt
+        ).length;
         return {
           ...group,
           requests: requestsForGroup,
+          pendingCount,
         };
       })
       .filter((group) => Boolean(group._id));
@@ -718,10 +727,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     if (!request._id) return;
     try {
       const advisorId = typeof request.assignedToUserId === 'string' ? request.assignedToUserId : request.assignedToUserId?._id;
+      const sentAt = new Date().toISOString();
       await medicalReviewRequestsApi.update(request._id, {
         reviewChannel: 'whatsapp',
         whatsappStatus: 'awaiting_response',
-        whatsappSentAt: new Date().toISOString(),
+        status: 'awaiting_whatsapp',
+        advisorDeliveryStatus: 'sent',
+        whatsappSentAt: sentAt,
         ...(advisorId ? { whatsappAdvisorUserId: advisorId } : {}),
       });
       await loadData();
