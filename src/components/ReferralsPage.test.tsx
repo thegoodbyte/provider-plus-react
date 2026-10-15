@@ -237,11 +237,11 @@ describe('ReferralsPage payout workflow', () => {
     expect(screen.getByText('Jan Kowalski')).toBeInTheDocument();
   });
 
-  it('shows the booking date used for commission selection', async () => {
+  it('shows the first completed payment date used for commission selection', async () => {
     (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [row({ registrationDate: '2026-07-15T00:00:00.000Z', firstPaymentDate: '2026-08-01T00:00:00.000Z' })] });
     view();
     await screen.findAllByText('Eva Novak');
-    expect(screen.getByText(new Date('2026-07-15T00:00:00.000Z').toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(new Date('2026-08-01T00:00:00.000Z').toLocaleDateString(undefined, { timeZone: 'Europe/Prague' }))).toBeInTheDocument();
   });
 
   it('provisions a separate partner account without changing the referral record', async () => {

@@ -32,3 +32,14 @@ it('explains an uncovered first-payment date and links directly to partner setti
  expect(screen.queryByText(/· 0%/)).toBeNull();
  expect(screen.getByRole('checkbox',{name:/Select commission/})).toBeDisabled();
 });
+
+it('shows first-payment date instead of late booking registration and labels the unpaid fallback',()=>{
+ const data=[{...row,bookingNumber:1235,firstPaymentDate:'2026-05-04T12:00:00Z',registrationDate:'2026-07-08T12:00:00Z'},{...row,bookingId:'b2',bookingNumber:1236,firstPaymentDate:undefined,registrationDate:'2026-07-09T12:00:00Z'}];
+ render(<MemoryRouter><ReferralCommissionsPage rows={[]} report={data} loading={false} base="/admin/referrals" onChanged={async()=>{}}/></MemoryRouter>);
+ expect(screen.getByRole('columnheader',{name:'Commission date'})).toBeVisible();
+ const paidRow=screen.getByRole('button',{name:'#1235 · 20%'}).closest('tr')!;
+ expect(within(paidRow).getByText(new Date('2026-05-04T12:00:00Z').toLocaleDateString(undefined,{timeZone:'Europe/Prague'}))).toBeVisible();
+ expect(within(paidRow).getByText('First completed payment')).toBeVisible();
+ expect(within(paidRow).queryByText(new Date('2026-07-08T12:00:00Z').toLocaleDateString(undefined,{timeZone:'Europe/Prague'}))).toBeNull();
+ expect(screen.getByText('Registration date · no completed payment yet')).toBeVisible();
+});

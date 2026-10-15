@@ -11,6 +11,9 @@ for(const width of [1440,390])test('missing commission rule explains first-payme
  });
  await page.goto('/admin/referrals/commissions');
  await expect(page.getByText(/First completed payment: 21 Mar 2026/)).toBeVisible();
+ await expect(page.getByRole('columnheader',{name:'Commission date'})).toBeVisible();
+ const dateCell=page.getByText('First completed payment',{exact:true}).locator('..');
+ await expect(dateCell).toContainText(/3\/21\/2026/);
  await expect(page.getByRole('button',{name:'Pay',exact:true})).toHaveCount(0);
  await page.getByRole('link',{name:/Configure commission for Synthetic Partner/}).click();
  await expect(page).toHaveURL(new RegExp('/referrals/'+id+'/edit'));
