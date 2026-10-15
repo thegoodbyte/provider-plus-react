@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { roomInventoryApi } from "../services/roomInventoryApi";
 import { authService } from "../services/authService";
+import RoomStayTimeline from "./RoomStayTimeline";
+import { addNights, nightsBetween } from "./RoomStayTimeline.helpers";
 export default function RetreatRoomsTab({ retreatId }: { retreatId: string }) {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
@@ -314,6 +316,10 @@ export default function RetreatRoomsTab({ retreatId }: { retreatId: string }) {
                         },
                       )}
                     </div>
+                    <RoomStayTimeline
+                      retreat={{ startDate: data.startDate, endDate: data.endDate }}
+                      occupants={room.occupants}
+                    />
                     <div className="my-3">
                       {room.occupants.map(person)}
                       {room.externalOccupants.map((p: any) => (
@@ -532,6 +538,46 @@ export default function RetreatRoomsTab({ retreatId }: { retreatId: string }) {
               ))}
             </select>
           </label>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <button
+              type="button"
+              className="border rounded px-2 py-1"
+              onClick={() =>
+                update({
+                  roomStayStart: String(data.startDate).slice(0, 10),
+                  roomStayEnd: String(data.endDate).slice(0, 10),
+                })
+              }
+            >
+              Full stay
+            </button>
+            <button
+              type="button"
+              className="border rounded px-2 py-1"
+              onClick={() => {
+                const midpoint = addNights(
+                  data.startDate,
+                  Math.floor(nightsBetween(data.startDate, data.endDate) / 2),
+                );
+                update({ roomStayStart: String(data.startDate).slice(0, 10), roomStayEnd: midpoint });
+              }}
+            >
+              First half
+            </button>
+            <button
+              type="button"
+              className="border rounded px-2 py-1"
+              onClick={() => {
+                const midpoint = addNights(
+                  data.startDate,
+                  Math.floor(nightsBetween(data.startDate, data.endDate) / 2),
+                );
+                update({ roomStayStart: midpoint, roomStayEnd: String(data.endDate).slice(0, 10) });
+              }}
+            >
+              Second half
+            </button>
+          </div>
           <div className="flex flex-wrap gap-4">
             <label>
               Room arrival
@@ -556,6 +602,10 @@ export default function RetreatRoomsTab({ retreatId }: { retreatId: string }) {
               />
             </label>
           </div>
+          <RoomStayTimeline
+            retreat={{ startDate: data.startDate, endDate: data.endDate }}
+            occupants={[{ _id: "preview", name: edit.name, roomStayStart: edit.roomStayStart, roomStayEnd: edit.roomStayEnd }]}
+          />
           <label className="block">
             Override price adjustment (optional)
             <input

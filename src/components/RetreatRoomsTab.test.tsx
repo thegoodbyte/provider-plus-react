@@ -116,3 +116,37 @@ it("shows server conflict errors without claiming success", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("no free beds");
   expect(screen.queryByText("Confirm room change")).not.toBeInTheDocument();
 });
+
+describe("PPVC-727: room stay timeline for split-booster bookings", () => {
+  const boosterOne = { ...person, _id: "booster-1", name: "First Booster", roomStayStart: "2026-10-01", roomStayEnd: "2026-10-04" };
+  const boosterTwo = { ...person, _id: "booster-2", name: "Second Booster", roomStayStart: "2026-10-04", roomStayEnd: "2026-10-10" };
+  const splitData = {
+    ...data,
+    rooms: [{ ...data.rooms[0], occupants: [boosterOne, boosterTwo] }],
+    unassigned: [],
+  };
+
+  beforeEach(() => {
+    (roomInventoryApi.view as jest.Mock).mockResolvedValue({ data: splitData });
+  });
+
+  it("shows both boosters in the existing bed-slot grid and in the new timeline, side by side", async () => {
+    mount();
+    await screen.findByTitle("First Booster · 3 nights");
+    expect(screen.getAllByText("First Booster").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Room 1 bed places")).toBeInTheDocument();
+    const timeline = screen.getByLabelText("Room stay timeline");
+    expect(timeline).toBeInTheDocument();
+    expect(screen.getByTitle("First Booster · 3 nights")).toBeInTheDocument();
+    expect(screen.getByTitle("Second Booster · 6 nights")).toBeInTheDocument();
+  });
+
+  it("the edit panel's quick-pick buttons update the date inputs and the live preview bar", async () => {
+    mount();
+    fireEvent.click((await screen.findAllByText("Move / change"))[0]);
+    fireEvent.click(screen.getByText("First half"));
+    expect(screen.getByLabelText("Room arrival")).toHaveValue("2026-10-01");
+    expect(screen.getByLabelText("Room departure")).toHaveValue("2026-10-05");
+    expect(screen.getByTitle("First Booster · 4 nights")).toBeInTheDocument();
+  });
+});
