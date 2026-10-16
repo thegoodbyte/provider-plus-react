@@ -230,6 +230,7 @@ const PaymentsPage: React.FC = () => {
           <p className="text-sm text-gray-600">Manage client payments and invoice settlement records</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link to="/admin/payments/scratchpad" className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">Scratchpad</Link>
           <button onClick={() => navigate('/admin/payments/receipts')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">Receipts</button>
           <button onClick={() => navigate('/admin/payments/joint/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-blue-600 bg-white px-4 py-2 text-blue-700 hover:bg-blue-50"><Icon icon={FiPlus} className="w-4 h-4" />Joint / Split Payment</button>
           <button onClick={() => navigate('/admin/payments/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"><Icon icon={FiPlus} className="w-4 h-4" />Add Payment</button>

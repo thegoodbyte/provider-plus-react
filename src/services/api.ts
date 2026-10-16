@@ -502,6 +502,31 @@ export const retreatExpensesApi = {
   autoGenerateHouseCost: (retreatId: string) => api.post<RetreatExpense>(`/retreat-expenses/retreat/${retreatId}/auto-generate-house-cost`, {}),
 };
 
+export interface ScratchpadReceipt {
+  _id: string; revision: number; receivedDate: string; amount: string; amountMinor: number;
+  currency: string; provider: string; account: string; payer?: string; externalId?: string;
+  reference?: string; requestNumber?: string; notes?: string; status: 'unassigned' | 'converted' | 'excluded';
+  paymentId?: string; payment?: any; paymentMissing?: boolean; reconciliationPending?: boolean;
+  reconciliationError?: string; reconciliation?: any; history?: Array<{ action: string; actor: string; at: string; before?: any; after?: any }>;
+}
+export interface ScratchpadSnapshot {
+  items: ScratchpadReceipt[]; total: number; page: number; limit: number; refreshedAt: string;
+  totals: Array<{ currency: string; status: string; count: number; amount: string }>;
+}
+export const scratchpadApi = {
+  list: (params: Record<string, string | number>) => api.get<ScratchpadSnapshot>('/payment-scratchpad', { params, suppressGlobalError: true } as ReadOptions),
+  detail: (id: string) => api.get<ScratchpadReceipt>(`/payment-scratchpad/${id}`),
+  create: (data: any) => api.post<ScratchpadReceipt & { possibleDuplicates?: any[]; alreadyRecorded?: boolean }>('/payment-scratchpad', data),
+  edit: (id: string, data: any) => api.patch<ScratchpadReceipt>(`/payment-scratchpad/${id}`, data),
+  state: (id: string, data: any) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/state`, data),
+  candidates: (id: string) => api.get<{ payments: any[]; requests: any[] }>(`/payment-scratchpad/${id}/candidates`),
+  reconcile: (id: string, data: any) => {
+    cacheService.clearPattern('payments:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');
+    invalidateBookingRequirements();
+    return api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/reconcile`, data);
+  },
+};
+
 export const paymentsApi = {
   getPlanSettings: () => api.get('/payments/plan-settings'),
   savePlanSettings: (data: any) => api.patch('/payments/plan-settings', data),

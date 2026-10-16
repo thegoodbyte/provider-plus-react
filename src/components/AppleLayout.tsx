@@ -44,6 +44,7 @@ import BookingDocumentTypesPage from './BookingDocumentTypesPage';
 import FlowTaskInboxPage from './FlowTaskInboxPage';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
+import PaymentScratchpadPage from './PaymentScratchpadPage';
 import PaymentEditorPage from './PaymentEditorPage';
 import JointPaymentEditorPage from './JointPaymentEditorPage';
 import PaymentReceiptsPage from './PaymentReceiptsPage';
@@ -234,6 +235,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'reminders') return 'reminders';
     if (route === 'contact-book') return 'contact-book';
     if (route === 'referrals') return 'referrals';
+    if (route === 'payments' && pathSegments.includes('scratchpad')) return 'payment-scratchpad';
     if (route === 'payments' && pathSegments.includes('receipts')) return 'payment-receipts';
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
@@ -403,6 +405,7 @@ const AppleLayout: React.FC = () => {
       houses: 'retreat/houses',
       'booster-offers': 'retreat/booster-offers',
       'payment-receipts': 'payments/receipts',
+      'payment-scratchpad': 'payments/scratchpad',
     };
     navigate(`/${prefix}/${retreatSectionRoutes[item] || item}`);
     setSidebarOpen(false);
@@ -782,6 +785,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical" element={<MedicalGrid />} />
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="payments" element={<PaymentsPage />} />
+                      <Route path="payments/scratchpad" element={<PaymentScratchpadPage />} />
                       <Route path="payments/new" element={<PaymentEditorPage />} />
                       <Route path="payments/joint/new" element={<JointPaymentEditorPage />} />
                       <Route path="payments/receipts" element={<PaymentReceiptsPage />} />
@@ -1075,6 +1079,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/bookings/:bookingId/edit" element={<ProtectedRoute><BookingEditorPage mode="edit" /></ProtectedRoute>} />
                 <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
+                <Route path="/payments/scratchpad" element={<ProtectedRoute><PaymentScratchpadPage /></ProtectedRoute>} />
                 <Route path="/payments/:id" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/:id/edit" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/joint/new" element={<ProtectedRoute><JointPaymentEditorPage /></ProtectedRoute>} />

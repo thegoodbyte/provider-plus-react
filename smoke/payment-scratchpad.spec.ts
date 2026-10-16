@@ -1,0 +1,103 @@
+import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+const fixture = JSON.parse(readFileSync('/tmp/ppvc830-fixture.json','utf8'));
+
+test.use({ screenshot:'only-on-failure', trace:'retain-on-failure' });
+for (const device of ['desktop','mobile']) test.describe(`Scratchpad ${device}`, () => {
+  test.use({ viewport: device === 'mobile' ? {width:390,height:844} : {width:1365,height:1000}, timezoneId:'America/Los_Angeles' });
+  test.beforeEach(async ({page,baseURL}) => {
+    page.on('pageerror', error=>console.log('PAGE ERROR',error.stack));
+    page.on('console', msg=>{if(msg.type()==='error')console.log('BROWSER ERROR',msg.text());});
+    await page.addInitScript(({token})=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',email:'scratchpad@example.invalid',role:'admin',firstName:'Synthetic',lastName:'Admin'}));},{token:fixture.token});
+    await page.route('**/*',async route=>{
+      const url=new URL(route.request().url());
+      if(url.origin === new URL(baseURL!).origin) return route.continue();
+      const path=url.pathname.replace(/^\/api/,'');
+      if(path.startsWith('/payment-scratchpad') || ['/clients','/bookings','/payments/requests','/payment-requests'].includes(path)) {
+        const response=await route.fetch({url:`${fixture.url}${path === '/payment-requests' ? '/payments/requests' : path}${url.search}`}); return route.fulfill({response});
+      }
+      if(path==='/environment/status')return route.fulfill({json:{production:true}});
+      if(path==='/auth/verify')return route.fulfill({json:{id:'synthetic-admin',role:'admin'}});
+      if(path==='/launcher-config')return route.fulfill({json:{assignments:[]}});
+      if(path==='/assistant/tasks-for-today')return route.fulfill({json:{tasks:[],retreats:[]}});
+      return route.fulfill({json:[]});
+    });
+  });
+  test('capture, reload, edit, exclude/restore and convert through the real isolated API',async({page})=>{
+    const marker=`Browser-${device}-${Date.now()}`;
+    await page.goto('/admin/payments/scratchpad');
+    await expect(page.getByRole('heading',{name:'Payment scratchpad',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Record received money'}).click();
+    await page.getByLabel('Received date',{exact:true}).fill('2026-10-16');
+    await page.getByLabel('Amount received').fill('5100.00');
+    await page.getByLabel('Receiving account / wallet').fill('Synthetic ČSOB PLN');
+    await page.getByLabel('Payer name (optional)').fill(marker);
+    await page.getByLabel('External transaction ID (optional)').fill(marker);
+    await page.getByLabel('Payment request number (optional)').fill('001243');
+    await page.getByRole('button',{name:'Save receipt',exact:true}).click();
+    await expect(page.getByText('Receipt saved. No payment or balance was changed.')).toBeVisible();
+    await expect(page.getByRole('region',{name:'Receipt details'}).getByText(/^Reference:.*Request hint: 001243/)).toBeVisible();
+    await page.getByRole('button',{name:'Close details'}).click();
+    await page.getByLabel('Search payer, reference, transaction or request number').fill(marker);
+    await expect(page.getByText('1 matching receipts',{exact:false})).toBeVisible();
+    await page.reload();
+    await page.getByLabel('Search payer, reference, transaction or request number').fill(marker);
+    await page.getByRole('button',{name:'Manage receipt',exact:true}).click();
+    await page.getByRole('button',{name:'Edit receipt',exact:true}).click();
+    await page.getByLabel('Notes (optional)').fill('Synthetic edited note');
+    await page.getByRole('button',{name:'Save receipt',exact:true}).click();
+    await expect(page.getByRole('button',{name:'Edit receipt',exact:true})).toBeVisible();
+    await page.getByLabel('Reason for exclusion / restore').fill('Check a possible duplicate');
+    await page.getByRole('button',{name:'Exclude receipt',exact:true}).click();
+    await expect(page.getByRole('button',{name:'Restore receipt',exact:true})).toBeVisible();
+    await page.getByLabel('Reason for exclusion / restore').fill('Original transaction verified');
+    await page.getByRole('button',{name:'Restore receipt',exact:true}).click();
+    await expect(page.getByRole('heading',{name:'Match this receipt'})).toBeVisible();
+    await page.getByLabel('Payment request (optional)',{exact:true}).selectOption(fixture.requestId);
+    await expect(page.getByLabel('Reconciliation client')).toHaveValue('#1501 Synthetic Payer');
+    await page.getByLabel('I reviewed the receipt and selected relationships.').check();
+    await page.getByRole('button',{name:'Confirm conversion',exact:true}).click();
+    await expect(page.getByText('Reconciled receipt. Financial fields are locked.')).toBeVisible();
+    await expect(page.getByRole('link',{name:'View booking',exact:true})).toHaveAttribute('href',`/admin/bookings/${fixture.bookingId}`);
+    await page.getByText(/Receipt history/).click();
+    await expect(page.getByText('Saved Notes: Synthetic edited note')).toBeVisible();
+    await page.screenshot({path:`test-results/ppvc830-${device}.png`,fullPage:true});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole('button',{name:'Close details'}).click();
+    await page.getByLabel('Receipt status').selectOption('converted');
+    await expect(page.getByText('1 matching receipts',{exact:false})).toBeVisible();
+    await page.reload();
+    await page.getByLabel('Search payer, reference, transaction or request number').fill(marker);
+    await page.getByLabel('Receipt status').selectOption('converted');
+    await page.getByRole('button',{name:'Manage receipt',exact:true}).click();
+    await expect(page.getByText('Reconciled receipt. Financial fields are locked.')).toBeVisible();
+  });
+  test('a lost capture response retries the same real receipt; a failed refresh keeps the last snapshot',async({page})=>{
+    const marker=`Retry-${device}-${Date.now()}`;
+    await page.goto('/admin/payments/scratchpad');
+    await page.getByRole('button',{name:'Record received money'}).click();
+    await page.getByLabel('Received date',{exact:true}).fill('2026-10-16');
+    await page.getByLabel('Amount received').fill('20.15');
+    await page.getByRole('combobox',{name:'Currency',exact:true}).selectOption('USD');
+    await page.getByRole('combobox',{name:'Provider',exact:true}).selectOption('revolut');
+    await page.getByLabel('Receiving account / wallet').fill('Synthetic USD wallet');
+    await page.getByLabel('Payer name (optional)').fill(marker);
+    let lose=true;
+    await page.route('**/payment-scratchpad',async route=>{
+      if(route.request().method()==='POST'&&lose){lose=false;await route.fetch({url:`${fixture.url}/payment-scratchpad`});return route.fulfill({status:503,json:{message:'Synthetic lost response. Retry safely.'}});}return route.fallback();
+    });
+    await page.getByRole('button',{name:'Save receipt',exact:true}).click();
+    await expect(page.getByText('Synthetic lost response. Retry safely.')).toBeVisible();
+    await expect(page.getByLabel('Amount received')).toHaveValue('20.15');
+    await page.getByRole('button',{name:'Save receipt',exact:true}).click();
+    await expect(page.getByText('This receipt was already recorded. No duplicate was created.')).toBeVisible();
+    await page.getByRole('button',{name:'Close details'}).click();
+    await page.getByLabel('Search payer, reference, transaction or request number').fill(marker);
+    await expect(page.getByText('1 matching receipts',{exact:false})).toBeVisible();
+    await page.route('**/payment-scratchpad?**',route=>route.fulfill({status:503,json:{message:'Synthetic refresh failure'}}));
+    await page.getByRole('button',{name:'Refresh',exact:true}).click();
+    await expect(page.getByText(/Previous snapshot shown below/)).toBeVisible();
+    await expect(page.getByText(/Last successful refresh/)).toBeVisible();
+    await expect(page.getByText(marker,{exact:false})).toBeVisible();
+  });
+});

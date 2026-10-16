@@ -103,6 +103,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiCreditCard,
     items: [
       { id: 'payments', label: NAVIGATION['payments'].label, Icon: Fi.FiCreditCard },
+      { id: 'payment-scratchpad', label: 'Scratchpad', Icon: Fi.FiEdit3 },
       { id: 'payment-receipts', label: 'Receipts', Icon: Fi.FiFileText },
       { id: 'payment-requests', label: NAVIGATION['payment-requests'].label, Icon: Fi.FiFileText },
       { id: 'revolut-payment-links', label: 'Revolut Links', Icon: Fi.FiLink },
