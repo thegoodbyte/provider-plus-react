@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Client, ClientMedical, ClientRequirement, PaymentRequest, Reminder } from '../types';
-import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi, notesApi, paymentRequestsApi } from '../services/api';
+import { Client, ClientMedical, ClientRequirement, Payment, PaymentRequest, Reminder } from '../types';
+import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi, notesApi, paymentRequestsApi, paymentsApi } from '../services/api';
 import MedicalTrackingTab from './MedicalTrackingTab';
 import ComprehensiveMedicalTrackingTab from './ComprehensiveMedicalTrackingTab';
 import ClientCeremoniesTab from './ClientCeremoniesTab';
@@ -33,6 +33,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [clientBookings, setClientBookings] = useState<any[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -131,6 +132,16 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       } catch (paymentRequestError) {
         console.error('Error fetching payment requests:', paymentRequestError);
         setPaymentRequests([]);
+      }
+
+      // PPVC-7: the payments tab previously showed only payment requests
+      // (invoices), never the client's actual recorded payments.
+      try {
+        const paymentsResponse = await paymentsApi.getByClient(clientId);
+        setPayments(paymentsResponse.data || []);
+      } catch (paymentsError) {
+        console.error('Error fetching payments:', paymentsError);
+        setPayments([]);
       }
 
       // Set first retreat as selected by default
@@ -1134,6 +1145,50 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
         {activeTab === 'payments' && (
           <div className="payments-tab">
+            <div className="info-card" style={{ marginBottom: '20px' }}>
+              <h3>💰 Payments</h3>
+              <p style={{ margin: '4px 0 16px', color: '#6b7280' }}>
+                Payments actually recorded for this client, with the booking each one belongs to.
+              </p>
+              {payments.length === 0 ? (
+                <div className="no-medical-records">
+                  <p>No payments recorded yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {payments.map((payment) => {
+                    const retreat = typeof payment.retreatId === 'object' ? payment.retreatId as any : undefined;
+                    const booking = typeof payment.bookingId === 'object' ? payment.bookingId as any : undefined;
+                    const bookingLabel = retreat?.retreatCode || retreat?.code || retreat?.name;
+                    return (
+                      <div key={payment._id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                          <div>
+                            <strong>{payment.amount} {payment.currency}</strong>
+                            <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>
+                              {formatCalendarDate(payment.paymentDate)} · {payment.paymentType} · {payment.paymentMethod} · {payment.status}
+                            </div>
+                            {bookingLabel && (
+                              <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>
+                                Booking: {bookingLabel}{booking?.bookingNumber ? ` #${booking.bookingNumber}` : ''}
+                              </div>
+                            )}
+                          </div>
+                          {booking?._id && (
+                            <button
+                              onClick={() => navigate(`/admin/bookings/${booking._id}`)}
+                              style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer' }}
+                            >
+                              View booking
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <div className="info-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <div>
