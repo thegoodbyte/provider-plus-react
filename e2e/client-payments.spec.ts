@@ -43,6 +43,9 @@ async function mockApi(page: Page, existing = false) {
     if (path.endsWith('/requirements')) data = { items: [], requirements: [], artifacts: [], documents: [], reviews: [] };
     if (path.includes('/payment-plan')) data = null;
     if (path === '/users/navigation-permissions' || path.includes('config-summary')) data = {};
+    // PPVC-829: without this, EnvironmentBanner previously crashed the
+    // whole app shell on the unmatched-route `[]` fallback above.
+    if (path === '/environment/status') data = { production: true };
     return route.fulfill({ json: data });
   });
   return state;
