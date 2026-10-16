@@ -16,10 +16,13 @@ jest.mock('../context/AuthContext', () => ({
   useAuth: jest.fn(),
 }));
 
+jest.mock('../services/taskService', () => ({ taskService: { getTasks: jest.fn(), createTask: jest.fn(), updateTask: jest.fn(), deleteTask: jest.fn(), completeTask: jest.fn(), seedRetreatDayPlan: jest.fn() } }));
+
 const mockedClientsApi = clientsApi as jest.Mocked<typeof clientsApi>;
 const mockedReferralsApi = referralsApi as jest.Mocked<typeof referralsApi>;
 const mockedScreeningApi = screeningApi as jest.Mocked<typeof screeningApi>;
 const mockedUseAuth = useAuth as jest.Mock;
+const mockedTaskService = (jest.requireMock('../services/taskService') as any).taskService;
 
 const client = {
   _id: 'client-1', firstName: 'Eva', lastName: 'Novak', display_id: 501, phone: '+420777123456',
@@ -46,6 +49,17 @@ describe('ClientScreening referral capture', () => {
     } as any);
     mockedScreeningApi.create.mockResolvedValue({ data: {} } as any);
     mockedUseAuth.mockReturnValue({ user: { role: 'admin' } });
+    mockedTaskService.getTasks.mockResolvedValue([]);
+  });
+
+  // PPVC-20: a way to add quick tasks while screening a client, without
+  // leaving the screening page.
+  it('PPVC-20: shows a quick-tasks widget scoped to this client at the bottom of the screening page', async () => {
+    renderPage();
+    await screen.findByDisplayValue('Eva');
+    expect(await screen.findByText(/Quick Tasks/)).toBeInTheDocument();
+    expect(mockedTaskService.getTasks).toHaveBeenCalledWith({ clientId: 'client-1' });
+    expect(screen.getByRole('button', { name: /Add Task/ })).toBeInTheDocument();
   });
 
   it('uses the shared ClientReferralFields component (searchable referral + friend capture) instead of a plain select', async () => {
