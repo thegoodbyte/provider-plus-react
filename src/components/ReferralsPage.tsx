@@ -9,6 +9,7 @@ import ReferralEditorPage from './ReferralEditorPage';
 import ReferralCommissionsPage from './ReferralCommissionsPage';
 import ReferralPaymentHistory from './ReferralPaymentHistory';
 import { ReferralPortalAccountEditor } from './ReferralPortalAccountEditor';
+import ReferralNotificationSettingsPage from './ReferralNotificationSettingsPage';
 
 const money = (amount: number, currency: string) => new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount || 0);
 const action = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:border-emerald-500 hover:text-emerald-800';
@@ -21,7 +22,7 @@ export default function ReferralsPage() {
   const navigate = useNavigate();
   const base = location.pathname.startsWith('/admin/') ? '/admin/referrals' : '/referrals';
   const parts = location.pathname.slice(base.length).split('/').filter(Boolean);
-  const mode = parts[0] === 'new' ? 'new' : parts[0] === 'commissions' ? 'commissions' : parts[0] === 'payments' ? 'payments' : parts[0] ? parts[1] === 'edit' ? 'edit' : parts[1] === 'access' ? 'access' : 'overview' : 'partners';
+  const mode = parts[0] === 'new' ? 'new' : parts[0] === 'commissions' ? 'commissions' : parts[0] === 'payments' ? 'payments' : parts[0] === 'notification-settings' ? 'notification-settings' : parts[0] ? parts[1] === 'edit' ? 'edit' : parts[1] === 'access' ? 'access' : 'overview' : 'partners';
   const partnerId = ['overview', 'edit', 'access'].includes(mode) ? parts[0] : '';
   const needsReport = ['partners', 'overview', 'commissions'].includes(mode);
   const [partners, setPartners] = useState<Referral[]>([]);
@@ -55,8 +56,8 @@ export default function ReferralsPage() {
     return <Navigate replace to={`${base}/${legacy.get('view') === 'payments' ? 'payments' : 'commissions'}${next.toString() ? `?${next}` : ''}`} />;
   }
   const scopedPartner = partnerId || legacy.get('referralId') || '';
-  const title = mode === 'partners' ? 'Referral partners' : mode === 'new' ? 'Add referral partner' : mode === 'edit' ? `Edit ${partner?.name || 'referral partner'}` : mode === 'commissions' ? 'Commissions' : mode === 'payments' ? 'Payment history' : mode === 'access' ? 'Portal access' : partner?.name || 'Referral partner';
-  const subtitle = mode === 'partners' ? 'Your partner directory. Open a partner to see their bookings, agreement and payments.' : mode === 'commissions' ? 'Review referred bookings and record commissions already paid.' : mode === 'payments' ? 'Find recorded payments, linked expenses and corrections.' : mode === 'new' || mode === 'edit' ? 'Partner details and commission settings, with clear save controls.' : mode === 'access' ? `Manage the separate referral portal login for ${partner?.name || 'this partner'}.` : 'Everything you need to know about this referral partner.';
+  const title = mode === 'partners' ? 'Referral partners' : mode === 'new' ? 'Add referral partner' : mode === 'edit' ? `Edit ${partner?.name || 'referral partner'}` : mode === 'commissions' ? 'Commissions' : mode === 'payments' ? 'Payment history' : mode === 'access' ? 'Portal access' : mode === 'notification-settings' ? 'Notification settings' : partner?.name || 'Referral partner';
+  const subtitle = mode === 'partners' ? 'Your partner directory. Open a partner to see their bookings, agreement and payments.' : mode === 'commissions' ? 'Review referred bookings and record commissions already paid.' : mode === 'payments' ? 'Find recorded payments, linked expenses and corrections.' : mode === 'new' || mode === 'edit' ? 'Partner details and commission settings, with clear save controls.' : mode === 'access' ? `Manage the separate referral portal login for ${partner?.name || 'this partner'}.` : mode === 'notification-settings' ? 'Control which partners receive assignment emails, and in what language.' : 'Everything you need to know about this referral partner.';
   const deletePartner = async () => {
     if (!partner?._id || !window.confirm(`Delete referral “${partner.name}”?`)) return;
     setDeleting(true);
@@ -71,7 +72,7 @@ export default function ReferralsPage() {
       {mode === 'overview' && partner && <Link to={`${base}/${partnerId}/edit`} className={primary} aria-label={`Edit ${partner.name}`}><Pencil size={17} />Edit partner</Link>}
     </header>
     {mode !== 'new' && mode !== 'edit' && <nav aria-label="Referral screens" className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
-      {[['partners', base, 'Partners'], ['commissions', `${base}/commissions`, 'Commissions and clients'], ['payments', `${base}/payments`, 'Payment history']].map(([key, to, label]) => <Link key={key} to={key !== 'partners' && scopedPartner ? `${to}?referralId=${encodeURIComponent(scopedPartner)}` : to} aria-current={mode === key ? 'page' : undefined} className={`${action} ${mode === key ? 'border-emerald-800 bg-emerald-50 text-emerald-900' : ''}`}>{label}</Link>)}
+      {[['partners', base, 'Partners'], ['commissions', `${base}/commissions`, 'Commissions and clients'], ['payments', `${base}/payments`, 'Payment history'], ['notification-settings', `${base}/notification-settings`, 'Notification settings']].map(([key, to, label]) => <Link key={key} to={key !== 'partners' && key !== 'notification-settings' && scopedPartner ? `${to}?referralId=${encodeURIComponent(scopedPartner)}` : to} aria-current={mode === key ? 'page' : undefined} className={`${action} ${mode === key ? 'border-emerald-800 bg-emerald-50 text-emerald-900' : ''}`}>{label}</Link>)}
       <Link to={`${base.replace(/\/referrals$/, '')}/retreats?view=referrals`} className={`${action} sm:ml-auto`}>Holistic Retreats View<ArrowUpRight size={16} /></Link>
     </nav>}
     {error && <div role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">{error}<button type="button" className="ml-3 font-semibold underline" onClick={() => void load()}>Retry</button></div>}
@@ -100,6 +101,7 @@ export default function ReferralsPage() {
         {(mode === 'new' || mode === 'edit') && (mode === 'new' || partner ? <ReferralEditorPage key={partnerId || 'new'} referral={partner} base={base} onSaved={load} /> : <MissingPartner base={base} />)}
         {mode === 'commissions' && <ReferralCommissionsPage rows={partners} report={report} loading={loading} base={base} onChanged={load} />}
         {mode === 'payments' && <ReferralPaymentHistory prefix={base.replace(/\/referrals$/, '')} initialReferral={new URLSearchParams(location.search).get('referralId') || ''} onChanged={load} />}
+        {mode === 'notification-settings' && <ReferralNotificationSettingsPage partners={partners} onPartnerSaved={load} />}
         {(mode === 'overview' || mode === 'access') && (partner ? <>
           <Link to={base} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-slate-600"><ArrowLeft size={16} />All partners</Link>
           {mode === 'access' ? <div className="max-w-3xl"><Link to={`${base}/${partnerId}`} className={`${action} mb-4`}>Back to partner</Link><ReferralPortalAccountEditor key={partnerId} referralId={partnerId} defaultEmail={partner.email || ''} /></div> : <>

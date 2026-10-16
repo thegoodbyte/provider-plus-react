@@ -11,7 +11,7 @@ import { datePackageEditorState, prepareDatePackages } from './referralDatePacka
 
 export default function ReferralEditorPage({ referral, base, onSaved }: { referral?: Referral; base: string; onSaved: () => Promise<void> }) {
   const navigate = useNavigate(); const location = useLocation(); const editingId = referral?._id || '';
-  const [form, updateForm] = useState(() => ({ payoutCurrency: referral?.payoutCurrency ?? (referral ? '' : 'USD'), name: referral?.name || '', referralCode: referral?.referralCode || '', email: referral?.email || '', phone: referral?.phone || '', notes: referral?.notes || '', isActive: referral?.isActive !== false, allowRepeatBookingCredit: referral?.allowRepeatBookingCredit !== false, assignmentNotificationsEnabled: referral?.assignmentNotificationsEnabled === true, assignmentNotificationLanguage: referral?.assignmentNotificationLanguage || 'en' }));
+  const [form, updateForm] = useState(() => ({ payoutCurrency: referral?.payoutCurrency ?? (referral ? '' : 'USD'), name: referral?.name || '', referralCode: referral?.referralCode || '', email: referral?.email || '', phone: referral?.phone || '', notes: referral?.notes || '', isActive: referral?.isActive !== false, allowRepeatBookingCredit: referral?.allowRepeatBookingCredit !== false }));
   const [agreement, setAgreement] = useState(() => datePackageEditorState(referral));
   const [customPackages, setCustomPackages] = useState(() => referral?.commissionMode !== 'dated_percentage' ? (referral?.commissionPackages || []) : []);
   const [mode, setMode] = useState<'dated' | 'custom'>(() => agreement.blocked ? 'custom' : 'dated');
@@ -64,12 +64,7 @@ export default function ReferralEditorPage({ referral, base, onSaved }: { referr
         </>}
         <textarea aria-label="Partner notes" placeholder="Notes" className="min-h-20 w-full rounded-lg border border-slate-300 p-3" value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} />
         <div className="my-3 flex flex-wrap gap-4"><label className="flex items-center gap-2"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} />Active</label><label className="flex items-center gap-2"><input type="checkbox" checked={form.allowRepeatBookingCredit} onChange={event => setForm({ ...form, allowRepeatBookingCredit: event.target.checked })} />Allow explicitly credited repeat bookings</label></div>
-        <section aria-label="Assignment email settings" className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <h3 className="font-semibold">Referral assignment emails</h3>
-          <label className="mt-3 flex items-center gap-2"><input type="checkbox" checked={form.assignmentNotificationsEnabled} onChange={event => setForm({ ...form, assignmentNotificationsEnabled: event.target.checked })} />Notify this partner when a client is assigned</label>
-          <label className="mt-3 block text-sm">Notification language<select className="ml-3 rounded-lg border border-slate-300 bg-white p-2" value={form.assignmentNotificationLanguage} onChange={event => setForm({ ...form, assignmentNotificationLanguage: event.target.value })}><option value="en">English</option><option value="cz">Czech</option><option value="pl">Polish</option><option value="ru">Russian</option></select></label>
-          <p className="mt-3 text-sm text-slate-600">Applies to new signups and saved referral changes. Uses the partner portal email, or contact email if there is no portal account. A matching active referral_assignment template is required in Communications.</p>
-        </section>
+        <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Assignment email notifications for this partner are managed in <a className="font-semibold text-blue-700 underline" href={`${base}/notification-settings`}>Referral notification settings</a>, alongside every other partner.</p>
         <div className="sticky bottom-0 z-10 mt-4 border-t border-slate-200 bg-white py-3">
           {error && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           {savedMessage && <p role="status" className="mb-3 text-sm font-semibold text-emerald-700">{savedMessage}</p>}

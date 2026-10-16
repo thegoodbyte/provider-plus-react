@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import ReferralsPage from './ReferralsPage';
 import { api, referralsApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ api: { get: jest.fn().mockResolvedValue({ data: null }), put: jest.fn().mockResolvedValue({ data: {} }) }, referralsApi: { getAssignmentNotifications: jest.fn(), getAll: jest.fn(), getReport: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), createPayout: jest.fn(), getPayouts: jest.fn() } }));
+jest.mock('../services/api', () => ({ api: { get: jest.fn().mockResolvedValue({ data: null }), put: jest.fn().mockResolvedValue({ data: {} }) }, referralsApi: { getAssignmentNotifications: jest.fn(), getNotificationSettings: jest.fn(), updateNotificationSettings: jest.fn(), getAll: jest.fn(), getReport: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), createPayout: jest.fn(), getPayouts: jest.fn() } }));
 
 const partner = { _id: 'r1', name: 'Ada Partners', referralCode: 'AP', defaultCommissionPercentage: 10, email: 'ada@example.com', isActive: true };
 const row = (overrides: any = {}) => ({ bookingId: 'b1', bookingNumber: 101, clientId: 'c1', clientDisplayId: 501, clientName: 'Eva Novak', clientEmail: 'eva@example.com', referralId: 'r1', referralName: 'Ada Partners', referralCode: 'AP', retreatId: 't1', retreatCode: 'SEP-26', commissionPercentage: 10, amountOwed: 450, owedCurrency: 'EUR', paid: false, ...overrides });
@@ -15,6 +15,8 @@ describe('ReferralsPage payout workflow', () => {
     (api.get as jest.Mock).mockResolvedValue({ data: null });
     (api.put as jest.Mock).mockResolvedValue({ data: {} });
     (referralsApi.getAssignmentNotifications as jest.Mock).mockResolvedValue({ data: [] });
+    (referralsApi.getNotificationSettings as jest.Mock).mockResolvedValue({ data: { assignmentNotificationsEnabled: false } });
+    (referralsApi.updateNotificationSettings as jest.Mock).mockImplementation((body: any) => Promise.resolve({ data: body }));
     (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [partner] });
     (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [row(), row({ bookingId: 'b2', bookingNumber: 102, clientName: 'Jan Kowalski', amountOwed: 300 })] });
     (referralsApi.create as jest.Mock).mockResolvedValue({ data: partner });
@@ -298,4 +300,37 @@ describe('ReferralsPage payout workflow', () => {
     expect(referralsApi.update).not.toHaveBeenCalled();
   });
 
+  describe('PPVC-826: referral notification settings', () => {
+    it('shows the global switch and a per-partner override table, and saves each independently', async () => {
+      view('/admin/referrals/notification-settings');
+      await screen.findByRole('heading', { name: 'Notification settings' });
+      const globalSwitch = await screen.findByLabelText('Send assignment notification emails');
+      expect(globalSwitch).not.toBeChecked();
+      fireEvent.click(globalSwitch);
+      await waitFor(() => expect(referralsApi.updateNotificationSettings).toHaveBeenCalledWith({ assignmentNotificationsEnabled: true }));
+
+      const partnerSwitch = screen.getByLabelText('Notify Ada Partners on assignment');
+      expect(partnerSwitch).not.toBeChecked();
+      fireEvent.click(partnerSwitch);
+      await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', { assignmentNotificationsEnabled: true }));
+
+      fireEvent.change(screen.getByLabelText('Notification language for Ada Partners'), { target: { value: 'pl' } });
+      await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', { assignmentNotificationLanguage: 'pl' }));
+    });
+
+    it('no longer shows the per-partner toggle inline on the partner edit form, linking to the consolidated page instead', async () => {
+      view('/admin/referrals/r1/edit');
+      await screen.findByRole('heading', { name: 'Edit Ada Partners' });
+      expect(screen.queryByText('Referral assignment emails')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Notify this partner when a client is assigned')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Referral notification settings' })).toHaveAttribute('href', '/admin/referrals/notification-settings');
+    });
+
+    it('is reachable from the referrals nav', async () => {
+      view('/admin/referrals');
+      await screen.findByRole('link', { name: 'Ada Partners' });
+      fireEvent.click(screen.getByRole('link', { name: 'Notification settings' }));
+      await screen.findByRole('heading', { name: 'Notification settings' });
+    });
+  });
 });
