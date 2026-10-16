@@ -40,7 +40,6 @@ export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, 
       const payload: Partial<MedicalReviewRequest> = {
         reviewChannel: 'whatsapp', whatsappAdvisorUserId: advisor, whatsappSentAt: sentAt,
         whatsappStatus: status as 'responded' | 'awaiting_response',
-        advisorDeliveryStatus: 'sent',
         status: status === 'responded' ? statuses[decision as keyof typeof statuses] : 'awaiting_whatsapp',
         ...(status === 'responded' ? {
           whatsappRespondedAt: respondedAt, whatsappDecision: decision as MedicalReviewRequest['whatsappDecision'],

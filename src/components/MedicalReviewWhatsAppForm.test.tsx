@@ -17,6 +17,7 @@ test('records waiting without marking the review approved and returns saved data
   await waitFor(() => expect(onSaved).toHaveBeenCalled());
   expect(update).toHaveBeenCalledWith('mrr1', expect.objectContaining({ whatsappAdvisorUserId: 'advisor1', whatsappStatus: 'awaiting_response', status: 'awaiting_whatsapp' }));
   expect(update.mock.calls[0][1]).not.toHaveProperty('reviewDecision');
+  expect(update.mock.calls[0][1]).not.toHaveProperty('advisorDeliveryStatus');
 });
 
 test.each([['OK', 'approved'], ['NOT OK', 'rejected'], ['caution', 'caution'], ['more_info_needed', 'needs_resubmission'], ['WONT_DO', 'wont_do']])('records advisor result %s as %s', async (decision, status) => {
@@ -26,6 +27,7 @@ test.each([['OK', 'approved'], ['NOT OK', 'rejected'], ['caution', 'caution'], [
   fireEvent.change(screen.getByLabelText('Advisor result'), { target: { value: decision } });
   fireEvent.click(screen.getByText('Save and return to list'));
   await waitFor(() => expect(update).toHaveBeenCalledWith('mrr1', expect.objectContaining({ whatsappStatus: 'responded', whatsappDecision: decision, reviewDecision: decision, status, reviewNotes: 'Advisor response received via WhatsApp' })));
+  expect(update.mock.calls[0][1]).not.toHaveProperty('advisorDeliveryStatus');
 });
 
 test('saves the entered advisor note as the MRR review notes (PPVC-690)', async () => {

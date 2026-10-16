@@ -121,7 +121,7 @@ it('excludes WhatsApp-handled requests from packet pendingCount yellow badge', a
   expect(badge).toHaveTextContent('1');
 });
 
-it('sends status awaiting_whatsapp and advisorDeliveryStatus sent when marking WhatsApp sent', async () => {
+it('sends accepted WhatsApp handoff fields without server-managed delivery status', async () => {
   (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({
     data: [
       { _id: 'r1', display_id: 8001, status: 'pending', reviewChannel: 'internal', assignedToUserId: 'advisor', retreatId: 'retreat' },
@@ -145,6 +145,6 @@ it('sends status awaiting_whatsapp and advisorDeliveryStatus sent when marking W
     reviewChannel: 'whatsapp',
     whatsappStatus: 'awaiting_response',
     status: 'awaiting_whatsapp',
-    advisorDeliveryStatus: 'sent',
   })));
+  expect((medicalReviewRequestsApi.update as jest.Mock).mock.calls.at(-1)[1]).not.toHaveProperty('advisorDeliveryStatus');
 });

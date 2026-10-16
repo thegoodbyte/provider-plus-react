@@ -732,7 +732,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         reviewChannel: 'whatsapp',
         whatsappStatus: 'awaiting_response',
         status: 'awaiting_whatsapp',
-        advisorDeliveryStatus: 'sent',
         whatsappSentAt: sentAt,
         ...(advisorId ? { whatsappAdvisorUserId: advisorId } : {}),
       });
