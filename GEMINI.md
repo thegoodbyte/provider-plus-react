@@ -22,6 +22,8 @@ You (Gemini) are one of three AI coding agents working concurrently on this repo
 
 ## Deployment record ownership
 
+Before reusing a ticket worktree for a release, read its local `DEPLOYMENT_STATUS.md` and `deployment-status.json`, plus the shared workspace `release-ledger.json` and `PUSH_MANIFEST.md`. These receipts cover listed commits only: fetch production and compare newer commits/uncommitted changes before deciding a follow-up is already deployed. The releasing agent regenerates receipts with the workspace `update-ticket-deployment-notes.py` before and after release tracking changes. Keep local receipts out of application commits.
+
 - Whoever actually pushes and deploys writes the final Jira "deployed and verified" comment, `RELEASE_LOG.md` entry, and `release-ledger.json` entry.
 - If you only implemented locally (didn't push), only ever claim "implemented, not pushed." Never imply deployment happened unless you did it and verified it live.
 - If you discover another agent already shipped something you were about to do, don't push a redundant/conflicting version — compare and report the difference instead.

@@ -19,7 +19,7 @@ for(const width of [1440,390])for(const entry of ['editor','details'])test('scre
  await page.goto(entry==='editor'?'/admin/clients/client-1/screening':'/admin/clients/client-1?tab=screening');
  const button=entry==='editor'?page.getByRole('button',{name:'PDF',exact:true}):page.getByRole('button',{name:'View screening PDF',exact:true});
  await button.click();await expect(page.getByTitle('Screening PDF document')).toHaveAttribute('src',/^blob:/);
- const downloadEvent=page.waitForEvent('download');await page.getByRole('link',{name:'Download PDF',exact:true}).click();const download=await downloadEvent;
+ const downloadEvent=page.waitForEvent('download',{predicate:download=>download.suggestedFilename()==='screening.pdf'});await page.getByRole('link',{name:'Download PDF',exact:true}).click();const download=await downloadEvent;
  expect(download.suggestedFilename()).toBe('screening.pdf');const target=testInfo.outputPath('screening.pdf');await download.saveAs(target);expect(await download.failure()).toBeNull();expect(await readFile(target)).toEqual(pdf);
  await page.clock.runFor(2100);
  const stored=await page.evaluate(async()=>{const urls=(window as any).__pdfUrls as string[];const response=await fetch(urls[urls.length-1]);return {ok:response.ok,text:await response.text()};});
@@ -29,5 +29,5 @@ test('screening viewer load failure is visible and the user can retry',async({pa
  await fixture(page,true);await page.goto('/admin/clients/client-1/screening');await page.getByRole('button',{name:'PDF',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Screening PDF'}).getByRole('alert')).toContainText('Could not open the screening PDF.');
  await page.getByRole('button',{name:'Retry',exact:true}).click();await expect(page.getByTitle('Screening PDF document')).toHaveAttribute('src',/^blob:/);
- const done=page.waitForEvent('download');await page.getByRole('link',{name:'Download PDF',exact:true}).click();expect((await done).suggestedFilename()).toBe('screening.pdf');
+ const done=page.waitForEvent('download',{predicate:download=>download.suggestedFilename()==='screening.pdf'});await page.getByRole('link',{name:'Download PDF',exact:true}).click();expect((await done).suggestedFilename()).toBe('screening.pdf');
 });

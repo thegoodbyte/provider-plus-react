@@ -23,6 +23,8 @@ Once you've confirmed a ticket is actually unclaimed and not already done:
 
 ## Deployment record ownership
 
+Before reusing a ticket worktree for a release, read its local `DEPLOYMENT_STATUS.md` and `deployment-status.json`, plus the shared workspace `release-ledger.json` and `PUSH_MANIFEST.md`. These receipts cover listed commits only: fetch production and compare newer commits/uncommitted changes before deciding a follow-up is already deployed. The releasing agent regenerates receipts with the workspace `update-ticket-deployment-notes.py` before and after release tracking changes. Keep local receipts out of application commits.
+
 - **Whoever actually pushes to `origin/production` and deploys is the one who writes the final record**: the "deployed and verified" Jira comment, the `RELEASE_LOG.md` entry, and the `release-ledger.json` entry, with real commit SHAs and deployment IDs.
 - An agent that only implements and commits locally (doesn't push) must only ever claim "implemented, not pushed" state in Jira and in any tracking files it touches. Never write or imply "deployed" unless you personally did the push and verified it live.
 - If you discover another agent already pushed/deployed something you were about to do, don't push a redundant or conflicting version. Check what actually shipped, compare against what you had, and report the difference (if any) rather than silently overwriting it.
