@@ -608,8 +608,8 @@ const CommunicationsPage: React.FC = () => {
         automatedBookingRemindersEnabled: settings?.automatedBookingRemindersEnabled === true,
         clientMedicalSubmittedEmailsEnabled: settings?.clientMedicalSubmittedEmailsEnabled !== false,
         clientMedicalApprovedEmailsEnabled: settings?.clientMedicalApprovedEmailsEnabled !== false,
-        clientMedicalNeedsInfoEmailsEnabled: settings?.clientMedicalNeedsInfoEmailsEnabled === true,
-        clientMedicalDeclinedEmailsEnabled: settings?.clientMedicalDeclinedEmailsEnabled === true,
+        clientMedicalNeedsInfoEmailsEnabled: settings?.clientMedicalNeedsInfoEmailsEnabled !== false,
+        clientMedicalDeclinedEmailsEnabled: settings?.clientMedicalDeclinedEmailsEnabled !== false,
         medicalReviewInternalNotificationsEnabled: settings?.medicalReviewInternalNotificationsEnabled !== false,
         medicalReviewApprovedTemplates: settings?.medicalReviewApprovedTemplates,
         medicalReviewSubmittedTemplates: settings?.medicalReviewSubmittedTemplates,
@@ -907,7 +907,7 @@ const CommunicationsPage: React.FC = () => {
                 ['clientMedicalDeclinedEmailsEnabled', 'Declined emails'],
                 ['medicalReviewInternalNotificationsEnabled', 'Internal RE notifications'],
               ].map(([key, label]) => {
-                const defaultOff = ['clientMedicalNeedsInfoEmailsEnabled', 'clientMedicalDeclinedEmailsEnabled', 'medicalReviewEmailTestMode'].includes(key);
+                const defaultOff = ['medicalReviewEmailTestMode'].includes(key);
                 const checked = defaultOff ? (settings as any)?.[key] === true : (settings as any)?.[key] !== false;
                 return <label key={key} className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium"><input type="checkbox" checked={checked} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), [key]: event.target.checked }))}/>{label}</label>;
               })}

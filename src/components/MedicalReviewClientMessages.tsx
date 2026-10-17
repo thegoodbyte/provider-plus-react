@@ -3,8 +3,17 @@ import { medicalReviewRequestsApi } from '../services/api';
 import { SentEmail } from '../types';
 import { emailLanguageLabel, getSentEmailLanguage } from './emailLanguage';
 
+type SkippedNotification = { decision?: string; reason?: 'master_switch_disabled' | 'decision_type_disabled' | 'no_client_email'; processedAt?: string };
+
+const SKIP_REASON_LABELS: Record<string, string> = {
+  master_switch_disabled: 'client medical-review emails are turned off for all decisions in Settings → Communications',
+  decision_type_disabled: 'client emails for this decision type are turned off in Settings → Communications',
+  no_client_email: 'this client has no email address on file',
+};
+
 export default function MedicalReviewClientMessages({ requestId, refreshKey = 0 }: { requestId: string; refreshKey?: number }) {
   const [messages, setMessages] = useState<SentEmail[]>([]);
+  const [skippedNotifications, setSkippedNotifications] = useState<SkippedNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
@@ -14,9 +23,12 @@ export default function MedicalReviewClientMessages({ requestId, refreshKey = 0 
     setLoading(true);
     setError('');
     setMessages([]);
+    setSkippedNotifications([]);
     medicalReviewRequestsApi.getClientMessages(requestId)
       .then(({ data }) => {
-        if (active) setMessages(data || []);
+        if (!active) return;
+        setMessages(data?.messages || []);
+        setSkippedNotifications(data?.skippedNotifications || []);
       })
       .catch(() => { if (active) setError('Unable to load client message history. Please try Refresh.'); })
       .finally(() => { if (active) setLoading(false); });
@@ -34,7 +46,19 @@ export default function MedicalReviewClientMessages({ requestId, refreshKey = 0 
       </div>
       {loading && <p role="status" className="mt-3 text-sm text-gray-600">Loading client messages…</p>}
       {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
-      {!loading && !error && messages.length === 0 && <p className="mt-3 text-sm text-gray-600">No client emails recorded for this MRR.</p>}
+      {!loading && !error && messages.length === 0 && skippedNotifications.length === 0 && <p className="mt-3 text-sm text-gray-600">No client emails recorded for this MRR.</p>}
+      {!loading && !error && skippedNotifications.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {skippedNotifications.map((skipped, index) => {
+            const time = skipped.processedAt && !Number.isNaN(new Date(skipped.processedAt).getTime()) ? new Date(skipped.processedAt).toLocaleString() : 'Not recorded';
+            return (
+              <p key={index} role="status" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                No email was sent for the <strong>{skipped.decision || 'review'}</strong> result ({time}) — {skipped.reason && SKIP_REASON_LABELS[skipped.reason] ? SKIP_REASON_LABELS[skipped.reason] : 'reason not recorded'}.
+              </p>
+            );
+          })}
+        </div>
+      )}
       <div className="mt-4 space-y-4">
         {messages.map((message, index) => {
           const date = message.sentAt || message.createdAt;

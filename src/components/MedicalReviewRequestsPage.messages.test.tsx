@@ -18,7 +18,7 @@ it.each(['admin', 'medical_advisor'])('renders saved translated messages at the 
   (medicalReviewRequestsApi.getQueue as jest.Mock).mockResolvedValue({ data: [request] });
   (medicalReviewRequestsApi.getContext as jest.Mock).mockResolvedValue({ data: { artifacts: { all: [] } } });
   (medicalReviewRequestsApi.getAccessLinks as jest.Mock).mockResolvedValue({ data: [] });
-  (medicalReviewRequestsApi.getClientMessages as jest.Mock).mockResolvedValue({ data: [{ _id: 'saved-email', subject: 'Translated client message', bodyText: 'Proszę przesłać nowe zdjęcie.', to: ['client@example.com'], status: 'sent' }] });
+  (medicalReviewRequestsApi.getClientMessages as jest.Mock).mockResolvedValue({ data: { messages: [{ _id: 'saved-email', subject: 'Translated client message', bodyText: 'Proszę przesłać nowe zdjęcie.', to: ['client@example.com'], status: 'sent' }], skippedNotifications: [] } });
   (usersApi.findAll as jest.Mock).mockResolvedValue({ data: [] });
   const route = role === 'admin' ? '/admin/medical-review-requests' : '/medical/review-requests';
   render(<MemoryRouter initialEntries={[`${route}/mrr-1325`]}><Routes><Route path={`${route}/:id`} element={<MedicalReviewRequestsPage />} /></Routes></MemoryRouter>);
@@ -37,7 +37,7 @@ it('saves detailed WhatsApp results without the server-managed delivery field', 
   (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({ data: [request] });
   (medicalReviewRequestsApi.getContext as jest.Mock).mockResolvedValue({ data: { artifacts: { all: [] } } });
   (medicalReviewRequestsApi.getAccessLinks as jest.Mock).mockResolvedValue({ data: [] });
-  (medicalReviewRequestsApi.getClientMessages as jest.Mock).mockResolvedValue({ data: [] });
+  (medicalReviewRequestsApi.getClientMessages as jest.Mock).mockResolvedValue({ data: { messages: [], skippedNotifications: [] } });
   (medicalReviewRequestsApi.update as jest.Mock).mockResolvedValue({ data: request });
   (usersApi.findAll as jest.Mock).mockResolvedValue({ data: [{ _id: 'advisor', role: 'medical_advisor', firstName: 'Test', lastName: 'Advisor' }] });
   render(<MemoryRouter initialEntries={['/admin/medical-review-requests/mrr']}><Routes><Route path='/admin/medical-review-requests/:id' element={<MedicalReviewRequestsPage />} /></Routes></MemoryRouter>);
