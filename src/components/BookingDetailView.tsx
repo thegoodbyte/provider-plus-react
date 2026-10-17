@@ -1,3 +1,4 @@
+import RelatedRecords, { recordRelations } from './RelatedRecords';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { bookingFlowApi, bookingsApi, communicationsApi, retreatsApi } from '../services/api';
@@ -422,6 +423,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           </>
         )}
       </div>
+
+      <RelatedRecords records={recordRelations(booking)} />
 
       <BookingConfirmationEmailDialogs
         booking={booking}

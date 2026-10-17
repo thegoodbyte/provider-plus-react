@@ -1,3 +1,4 @@
+import RelatedRecords, { recordRelations } from './RelatedRecords';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import PaymentRequestForm, { FinalPaymentRequestPreview } from './PaymentRequestForm';
@@ -437,6 +438,8 @@ const PaymentRequestEditorPage: React.FC = () => {
             )}
           </div>
         </div>
+
+        <RelatedRecords records={[...recordRelations(paymentRequest), ...recordRelations(receipt)]} />
 
         {showCancelModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">

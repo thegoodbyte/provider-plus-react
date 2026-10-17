@@ -1,3 +1,4 @@
+import RelatedRecords, { recordRelations } from './RelatedRecords';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { bookingsApi, clientsApi, configSummaryApi, serviceRequestsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
@@ -837,6 +838,7 @@ const PaymentEditorPage: React.FC = () => {
             )}
           </div>
         </form>
+        {isExisting && loadedPayment && <RelatedRecords records={recordRelations(loadedPayment)} />}
       </div>
     </div>
   );
