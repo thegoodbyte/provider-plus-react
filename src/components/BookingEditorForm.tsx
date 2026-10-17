@@ -1,5 +1,6 @@
+import useBookingHouse from './useBookingHouse';
 import AccommodationSelect from './AccommodationSelect';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { authService } from '../services/authService';
 import { referralsApi, bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
 import { roomInventoryApi } from '../services/roomInventoryApi';
@@ -414,7 +415,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           : formData.contractGateOverride === 'required',
         accommodationKey: formData.accommodationKey,
         roomType: formData.roomType,
-        roomNumber: formData.roomNumber || undefined,
+        roomNumber: formData.roomNumber,
         roomAdjustmentType: formData.roomAdjustmentType,
         roomAdjustmentAmount: Number(formData.roomAdjustmentAmount || 0),
       };
@@ -487,8 +488,17 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
     : formData.bookingType === BookingType.WORKSHOP
       ? EVENT_CONFIGS[EventType.WORKSHOP].label
       : 'Retreat';
-  const selectedHouse = selectedRetreat?.houseId && typeof selectedRetreat.houseId === 'object' ? selectedRetreat.houseId : undefined;
-  const houseBedrooms = (selectedHouse && Array.isArray(selectedHouse.bedrooms) ? selectedHouse.bedrooms : []) as Array<{ name: string; hasBathroom?: boolean }>;
+  const { house: selectedHouse, loading: bedroomsLoading, error: bedroomsError, retry: retryBedrooms } = useBookingHouse(selectedRetreat);
+  const houseBedrooms = (selectedHouse && Array.isArray(selectedHouse.bedrooms) ? selectedHouse.bedrooms : []).filter(room => room.active !== false && room.name?.trim());
+  const roomContext = useRef({ bookingId, retreatId: '' });
+  useEffect(() => {
+    const previous = roomContext.current;
+    if (previous.bookingId === bookingId && previous.retreatId && previous.retreatId !== formData.retreatId) {
+      setFormData(current => ({ ...current, roomNumber: '' }));
+    }
+    roomContext.current = { bookingId, retreatId: formData.retreatId };
+  }, [bookingId, formData.retreatId]);
+  const unavailableRoom = Boolean(formData.roomNumber && selectedHouse && !houseBedrooms.some(room => room.name === formData.roomNumber));
   const sharedRoomWarning = formData.roomType === 'shared' && selectedHouse?.allowsRoomSharing === false;
 
   if (loading) {
@@ -633,8 +643,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           <div className="mt-3 grid gap-4 md:grid-cols-2">
             <AccommodationSelect clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as BookingFormData['roomType'] }))} />
             <label className="text-sm font-medium text-gray-700">Bedroom
-              <select value={formData.roomNumber} onChange={(event) => setFormData(prev => ({ ...prev, roomNumber: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
-                <option value="">Not assigned</option>{houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}
+              <select disabled={!formData.retreatId || bedroomsLoading || Boolean(bedroomsError) || (!houseBedrooms.length && !formData.roomNumber)} value={formData.roomNumber} onChange={(event) => setFormData(prev => ({ ...prev, roomNumber: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+                <option value="">Not assigned</option>{formData.roomNumber && !houseBedrooms.some(room => room.name === formData.roomNumber) && <option value={formData.roomNumber}>{formData.roomNumber} · saved room unavailable</option>}{houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}
               </select>
             </label>
             <label className="text-sm font-medium text-gray-700">Price adjustment
@@ -644,6 +654,11 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               <input type="number" min="0" step="0.01" value={formData.roomAdjustmentAmount} onChange={(event) => setFormData(prev => ({ ...prev, roomAdjustmentAmount: Number(event.target.value) }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
             </label>
           </div>
+          {bedroomsLoading && <p role="status" className="mt-3 text-sm">Loading bedrooms…</p>}
+          {bedroomsError && <p role="alert" className="mt-3 text-sm text-red-800">{bedroomsError} <button type="button" className="underline" onClick={retryBedrooms}>Retry bedrooms</button></p>}
+          {formData.retreatId && !selectedRetreat?.houseId && <p className="mt-3 text-sm text-slate-600">This retreat has no house assigned.</p>}
+          {selectedHouse && !bedroomsLoading && !houseBedrooms.length && <p className="mt-3 text-sm text-slate-600">No active named bedrooms are configured for this house. Add bedrooms in Houses to assign a room.</p>}
+          {unavailableRoom && <p role="alert" className="mt-3 text-sm text-amber-800">The saved bedroom is no longer available in this house. Choose another room or leave it unassigned.</p>}
           {sharedRoomWarning && <p role="alert" className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">This house does not allow shared rooms. Choose a private room or update the house configuration first.</p>}
         </section>
 
