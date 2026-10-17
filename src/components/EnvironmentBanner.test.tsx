@@ -92,6 +92,18 @@ it("does not guess an environment when the API fails", async () => {
   await screen.findByText("Environment status unavailable.");
   expect(screen.queryByText("Production")).not.toBeInTheDocument();
 });
+// PPVC-829: a malformed response (e.g. an empty array, which a generic
+// network-mocking "unmatched route" fallback commonly returns) must not
+// crash this banner -- it sits in the persistent app shell, outside any
+// per-route error boundary, so an unhandled throw here used to blank the
+// entire app.
+it("PPVC-829: renders nothing (not a crash) when the status response is malformed", async () => {
+  (environmentApi.status as jest.Mock).mockResolvedValue({ data: [] });
+  const { container } = render(<EnvironmentBanner />);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(container).toBeEmptyDOMElement();
+  expect(screen.queryByText("Production")).not.toBeInTheDocument();
+});
 it("does not create clickable live checkout or production app links", () => {
   expect(
     captureLinks(

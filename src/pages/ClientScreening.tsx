@@ -5,6 +5,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppleButton from '../components/AppleButton';
 import ClientReferralFields from '../components/ClientReferralFields';
+import { TasksWidget } from '../components/Tasks/TasksWidget';
 import { clientsApi, referralsApi, screeningApi } from '../services/api';
 import { Client, Referral } from '../types';
 import { validateScreeningBirth } from '../utils/screeningBirth';
@@ -2060,6 +2061,9 @@ const ClientScreening: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* PPVC-20: quick tasks while screening, without leaving this page */}
+      {clientId && <TasksWidget clientId={clientId} title="Quick Tasks" />}
 
       {/* Footer Actions */}
       <div className="flex justify-end gap-3">

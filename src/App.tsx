@@ -16,6 +16,7 @@ import './styles/animations.css';
 import './styles/workspace.css';
 
 import RouteContentBoundary from './components/RouteContentBoundary';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MedicalReviewAccessPage = lazy(() => import('./components/MedicalReviewAccessPage'));
 const MedicalReviewPublicPage = lazy(() => import('./components/MedicalReviewPublicPage'));
@@ -88,11 +89,13 @@ function App() {
   return (
     <div className="App">
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <AuthProvider>
-          <ApiErrorHandler>
-            <AppContent />
-          </ApiErrorHandler>
-        </AuthProvider>
+        <ErrorBoundary title="Something went wrong" message="An unexpected error occurred. Reload the page to try again; if it keeps happening, contact support.">
+          <AuthProvider>
+            <ApiErrorHandler>
+              <AppContent />
+            </ApiErrorHandler>
+          </AuthProvider>
+        </ErrorBoundary>
       </Router>
     </div>
   );

@@ -39,7 +39,13 @@ export default function EnvironmentBanner() {
     environmentApi
       .status()
       .then((response) => {
-        if (active) setStatus(response.data);
+        const data = response.data;
+        // A malformed response (missing `production`/`environment`) must not
+        // crash the banner -- it sits in the persistent app shell, outside
+        // any route boundary.
+        const wellFormed = data && typeof data === "object" && !Array.isArray(data)
+          && (data.production === true || typeof data.environment === "string");
+        if (active) setStatus(wellFormed ? data : null);
       })
       .catch(() => {
         if (active) setError("Environment status unavailable.");
