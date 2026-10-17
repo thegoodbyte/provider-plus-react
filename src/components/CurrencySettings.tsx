@@ -1,3 +1,4 @@
+import InvoiceVisitSettings from './InvoiceVisitSettings';
 import MorningDigestSettings from './MorningDigestSettings';
 import AccommodationSettings from './AccommodationSettings';
 import PortalContactSettings from './PortalContactSettings';
@@ -37,7 +38,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [converterSource, setConverterSource] = useState<string>('');
   const [converterError, setConverterError] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types' | 'expense-types' | 'payment-plan' | 'email-safety' | 'accommodation' | 'medical-contact' | 'medical-reviews' | 'morning-digest'>('currency');
+  const [activeTab, setActiveTab] = useState<'invoice-visits' | 'currency' | 'payment-types' | 'expense-types' | 'payment-plan' | 'email-safety' | 'accommodation' | 'medical-contact' | 'medical-reviews' | 'morning-digest'>('currency');
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
   const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
   const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
@@ -183,6 +184,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
         </div>
 
         <div className="settings-tabs">
+          <button className={activeTab === 'invoice-visits' ? 'active' : ''} onClick={() => setActiveTab('invoice-visits')}>Invoice visits</button>
           <button className={activeTab === 'accommodation' ? 'active' : ''} onClick={() => setActiveTab('accommodation')}>Accommodation</button>
           <button className={activeTab === 'medical-contact' ? 'active' : ''} onClick={() => setActiveTab('medical-contact')}>IR medical contact</button>
           <button className={activeTab === 'morning-digest' ? 'active' : ''} onClick={() => setActiveTab('morning-digest')}>Morning digest</button>
@@ -418,6 +420,8 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
           </div>
         </div>
         </>}
+
+        {activeTab === 'invoice-visits' && <InvoiceVisitSettings />}
 
         <div className="currency-footer">
           <button onClick={onClose} className="close-settings-btn">

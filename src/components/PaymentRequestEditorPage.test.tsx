@@ -2,11 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
 import {
-  bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi,
+  api, bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi,
   paymentsApi, retreatsApi, revolutPaymentLinksApi,
 } from '../services/api';
 
 jest.mock('../services/api', () => ({
+  api: { get: jest.fn() },
   paymentRequestsApi: {
     getOne: jest.fn(), create: jest.fn(), update: jest.fn(), link: jest.fn(),
     getNextDisplayIdFresh: jest.fn(), getAllFresh: jest.fn(), cancel: jest.fn(),
@@ -62,6 +63,7 @@ const renderNew = () => render(
 describe('PaymentRequestEditorPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (api.get as jest.Mock).mockResolvedValue({ data: { items: [], total: 0, pageSize: 25 } });
     (paymentsApi.getPlanSettings as jest.Mock).mockResolvedValue({ data: { depositPercentage: 40, balanceDueDaysBeforeRetreat: 30 } });
     (clientsApi.getAll as jest.Mock).mockResolvedValue({ data: [client1] });
     (retreatsApi.getAll as jest.Mock).mockResolvedValue({ data: [retreat1] });

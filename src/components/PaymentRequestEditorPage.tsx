@@ -1,4 +1,5 @@
 import RelatedRecords, { recordRelations } from './RelatedRecords';
+import InvoiceVisitHistory from './InvoiceVisitHistory';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import PaymentRequestForm, { FinalPaymentRequestPreview } from './PaymentRequestForm';
@@ -439,6 +440,7 @@ const PaymentRequestEditorPage: React.FC = () => {
           </div>
         </div>
 
+        {id && <InvoiceVisitHistory key={id} requestId={id} />}
         <RelatedRecords records={[...recordRelations(paymentRequest), ...recordRelations(receipt)]} />
 
         {showCancelModal && (

@@ -1,3 +1,4 @@
+import InvoiceVisitHistory from './InvoiceVisitHistory';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
@@ -666,6 +667,7 @@ Loading service billing…</div>;
           </form>
         )
       )}
+      {id && request && <InvoiceVisitHistory key={id} requestId={id} />}
     </main>
   );
 }
