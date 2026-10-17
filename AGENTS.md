@@ -27,6 +27,16 @@ Once you've confirmed a ticket is actually unclaimed and not already done:
 - An agent that only implements and commits locally (doesn't push) must only ever claim "implemented, not pushed" state in Jira and in any tracking files it touches. Never write or imply "deployed" unless you personally did the push and verified it live.
 - If you discover another agent already pushed/deployed something you were about to do, don't push a redundant or conflicting version. Check what actually shipped, compare against what you had, and report the difference (if any) rather than silently overwriting it.
 
+## Jira status flow
+
+**"Push Review" means pushed, not "ready to push."** This was conflated early on — tickets got moved to Push Review the moment they were implemented and committed locally, before anything was actually pushed. That's wrong: Push Review's own status category is "done," and it's meant to mean the fix is live and pending final review/QA, not a to-do.
+
+The corrected flow: To Do → In Progress → **Ready for PROD** → Push Review → Do QA → Done.
+
+- **Ready for PROD** — implemented, tested, committed locally, **not yet pushed**. This is your hand-off point after finishing a ticket: transition here, not to Push Review, and leave a comment with what changed, the commit hash/repo/worktree, and how to verify.
+- **Push Review** — actually pushed to `origin/production` (and deployed, if applicable). Only the agent that did the push moves a ticket here, with the real commit SHA and deployment ID per the deployment record ownership rule above.
+- A ticket sitting in Ready for PROD is exactly what Codex should look for when deciding what to push next.
+
 ## No human code review gate
 
-The user does not do code reviews. Don't block on or request one. The gate is: implement → test thoroughly → commit → Jira "Push Review" with a clear comment → wait for the user's explicit instruction to push (e.g. "push re") before deploying, unless the user has said otherwise for a specific batch of work.
+The user does not do code reviews. Don't block on or request one. The gate is: implement → test thoroughly → commit → Jira "Ready for PROD" with a clear comment → wait for the user's explicit instruction to push (e.g. "push re") before deploying, unless the user has said otherwise for a specific batch of work.

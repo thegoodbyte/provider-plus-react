@@ -26,6 +26,10 @@ You (Gemini) are one of three AI coding agents working concurrently on this repo
 - If you only implemented locally (didn't push), only ever claim "implemented, not pushed." Never imply deployment happened unless you did it and verified it live.
 - If you discover another agent already shipped something you were about to do, don't push a redundant/conflicting version — compare and report the difference instead.
 
+## Jira status flow
+
+**"Push Review" means pushed, not "ready to push."** The corrected flow: To Do → In Progress → **Ready for PROD** (implemented, tested, committed, not yet pushed — your hand-off point) → Push Review (actually pushed/deployed — only the pushing agent moves it here) → Do QA → Done. Codex looks at Ready for PROD to decide what to push next.
+
 ## No human code review gate
 
-The user does not do code reviews. The gate is: implement → test → commit → Jira "Push Review" with a clear comment → wait for the user's explicit push instruction.
+The user does not do code reviews. The gate is: implement → test → commit → Jira "Ready for PROD" with a clear comment → wait for the user's explicit push instruction.
