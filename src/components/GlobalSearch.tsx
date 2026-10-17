@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
-import { bookingDocumentsApi, bookingsApi, clientsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
+import { bookingDocumentsApi, bookingsApi, clientsApi, medicalArtifactsApi, medicalReviewRequestsApi, notesApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { formatCalendarDate } from '../utils/dateFormat';
+import { extractMatchSnippet } from '../utils/clientSearch';
 
 type SearchRecord = { id: string; type: string; title: string; detail: string; path: string; terms: string; score?: number; parentRetreatId?: string };
 const idOf = (value: any) => typeof value === 'object' ? String(value?._id || '') : String(value || '');
@@ -9,6 +10,33 @@ const text = (...values: any[]) => values.filter(Boolean).join(' ');
 const display = (value: any) => value?.display_id || value?.displayId || value?.bookingNumber || '';
 const clientName = (value: any) => text(value?.firstName || value?.fname, value?.lastName || value?.lname) || value?.fullName || value?.email || 'Unknown client';
 const retreatName = (value: any) => value?.retreatCode || value?.code || value?.name || 'Unknown retreat';
+const clientDeepTerms = (client: any) => {
+  const parts: string[] = [
+    client?.notes,
+    client?.recreationalDrugs,
+    client?.currentMedications,
+    client?.medicalConditions,
+    client?.whySeekingIboga,
+    client?.whatToChange,
+    client?.previousPlantMedicines,
+    client?.addictionHistory,
+    client?.mentalHealthHistory,
+    client?.traumaHistory,
+    client?.childhood,
+    client?.heartConditions,
+    client?.allergies,
+    client?.occupation,
+    client?.city,
+    client?.country,
+  ];
+  if (client?.screeningData && typeof client.screeningData === 'object') {
+    for (const val of Object.values(client.screeningData)) {
+      if (typeof val === 'string') parts.push(val);
+    }
+  }
+  return parts.filter(Boolean).join(' ');
+};
+
 const score = (record: SearchRecord, query: string) => {
   const q = query.toLowerCase(); const title = record.title.toLowerCase(); const terms = record.terms.toLowerCase();
   if (title === q || terms.split(/\s+/).includes(q)) return 100;
@@ -23,11 +51,21 @@ const GlobalSearch: React.FC<{ routePrefix: string; onNavigate: (path: string) =
   useEffect(() => { const shortcut = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); input.current?.focus(); setOpen(true); void load(); } if (event.key === 'Escape') setOpen(false); }; document.addEventListener('keydown', shortcut); return () => document.removeEventListener('keydown', shortcut); });
   const load = async () => {
     if (loaded.current) return; setLoading(true);
-    const calls = [clientsApi.getAll(), bookingsApi.getAll(), retreatsApi.getAll(), medicalArtifactsApi.getAll(), medicalReviewRequestsApi.getAll(), paymentsApi.getAll(), paymentRequestsApi.getAll(), bookingDocumentsApi.getAll()];
+    const calls = [
+      clientsApi.getAll(),
+      bookingsApi.getAll(),
+      retreatsApi.getAll(),
+      medicalArtifactsApi.getAll(),
+      medicalReviewRequestsApi.getAll(),
+      paymentsApi.getAll(),
+      paymentRequestsApi.getAll(),
+      bookingDocumentsApi.getAll(),
+      notesApi.getAll().catch(() => ({ data: [] })),
+    ];
     const results = await Promise.allSettled(calls); const data = (index: number): any[] => results[index].status === 'fulfilled' ? (results[index] as PromiseFulfilledResult<any>).value.data || [] : [];
-    const [clients, bookings, retreats, artifacts, reviews, payments, requests, documents] = [0,1,2,3,4,5,6,7].map(data);
+    const [clients, bookings, retreats, artifacts, reviews, payments, requests, documents, notes] = [0,1,2,3,4,5,6,7,8].map(data);
     const next: SearchRecord[] = [];
-    clients.forEach(client => next.push({ id: idOf(client), type: 'Client', title: `${display(client) ? `${display(client)} · ` : ''}${clientName(client)}`, detail: text(client.email, client.phone), path: `/${routePrefix}/clients/${idOf(client)}`, terms: text(display(client), idOf(client), clientName(client), client.email, client.phone) }));
+    clients.forEach(client => next.push({ id: idOf(client), type: 'Client', title: `${display(client) ? `${display(client)} · ` : ''}${clientName(client)}`, detail: text(client.email, client.phone), path: `/${routePrefix}/clients/${idOf(client)}`, terms: text(display(client), idOf(client), clientName(client), client.email, client.phone, clientDeepTerms(client)) }));
     bookings.forEach(booking => { const client = booking.clientId || booking.clientDetails; const retreat = booking.retreatId || booking.retreatDetails; next.push({ id: idOf(booking), type: 'Booking', title: `${display(booking) ? `#${display(booking)} · ` : ''}${clientName(client)}`, detail: retreatName(retreat), path: `/${routePrefix}/bookings/${idOf(booking)}`, parentRetreatId: idOf(retreat), terms: text(display(booking), idOf(booking), clientName(client), display(client), retreatName(retreat), booking.status) }); });
     retreats.forEach(retreat => next.push({ id: idOf(retreat), type: 'Retreat', title: retreatName(retreat), detail: text(retreat.name, retreat.location_town, retreat.startDate && formatCalendarDate(retreat.startDate)), path: `/${routePrefix}/retreats/${idOf(retreat)}`, terms: text(display(retreat), idOf(retreat), retreatName(retreat), retreat.name, retreat.location, retreat.location_town) }));
     artifacts.forEach(item => next.push({ id: idOf(item), type: 'Medical artifact', title: `${display(item) ? `#${display(item)} · ` : ''}${item.title || item.documentType || item.artifactType || 'Medical artifact'}`, detail: text(clientName(item.clientId), retreatName(item.retreatId), item.documentStage), path: `/${routePrefix}/medical-artifacts/${idOf(item)}`, terms: text(display(item), idOf(item), item.title, item.documentType, item.artifactType, clientName(item.clientId), retreatName(item.retreatId)) }));
@@ -35,10 +73,42 @@ const GlobalSearch: React.FC<{ routePrefix: string; onNavigate: (path: string) =
     payments.forEach(item => next.push({ id: idOf(item), type: 'Payment', title: `${display(item) ? `#${display(item)} · ` : ''}${item.amount || ''} ${item.currency || ''}`, detail: text(clientName(item.clientId), item.paymentMethod, item.status), path: `/${routePrefix}/payments/${idOf(item)}/edit`, terms: text(display(item), idOf(item), item.transactionReference, item.amount, item.currency, clientName(item.clientId)) }));
     requests.forEach(item => next.push({ id: idOf(item), type: 'Payment request', title: `${item.invoiceNumber || display(item) || idOf(item)} · ${item.requestedAmount || ''} ${item.currency || ''}`, detail: text(clientName(item.clientId), item.status), path: `/${routePrefix}/payment-requests/${idOf(item)}`, terms: text(item.invoiceNumber, display(item), idOf(item), clientName(item.clientId), item.status) }));
     documents.forEach(item => next.push({ id: idOf(item), type: 'Document', title: `${display(item) ? `#${display(item)} · ` : ''}${item.title || item.documentType || 'Document'}`, detail: text(clientName(item.clientId), retreatName(item.retreatId)), path: `/${routePrefix}/booking-documents`, terms: text(display(item), idOf(item), item.title, item.documentType, clientName(item.clientId), retreatName(item.retreatId)) }));
+    notes.forEach(note => {
+      const clientId = idOf(note.clientId);
+      const client = clients.find(c => idOf(c) === clientId);
+      next.push({
+        id: idOf(note),
+        type: 'Note',
+        title: `${note.title || 'Note'}${client ? ` · ${clientName(client)}` : ''}`,
+        detail: note.content || '',
+        path: clientId ? `/${routePrefix}/clients/${clientId}` : `/${routePrefix}/clients`,
+        terms: text(note.title, note.content, ...(note.tags || []), client ? clientName(client) : '', display(client)),
+      });
+    });
     setRecords(next); loaded.current = true; setLoading(false);
   };
-  const matches = useMemo(() => { const q = query.trim(); if (!q) return []; const direct = records.map(record => ({ ...record, score: score(record, q) })).filter(record => record.score! > 0).sort((a,b) => b.score! - a.score! || a.type.localeCompare(b.type)); const retreatIds = new Set(direct.filter(record => record.type === 'Retreat').map(record => record.id)); const children = records.filter(record => record.type === 'Booking' && record.parentRetreatId && retreatIds.has(record.parentRetreatId) && !direct.some(match => match.id === record.id && match.type === record.type)).map(record => ({ ...record, score: 20 })); return [...direct, ...children].slice(0, 30); }, [query, records]);
+  const matches = useMemo(() => {
+    const q = query.trim();
+    if (!q) return [];
+    const lowerQ = q.toLowerCase();
+    const direct: SearchRecord[] = [];
+    for (const record of records) {
+      const s = score(record, q);
+      if (s > 0) {
+        let detail = record.detail;
+        if (record.type === 'Client' && !detail.toLowerCase().includes(lowerQ) && record.terms.toLowerCase().includes(lowerQ)) {
+          const snippet = extractMatchSnippet(record.terms, q, 50);
+          if (snippet) detail = `${detail ? `${detail} · ` : ''}${snippet}`;
+        }
+        direct.push({ ...record, detail, score: s });
+      }
+    }
+    direct.sort((a, b) => (b.score || 0) - (a.score || 0) || a.type.localeCompare(b.type));
+    const retreatIds = new Set(direct.filter(record => record.type === 'Retreat').map(record => record.id));
+    const children = records.filter(record => record.type === 'Booking' && record.parentRetreatId && retreatIds.has(record.parentRetreatId) && !direct.some(match => match.id === record.id && match.type === record.type)).map(record => ({ ...record, score: 20 }));
+    return [...direct, ...children].slice(0, 30);
+  }, [query, records]);
   const choose = (path: string) => { onNavigate(path); setOpen(false); setQuery(''); };
-  return <div ref={root} className="relative w-full max-w-xl"><div className="flex h-10 items-center rounded-xl border border-slate-200 bg-white/90 px-3 shadow-sm"><Search className="h-4 w-4 shrink-0 text-slate-400" /><input ref={input} aria-label="Global search" value={query} onFocus={() => { setOpen(true); void load(); }} onChange={event => { setQuery(event.target.value); setOpen(true); void load(); }} placeholder="Search clients, bookings, retreats, medical IDs…" className="min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none" /><span className="hidden text-[11px] font-semibold text-slate-400 xl:inline">⌘K</span>{query && <button type="button" onClick={() => setQuery('')} aria-label="Clear global search"><X className="h-4 w-4 text-slate-400" /></button>}</div>{open && query.trim() && <div className="absolute left-0 right-0 top-12 z-[80] max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl">{loading ? <div className="p-4 text-sm text-slate-500">Searching…</div> : matches.length ? matches.map((record, index) => <button type="button" key={`${record.type}-${record.id}-${index}`} onClick={() => choose(record.path)} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-blue-50"><span className="mt-0.5 min-w-28 rounded-md bg-slate-100 px-2 py-1 text-center text-[11px] font-bold uppercase text-slate-600">{record.type}</span><span className="min-w-0"><strong className="block truncate text-sm text-slate-900">{record.title}</strong><span className="block truncate text-xs text-slate-500">{record.detail}</span></span></button>) : <div className="p-4 text-sm text-slate-500">No relevant records found.</div>}</div>}</div>;
+  return <div ref={root} className="relative w-full max-w-xl"><div className="flex h-10 items-center rounded-xl border border-slate-200 bg-white/90 px-3 shadow-sm"><Search className="h-4 w-4 shrink-0 text-slate-400" /><input ref={input} aria-label="Global search" value={query} onFocus={() => { setOpen(true); void load(); }} onChange={event => { setQuery(event.target.value); setOpen(true); void load(); }} placeholder="Search clients, screening, notes, bookings, retreats…" className="min-w-0 flex-1 border-0 bg-transparent px-2 text-sm outline-none" /><span className="hidden text-[11px] font-semibold text-slate-400 xl:inline">⌘K</span>{query && <button type="button" onClick={() => setQuery('')} aria-label="Clear global search"><X className="h-4 w-4 text-slate-400" /></button>}</div>{open && query.trim() && <div className="absolute left-0 right-0 top-12 z-[80] max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl">{loading ? <div className="p-4 text-sm text-slate-500">Searching…</div> : matches.length ? matches.map((record, index) => <button type="button" key={`${record.type}-${record.id}-${index}`} onClick={() => choose(record.path)} className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-blue-50"><span className="mt-0.5 min-w-28 rounded-md bg-slate-100 px-2 py-1 text-center text-[11px] font-bold uppercase text-slate-600">{record.type}</span><span className="min-w-0"><strong className="block truncate text-sm text-slate-900">{record.title}</strong><span className="block truncate text-xs text-slate-500">{record.detail}</span></span></button>) : <div className="p-4 text-sm text-slate-500">No relevant records found.</div>}</div>}</div>;
 };
 export default GlobalSearch;

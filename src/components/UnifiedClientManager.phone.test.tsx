@@ -20,7 +20,7 @@ it('finds legacy WhatsApp phones and separate country codes in the Clients page'
   ] });
   render(<MemoryRouter><UnifiedClientManager /></MemoryRouter>);
   await screen.findByText('Legacy Contact');
-  const search = screen.getByPlaceholderText('Search clients, email, phone, or ID…');
+  const search = screen.getByRole('textbox', { name: /search clients/i });
   for (const value of ['665587456', '+48 (665) 587-456', '0048 665 587 456']) {
     fireEvent.change(search, { target: { value } });
     await waitFor(() => expect(screen.queryByText('Other Person')).not.toBeInTheDocument());

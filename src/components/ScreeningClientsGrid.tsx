@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { clientsApi } from '../services/api';
+import { clientsApi, notesApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import { formatCalendarDate } from '../utils/dateFormat';
-import { FiPlus, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiEye, FiUserCheck } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiEye, FiUserCheck, FiSearch } from 'react-icons/fi';
 import {
   clientWorkflowStatusLabels,
   clientWorkflowStatusTone,
   leadWorkflowStatuses,
   normalizeClientWorkflowStatus,
 } from '../utils/clientWorkflowStatus';
+import { matchesClientDeepSearch, ClientSearchMatch } from '../utils/clientSearch';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -23,6 +24,8 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 const ScreeningClientsGrid: React.FC = () => {
   const navigate = useNavigate();
   const [screeningClients, setScreeningClients] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -32,14 +35,18 @@ const ScreeningClientsGrid: React.FC = () => {
     try {
       setIsLoading(true);
       setApiError(false);
-      const response = await clientsApi.getAll();
+      const [clientsResponse, notesResponse] = await Promise.all([
+        clientsApi.getAll(),
+        notesApi.getAll().catch(() => ({ data: [] })),
+      ]);
       // Filter for clients that are in the screening workflow
-      const allClients = response.data || [];
+      const allClients = clientsResponse.data || [];
       const screeningClients = allClients.filter((client: any) =>
         leadWorkflowStatuses.has(normalizeClientWorkflowStatus(client.workflowStatus)) ||
         ['screened_accepted', 'screened_declined'].includes(normalizeClientWorkflowStatus(client.workflowStatus))
       );
       setScreeningClients(screeningClients);
+      setNotes(notesResponse?.data || []);
     } catch (error: any) {
       console.error('Error fetching screening clients:', error);
       setScreeningClients([]);
@@ -80,10 +87,23 @@ const ScreeningClientsGrid: React.FC = () => {
     }
   };
 
-  const filteredClients = screeningClients.filter(client => {
-    if (filterStatus === 'all') return true;
-    return normalizeClientWorkflowStatus(client.workflowStatus) === normalizeClientWorkflowStatus(filterStatus);
-  });
+  const { filteredClients, searchMatches } = useMemo(() => {
+    const matchesMap = new Map<string, ClientSearchMatch>();
+    const filtered = screeningClients.filter((client) => {
+      if (filterStatus !== 'all' && normalizeClientWorkflowStatus(client.workflowStatus) !== normalizeClientWorkflowStatus(filterStatus)) {
+        return false;
+      }
+      if (searchTerm.trim()) {
+        const match = matchesClientDeepSearch(client, searchTerm, notes);
+        if (match.matched && client._id) {
+          matchesMap.set(client._id, match);
+        }
+        return match.matched;
+      }
+      return true;
+    });
+    return { filteredClients: filtered, searchMatches: matchesMap };
+  }, [screeningClients, filterStatus, searchTerm, notes]);
 
   const formatDate = (date: Date | string | undefined) => formatCalendarDate(date);
 
@@ -102,12 +122,23 @@ const ScreeningClientsGrid: React.FC = () => {
         </AppleButton>
       </div>
 
-      {/* Filter Controls */}
-      <div className="mb-4 flex space-x-4">
+      {/* Filter and Search Controls */}
+      <div className="mb-4 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Icon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            aria-label="Search screening clients"
+            placeholder="Search screening clients, screening info, notes, drugs, medications…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Status</option>
           <option value="entered">Entered</option>
@@ -167,13 +198,21 @@ const ScreeningClientsGrid: React.FC = () => {
               {filteredClients.map((client) => (
                 <tr key={client._id} className="hover:bg-gray-50">
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <button
-                      onClick={() => navigate(`/clients/${client._id}`)}
-                      className="!inline-flex max-w-[220px] !items-center !justify-start gap-2 truncate !rounded-none !border-0 !bg-transparent !p-0 !text-left text-sm font-medium !text-blue-600 !shadow-none hover:!bg-transparent hover:!text-blue-800 hover:underline"
-                    >
-                      <Icon icon={FiUser} className="h-4 w-4 shrink-0 text-gray-400" />
-                      <span className="truncate">{client.firstName} {client.lastName}</span>
-                    </button>
+                    <div>
+                      <button
+                        onClick={() => navigate(`/clients/${client._id}`)}
+                        className="!inline-flex max-w-[220px] !items-center !justify-start gap-2 truncate !rounded-none !border-0 !bg-transparent !p-0 !text-left text-sm font-medium !text-blue-600 !shadow-none hover:!bg-transparent hover:!text-blue-800 hover:underline"
+                      >
+                        <Icon icon={FiUser} className="h-4 w-4 shrink-0 text-gray-400" />
+                        <span className="truncate">{client.firstName} {client.lastName}</span>
+                      </button>
+                      {searchMatches.get(client._id)?.snippet && (
+                        <div className="mt-0.5 inline-flex items-center gap-1.5 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-800 border border-amber-200 max-w-xs truncate">
+                          <span className="font-semibold text-amber-900 shrink-0">{searchMatches.get(client._id)?.label || 'Match'}:</span>
+                          <span className="italic truncate">{searchMatches.get(client._id)?.snippet}</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
                     {client.display_id ? `#${client.display_id}` : 'No ID'}

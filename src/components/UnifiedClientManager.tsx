@@ -5,8 +5,9 @@ import { useDialogFocus } from '../hooks/useDialogFocus';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
 import LoadingSpinner from './LoadingSpinner';
-import { bookingsApi, clientsApi, referralsApi, retreatsApi } from '../services/api';
+import { bookingsApi, clientsApi, notesApi, referralsApi, retreatsApi } from '../services/api';
 import { Client, Referral, Retreat, RetreatClient } from '../types';
+import { matchesClientDeepSearch, ClientSearchMatch } from '../utils/clientSearch';
 import ClientReferralFields from './ClientReferralFields';
 import SearchableCountryNameSelector from './SearchableCountryNameSelector';
 import SearchableLanguageSelector from './SearchableLanguageSelector';
@@ -141,6 +142,8 @@ const UnifiedClientManager: React.FC = () => {
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [searchMatches, setSearchMatches] = useState<Map<string, ClientSearchMatch>>(new Map());
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -244,19 +247,22 @@ const UnifiedClientManager: React.FC = () => {
 
   const fetchBookingContext = async () => {
     try {
-      const [bookingsResponse, retreatsResponse, referralsResponse] = await Promise.all([
+      const [bookingsResponse, retreatsResponse, referralsResponse, notesResponse] = await Promise.all([
         bookingsApi.getAll(),
         retreatsApi.getAll(),
         referralsApi.getAll(),
+        notesApi?.getAll ? notesApi.getAll().catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
       ]);
-      setBookings(bookingsResponse.data || []);
-      setRetreats(retreatsResponse.data || []);
-      setReferrals(referralsResponse.data || []);
+      setBookings(bookingsResponse?.data || []);
+      setRetreats(retreatsResponse?.data || []);
+      setReferrals(referralsResponse?.data || []);
+      setNotes(notesResponse?.data || []);
     } catch (error) {
       console.error('Error fetching booking context:', error);
       setBookings([]);
       setRetreats([]);
       setReferrals([]);
+      setNotes([]);
     }
   };
 
@@ -307,15 +313,18 @@ const UnifiedClientManager: React.FC = () => {
     }
 
     // Search
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(client =>
-        client.firstName?.toLowerCase().includes(term) ||
-        client.lastName?.toLowerCase().includes(term) ||
-        client.email?.toLowerCase().includes(term) ||
-        matchesPhoneSearch(client.phone, client.phoneCountryCode, term) ||
-        client.display_id?.toString().includes(term)
-      );
+    if (searchTerm.trim()) {
+      const matchMap = new Map<string, ClientSearchMatch>();
+      filtered = filtered.filter((client) => {
+        const match = matchesClientDeepSearch(client, searchTerm, notes);
+        if (match.matched && client._id) {
+          matchMap.set(client._id, match);
+        }
+        return match.matched;
+      });
+      setSearchMatches(matchMap);
+    } else {
+      setSearchMatches(new Map());
     }
 
     // Sort
@@ -327,7 +336,7 @@ const UnifiedClientManager: React.FC = () => {
     });
 
     setFilteredClients(filtered);
-  }, [clients, filterStatus, searchTerm, sortField, sortDirection, getClientRetreatCode]);
+  }, [clients, filterStatus, searchTerm, sortField, sortDirection, getClientRetreatCode, notes]);
 
   const handleSave = async () => {
     if (!formData.firstName?.trim() || !formData.lastName?.trim() || !formData.phone?.trim()) {
@@ -600,7 +609,7 @@ const UnifiedClientManager: React.FC = () => {
             <input
               type="text"
               aria-label="Search clients"
-              placeholder="Search clients, email, phone, or ID…"
+              placeholder="Search clients, screening, notes, email, phone, or ID…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue"
@@ -706,6 +715,12 @@ const UnifiedClientManager: React.FC = () => {
                         <span className="text-xs text-gray-400 ml-1">
                           ({client.preferredName})
                         </span>
+                      )}
+                      {searchMatches.get(client._id!)?.snippet && (
+                        <div className="ml-9 mt-0.5 inline-flex items-center gap-1.5 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-800 border border-amber-200 max-w-md truncate">
+                          <span className="font-semibold text-amber-900 shrink-0">{searchMatches.get(client._id!)?.label || 'Match'}:</span>
+                          <span className="italic truncate">{searchMatches.get(client._id!)?.snippet}</span>
+                        </div>
                       )}
                       {(typeof client.referralId === 'object' ? client.referralId?.name : client.source) && (
                         <div className="ml-9 text-xs text-violet-700">Referral: {typeof client.referralId === 'object' ? client.referralId?.name : client.source}</div>
