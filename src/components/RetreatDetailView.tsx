@@ -1062,6 +1062,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           </button>
           <button
             type="button"
+            onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/helpers?add=helper`)}
+            className="edit-retreat-btn retreat-icon-action"
+            title="Add helper to this retreat"
+          >
+            <PeopleAltRoundedIcon className="w-4 h-4" />
+            <span>Add helper</span>
+          </button>
+          <button
+            type="button"
             onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/helpers`)}
             className="edit-retreat-btn retreat-icon-action"
             title="Manage cooks and helpers"

@@ -26,8 +26,9 @@ export const getRetreatTown = (retreat?: Partial<Retreat> | null, houses: House[
 };
 
 export const staffRoleOptions = [
-  { value: 'helper', label: 'Helper' },
+  { value: 'helper', label: 'Helper 1' },
   { value: 'second_helper', label: 'Helper 2' },
+  { value: 'third_helper', label: 'Helper 3' },
   { value: 'cook', label: 'Cook' },
 ];
 

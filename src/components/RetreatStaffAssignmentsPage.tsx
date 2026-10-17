@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { contactBookApi, retreatsApi } from '../services/api';
 import { ContactBookEntry, Retreat, RetreatStaffAssignment } from '../types';
 import { formatDateForInput, staffRoleOptions } from './retreatDetailUtils';
+import { nextHelperRole } from './retreatStaffSlots';
 import LoadingSpinner from './LoadingSpinner';
 
 const Icon: React.FC<{ component: any }> = ({ component }) => React.createElement(component);
@@ -17,6 +18,7 @@ const RetreatStaffAssignmentsPage: React.FC = () => {
     const first = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user'].includes(first) ? `/${first}` : '';
   }, [location.pathname]);
+  const addHelperOnOpen = new URLSearchParams(location.search).get('add') === 'helper';
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [staffAssignments, setStaffAssignments] = useState<RetreatStaffAssignment[]>([]);
   const [staffDirectory, setStaffDirectory] = useState<ContactBookEntry[]>([]);
@@ -26,11 +28,14 @@ const RetreatStaffAssignmentsPage: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
     Promise.all([
       retreatsApi.getOne(retreatId),
       contactBookApi.getAll({ role: 'helper' }),
       contactBookApi.getAll({ role: 'cook' }),
     ]).then(([retreatResponse, helpers, cooks]) => {
+      if (!active) return;
       const item = retreatResponse.data;
       setRetreat(item);
       const defaults = { startDate: formatDateForInput(item.startDate), startTime: item.startTime || '12:00', endDate: formatDateForInput(item.endDate), endTime: item.endTime || '10:00' };
@@ -43,21 +48,31 @@ const RetreatStaffAssignmentsPage: React.FC = () => {
         endTime: assignment.endTime || defaults.endTime,
         salaryCurrency: assignment.salaryCurrency || 'CZK',
       }));
-      setStaffAssignments(assignments);
+      setStaffAssignments(addHelperOnOpen ? [...assignments, { ...defaults, role: nextHelperRole(assignments), contactId: '', salaryCurrency: 'CZK' }] : assignments);
       setStaffDirectory([...helpers.data, ...cooks.data].filter((person, index, all) => person.isActive !== false && all.findIndex((candidate) => candidate._id === person._id) === index).sort((a, b) => a.name.localeCompare(b.name)));
-    }).catch((cause: any) => setError(cause?.response?.data?.message || cause?.message || 'Unable to load retreat team.')).finally(() => setLoading(false));
-  }, [retreatId]);
+    }).catch((cause: any) => { if (active) setError(cause?.response?.data?.message || cause?.message || 'Unable to load retreat team.'); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [retreatId, addHelperOnOpen]);
 
   const updateStaff = (index: number, patch: Partial<RetreatStaffAssignment>) => setStaffAssignments((current) => current.map((assignment, itemIndex) => itemIndex === index ? { ...assignment, ...patch } : assignment));
-  const addStaff = () => setStaffAssignments((current) => [...current, { role: 'helper', contactId: '', startDate: formatDateForInput(retreat?.startDate) || '', startTime: retreat?.startTime || '12:00', endDate: formatDateForInput(retreat?.endDate) || '', endTime: retreat?.endTime || '10:00', salaryCurrency: 'CZK' }]);
+  const addStaff = () => setStaffAssignments((current) => [...current, { role: nextHelperRole(current), contactId: '', startDate: formatDateForInput(retreat?.startDate) || '', startTime: retreat?.startTime || '12:00', endDate: formatDateForInput(retreat?.endDate) || '', endTime: retreat?.endTime || '10:00', salaryCurrency: 'CZK' }]);
   const removeStaff = (index: number) => setStaffAssignments((current) => current.filter((_, itemIndex) => itemIndex !== index));
 
   const save = async () => {
     setSaving(true); setSaved(false); setError('');
     try {
+      if (staffAssignments.some(person => !idOf(person.contactId) && !person.name?.trim())) {
+        setError('Select a directory person for each assignment, or remove the empty row.');
+        return;
+      }
       const response = await retreatsApi.update(retreatId, { retreatStaff: staffAssignments });
       setRetreat(response.data || retreat);
       setSaved(true);
+      if (addHelperOnOpen) {
+        const params = new URLSearchParams(location.search);
+        params.delete('add');
+        navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+      }
     } catch (cause: any) {
       const message = cause?.response?.data?.message || cause?.message || 'Unable to save the retreat team.';
       setError(Array.isArray(message) ? message.join(' ') : String(message));
@@ -85,7 +100,7 @@ const RetreatStaffAssignmentsPage: React.FC = () => {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold">Assignments</h2>
-            <p className="text-sm text-gray-600">Dates and times default to this retreat. Add Helper 2 explicitly when needed.</p>
+            <p className="text-sm text-gray-600">Dates and times default to this retreat. Choose Helper 1, Helper 2, Helper 3 or Cook for each person.</p>
           </div>
           <button type="button" onClick={addStaff} className="min-h-9 border border-gray-300 px-3 text-sm font-semibold">Add person</button>
         </div>
