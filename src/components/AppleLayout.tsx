@@ -785,7 +785,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical" element={<MedicalGrid />} />
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="payments" element={<PaymentsPage />} />
-                      <Route path="payments/scratchpad" element={<PaymentScratchpadPage />} />
+                      <Route path="payments/scratchpad/*" element={<PaymentScratchpadPage />} />
                       <Route path="payments/new" element={<PaymentEditorPage />} />
                       <Route path="payments/joint/new" element={<JointPaymentEditorPage />} />
                       <Route path="payments/receipts" element={<PaymentReceiptsPage />} />
@@ -1079,7 +1079,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/bookings/:bookingId/edit" element={<ProtectedRoute><BookingEditorPage mode="edit" /></ProtectedRoute>} />
                 <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
-                <Route path="/payments/scratchpad" element={<ProtectedRoute><PaymentScratchpadPage /></ProtectedRoute>} />
+                <Route path="/payments/scratchpad/*" element={<ProtectedRoute><PaymentScratchpadPage /></ProtectedRoute>} />
                 <Route path="/payments/:id" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/:id/edit" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/joint/new" element={<ProtectedRoute><JointPaymentEditorPage /></ProtectedRoute>} />

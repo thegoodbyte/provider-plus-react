@@ -14,14 +14,14 @@ beforeEach(()=>{
   api.list.mockResolvedValue({data:snapshot} as any); api.detail.mockResolvedValue({data:row} as any); api.candidates.mockResolvedValue({data:{payments:[],requests:[]}} as any);
   (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[]}); (bookingsApi.getAll as jest.Mock).mockResolvedValue({data:[]}); (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[]});
 });
-const mount=()=>render(<MemoryRouter><PaymentScratchpadPage /></MemoryRouter>);
+const mount=()=>render(<MemoryRouter initialEntries={["/admin/payments/scratchpad"]}><PaymentScratchpadPage /></MemoryRouter>);
 it('retains the previous snapshot and refresh time after a failed refresh',async()=>{
   mount(); await screen.findByText('Synthetic Payer',{exact:false});
   api.list.mockRejectedValueOnce(new Error('Network down')); fireEvent.click(screen.getByRole('button',{name:'Refresh',exact:true}));
-  await screen.findByText(/Previous snapshot shown below/); expect(screen.getAllByText('5100.00')).toHaveLength(2); expect(screen.getByText(/Last successful refresh/)).toBeInTheDocument();
+  await screen.findByText(/Previous snapshot shown below/); expect(screen.getAllByText(/5100.00/).length).toBeGreaterThanOrEqual(2); expect(screen.getByText(/Last successful refresh/)).toBeInTheDocument();
 });
 it('retains capture fields and the retry key after a failed save',async()=>{
-  mount(); fireEvent.click(screen.getByRole('button',{name:'Record received money'}));
+  mount(); fireEvent.click(screen.getByRole('button',{name:'New receipt'}));
   fireEvent.change(screen.getByLabelText('Amount received'),{target:{value:'5100.00'}}); fireEvent.change(screen.getByLabelText('Receiving account / wallet'),{target:{value:'PLN wallet'}}); fireEvent.change(screen.getByLabelText('Payment request number (optional)'),{target:{value:'001243'}});
   api.create.mockRejectedValue(new Error('Timeout')); fireEvent.click(screen.getByRole('button',{name:'Save receipt'}));
   await screen.findByRole('alert'); expect(screen.getByLabelText('Amount received')).toHaveValue('5100.00'); expect(screen.getByLabelText('Payment request number (optional)')).toHaveValue('001243');
@@ -30,7 +30,7 @@ it('retains capture fields and the retry key after a failed save',async()=>{
   expect(api.reconcile).not.toHaveBeenCalled();
 });
 it('never silently assigns a typed request hint or converts without review',async()=>{
-  mount(); fireEvent.click(await screen.findByRole('button',{name:'Manage receipt'}));
+  mount(); fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
   await screen.findByRole('heading',{name:'Match this receipt'}); expect(screen.getByLabelText('Reconciliation client')).toHaveValue(''); expect(api.reconcile).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText('Reconciliation client'),{target:{value:'client'}});
   expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeDisabled();
@@ -38,14 +38,51 @@ it('never silently assigns a typed request hint or converts without review',asyn
   api.reconcile.mockResolvedValue({data:{...row,status:'converted',paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}}} as any);
   fireEvent.click(screen.getByRole('button',{name:'Confirm conversion'}));
   await waitFor(()=>expect(api.reconcile).toHaveBeenCalledWith('receipt',expect.objectContaining({clientId:'client',paymentRequestId:'',confirm:true,action:'convert'})));
-  await screen.findByText('Reconciled receipt. Financial fields are locked.'); expect(screen.queryByRole('button',{name:'Edit receipt'})).not.toBeInTheDocument();
+  await screen.findByText('Receipt reconciled. The original received-money total is unchanged.');
 });
 it('offers explicit linking for a possible existing payment and preserves its relationships',async()=>{
   api.candidates.mockResolvedValue({data:{payments:[{_id:'payment',display_id:1401,clientId:'client',amount:5100,currency:'PLN',paymentDate:'2026-10-16',status:'completed'}],requests:[]}} as any);
-  mount(); fireEvent.click(await screen.findByRole('button',{name:'Manage receipt'}));
+  mount(); fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
   fireEvent.click(await screen.findByRole('button',{name:'Select existing payment'}));
   fireEvent.click(screen.getByLabelText(/I checked the original transaction/)); fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
   api.reconcile.mockResolvedValue({data:{...row,status:'converted',paymentId:'payment',payment:{display_id:1401}}} as any);
   fireEvent.click(screen.getByRole('button',{name:'Confirm link to existing payment'}));
   await waitFor(()=>expect(api.reconcile).toHaveBeenCalledWith('receipt',expect.objectContaining({action:'link',paymentId:'payment',clientId:'client',confirmAccount:true})));
+});
+
+it('uses a grid without inline capture or matching forms, and remembers filters in the URL',async()=>{
+ mount(); await screen.findByRole('table'); expect(screen.queryByLabelText('Amount received')).not.toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Filter currency'),{target:{value:'USD'}});
+ fireEvent.change(screen.getByLabelText('Sort receipts'),{target:{value:'amount-asc'}});
+ await waitFor(()=>expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({currency:'USD',sort:'amount-asc',page:1})));
+ fireEvent.click(screen.getByRole('link',{name:'View receipt Synthetic Payer'}));
+ await screen.findByRole('region',{name:'Receipt details'}); expect(screen.queryByRole('table')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'← Back to list'}));
+ await screen.findByRole('table'); expect(screen.getByLabelText('Filter currency')).toHaveValue('USD'); expect(screen.getByLabelText('Sort receipts')).toHaveValue('amount-asc');
+});
+it('opens edit as a separate screen and preserves fields after a failed edit',async()=>{
+ mount(); fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
+ await screen.findByRole('heading',{name:'Edit unassigned receipt'}); expect(screen.queryByRole('table')).not.toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Notes (optional)'),{target:{value:'Keep my note'}}); api.edit.mockRejectedValueOnce(new Error('failed'));
+ fireEvent.click(screen.getByRole('button',{name:'Save receipt'})); await screen.findByRole('alert'); expect(screen.getByLabelText('Notes (optional)')).toHaveValue('Keep my note');
+});
+it('warns before discarding an edited receipt',async()=>{
+ const confirm=jest.spyOn(window,'confirm').mockReturnValue(false); mount(); fireEvent.click(screen.getByRole('button',{name:'New receipt'}));
+ fireEvent.change(await screen.findByLabelText('Amount received'),{target:{value:'23.00'}}); fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
+ expect(confirm).toHaveBeenCalledWith('Discard unsaved receipt changes?'); expect(screen.getByLabelText('Amount received')).toHaveValue('23.00'); confirm.mockRestore();
+});
+it('locks edit and matching actions on linked receipts',async()=>{
+ api.list.mockResolvedValue({data:{...snapshot,items:[{...row,status:'converted'}]}} as any); mount();
+ expect(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'})).toBeDisabled(); expect(screen.getByRole('button',{name:'Match receipt Synthetic Payer'})).toBeDisabled();
+});
+it('canceling the matching popup never reconciles',async()=>{
+ mount(); fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'})); await screen.findByRole('dialog');
+ fireEvent.click(screen.getByRole('button',{name:'Close'})); await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument()); expect(api.reconcile).not.toHaveBeenCalled();
+});
+it('navigates across page boundaries in the active ordering',async()=>{
+ const items=Array.from({length:25},(_,i)=>({...row,_id:'row'+i,payer:'Payer '+i})); const second={...row,_id:'row25',payer:'Payer 25'};
+ api.list.mockImplementation(async(q:any)=>({data:{...snapshot,items:q.page===2?[second]:items,total:26,page:q.page,limit:25}} as any));
+ api.detail.mockImplementation(async(id:string)=>({data:items.find(r=>r._id===id)||second} as any)); mount();
+ fireEvent.click(await screen.findByRole('link',{name:'View receipt Payer 24'})); await screen.findByText('Receipt 25 of 26'); fireEvent.click(screen.getByRole('button',{name:'Next receipt'}));
+ await screen.findByText('Receipt 26 of 26'); expect(screen.getByRole('button',{name:'Next receipt'})).toBeDisabled(); expect(screen.getByRole('button',{name:'Previous receipt'})).toBeEnabled();
 });

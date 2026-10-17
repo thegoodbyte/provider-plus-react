@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Modal, message } from 'antd';
+import { Eye, Pencil, Link2 } from 'lucide-react';
 import { clientsApi, bookingsApi, paymentRequestsApi, scratchpadApi, ScratchpadReceipt, ScratchpadSnapshot } from '../services/api';
 import SearchableClientSelect from './SearchableClientSelect';
 
@@ -14,7 +16,7 @@ const errorText = (e: any) => {
   return Array.isArray(message) ? message.join(' ') : message || 'Could not save or load this information. Your form values are retained; please retry.';
 };
 const blankForm = () => ({ captureKey: crypto.randomUUID(), receivedDate: new Date().toLocaleDateString('en-CA'), amount: '', currency: 'PLN', provider: 'csob', account: '', payer: '', externalId: '', reference: '', requestNumber: '', notes: '' });
-const defaultFilters = { from: '', to: '', provider: '', account: '', currency: '', search: '', status: 'unassigned' };
+const defaultFilters = { from: '', to: '', provider: '', account: '', currency: '', search: '', status: 'unassigned', sort: 'date-desc' };
 const historyFields: Record<string,string> = { receivedDate: 'Received date', amountMinor: 'Amount (minor units)', currency: 'Currency', provider: 'Provider', account: 'Account', payer: 'Payer', externalId: 'Transaction ID', reference: 'Reference', requestNumber: 'Request hint', notes: 'Notes', status: 'Status', reason: 'Reason', message: 'Result' };
 function SearchableSelect({ id, value, options, placeholder, onChange }: { id: string; name: string; value: string; options: Array<{id:string;label:string;sublabel?:string}>; placeholder: string; onChange: (id:string)=>void }) {
   const [search,setSearch] = useState('');
@@ -22,8 +24,29 @@ function SearchableSelect({ id, value, options, placeholder, onChange }: { id: s
 }
 
 export default function PaymentScratchpadPage() {
-  const [filters, setFilters] = useState(defaultFilters);
-  const [page, setPage] = useState(1);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const base = '/admin/payments/scratchpad';
+  const query = new URLSearchParams(location.search);
+  const filters = Object.fromEntries(Object.entries(defaultFilters).map(([key, value]) => [key, query.get(key) ?? value])) as typeof defaultFilters;
+  const page = Math.max(1, Number(query.get('page')) || 1);
+  const route = location.pathname.split('/scratchpad')[1] || '';
+  const recordId = route.split('/')[1];
+  const isNew = recordId === 'new';
+  const isEdit = route.endsWith('/edit');
+  const isIndex = !recordId;
+  const filterKey = JSON.stringify(filters);
+  const [toast, toastHolder] = message.useMessage();
+  const [matching, setMatching] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [neighbors, setNeighbors] = useState<{previous?:string;next?:string;position?:number;total:number}>({total:0});
+  const navigateTo = (path: string, search = location.search) => {
+    if (busy || (dirty && !window.confirm('Discard unsaved receipt changes?'))) return;
+    setDirty(false); navigate(path + search);
+  };
+  const setPage = (value: number | ((page:number)=>number)) => { const q = new URLSearchParams(location.search); q.set('page', String(typeof value === 'function' ? value(page) : value)); navigate(base + '?' + q); };
+  const setFilters = (value: typeof defaultFilters) => { const q = new URLSearchParams(location.search); Object.entries(value).forEach(([k,v]) => q.set(k,v)); q.set('page','1'); navigate(base + '?' + q); };
   const [snapshot, setSnapshot] = useState<ScratchpadSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState('');
@@ -40,6 +63,27 @@ export default function PaymentScratchpadPage() {
   const [candidates, setCandidates] = useState<{ payments: any[]; requests: any[] }>({ payments: [], requests: [] });
   const [target, setTarget] = useState({ clientId: '', bookingId: '', paymentRequestId: '', paymentId: '', action: 'convert', confirmAccount: false });
   const [confirmed, setConfirmed] = useState(false);
+  const root = useRef<HTMLElement>(null);
+  const scrollKey = `scratchpad-scroll:${location.search}`;
+  const rememberScroll = () => {
+    const values = [window.scrollY]; let parent = root.current?.parentElement;
+    while (parent) { values.push(parent.scrollTop); parent = parent.parentElement; }
+    sessionStorage.setItem(scrollKey, JSON.stringify(values));
+  };
+  useEffect(() => {
+    if (!isIndex || loading || !snapshot) return;
+    const frame = requestAnimationFrame(() => {
+      try { const values = JSON.parse(sessionStorage.getItem(scrollKey) || '[]'); if (!values.length) return;
+        window.scrollTo(0,values[0]); let parent=root.current?.parentElement, index=1;
+        while(parent) {parent.scrollTop=values[index++] || 0;parent=parent.parentElement;}
+      } catch { /* A malformed browser scroll preference must not block payments. */ }
+    }); return () => cancelAnimationFrame(frame);
+  }, [isIndex, loading, snapshot, scrollKey]);
+  useEffect(() => {
+    if (isIndex && snapshot && !loading && !listError && page > Math.max(1, Math.ceil(snapshot.total / snapshot.limit))) {
+      const q = new URLSearchParams(location.search); q.set('page', String(Math.max(1,Math.ceil(snapshot.total/snapshot.limit)))); navigate(`${base}?${q}`,{replace:true});
+    }
+  }, [isIndex, snapshot, loading, listError, page]);
   const sequence = useRef(0);
   const saving = useRef(false);
   const detailSequence = useRef(0);
@@ -51,15 +95,15 @@ export default function PaymentScratchpadPage() {
       if (seq === sequence.current) setSnapshot(data);
     } catch (e) { if (seq === sequence.current) setListError(errorText(e)); }
     finally { if (seq === sequence.current) setLoading(false); }
-  }, [filters, page]);
+  }, [filterKey, page]);
   useEffect(() => { const timer = setTimeout(load, 200); return () => { clearTimeout(timer); ++sequence.current; }; }, [load]);
-  const changeFilter = (key: string, value: string) => { setFilters(v => ({ ...v, [key]: value })); setPage(1); };
+  const changeFilter = (key: string, value: string) => setFilters({ ...filters, [key]: value });
   const mutate = async (action: () => Promise<void>) => {
     if (saving.current) return;
     saving.current = true; setBusy(true); setError(''); setNotice('');
     try { await action(); await load(); }
     catch (e) {
-      setError(errorText(e));
+      setError(errorText(e)); void toast.error(errorText(e));
       if (selected && !form) try {
         const { data } = await scratchpadApi.detail(selected._id); setSelected(data);
         if (data.reconciliationPending) setTarget(v => ({ ...v, ...data.reconciliation.targets, paymentId: data.reconciliation.paymentId, action: data.reconciliation.action, confirmAccount: data.reconciliation.confirmAccount }));
@@ -70,6 +114,7 @@ export default function PaymentScratchpadPage() {
   const open = async (id: string) => {
     const seq = ++detailSequence.current;
     setError(''); setSelected(null); setForm(null); setEditing(false); setReason(''); setConfirmed(false);
+    setDetailLoading(true);
     try {
       const [detail, suggestions, cs, bs, rs] = await Promise.all([scratchpadApi.detail(id), scratchpadApi.candidates(id), clientsApi.getAll(), bookingsApi.getAll(), paymentRequestsApi.getAllFresh()]);
       if (seq !== detailSequence.current) return;
@@ -77,6 +122,7 @@ export default function PaymentScratchpadPage() {
       const pending = detail.data.reconciliation;
       setTarget({ clientId: pending?.targets?.clientId || '', bookingId: pending?.targets?.bookingId || '', paymentRequestId: pending?.targets?.paymentRequestId || '', paymentId: pending?.paymentId || '', action: pending?.action || 'convert', confirmAccount: pending?.confirmAccount || false });
     } catch (e) { if (seq === detailSequence.current) setError(errorText(e)); }
+    finally { if (seq === detailSequence.current) setDetailLoading(false); }
   };
   const saveCapture = (e: React.FormEvent) => {
     e.preventDefault(); if (!form) return;
@@ -84,7 +130,7 @@ export default function PaymentScratchpadPage() {
       const response = editing && selected ? await scratchpadApi.edit(selected._id, { ...form, revision: selected.revision }) : await scratchpadApi.create(form);
       const duplicate = (response.data as any).possibleDuplicates?.length;
       setNotice(`${(response.data as any).alreadyRecorded ? 'This receipt was already recorded. No duplicate was created.' : 'Receipt saved. No payment or balance was changed.'}${duplicate ? ' Possible duplicate receipts found—review the matching date, amount and reference before reconciliation.' : ''}`);
-      await open(response.data._id);
+      void toast.success('Receipt saved.'); setDirty(false); navigate(`${base}/${response.data._id}${location.search}`); await open(response.data._id);
     });
   };
   const setRequest = (id: string) => {
@@ -99,23 +145,72 @@ export default function PaymentScratchpadPage() {
     e.preventDefault(); if (!selected) return;
     void mutate(async () => {
       const { data } = await scratchpadApi.reconcile(selected._id, { ...target, revision: selected.revision, confirm: confirmed });
-      setSelected(data); setNotice('Receipt reconciled. The original received-money total is unchanged.');
+      setSelected(data); setMatching(false); setNotice('Receipt reconciled. The original received-money total is unchanged.'); void toast.success('Receipt reconciled.'); if (filters.status === 'unassigned') navigate(`${base}${location.search}`);
     });
   };
   const changeState = (status: string) => selected && void mutate(async () => {
+    if (!window.confirm(status === 'excluded' ? 'Exclude this receipt? Its audit history will be retained. No payment will be deleted.' : 'Restore this receipt to unassigned?')) return;
     const { data } = await scratchpadApi.state(selected._id, { revision: selected.revision, status, reason });
-    setSelected(await scratchpadApi.detail(data._id).then(r => r.data)); setReason(''); setNotice(status === 'excluded' ? 'Receipt excluded with its history retained.' : 'Receipt restored to unassigned.');
+    setSelected(await scratchpadApi.detail(data._id).then(r => r.data)); setReason(''); setNotice(status === 'excluded' ? 'Receipt excluded with its history retained.' : 'Receipt restored to unassigned.'); void toast.success(status === 'excluded' ? 'Receipt excluded.' : 'Receipt restored.'); navigate(`${base}${location.search}`);
   });
 
+  useEffect(() => {
+    setMatching(false); setDirty(false);
+    if (isNew) { setSelected(null); setEditing(false); setForm(blankForm()); }
+    else if (recordId) void open(recordId);
+    else { ++detailSequence.current; setSelected(null); setForm(null); setEditing(false); }
+  }, [recordId, isNew]);
+  useEffect(() => {
+    if (selected && !isIndex && !isNew) {
+      setEditing(isEdit);
+      setForm(isEdit && selected.status === 'unassigned' && !selected.reconciliationPending ? {...blankForm(), ...selected} : null);
+    }
+  }, [selected, isEdit, isIndex, isNew]);
+  useEffect(() => {
+    const warn = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+  useEffect(() => {
+    let canceled = false;
+    if (!recordId || isNew) return;
+    setNeighbors({total:0});
+    void (async () => {
+      try {
+        let currentPage = 1, prior: string | undefined;
+        while (!canceled) {
+          const {data} = await scratchpadApi.list({...filters, page:currentPage});
+          const index = data.items.findIndex(r=>r._id===recordId);
+          if (index >= 0) {
+            let next = data.items[index+1]?._id;
+            if (!next && currentPage * data.limit < data.total) next = (await scratchpadApi.list({...filters,page:currentPage+1})).data.items[0]?._id;
+            if (!canceled) setNeighbors({previous:data.items[index-1]?._id || prior,next,position:(currentPage-1)*data.limit+index+1,total:data.total});
+            return;
+          }
+          if (currentPage * data.limit >= data.total) { if (!canceled) setNeighbors({total:data.total}); return; }
+          prior = data.items.at(-1)?._id; currentPage++;
+        }
+      } catch { if (!canceled) setNeighbors({total:0}); }
+    })();
+    return () => { canceled=true; };
+  }, [recordId, filterKey, selected?.revision]);
+
+  useEffect(() => {
+    if (!matching) return;
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !saving.current) setMatching(false); };
+    document.addEventListener('keydown', escape); return () => document.removeEventListener('keydown', escape);
+  }, [matching]);
   const requestOptions = requests.filter(r => !target.clientId || resolveId(r.clientId) === target.clientId).map(r => ({ id: r._id, label: `#${r.display_id || r.invoiceNumber} · ${r.currency} · ${r.status}`, sublabel: r.invoiceNumber || '' }));
   const bookingOptions = bookings.filter(b => !target.clientId || resolveId(b.clientId) === target.clientId).map(b => ({ id: b._id, label: `Booking #${b.bookingNumber || b.display_id} · ${b.currency} · ${b.status}`, sublabel: b.retreatId?.retreatCode || b.retreatId?.name || '' }));
-  const close = () => { ++detailSequence.current; setSelected(null); setForm(null); setEditing(false); setError(''); };
-  return <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><Link className="text-sm text-blue-700" to="/admin/payments">← Payments</Link><h1 className="mt-2 text-2xl font-semibold text-slate-900">Payment scratchpad</h1><p className="mt-1 max-w-2xl text-sm text-slate-600">Record money already received, then match it when you know the client. Capture does not update balances.</p></div><button className={primaryClass} disabled={busy} onClick={() => { close(); setNotice(''); setForm(blankForm()); }}>Record received money</button></header>
+  const close = () => navigateTo(base);
+  return <main ref={root} className="mx-auto min-w-0 max-w-7xl space-y-6 p-4 sm:p-6" onClickCapture={event=>{ if (isIndex) rememberScroll(); if (dirty && (event.target as HTMLElement).closest('a') && !window.confirm('Discard unsaved receipt changes?')) {event.preventDefault();event.stopPropagation();} }}>{toastHolder}
+    <header className="flex flex-wrap items-start justify-between gap-4"><div><Link className="text-sm text-blue-700" to="/admin/payments">← Payments</Link><h1 className="mt-2 text-2xl font-semibold text-slate-900">Payment scratchpad</h1><p className="mt-1 max-w-2xl text-sm text-slate-600">Record money already received, then match it when you know the client. Capture does not update balances.</p></div>{isIndex ? <button className={primaryClass} disabled={busy} onClick={() => navigateTo(`${base}/new`)}>New receipt</button> : <button className={buttonClass} onClick={close}>← Back to list</button>}</header>
+    {!isIndex && !isNew && <nav aria-label="Receipt navigation" className="flex flex-wrap items-center gap-3"><button className={buttonClass} disabled={!neighbors.previous || busy} onClick={()=>navigateTo(`${base}/${neighbors.previous}`)}>Previous receipt</button><span className="text-sm text-slate-600">{neighbors.position ? `Receipt ${neighbors.position} of ${neighbors.total}` : 'Receipt outside the current filters'}</span><button className={buttonClass} disabled={!neighbors.next || busy} onClick={()=>navigateTo(`${base}/${neighbors.next}`)}>Next receipt</button></nav>}
+    {detailLoading && !isIndex && <p role="status">Loading receipt…</p>}
+    {isEdit && selected && !form && <p role="status">This receipt is locked. Reconciled, excluded or pending receipts cannot be edited.</p>}
     {notice && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">{notice}</div>}
     {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-900">{error} {selected && <button className={buttonClass} disabled={busy} onClick={() => void open(selected._id)}>Reload receipt</button>}</div>}
 
-    {form && <section className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="mb-4 text-lg font-semibold">{editing ? 'Edit unassigned receipt' : 'Record a receipt'}</h2><form onSubmit={saveCapture}><fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {form && <section className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="mb-4 text-lg font-semibold">{editing ? 'Edit unassigned receipt' : 'Record a receipt'}</h2><form onSubmit={saveCapture} onChange={()=>setDirty(true)}><fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <label>Received date<input className={fieldClass} type="date" required min="1900-01-01" max="2100-12-31" value={form.receivedDate} onChange={e => setForm({ ...form, receivedDate: e.target.value })} /></label>
       <label>Amount received<input className={fieldClass} inputMode="decimal" pattern="[0-9]+(\.[0-9]{1,2})?" required value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="5100.00" /></label>
       <label>Currency<select className={fieldClass} value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>{currencies.map(c => <option key={c}>{c}</option>)}</select></label>
@@ -124,15 +219,24 @@ export default function PaymentScratchpadPage() {
       {(['payer', 'externalId', 'reference', 'requestNumber'] as const).map((key, index) => <label key={key}>{['Payer name (optional)', 'External transaction ID (optional)', 'Transfer reference (optional)', 'Payment request number (optional)'][index]}<input className={fieldClass} maxLength={key === 'requestNumber' ? 100 : key === 'reference' ? 500 : 200} value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })} /></label>)}
       <label className="sm:col-span-2">Notes (optional)<textarea className={fieldClass} maxLength={4000} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></label>
       <p className="text-sm text-slate-600 sm:col-span-2 lg:col-span-3">A request number is a search hint. No client or booking will be assigned automatically.</p>
-      <div className="flex gap-3 sm:col-span-2 lg:col-span-3"><button className={primaryClass} type="submit">{busy ? 'Saving…' : 'Save receipt'}</button><button className={buttonClass} type="button" onClick={() => { setForm(null); setEditing(false); }}>Cancel</button></div>
+      <div className="flex gap-3 sm:col-span-2 lg:col-span-3"><button className={primaryClass} type="submit">{busy ? 'Saving…' : 'Save receipt'}</button><button className={buttonClass} type="button" onClick={() => navigateTo(selected ? `${base}/${selected._id}` : base)}>Cancel</button></div>
     </fieldset></form></section>}
 
-    {selected && !form && <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5" aria-label="Receipt details"><div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-lg font-semibold">{selected.amount} {selected.currency} · {providers[selected.provider]}</h2><p>{selected.receivedDate} · {selected.account} · {selected.payer || 'Payer unknown'}</p><p className="break-words text-sm text-slate-600">Reference: {selected.reference || '—'} · Transaction: {selected.externalId || '—'} · Request hint: {selected.requestNumber || '—'}</p></div><button disabled={busy} className={buttonClass} onClick={close}>Close details</button></div>
+    {!isIndex && selected && !form && <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5" aria-label="Receipt details"><div className="flex flex-wrap justify-between gap-3"><div><h2 className="text-lg font-semibold">{selected.amount} {selected.currency} · {providers[selected.provider]}</h2><p>{selected.receivedDate} · {selected.account} · {selected.payer || 'Payer unknown'}</p><p className="break-words text-sm text-slate-600">Reference: {selected.reference || '—'} · Transaction: {selected.externalId || '—'} · Request hint: {selected.requestNumber || '—'}</p></div><button disabled={busy} className={buttonClass} onClick={close}>Close details</button></div>
+      {selected.notes && <p className="whitespace-pre-wrap break-words text-sm text-slate-700">Notes: {selected.notes}</p>}
       {selected.reconciliationPending && <p role="status" className="rounded-lg bg-amber-50 p-3">Reconciliation is pending. Retry to resume the original confirmed target. Receipt editing is locked.</p>}
       {selected.reconciliationError && <p role="alert" className="text-red-800">{selected.reconciliationError}</p>}
       {selected.status === 'converted' ? <div className="rounded-lg bg-slate-50 p-4"><p>Reconciled receipt. Financial fields are locked.</p>{selected.payment ? <><Link className="text-blue-700 underline" to={`/admin/payments/${selected.paymentId}`}>View payment #{selected.payment.display_id || selected.paymentId}</Link><p>Current payment: {selected.payment.amount} {selected.payment.currency} · {selected.payment.status}</p>{selected.payment.bookingId && <Link className="mr-4 text-blue-700 underline" to={`/admin/bookings/${resolveId(selected.payment.bookingId)}`}>View booking</Link>}{selected.payment.paymentRequestId && <Link className="text-blue-700 underline" to={`/admin/payment-requests/${resolveId(selected.payment.paymentRequestId)}`}>View payment request</Link>}</> : <p role="alert">The linked payment was removed. Review the existing payment correction workflow; this receipt cannot be converted again.</p>}</div> : <>
-        {!selected.reconciliationPending && <div className="flex flex-wrap items-end gap-3">{selected.status === 'unassigned' && <button className={buttonClass} disabled={busy} onClick={() => { setEditing(true); setForm({ ...blankForm(), ...selected }); }}>Edit receipt</button>}<label className="min-w-0 flex-1">Reason for exclusion / restore<input className={fieldClass} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} /></label><button className={buttonClass} disabled={busy || !reason.trim()} onClick={() => changeState(selected.status === 'excluded' ? 'unassigned' : 'excluded')}>{selected.status === 'excluded' ? 'Restore receipt' : 'Exclude receipt'}</button></div>}
-        {selected.status === 'unassigned' && <form onSubmit={finish} className="space-y-4 border-t border-slate-200 pt-4"><h3 className="font-semibold">Match this receipt</h3><p className="text-sm text-slate-600">Review possible existing payments first. Only the full amount can be reconciled. Different currencies and split allocations need the existing payment workflow.</p>
+        {!selected.reconciliationPending && <div className="flex flex-wrap items-end gap-3">{selected.status === 'unassigned' && <button className={buttonClass} disabled={busy} onClick={() => navigateTo(`${base}/${selected._id}/edit`)}>Edit receipt</button>}<label className="min-w-0 flex-1">Reason for exclusion / restore<input className={fieldClass} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} /></label><button className={buttonClass} disabled={busy || !reason.trim()} onClick={() => changeState(selected.status === 'excluded' ? 'unassigned' : 'excluded')}>{selected.status === 'excluded' ? 'Restore receipt' : 'Exclude receipt'}</button></div>}
+        {selected.status === 'unassigned' && <button className={primaryClass} onClick={()=>setMatching(true)}>Match receipt</button>}
+
+      </>}
+      <details><summary className="cursor-pointer font-medium">Receipt history ({selected.history?.length || 0})</summary><ol className="mt-3 space-y-3 text-sm">{selected.history?.map((h,i) => <li className="border-l-2 border-slate-200 pl-3" key={i}><p>{h.action.replace(/_/g, ' ')} · {h.actor} · {new Date(h.at).toLocaleString()}</p>{['before','after'].map(side => <div className="break-words text-xs text-slate-500" key={side}>{Object.entries((h as any)[side] || {}).filter(([key]) => historyFields[key]).map(([key,value]) => <p key={key}>{side === 'before' ? 'Previous' : 'Saved'} {key === 'amountMinor' ? 'amount' : historyFields[key]}: {key === 'amountMinor' ? (Number(value)/100).toFixed(2) : String(value || '—')}</p>)}</div>)}</li>)}</ol></details>
+    </section>}
+
+    <Modal open={matching && Boolean(selected)} title="Match receipt" onCancel={()=>{if (!busy) setMatching(false);}} footer={null} width={760} destroyOnHidden={false} maskClosable={!busy} closable={!busy} keyboard={!busy}>
+      {selected && <><p className="mb-4 break-words">{selected.receivedDate} · {selected.amount} {selected.currency} · {selected.account} · {selected.payer || 'Payer unknown'}</p>{error && <p role="alert" className="mb-3 text-red-800">{error}</p>}
+        <form onSubmit={finish} className="space-y-4 border-t border-slate-200 pt-4"><h3 className="font-semibold">Match this receipt</h3><p className="text-sm text-slate-600">Review possible existing payments first. Only the full amount can be reconciled. Different currencies and split allocations need the existing payment workflow.</p>
           {candidates.requests.length > 0 && <p className="text-sm">Possible request numbers: {candidates.requests.map(r => `#${r.display_id || r.invoiceNumber}`).join(', ')}. Choose explicitly below.</p>}
           <fieldset disabled={busy || selected.reconciliationPending} className="space-y-4">
             <label>Action<select className={fieldClass} value={target.action} onChange={e => { setTarget(v => ({ ...v, action: e.target.value, paymentId: '', confirmAccount: false })); setConfirmed(false); }}><option value="convert">Convert to a new payment</option><option value="link">Link an existing payment</option></select></label>
@@ -145,15 +249,15 @@ export default function PaymentScratchpadPage() {
           <p className="rounded-lg bg-blue-50 p-3 text-sm">Review: {selected.receivedDate} · {selected.amount} {selected.currency} · {selected.account}. {target.action === 'link' ? 'Linking does not create a payment or change balances.' : 'Conversion creates one completed payment and updates the selected client/booking/request through existing rules.'} No email will be sent.</p>
           <label className="flex items-start gap-2"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={busy} required />I reviewed the receipt and selected relationships.</label>
           <button className={primaryClass} type="submit" disabled={busy || !confirmed || !target.clientId || (target.action === 'link' && !target.paymentId)}>{busy ? 'Reconciling…' : selected.reconciliationPending ? 'Retry reconciliation' : target.action === 'link' ? 'Confirm link to existing payment' : 'Confirm conversion'}</button>
-        </form>}
+        </form>
       </>}
-      <details><summary className="cursor-pointer font-medium">Receipt history ({selected.history?.length || 0})</summary><ol className="mt-3 space-y-3 text-sm">{selected.history?.map((h,i) => <li className="border-l-2 border-slate-200 pl-3" key={i}><p>{h.action.replace(/_/g, ' ')} · {h.actor} · {new Date(h.at).toLocaleString()}</p>{['before','after'].map(side => <div className="break-words text-xs text-slate-500" key={side}>{Object.entries((h as any)[side] || {}).filter(([key]) => historyFields[key]).map(([key,value]) => <p key={key}>{side === 'before' ? 'Previous' : 'Saved'} {key === 'amountMinor' ? 'amount' : historyFields[key]}: {key === 'amountMinor' ? (Number(value)/100).toFixed(2) : String(value || '—')}</p>)}</div>)}</li>)}</ol></details>
-    </section>}
-
+    </Modal>
+    {isIndex && <>
     <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5" aria-label="Received-money overview"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <label>From date<input className={fieldClass} type="date" value={filters.from} onChange={e => changeFilter('from', e.target.value)} /></label><label>To date<input className={fieldClass} type="date" value={filters.to} onChange={e => changeFilter('to', e.target.value)} /></label>
       <label>Filter provider<select className={fieldClass} value={filters.provider} onChange={e => changeFilter('provider', e.target.value)}><option value="">All providers</option>{Object.entries(providers).map(([key,name]) => <option key={key} value={key}>{name}</option>)}</select></label><label>Filter currency<select className={fieldClass} value={filters.currency} onChange={e => changeFilter('currency', e.target.value)}><option value="">All currencies</option>{currencies.map(c => <option key={c}>{c}</option>)}</select></label>
       <label>Filter account<input className={fieldClass} value={filters.account} onChange={e => changeFilter('account', e.target.value)} /></label><label className="sm:col-span-2">Search payer, reference, transaction or request number<input className={fieldClass} value={filters.search} onChange={e => changeFilter('search', e.target.value)} /></label>
+      <label>Sort receipts<select className={fieldClass} value={filters.sort} onChange={e=>changeFilter('sort',e.target.value)}><option value="date-desc">Received date: newest first</option><option value="date-asc">Received date: oldest first</option><option value="amount-desc">Amount: highest first</option><option value="amount-asc">Amount: lowest first</option><option value="payer-asc">Payer: A–Z</option></select></label>
       <div className="flex items-end gap-2"><button className={buttonClass} onClick={() => { setFilters(defaultFilters); setPage(1); }}>Clear filters</button><button className={buttonClass} disabled={loading} onClick={() => void load()}>Refresh</button></div>
     </div>
     <p className="text-sm text-slate-600">Logged receipts only—not a bank balance. Totals use the date, provider, account, currency and search filters across all pages, independently of the status tab. Excluded receipts are shown separately.</p>
@@ -161,10 +265,10 @@ export default function PaymentScratchpadPage() {
     {loading && <p role="status">Loading receipts…</p>}
     {snapshot && <div className={loading || listError ? 'opacity-60' : ''}><p className="mb-3 text-xs text-slate-500">Last successful refresh: {new Date(snapshot.refreshedAt).toLocaleString()}</p><div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{currencies.filter(c => snapshot.totals.some(t => t.currency === c)).map(c => <article key={c} className="rounded-xl bg-slate-50 p-4"><h3 className="font-semibold">{c}</h3>{[['logged','Logged'],['unassigned','Unassigned'],['converted','Converted / linked'],['excluded','Excluded']].map(([status,label]) => { const total = snapshot.totals.find(t => t.currency === c && t.status === status); return <p key={status} className="mt-2 flex justify-between gap-3 text-sm"><span>{label} ({total?.count || 0})</span><strong>{total?.amount || '0.00'}</strong></p>; })}</article>)}</div>
       <label>Receipt status<select className={`${fieldClass} mb-4 mt-1 max-w-xs`} value={filters.status} onChange={e => changeFilter('status', e.target.value)}><option value="unassigned">Unassigned</option><option value="all">All receipts</option><option value="converted">Converted / linked</option><option value="excluded">Excluded</option></select></label>
-      <div className="space-y-3">{snapshot.items.map(row => <article className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 p-4" key={row._id}><div className="min-w-0"><p className="font-semibold">{row.amount} {row.currency} <span className="text-sm font-normal text-slate-500">· {row.receivedDate}</span></p><p className="text-sm">{providers[row.provider]} · {row.account} · {row.payer || 'Payer unknown'}</p><p className="max-w-full break-words text-xs text-slate-500">{row.reference || 'No reference'}{row.requestNumber ? ` · Request hint: ${row.requestNumber}` : ''}{row.externalId ? ` · Transaction: ${row.externalId}` : ''}</p><p className="text-sm">{row.reconciliationPending ? 'Reconciliation pending — retry needed' : row.status === 'converted' ? 'Converted / linked' : row.status}{row.payment && <> · <Link className="text-blue-700 underline" to={`/admin/payments/${row.paymentId}`}>Payment #{row.payment.display_id || row.paymentId} ({row.payment.status})</Link></>}{row.paymentMissing && <span className="text-red-800"> · Linked payment removed; review correction history</span>}</p></div><button className={buttonClass} disabled={busy || loading || Boolean(listError)} onClick={() => void open(row._id)}>Manage receipt</button></article>)}</div>
+      <div className="overflow-x-auto rounded-xl border border-slate-200"><table className="w-full min-w-[820px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500"><tr>{['Received date','Payer / reference','Provider / account','Amount','Request','Status','Actions'].map(label=><th className="px-4 py-3" key={label}>{label}</th>)}</tr></thead><tbody className="divide-y divide-slate-200">{snapshot.items.map(row=><tr key={row._id} className="hover:bg-slate-50"><td className="whitespace-nowrap px-4 py-4">{row.receivedDate}</td><td className="max-w-[220px] break-words px-4 py-4"><Link className="font-medium text-slate-900 hover:underline" to={`${base}/${row._id}${location.search}`}>{row.payer || 'Payer unknown'}</Link><p className="text-xs text-slate-500">{row.reference || 'No reference'}</p>{row.externalId && <p className="text-xs text-slate-500">{row.externalId}</p>}</td><td className="max-w-[160px] break-words px-4 py-4">{providers[row.provider]}<p className="text-xs text-slate-500">{row.account}</p></td><td className="whitespace-nowrap px-4 py-4 font-semibold">{row.amount} {row.currency}</td><td className="px-4 py-4">{row.requestNumber || '—'}</td><td className="px-4 py-4"><span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{row.reconciliationPending ? 'Pending' : row.status === 'converted' ? 'Linked' : row.status}</span>{row.paymentMissing && <p className="text-xs text-red-800">Linked payment removed</p>}</td><td className="px-4 py-4"><div className="flex gap-2"><Link aria-label={`View receipt ${row.payer || row._id}`} title="View receipt" className="rounded-lg border p-2" to={`${base}/${row._id}${location.search}`}><Eye size={16}/></Link><button aria-label={`Edit receipt ${row.payer || row._id}`} title={row.status !== 'unassigned' || row.reconciliationPending ? 'Financial fields are locked' : 'Edit receipt'} className="rounded-lg border p-2 disabled:opacity-40" disabled={row.status !== 'unassigned' || row.reconciliationPending} onClick={()=>navigateTo(`${base}/${row._id}/edit`)}><Pencil size={16}/></button><button aria-label={`Match receipt ${row.payer || row._id}`} title="Match receipt" className="rounded-lg border p-2 disabled:opacity-40" disabled={row.status !== 'unassigned' || busy || loading} onClick={async()=>{await open(row._id);setMatching(true);}}><Link2 size={16}/></button></div></td></tr>)}</tbody></table></div>
       {!snapshot.items.length && !loading && !listError && <p className="py-6 text-center text-slate-600">No receipts match this view. Record received money or adjust the filters.</p>}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-slate-500">{snapshot.total} matching receipts · Page {snapshot.page}</p><div className="flex gap-2"><button className={buttonClass} disabled={page <= 1 || loading || Boolean(listError)} onClick={() => setPage(v => v - 1)}>Previous page</button><button className={buttonClass} disabled={page * snapshot.limit >= snapshot.total || loading || Boolean(listError)} onClick={() => setPage(v => v + 1)}>Next page</button></div></div>
     </div>}
-    </section>
+    </section></>}
   </main>;
 }
