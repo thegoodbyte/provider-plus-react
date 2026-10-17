@@ -1,6 +1,8 @@
 # Retreat Engine admin frontend
 
-React and TypeScript, built with Vite. Requires Node 22.12+.
+React 19 and TypeScript **5.9.3**, built with Vite. Requires Node 22.12+.
+
+React, React DOM and their type packages all use major version 19. Application code is checked with `strict: true`, `moduleResolution: bundler` and the React JSX runtime. `npm run build` runs this strict check before bundling; `npx tsc --noEmit -p tsconfig.build.json` runs it alone. Jest uses Babel to execute tests separately; test files are excluded from the production type-check configuration.
 
 - `npm ci --legacy-peer-deps`: install the locked dependencies.
 - `npm start`: Vite development server on port 3000; set `PORT` to override.
@@ -15,3 +17,5 @@ Use `develop` for normal development. PPVC-644 is isolated on `refactor/PPVC-644
 Existing `REACT_APP_*` variables and `PUBLIC_URL` remain supported. Vite also supports `VITE_*`; both prefixes are public browser configuration and must not contain secrets. Railway build-time variables override checked-in environment files. The production output remains `build/` so static deployments retain their existing directory contract.
 
 See [PPVC-644 migration and deployment notes](docs/PPVC-644.md).
+
+See [PPVC-645 TypeScript / React audit](docs/PPVC-645.md) for version alignment, strict-check scope and validation limitations.
