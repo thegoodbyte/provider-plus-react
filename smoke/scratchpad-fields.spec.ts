@@ -1,0 +1,50 @@
+import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+const fixture = JSON.parse(readFileSync(process.env.SCRATCHPAD_FIXTURE_PATH || '/tmp/ppvc858-fixture.json', 'utf8'));
+for (const viewport of [{width:1365,height:1000},{width:390,height:844}]) test(`optional scratchpad fields and request/client matching at ${viewport.width}px`, async ({page,baseURL,request}) => {
+  await page.setViewportSize(viewport);
+  await page.addInitScript(({token}) => { localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'fixture',role:'admin',email:'scratchpad@example.invalid'})); },{token:fixture.token});
+  await page.route('**/*',async route => {
+    const url=new URL(route.request().url());if(url.origin===new URL(baseURL!).origin)return route.continue();
+    const path=url.pathname.replace(/^\/api/,'');
+    if(path.startsWith('/payment-scratchpad')||['/clients','/bookings','/payments/requests','/payment-requests'].includes(path)) {
+      const response=await route.fetch({url:`${fixture.url}${path==='/payment-requests'?'/payments/requests':path}${url.search}`});return route.fulfill({response});
+    }
+    return route.fulfill({json:path==='/environment/status'?{production:true}:[]});
+  });
+  const marker=`Phone-${viewport.width}-${Date.now()}`;
+  await page.goto('/admin/payments/scratchpad/new');
+  await expect(page.getByLabel('Receiving account / wallet')).toHaveCount(0);
+  await expect(page.getByLabel('Transfer reference (optional)')).toHaveCount(0);
+  await expect(page.getByLabel('Transaction ID (optional)')).not.toHaveAttribute('required','');
+  await page.getByLabel('Amount received').fill('51.00');
+  await page.getByLabel('Payer name (optional)').fill(marker);
+  await page.getByLabel('Phone number (optional)').fill('+420 (777) 123-456');
+  await page.getByRole('button',{name:'Save receipt',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Receipt details'})).toContainText('+420 (777) 123-456');
+  const id=page.url().match(/scratchpad\/([a-f0-9]{24})/)![1];
+  await page.reload();await page.getByRole('button',{name:'Edit receipt',exact:true}).click();
+  await expect(page.getByLabel('Phone number (optional)')).toHaveValue('+420 (777) 123-456');
+  await page.getByLabel('Phone number (optional)').fill('+1 212 555 0100');
+  await page.getByRole('button',{name:'Save receipt',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Receipt details'})).toContainText('+1 212 555 0100');
+  await page.getByRole('button',{name:'Match receipt',exact:true}).click();
+  await page.getByLabel('Search payment request number or client').fill('001243');
+  await expect(page.getByRole('option',{name:/#1243 · Synthetic Payer/})).toHaveCount(1);
+  await page.getByLabel('Payment request (optional)').selectOption(fixture.requestId);
+  await expect(page.getByPlaceholder('Search clients by name or number...')).toHaveValue(/Synthetic Payer/);
+  await expect(page.getByRole('button',{name:'Confirm conversion',exact:true})).toBeDisabled();
+  const headers={Authorization:`Bearer ${fixture.token}`};
+  const before=await (await request.get(`${fixture.url}/payment-scratchpad/${id}`,{headers})).json();expect(before.status).toBe('unassigned');
+  await page.getByLabel('Search payment request number or client').fill('Synthetic Payer');
+  await expect(page.getByRole('option',{name:/#1243 · Synthetic Payer/})).toHaveCount(1);
+  await page.getByLabel('I reviewed the receipt and selected relationships.').check();
+  await expect(page.getByRole('button',{name:'Confirm conversion',exact:true})).toBeEnabled();
+  await page.getByRole('dialog').screenshot({path:`test-results/ppvc858-${viewport.width}-matching.png`});
+  await page.getByRole('button',{name:'Confirm conversion',exact:true}).click();
+  await expect(page.getByRole('table')).toBeVisible();
+  const after=await (await request.get(`${fixture.url}/payment-scratchpad/${id}`,{headers})).json();
+  expect(after.status).toBe('converted');expect(after.phone).toBe('+1 212 555 0100');expect(after.account).toBe('');expect(after.externalId).toBe('');
+  expect(after.payment.clientId).toBe(fixture.clientId);expect(after.payment.paymentRequestId).toBe(fixture.requestId);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+});

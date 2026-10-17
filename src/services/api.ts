@@ -506,7 +506,7 @@ export const retreatExpensesApi = {
 
 export interface ScratchpadReceipt {
   _id: string; revision: number; receivedDate: string; amount: string; amountMinor: number;
-  currency: string; provider: string; account: string; payer?: string; externalId?: string;
+  currency: string; provider: string; account: string; payer?: string; phone?: string; externalId?: string;
   reference?: string; requestNumber?: string; notes?: string; status: 'unassigned' | 'converted' | 'excluded';
   paymentId?: string; payment?: any; paymentMissing?: boolean; reconciliationPending?: boolean;
   reconciliationError?: string; reconciliation?: any; history?: Array<{ action: string; actor: string; at: string; before?: any; after?: any }>;
@@ -521,7 +521,7 @@ export const scratchpadApi = {
   create: (data: any) => api.post<ScratchpadReceipt & { possibleDuplicates?: any[]; alreadyRecorded?: boolean }>('/payment-scratchpad', data),
   edit: (id: string, data: any) => api.patch<ScratchpadReceipt>(`/payment-scratchpad/${id}`, data),
   state: (id: string, data: any) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/state`, data),
-  candidates: (id: string) => api.get<{ payments: any[]; requests: any[] }>(`/payment-scratchpad/${id}/candidates`),
+  candidates: (id: string, params?: { clientId?: string; paymentRequestId?: string }) => api.get<{ payments: any[]; requests: any[] }>(`/payment-scratchpad/${id}/candidates`, { params }),
   reconcile: (id: string, data: any) => {
     cacheService.clearPattern('payments:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');
     invalidateBookingRequirements();

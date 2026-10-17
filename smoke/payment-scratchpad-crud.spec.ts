@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {readFileSync} from 'node:fs';
-const fixture=JSON.parse(readFileSync('/tmp/ppvc830-fixture.json','utf8'));
+const fixture=JSON.parse(readFileSync(process.env.SCRATCHPAD_FIXTURE_PATH || '/tmp/ppvc830-fixture.json','utf8'));
 const headers={Authorization:`Bearer ${fixture.token}`};
 for(const device of ['desktop','mobile']) test.describe(`Receipt CRUD ${device}`,()=>{
  test.setTimeout(45000);
@@ -14,7 +14,7 @@ for(const device of ['desktop','mobile']) test.describe(`Receipt CRUD ${device}`
    if(p.startsWith('/payment-scratchpad')||['/clients','/bookings','/payments/requests','/payment-requests'].includes(p)){
     const r=await route.fetch({url:`${fixture.url}${p==='/payment-requests'?'/payments/requests':p}${u.search}`});return route.fulfill({response:r});
    }
-   if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[],testMode:true,allowedEmailDomains:[],allowedRecipients:[],blockedActions:[],warnings:[]}});
+   if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:true,enabledJobs:[],testMode:true,allowedEmailDomains:[],allowedRecipients:[],blockedActions:[],warnings:[]}});
    if(p==='/auth/verify')return route.fulfill({json:{id:'synthetic-admin',role:'admin'}});
    if(p==='/launcher-config')return route.fulfill({json:{assignments:[]}});
    if(p==='/assistant/tasks-for-today')return route.fulfill({json:{tasks:[],retreats:[]}});
@@ -26,7 +26,7 @@ for(const device of ['desktop','mobile']) test.describe(`Receipt CRUD ${device}`
   const name=`CRUD-${device}-${Date.now()}`;
   await page.goto('/admin/payments/scratchpad');await expect(page.getByRole('table')).toBeVisible();await expect(page.getByLabel('Amount received')).toHaveCount(0);
   await page.getByRole('button',{name:'New receipt',exact:true}).click();await expect(page).toHaveURL(/scratchpad\/new/);await expect(page.getByRole('table')).toHaveCount(0);
-  await page.getByLabel('Amount received').fill('123.45');await page.getByLabel('Receiving account / wallet').fill('Synthetic PLN account');await page.getByLabel('Payer name (optional)').fill(name);
+  await page.getByLabel('Amount received').fill('123.45');await page.getByLabel('Payer name (optional)').fill(name);
   await page.screenshot({path:`test-results/ppvc846-${device}-create.png`,fullPage:true});
   await page.getByRole('button',{name:'Save receipt',exact:true}).click();await expect(page.getByRole('region',{name:'Receipt details'})).toBeVisible();await expect(page).toHaveURL(/scratchpad\/[a-f0-9]{24}/);
   await page.reload();await expect(page.getByText(name,{exact:false}).first()).toBeVisible();await page.getByRole('button',{name:'Edit receipt',exact:true}).click();await expect(page).toHaveURL(/\/edit/);
@@ -38,7 +38,7 @@ for(const device of ['desktop','mobile']) test.describe(`Receipt CRUD ${device}`
   await page.screenshot({path:`test-results/ppvc846-${device}-view.png`,fullPage:true});
   await page.getByLabel('Reason for exclusion / restore').fill('Synthetic duplicate');page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Exclude receipt',exact:true}).click();await expect(page.getByRole('button',{name:'Edit receipt',exact:true})).toBeVisible();
   page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Exclude receipt',exact:true}).click();await expect(page.getByRole('table')).toBeVisible();
-  await page.getByLabel('Search payer, reference, transaction or request number').fill(name);await page.getByLabel('Receipt status').selectOption('excluded');await page.getByRole('link',{name:`View receipt ${name}`,exact:true}).click();
+  await page.getByLabel('Search payer, phone, transaction or request number').fill(name);await page.getByLabel('Receipt status').selectOption('excluded');await page.getByRole('link',{name:`View receipt ${name}`,exact:true}).click();
   await expect(page.getByRole('button',{name:'Edit receipt',exact:true})).toHaveCount(0);await page.getByLabel('Reason for exclusion / restore').fill('Verified receipt');page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Restore receipt',exact:true}).click();await expect(page.getByRole('table')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  });
@@ -50,7 +50,7 @@ for(const device of ['desktop','mobile']) test.describe(`Receipt CRUD ${device}`
   await page.getByRole('link',{name:`View receipt ${marker}-24`,exact:true}).click();await expect(page.getByText('Receipt 25 of 27')).toBeVisible();await page.getByRole('button',{name:'Next receipt',exact:true}).click();await expect(page.getByText('Receipt 26 of 27')).toBeVisible();await page.reload();await expect(page.getByText('Receipt 26 of 27')).toBeVisible();
   await page.getByRole('button',{name:'Next receipt',exact:true}).click();await expect(page.getByText('Receipt 27 of 27')).toBeVisible();await expect(page.getByRole('button',{name:'Next receipt',exact:true})).toBeDisabled();
   await page.getByRole('button',{name:'Previous receipt',exact:true}).click();await expect(page.getByText('Receipt 26 of 27')).toBeVisible();await page.getByRole('button',{name:'← Back to list',exact:true}).click();
-  await expect(page.getByLabel('Filter currency')).toHaveValue('USD');await expect(page.getByLabel('Sort receipts')).toHaveValue('amount-asc');await expect(page.getByLabel('Search payer, reference, transaction or request number')).toHaveValue(marker);await expect(page).toHaveURL(/page=1/);
+  await expect(page.getByLabel('Filter currency')).toHaveValue('USD');await expect(page.getByLabel('Sort receipts')).toHaveValue('amount-asc');await expect(page.getByLabel('Search payer, phone, transaction or request number')).toHaveValue(marker);await expect(page).toHaveURL(/page=1/);
  });
  test('matching popup from grid/view, explicit linking, cancel/focus, linked locks and filtered-out state',async({page,request})=>{
   const marker=`Match-${device}-${Date.now()}`;

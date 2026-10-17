@@ -22,7 +22,7 @@ it('retains the previous snapshot and refresh time after a failed refresh',async
 });
 it('retains capture fields and the retry key after a failed save',async()=>{
   mount(); fireEvent.click(screen.getByRole('button',{name:'New receipt'}));
-  fireEvent.change(screen.getByLabelText('Amount received'),{target:{value:'5100.00'}}); fireEvent.change(screen.getByLabelText('Receiving account / wallet'),{target:{value:'PLN wallet'}}); fireEvent.change(screen.getByLabelText('Payment request number (optional)'),{target:{value:'001243'}});
+  fireEvent.change(screen.getByLabelText('Amount received'),{target:{value:'5100.00'}}); fireEvent.change(screen.getByLabelText('Payment request number (optional)'),{target:{value:'001243'}});
   api.create.mockRejectedValue(new Error('Timeout')); fireEvent.click(screen.getByRole('button',{name:'Save receipt'}));
   await screen.findByRole('alert'); expect(screen.getByLabelText('Amount received')).toHaveValue('5100.00'); expect(screen.getByLabelText('Payment request number (optional)')).toHaveValue('001243');
   fireEvent.click(screen.getByRole('button',{name:'Save receipt'})); await waitFor(()=>expect(api.create).toHaveBeenCalledTimes(2));
@@ -36,6 +36,7 @@ it('never silently assigns a typed request hint or converts without review',asyn
   expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeDisabled();
   fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
   api.reconcile.mockResolvedValue({data:{...row,status:'converted',paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}}} as any);
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Confirm conversion'}));
   await waitFor(()=>expect(api.reconcile).toHaveBeenCalledWith('receipt',expect.objectContaining({clientId:'client',paymentRequestId:'',confirm:true,action:'convert'})));
   await screen.findByText('Receipt reconciled. The original received-money total is unchanged.');
@@ -46,6 +47,7 @@ it('offers explicit linking for a possible existing payment and preserves its re
   fireEvent.click(await screen.findByRole('button',{name:'Select existing payment'}));
   fireEvent.click(screen.getByLabelText(/I checked the original transaction/)); fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
   api.reconcile.mockResolvedValue({data:{...row,status:'converted',paymentId:'payment',payment:{display_id:1401}}} as any);
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Confirm link to existing payment'}));
   await waitFor(()=>expect(api.reconcile).toHaveBeenCalledWith('receipt',expect.objectContaining({action:'link',paymentId:'payment',clientId:'client',confirmAccount:true})));
 });
@@ -86,4 +88,53 @@ it('navigates across page boundaries in the active ordering',async()=>{
  api.detail.mockImplementation(async(id:string)=>({data:items.find(r=>r._id===id)||second} as any)); mount();
  fireEvent.click(await screen.findByRole('link',{name:'View receipt Payer 24'})); await screen.findByText('Receipt 25 of 26'); fireEvent.click(screen.getByRole('button',{name:'Next receipt'}));
  await screen.findByText('Receipt 26 of 26'); expect(screen.getByRole('button',{name:'Next receipt'})).toBeDisabled(); expect(screen.getByRole('button',{name:'Previous receipt'})).toBeEnabled();
+});
+
+it('hides account/reference inputs and keeps phone plus optional transaction ID on failed capture',async()=>{
+ mount();fireEvent.click(screen.getByRole('button',{name:'New receipt'}));
+ expect(screen.queryByLabelText('Receiving account / wallet')).not.toBeInTheDocument();
+ expect(screen.queryByLabelText('Transfer reference (optional)')).not.toBeInTheDocument();
+ expect(screen.getByLabelText('Transaction ID (optional)')).not.toBeRequired();
+ fireEvent.change(screen.getByLabelText('Phone number (optional)'),{target:{value:'+420 777 123 456'}});
+ fireEvent.change(screen.getByLabelText('Amount received'),{target:{value:'42.00'}});
+ api.create.mockRejectedValue(new Error('Timeout'));fireEvent.click(screen.getByRole('button',{name:'Save receipt'}));
+ await screen.findByRole('alert');
+ expect(api.create).toHaveBeenCalledWith(expect.objectContaining({account:'',externalId:'',phone:'+420 777 123 456'}));
+ expect(screen.getByLabelText('Phone number (optional)')).toHaveValue('+420 777 123 456');
+});
+it('finds request by client or number and fills its relationships without reconciling automatically',async()=>{
+ (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'client',firstName:'Synthetic',lastName:'Client',display_id:101}]});
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[{_id:'request',display_id:1243,invoiceNumber:'001243',clientId:'client',bookingId:'booking',currency:'PLN',status:'pending'}]});
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ const search=await screen.findByLabelText('Search payment request number or client');
+ fireEvent.change(search,{target:{value:'Synthetic Client'}});
+ expect(screen.getByRole('option',{name:/#1243 · Synthetic Client/})).toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Payment request (optional)'),{target:{value:'request'}});
+ expect(screen.getByLabelText('Reconciliation client')).toHaveValue('client');
+ await waitFor(()=>expect(api.candidates).toHaveBeenCalledWith('receipt',{clientId:'client',paymentRequestId:'request'}));
+ expect(api.reconcile).not.toHaveBeenCalled();
+ expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeDisabled();
+});
+it('keeps lookup errors retryable and blocks confirmation until matching results reload',async()=>{
+ api.candidates.mockImplementation((_id, params)=> params?.clientId ? Promise.reject({response:{data:{message:'Lookup failed'}}}) : Promise.resolve({data:{payments:[],requests:[]}} as any));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ fireEvent.change(await screen.findByLabelText('Reconciliation client'),{target:{value:'client'}});
+ const retry=await screen.findByRole('button',{name:'Retry matching payments'});
+ fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
+ expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeDisabled();
+ api.candidates.mockResolvedValue({data:{payments:[],requests:[]}} as any);fireEvent.click(retry);
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeEnabled());
+ expect(api.reconcile).not.toHaveBeenCalled();
+});
+it('can retry a pending reconciliation after closing an unfinished candidate lookup',async()=>{
+ api.candidates.mockResolvedValueOnce({data:{payments:[],requests:[]}} as any).mockImplementationOnce(()=>new Promise(()=>{}));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ await screen.findByText('Loading matching payments…');
+ fireEvent.keyDown(document,{key:'Escape'});
+ await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+ api.detail.mockResolvedValue({data:{...row,reconciliationPending:true,reconciliation:{action:'convert',paymentId:'payment',targets:{clientId:'client'}}}} as any);
+ api.candidates.mockResolvedValue({data:{payments:[],requests:[]}} as any);
+ fireEvent.click(screen.getByRole('button',{name:'Match receipt Synthetic Payer'}));
+ fireEvent.click(await screen.findByLabelText('I reviewed the receipt and selected relationships.'));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Retry reconciliation'})).toBeEnabled());
 });
