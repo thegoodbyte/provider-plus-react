@@ -4,7 +4,7 @@ import { authService } from '../services/authService';
 import { referralsApi, bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
 import { roomInventoryApi } from '../services/roomInventoryApi';
 import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
-import { BookingType } from '../constants/eventTypes';
+import { BookingType, EventType, EVENT_CONFIGS } from '../constants/eventTypes';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
@@ -54,6 +54,24 @@ const formatDate = (value?: string | Date | null) => {
   if (!value) return '—';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+};
+
+// PPVC-845: a booking's event-type options (full retreat, booster, Bwiti
+// Learning Weekend, workshop) aren't interchangeable retreat records -- a
+// Learning Weekend booking offering every 7-day retreat to choose from (and
+// vice versa) is what the ticket flagged. Booster keeps every event type that
+// actually has ceremonies to pick from, since a booster guest can attach to
+// either a dedicated Booster event or a single ceremony inside a full retreat.
+const EVENT_TYPES_FOR_BOOKING_TYPE: Record<BookingType, EventType[]> = {
+  [BookingType.FULL_RETREAT]: [EventType.REGULAR],
+  [BookingType.BOOSTER]: Object.values(EventType).filter((type) => EVENT_CONFIGS[type].hasCeremonies),
+  [BookingType.LEARNING_WEEKEND]: [EventType.LEARNING_WEEKEND],
+  [BookingType.WORKSHOP]: [EventType.WORKSHOP],
+};
+
+export const retreatsForBookingType = (retreats: Retreat[], bookingType: BookingType) => {
+  const allowed = EVENT_TYPES_FOR_BOOKING_TYPE[bookingType] || [EventType.REGULAR];
+  return retreats.filter((retreat) => allowed.includes(retreat.type || EventType.REGULAR));
 };
 
 interface BookingEditorFormProps {
@@ -460,6 +478,15 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
     [selectedRequest, formData.clientId],
   );
   const selectedRetreat = retreats.find((retreat) => retreat._id === formData.retreatId);
+  const retreatOptionsForBookingType = useMemo(
+    () => retreatsForBookingType(retreats, formData.bookingType),
+    [retreats, formData.bookingType],
+  );
+  const retreatFieldLabel = formData.bookingType === BookingType.LEARNING_WEEKEND
+    ? EVENT_CONFIGS[EventType.LEARNING_WEEKEND].label
+    : formData.bookingType === BookingType.WORKSHOP
+      ? EVENT_CONFIGS[EventType.WORKSHOP].label
+      : 'Retreat';
   const selectedHouse = selectedRetreat?.houseId && typeof selectedRetreat.houseId === 'object' ? selectedRetreat.houseId : undefined;
   const houseBedrooms = (selectedHouse && Array.isArray(selectedHouse.bedrooms) ? selectedHouse.bedrooms : []) as Array<{ name: string; hasBathroom?: boolean }>;
   const sharedRoomWarning = formData.roomType === 'shared' && selectedHouse?.allowsRoomSharing === false;
@@ -519,12 +546,20 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               <label className="mb-1 block text-sm font-medium text-gray-700">Booking type</label>
               <select
                 value={formData.bookingType}
-                onChange={(e) => setFormData((prev) => ({
-                  ...prev,
-                  bookingType: e.target.value as BookingFormData['bookingType'],
-                  ceremonyId: e.target.value === BookingType.BOOSTER ? prev.ceremonyId : '',
-                  ceremonyNumber: e.target.value === BookingType.BOOSTER ? prev.ceremonyNumber : '',
-                }))}
+                onChange={(e) => {
+                  const nextBookingType = e.target.value as BookingFormData['bookingType'];
+                  const retreatStillValid = mode !== 'create' || retreatsForBookingType(retreats, nextBookingType)
+                    .some((retreat) => retreat._id === formData.retreatId);
+                  setFormData((prev) => ({
+                    ...prev,
+                    bookingType: nextBookingType,
+                    ceremonyId: nextBookingType === BookingType.BOOSTER ? prev.ceremonyId : '',
+                    ceremonyNumber: nextBookingType === BookingType.BOOSTER ? prev.ceremonyNumber : '',
+                    retreatId: retreatStillValid ? prev.retreatId : '',
+                    checkInDate: retreatStillValid ? prev.checkInDate : '',
+                    checkOutDate: retreatStillValid ? prev.checkOutDate : '',
+                  }));
+                }}
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value={BookingType.FULL_RETREAT}>Full 7-day retreat</option>
@@ -624,15 +659,15 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Retreat</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{retreatFieldLabel}</label>
             {mode === 'edit' ? <>
               <div className="rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800">{(() => { const selected = retreats.find((item) => item._id === formData.retreatId); return selected ? `${selected.name}${selected.location ? ` — ${selected.location}` : ''}` : 'Current retreat'; })()}</div>
               <p className="mt-1.5 text-xs font-medium text-amber-800">To move this booking, close Edit and use <strong>Reschedule booking</strong>. That also moves deadlines, documents, medical reviews, and payment planning.</p>
             </> : <SearchableRetreatSelect
-                retreats={retreats}
+                retreats={retreatOptionsForBookingType}
                 selectedRetreatId={formData.retreatId}
                 onRetreatSelect={handleRetreatSelect}
-                placeholder="Search and select a retreat..."
+                placeholder={`Search and select a ${retreatFieldLabel.toLowerCase()}...`}
                 required
               />}
           </div>
