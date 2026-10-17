@@ -6,6 +6,7 @@ for(const device of ['desktop','mobile']) test.describe(`Receipt CRUD ${device}`
  test.setTimeout(45000);
  test.use({viewport:device==='mobile'?{width:390,height:844}:{width:1365,height:1000},timezoneId:'America/New_York'});
  test.beforeEach(async({page,baseURL})=>{
+  page.on('pageerror',e=>console.log('PAGE ERROR',e.stack)); page.on('console',m=>{if(m.type()==='error')console.log('BROWSER ERROR',m.text());});
   await page.addInitScript(({token})=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',email:'scratchpad@example.invalid',role:'admin',firstName:'Synthetic',lastName:'Admin'}));},{token:fixture.token});
   await page.route('**/*',async route=>{
    const u=new URL(route.request().url());if(u.origin===new URL(baseURL!).origin)return route.continue();
@@ -13,7 +14,7 @@ for(const device of ['desktop','mobile']) test.describe(`Receipt CRUD ${device}`
    if(p.startsWith('/payment-scratchpad')||['/clients','/bookings','/payments/requests','/payment-requests'].includes(p)){
     const r=await route.fetch({url:`${fixture.url}${p==='/payment-requests'?'/payments/requests':p}${u.search}`});return route.fulfill({response:r});
    }
-   if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false}});
+   if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[],testMode:true,allowedEmailDomains:[],allowedRecipients:[],blockedActions:[],warnings:[]}});
    if(p==='/auth/verify')return route.fulfill({json:{id:'synthetic-admin',role:'admin'}});
    if(p==='/launcher-config')return route.fulfill({json:{assignments:[]}});
    if(p==='/assistant/tasks-for-today')return route.fulfill({json:{tasks:[],retreats:[]}});

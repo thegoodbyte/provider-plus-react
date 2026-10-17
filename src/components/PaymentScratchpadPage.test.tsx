@@ -59,6 +59,7 @@ it('uses a grid without inline capture or matching forms, and remembers filters 
  await screen.findByRole('region',{name:'Receipt details'}); expect(screen.queryByRole('table')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'← Back to list'}));
  await screen.findByRole('table'); expect(screen.getByLabelText('Filter currency')).toHaveValue('USD'); expect(screen.getByLabelText('Sort receipts')).toHaveValue('amount-asc');
+ fireEvent.click(screen.getByRole('button',{name:'Clear filters'})); await waitFor(()=>expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({currency:'',sort:'date-desc',page:1})));
 });
 it('opens edit as a separate screen and preserves fields after a failed edit',async()=>{
  mount(); fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
