@@ -97,7 +97,7 @@ export default function EnvironmentBanner() {
             </strong>
             <span>
               Emails captured · Payments sandbox only · Jobs:{" "}
-              {status.enabledJobs.join(", ") || "disabled"}
+              {(Array.isArray(status.enabledJobs) ? status.enabledJobs : []).join(", ") || "disabled"}
             </span>
             {authService.getUser()?.role === "admin" && (
               <Button size="small" onClick={load}>

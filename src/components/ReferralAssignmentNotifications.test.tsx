@@ -2,12 +2,13 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ReferralAssignmentNotifications from './ReferralAssignmentNotifications';
-import ReferralEditorPage from './ReferralEditorPage';
+import ReferralNotificationSettingsPage from './ReferralNotificationSettingsPage';
 import { referralsApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ referralsApi: { getAssignmentNotifications: jest.fn(), retryAssignmentNotification: jest.fn(), update: jest.fn() } }));
+jest.mock('../services/api', () => ({ referralsApi: { getAssignmentNotifications: jest.fn(), retryAssignmentNotification: jest.fn(), update: jest.fn(), getNotificationSettings: jest.fn() } }));
 const event = { id: 'e1', clientId: 'c1', firstName: 'Jane', lastName: 'Guest', status: 'blocked', detail: 'Missing recipient.', createdAt: '2026-10-14T10:00:00Z', attempts: 1 };
 beforeEach(() => {
+  (referralsApi.getNotificationSettings as jest.Mock).mockResolvedValue({ data: {assignmentNotificationsEnabled:true} });
   (referralsApi.getAssignmentNotifications as jest.Mock).mockResolvedValue({ data: [event] });
 });
 it('shows auditable delivery state and retries a safe failure', async () => {
@@ -34,9 +35,10 @@ it.each(['sent', 'sending', 'uncertain', 'superseded'])('never offers automatic 
 });
 it('saves opt-in activation and language alongside partner settings', async () => {
   (referralsApi.update as jest.Mock).mockResolvedValue({ data: {} });
-  render(<MemoryRouter><ReferralEditorPage referral={{ _id: 'r1', name: 'Alchemia', referralCode: 'AD' }} base="/admin/referrals" onSaved={jest.fn().mockResolvedValue(undefined)} /></MemoryRouter>);
-  fireEvent.click(screen.getByLabelText('Notify this partner when a client is assigned'));
-  fireEvent.change(screen.getByLabelText('Notification language'), { target: { value: 'pl' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-  await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ assignmentNotificationsEnabled: true, assignmentNotificationLanguage: 'pl' })));
+  render(<MemoryRouter><ReferralNotificationSettingsPage partners={[{ _id: 'r1', name: 'Alchemia', referralCode: 'AD' }]} onPartnerSaved={jest.fn().mockResolvedValue(undefined)} /></MemoryRouter>);
+  await screen.findByLabelText('Notify Alchemia on assignment');
+  fireEvent.click(screen.getByLabelText('Notify Alchemia on assignment'));
+  await waitFor(()=>expect(referralsApi.update).toHaveBeenCalledWith('r1', {assignmentNotificationsEnabled:true}));
+  fireEvent.change(screen.getByLabelText('Notification language for Alchemia'), { target: { value: 'pl' } });
+  await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ assignmentNotificationLanguage: 'pl' })));
 });

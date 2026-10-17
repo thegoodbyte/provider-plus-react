@@ -38,7 +38,8 @@ class FormMessageChannel {
 (globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
 Object.defineProperty(window, 'matchMedia', { writable: true, value: () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }) });
 
-jest.setTimeout(60000);
+// Ant Design form rendering in jsdom is substantially slower than the real browser.
+jest.setTimeout(120000);
 configure({ asyncUtilTimeout: 10000 });
 
 const template = { _id: 't1', name: 'Arrival fixture', language: 'en', subject: 'Template subject', bodyText: 'Template message', bodyHtml: '<p>Template message</p>' };

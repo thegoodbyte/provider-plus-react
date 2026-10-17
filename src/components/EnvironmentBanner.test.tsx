@@ -114,3 +114,9 @@ it("does not create clickable live checkout or production app links", () => {
     "https://dev.retreatengine.com/test",
   ]);
 });
+it.each([undefined, null, 'bad', {}])('keeps the workspace usable when enabledJobs is malformed: %p', async enabledJobs => {
+  (environmentApi.status as jest.Mock).mockResolvedValue({data:{environment:'development',production:false,enabledJobs}});
+  render(<EnvironmentBanner />);
+  expect(await screen.findByText('DEVELOPMENT · Test environment')).toBeInTheDocument();
+  expect(screen.getByText(/Jobs: disabled/)).toBeInTheDocument();
+});
