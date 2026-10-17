@@ -324,6 +324,9 @@ export interface Client {
   pregnancyStatus?: string;
   screeningCompletedDate?: Date | string;
   screeningData?: Record<string, any>;
+  preferredLanguage?: string;
+  screeningCallAt?: Date | string | null;
+  screeningCallTimeZone?: string | null;
   handwritingImageUrl?: string;
   profilePictureUrl?: string;
   profilePictureS3Key?: string;

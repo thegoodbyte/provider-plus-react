@@ -1,4 +1,5 @@
 import ScreeningPdfViewer from './ScreeningPdfViewer';
+import ScreeningCallPanel from './ScreeningCallPanel';
 import FormsInvitation from './FormsInvitation';
 import ArtifactReviewStatus, { useArtifactReviews } from './ArtifactReviewStatus';
 import React, { useState, useEffect } from 'react';
@@ -1247,6 +1248,7 @@ const ClientDetailsPage: React.FC = () => {
                 </button>
               </div>
             </div>
+            <ScreeningCallPanel client={client} onSaved={setClient} />
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Screening Status</h3>

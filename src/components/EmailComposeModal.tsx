@@ -12,10 +12,11 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
-const interpolateTemplate = (text: string | undefined, variables: Record<string, any> = {}) => {
+const interpolateTemplate = (text: string | undefined, variables: Record<string, any> = {}, escapeHtml = false) => {
   return String(text || '').replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, path) => {
     const value = String(path).split('.').reduce((current, key) => current?.[key], variables);
-    return value === undefined || value === null ? '' : String(value);
+    const result = value === undefined || value === null ? '' : String(value);
+    return escapeHtml ? result.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!)) : result;
   });
 };
 
@@ -62,10 +63,10 @@ const htmlToEditableText = (html: string) => {
 
 const looksLikeHtml = (value?: string) => /<!doctype\s+html|<html[\s>]|<body[\s>]|<(?:p|div|table|h[1-6]|ul|ol|li|br|a)\b/i.test(String(value || ''));
 
-const normalizeMessageFields = (bodyText?: string, bodyHtml?: string) => {
+const normalizeMessageFields = (bodyText?: string, bodyHtml?: string, preservePlainText = false) => {
   const html = bodyHtml || (looksLikeHtml(bodyText) ? String(bodyText) : '');
   return {
-    bodyText: html ? htmlToEditableText(html) : String(bodyText || ''),
+    bodyText: html ? (preservePlainText && bodyText ? bodyText : htmlToEditableText(html)) : String(bodyText || ''),
     bodyHtml: html,
   };
 };
@@ -76,6 +77,7 @@ export interface EmailComposeInitialValues {
   bcc?: string;
   subject?: string;
   bodyText?: string;
+  bodyHtml?: string;
   fromName?: string;
   fromEmail?: string;
   replyTo?: string;
@@ -133,7 +135,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   const attachmentAttemptRef = useRef('');
   const [deliveryUncertain, setDeliveryUncertain] = useState(false);
   const [sending, setSending] = useState(false);
-  const initialMessage = normalizeMessageFields(initialValues.bodyText);
+  const initialMessage = normalizeMessageFields(initialValues.bodyText, initialValues.bodyHtml, initialValues.templateKey === 'screening_call_preparation');
   const [formData, setFormData] = useState({
     to: initialValues.to || '',
     cc: initialValues.cc || '',
@@ -171,7 +173,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     setPreparedVariables(initialValues.variables || {});
     setAttachmentPreparationError('');
     attachmentAttemptRef.current = '';
-    const message = normalizeMessageFields(initialValues.bodyText);
+    const message = normalizeMessageFields(initialValues.bodyText, initialValues.bodyHtml, initialValues.templateKey === 'screening_call_preparation');
     setFormData({
       to: initialValues.to || '',
       cc: initialValues.cc || '',
@@ -315,7 +317,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       setFormData((previous) => ({
         ...previous,
         subject: response.data.subject || previous.subject,
-        ...normalizeMessageFields(response.data.bodyText || previous.bodyText, response.data.bodyHtml),
+        ...normalizeMessageFields(response.data.bodyText || previous.bodyText, response.data.bodyHtml, response.data.templateKey === 'screening_call_preparation'),
       }));
     }).catch((error) => {
       console.error('Unable to prepare email preview:', error);
@@ -343,7 +345,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     setFormData((prev) => {
       const message = normalizeMessageFields(
         template.bodyText ? interpolateTemplate(template.bodyText, preparedVariables) : prev.bodyText,
-        template.bodyHtml ? interpolateTemplate(template.bodyHtml, preparedVariables) : undefined,
+        template.bodyHtml ? interpolateTemplate(template.bodyHtml, preparedVariables, template.templateKey === 'screening_call_preparation') : undefined,
+        template.templateKey === 'screening_call_preparation',
       );
       return {
         ...prev,
