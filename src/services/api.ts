@@ -216,6 +216,8 @@ export const clientsApi = {
     cacheService.clearPattern('clients:');
     return api.put(`/clients/${id}/workflow-status`, { status, reason });
   },
+  viewScreeningPdf: (id: string) => api.get(`/clients/${id}/screening/pdf`, { responseType: 'blob', suppressGlobalError: true } as any),
+  regenerateScreeningPdf: (id: string) => api.post(`/clients/${id}/screening/pdf/regenerate`, {}, { responseType: 'blob', suppressGlobalError: true } as any),
   downloadScreeningPdf: (id: string) =>
     api.get(`/clients/${id}/screening/download-pdf`, {
       responseType: 'blob',

@@ -1,4 +1,4 @@
-import { saveScreeningPdf } from '../utils/screeningPdfDownload';
+import ScreeningPdfViewer from './ScreeningPdfViewer';
 import FormsInvitation from './FormsInvitation';
 import ArtifactReviewStatus, { useArtifactReviews } from './ArtifactReviewStatus';
 import React, { useState, useEffect } from 'react';
@@ -104,6 +104,7 @@ const ClientDetailsPage: React.FC = () => {
   const location = useLocation();
 
   const [client, setClient] = useState<any>(null);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [payments, setPayments] = useState<any[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
@@ -1224,19 +1225,10 @@ const ClientDetailsPage: React.FC = () => {
                 {hasScreeningDetails && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!clientId) return;
-                      clientsApi.downloadScreeningPdf(clientId)
-                        .then((response) => {
-                          saveScreeningPdf(response, [client?.firstName, client?.lastName].filter(Boolean).join('-') || clientId);
-                        })
-                        .catch((error) => {
-                          showError(apiErrorMessage(error, 'Could not download screening PDF. Please try again.'));
-                        });
-                    }}
+                    onClick={() => setPdfOpen(true)}
                     className="inline-flex h-10 px-3 items-center justify-center rounded-md bg-green-600 text-white shadow-sm hover:bg-green-700"
-                    aria-label="Download screening PDF"
-                    title="Download screening PDF"
+                    aria-label="View screening PDF"
+                    title="View screening PDF"
                   >
                     <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2385,6 +2377,7 @@ const ClientDetailsPage: React.FC = () => {
         </div>
       )}
 
+      {pdfOpen && clientId && <ScreeningPdfViewer key={clientId} clientId={clientId} onClose={() => setPdfOpen(false)} />}
     </div>
   );
 };

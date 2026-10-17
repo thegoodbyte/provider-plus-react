@@ -1,4 +1,4 @@
-import { saveScreeningPdf } from '../utils/screeningPdfDownload';
+import ScreeningPdfViewer from '../components/ScreeningPdfViewer';
 import AccommodationSelect from '../components/AccommodationSelect';
 import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -258,6 +258,7 @@ const ClientScreening: React.FC = () => {
   const { user } = useAuth();
   const [, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pdfOpen, setPdfOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -1006,16 +1007,7 @@ const ClientScreening: React.FC = () => {
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (!clientId) return;
-    clientsApi.downloadScreeningPdf(clientId)
-      .then((response) => {
-        saveScreeningPdf(response, [formData.firstName, formData.lastName].filter(Boolean).join('-') || clientId);
-      })
-      .catch((error) => {
-        flashSaveMessage('Could not download screening PDF. Please try again.');
-      });
-  };
+  const handleDownloadPdf = () => setPdfOpen(true);
 
   const getClientProfilePath = () => {
     const prefix = location.pathname.startsWith('/admin') ? '/admin' : '';
@@ -1060,6 +1052,7 @@ const ClientScreening: React.FC = () => {
 
   return (
     <div className="p-4 max-w-6xl mx-auto">
+      {pdfOpen && clientId && <ScreeningPdfViewer key={clientId} clientId={clientId} onClose={() => setPdfOpen(false)} />}
       {/* Header */}
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Client Screening Form</h1>
