@@ -27,7 +27,7 @@ test.describe('PPVC-325 booking step reminders', () => {
     await page.route('**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
-      if (url.port === '3000') return route.continue();
+      if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === `/retreats/${retreatId}`) return route.fulfill({ json: { _id: retreatId, name: 'Benešov retreat', code: 'BEN-08-20-26', startDate: '2026-08-20', endDate: '2026-08-27', status: 'upcoming' } });
       if (url.pathname === `/retreats/${retreatId}/hero-image-url`) return route.fulfill({ json: { heroImageUrl: null } });

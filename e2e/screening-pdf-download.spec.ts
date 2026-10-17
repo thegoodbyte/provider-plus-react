@@ -9,21 +9,25 @@ async function fixture(page:any,fail=false){
  await page.addInitScript(()=>{const original=URL.createObjectURL.bind(URL);(window as any).__pdfUrls=[];URL.createObjectURL=(blob:Blob)=>{const url=original(blob);(window as any).__pdfUrls.push(url);return url;};});
  let failed=false;
  await page.route('**/*',async(route:any)=>{const req=route.request();if(!['xhr','fetch'].includes(req.resourceType())||req.url().startsWith('blob:'))return route.continue();const path=new URL(req.url()).pathname;const json=(data:any)=>route.fulfill({json:data});
- if(path.endsWith('/screening/download-pdf')){if(fail&&!failed){failed=true;return route.fulfill({status:503,json:{message:'PDF service unavailable'}});}return route.fulfill({status:200,contentType:'application/pdf',headers:{'content-disposition':'attachment; filename="screening-synthetic.pdf"','access-control-expose-headers':'Content-Disposition'},body:pdf});}
+ if((path.endsWith('/screening/download-pdf') || path.endsWith('/screening/pdf'))){if(fail&&!failed){failed=true;return route.fulfill({status:503,json:{message:'PDF service unavailable'}});}return route.fulfill({status:200,contentType:'application/pdf',headers:{'content-disposition':'attachment; filename="screening-synthetic.pdf"','access-control-expose-headers':'Content-Disposition'},body:pdf});}
  if(path==='/clients/client-1')return json({_id:'client-1',firstName:'Synthetic',lastName:'Client',display_id:501,phone:'+420700000000',screeningData:{mainIntent:'Synthetic test'}});
  if(path==='/environment/status')return json({environment:'local',production:false,enabledJobs:[]});return json([]);
  });
 }
-for(const width of [1440,390])for(const entry of ['editor','details'])test('named screening PDF downloads with intact bytes and durable source '+entry+' '+width,async({page},testInfo)=>{
+for(const width of [1440,390])for(const entry of ['editor','details'])test('screening viewer downloads intact PDF bytes and keeps its source available '+entry+' '+width,async({page},testInfo)=>{
  await page.setViewportSize({width,height:1000});await page.clock.install();await fixture(page);
  await page.goto(entry==='editor'?'/admin/clients/client-1/screening':'/admin/clients/client-1?tab=screening');
- const button=entry==='editor'?page.getByRole('button',{name:'PDF',exact:true}):page.getByRole('button',{name:'Download screening PDF',exact:true});
- const downloadEvent=page.waitForEvent('download');await button.click();const download=await downloadEvent;
- expect(download.suggestedFilename()).toBe('screening-synthetic.pdf');const target=testInfo.outputPath('screening.pdf');await download.saveAs(target);expect(await download.failure()).toBeNull();expect(await readFile(target)).toEqual(pdf);
+ const button=entry==='editor'?page.getByRole('button',{name:'PDF',exact:true}):page.getByRole('button',{name:'View screening PDF',exact:true});
+ await button.click();await expect(page.getByTitle('Screening PDF document')).toHaveAttribute('src',/^blob:/);
+ const downloadEvent=page.waitForEvent('download');await page.getByRole('link',{name:'Download PDF',exact:true}).click();const download=await downloadEvent;
+ expect(download.suggestedFilename()).toBe('screening.pdf');const target=testInfo.outputPath('screening.pdf');await download.saveAs(target);expect(await download.failure()).toBeNull();expect(await readFile(target)).toEqual(pdf);
  await page.clock.runFor(2100);
  const stored=await page.evaluate(async()=>{const urls=(window as any).__pdfUrls as string[];const response=await fetch(urls[urls.length-1]);return {ok:response.ok,text:await response.text()};});
  expect(stored.ok).toBe(true);expect(stored.text).toBe(pdf.toString());
 });
-test('screening download failure is visible and the user can retry',async({page})=>{
- await fixture(page,true);await page.goto('/admin/clients/client-1/screening');const button=page.getByRole('button',{name:'PDF',exact:true});await button.click();await expect(page.getByText('Could not download screening PDF. Please try again.')).toBeVisible();const done=page.waitForEvent('download');await button.click();expect((await done).suggestedFilename()).toBe('screening-synthetic.pdf');
+test('screening viewer load failure is visible and the user can retry',async({page})=>{
+ await fixture(page,true);await page.goto('/admin/clients/client-1/screening');await page.getByRole('button',{name:'PDF',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Screening PDF'}).getByRole('alert')).toContainText('Could not open the screening PDF.');
+ await page.getByRole('button',{name:'Retry',exact:true}).click();await expect(page.getByTitle('Screening PDF document')).toHaveAttribute('src',/^blob:/);
+ const done=page.waitForEvent('download');await page.getByRole('link',{name:'Download PDF',exact:true}).click();expect((await done).suggestedFilename()).toBe('screening.pdf');
 });

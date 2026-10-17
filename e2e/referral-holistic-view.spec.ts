@@ -77,7 +77,7 @@ test.describe('PPVC-777 & PPVC-781 Referral Holistic Assignment View', () => {
       const request = route.request();
       const url = new URL(request.url());
 
-      if (url.port === '3000') return route.continue();
+      if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
       if (url.pathname === '/environment/status') return route.fulfill({ json: { environment: 'local', production: false, enabledJobs: [] } });
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === '/retreats' && request.method() === 'GET') {

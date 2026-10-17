@@ -45,7 +45,7 @@ test.describe('Booking step deadlines page', () => {
       const request = route.request();
       const url = new URL(request.url());
 
-      if (url.port === '3000') {
+      if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) {
         await route.continue();
         return;
       }

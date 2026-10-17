@@ -18,7 +18,7 @@ test.describe('PPVC-238 client medical artifact refresh', () => {
     await page.route('**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
-      if (url.port === '3000') return route.continue();
+      if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === `/clients/${clientId}`) return route.fulfill({ json: {
         _id: clientId,

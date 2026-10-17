@@ -24,3 +24,11 @@ it('retains editable values after a save failure', async () => {
  (api.get as jest.Mock).mockResolvedValue({ data: {enabled:false,recipient:'ops@example.invalid'} }); (api.put as jest.Mock).mockRejectedValue(new Error('offline'));
  render(<InvoiceVisitSettings />); await waitFor(() => expect(screen.getByRole('button', {name:'Save invoice visit settings'})).toBeEnabled()); fireEvent.click(screen.getByRole('button', {name:'Save invoice visit settings'})); await screen.findByRole('alert'); expect(screen.getByLabelText('Invoice visit recipient email')).toBeEnabled(); expect(screen.getByLabelText('Invoice visit recipient email')).toHaveValue('ops@example.invalid');
 });
+
+it.each([[], {}, null, {items: [null], total: 1, pageSize: 25}, {items: [], total: 0, pageSize: 0}])('keeps the page usable and supports retry after malformed history (%j)', async payload => {
+ (api.get as jest.Mock).mockResolvedValueOnce({data: payload}).mockResolvedValue({data:{items:[],total:0,pageSize:25}});
+ render(<InvoiceVisitHistory requestId="r1" />);
+ expect(await screen.findByRole('alert')).toHaveTextContent('Could not load invoice visits.');
+ fireEvent.click(screen.getByRole('button', {name:'Refresh visits'}));
+ expect(await screen.findByText('No visits recorded yet.')).toBeInTheDocument();
+});

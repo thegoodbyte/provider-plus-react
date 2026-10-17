@@ -58,7 +58,7 @@ test.describe('Recent PPVC ticket regressions', () => {
     await page.route('**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
-      if (url.port === '3000') return route.continue();
+      if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === `/retreats/${retreatId}`) return route.fulfill({ json: {
         _id: retreatId,
@@ -96,7 +96,7 @@ test.describe('Recent PPVC ticket regressions', () => {
     await page.route('**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
-      if (url.port === '3000') return route.continue();
+      if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === '/referrals') return route.fulfill({ json: [] });
       if (url.pathname === `/clients/${clientId}` && request.method() === 'GET') return route.fulfill({ json: {

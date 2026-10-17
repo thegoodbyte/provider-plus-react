@@ -8,7 +8,12 @@ export default function InvoiceVisitHistory({ requestId }: { requestId: string }
   useEffect(() => {
     let active = true; setLoading(true); setError(''); setResult(null);
     api.get(`/invoice-visits/payment-request/${encodeURIComponent(requestId)}`, { params: { page }, suppressGlobalError: true } as any)
-      .then(({ data }) => { if (active) setResult(data); }).catch(() => { if (active) setError('Could not load invoice visits.'); }).finally(() => { if (active) setLoading(false); });
+      .then(({ data }) => {
+        if (!data || !Array.isArray(data.items) || !Number.isFinite(data.total) || data.total < 0 || !Number.isFinite(data.pageSize) || data.pageSize <= 0 || data.items.some((item: any) => !item || typeof item !== 'object')) {
+          throw new Error('Invalid invoice visit response');
+        }
+        if (active) setResult(data);
+      }).catch(() => { if (active) setError('Could not load invoice visits.'); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [requestId, page, refresh]);
   return <section aria-label="Invoice link visits" className="mt-6 rounded-xl border border-slate-200 p-4">

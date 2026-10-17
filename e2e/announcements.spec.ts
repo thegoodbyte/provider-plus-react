@@ -116,7 +116,7 @@ test("announcement wizard, retreat timeline and failure history", async ({
   await page.getByLabel("Number of days").fill("3");
   await page.getByLabel("Before or after").selectOption("after_end");
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByLabel("Email template").selectOption(template._id);
+  await page.getByRole('combobox', {name:/^Email template/}).selectOption(template._id);
   await expect(
     page.getByLabel("Use each recipient’s preferred language"),
   ).toBeChecked();

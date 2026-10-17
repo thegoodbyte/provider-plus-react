@@ -17,7 +17,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     });
     await page.route('**/*', async route => {
       const request = route.request(); const url = new URL(request.url());
-      if (url.origin === 'http://localhost:3000') return route.continue();
+      if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
       const json = (value: any, status = 200) => route.fulfill({ status, json: value, headers: { 'Access-Control-Allow-Origin': 'http://localhost:3000', 'Access-Control-Allow-Credentials': 'true' } });
       if (url.pathname === '/environment/status') return json({ environment: 'development', production: false, enabledJobs: [] });
       if (url.pathname === '/referrals' && request.method() === 'GET') return json(partners);
