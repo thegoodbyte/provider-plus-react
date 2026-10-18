@@ -53,15 +53,30 @@ it('offers explicit linking for a possible existing payment and preserves its re
 });
 
 it('uses a grid without inline capture or matching forms, and remembers filters in the URL',async()=>{
- mount(); await screen.findByRole('table'); expect(screen.queryByLabelText('Amount received')).not.toBeInTheDocument();
+ mount(); await screen.findByRole('table',{name:'Receipts'}); expect(screen.queryByLabelText('Amount received')).not.toBeInTheDocument();
  fireEvent.change(screen.getByLabelText('Filter currency'),{target:{value:'USD'}});
  fireEvent.change(screen.getByLabelText('Sort receipts'),{target:{value:'amount-asc'}});
  await waitFor(()=>expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({currency:'USD',sort:'amount-asc',page:1})));
  fireEvent.click(screen.getByRole('link',{name:'View receipt Synthetic Payer'}));
  await screen.findByRole('region',{name:'Receipt details'}); expect(screen.queryByRole('table')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'← Back to list'}));
- await screen.findByRole('table'); expect(screen.getByLabelText('Filter currency')).toHaveValue('USD'); expect(screen.getByLabelText('Sort receipts')).toHaveValue('amount-asc');
+ await screen.findByRole('table',{name:'Receipts'}); expect(screen.getByLabelText('Filter currency')).toHaveValue('USD'); expect(screen.getByLabelText('Sort receipts')).toHaveValue('amount-asc');
  fireEvent.click(screen.getByRole('button',{name:'Clear filters'})); await waitFor(()=>expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({currency:'',sort:'date-desc',page:1})));
+});
+it('filters by account and switches receipt status via the compact status toggle',async()=>{
+ mount(); await screen.findByRole('table',{name:'Receipts'});
+ fireEvent.change(screen.getByLabelText('Filter account'),{target:{value:'PLN wallet'}});
+ await waitFor(()=>expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({account:'PLN wallet',page:1})));
+ expect(screen.getByRole('button',{name:'Unassigned'})).toHaveAttribute('aria-pressed','true');
+ fireEvent.click(screen.getByRole('button',{name:'Converted / linked'}));
+ await waitFor(()=>expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({status:'converted',page:1})));
+ expect(screen.getByRole('button',{name:'Converted / linked'})).toHaveAttribute('aria-pressed','true');
+ expect(screen.getByRole('button',{name:'Unassigned'})).toHaveAttribute('aria-pressed','false');
+});
+it('shows per-currency totals in a compact table',async()=>{
+ mount(); const totals = await screen.findByRole('table',{name:'Totals by currency and status'});
+ expect(totals).toHaveTextContent('PLN');
+ expect(totals).toHaveTextContent('5100.00');
 });
 it('opens edit as a separate screen and preserves fields after a failed edit',async()=>{
  mount(); fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
