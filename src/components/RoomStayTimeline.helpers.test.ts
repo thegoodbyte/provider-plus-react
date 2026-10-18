@@ -1,4 +1,4 @@
-import { addNights, dayTicks, nightsBetween, occupantColorIndex, staySegment } from './RoomStayTimeline.helpers';
+import { addNights, dayTicks, nightsBetween, occupantColorIndex, packOccupantsIntoRows, staySegment } from './RoomStayTimeline.helpers';
 
 describe('nightsBetween', () => {
   it('counts nights between two dates', () => {
@@ -87,5 +87,43 @@ describe('addNights', () => {
 
   it('adds zero nights as a no-op', () => {
     expect(addNights('2026-10-01', 0)).toBe('2026-10-01');
+  });
+});
+
+describe('packOccupantsIntoRows', () => {
+  const retreat = { startDate: '2026-10-13', endDate: '2026-10-20' };
+
+  it('PPVC-730: packs two sequential (non-overlapping) boosters onto one row', () => {
+    const boosterOne = { _id: 'booster-1', roomStayStart: '2026-10-13', roomStayEnd: '2026-10-16' };
+    const boosterTwo = { _id: 'booster-2', roomStayStart: '2026-10-17', roomStayEnd: '2026-10-20' };
+    expect(packOccupantsIntoRows([boosterOne, boosterTwo], retreat)).toEqual([[boosterOne, boosterTwo]]);
+  });
+
+  it('PPVC-730: treats a shared checkout/checkin day as non-overlapping', () => {
+    const boosterOne = { _id: 'booster-1', roomStayStart: '2026-10-13', roomStayEnd: '2026-10-16' };
+    const boosterTwo = { _id: 'booster-2', roomStayStart: '2026-10-16', roomStayEnd: '2026-10-20' };
+    expect(packOccupantsIntoRows([boosterOne, boosterTwo], retreat)).toEqual([[boosterOne, boosterTwo]]);
+  });
+
+  it('PPVC-730: gives two genuinely overlapping occupants separate rows', () => {
+    const anna = { _id: 'anna', roomStayStart: '2026-10-13', roomStayEnd: '2026-10-20' };
+    const marhola = { _id: 'marhola', roomStayStart: '2026-10-13', roomStayEnd: '2026-10-20' };
+    expect(packOccupantsIntoRows([anna, marhola], retreat)).toEqual([[anna], [marhola]]);
+  });
+
+  it('PPVC-730: a third occupant reuses the first row once it frees up, instead of always opening a new one', () => {
+    const first = { _id: 'first', roomStayStart: '2026-10-13', roomStayEnd: '2026-10-15' };
+    const overlapsFirst = { _id: 'overlaps-first', roomStayStart: '2026-10-13', roomStayEnd: '2026-10-20' };
+    const afterFirst = { _id: 'after-first', roomStayStart: '2026-10-15', roomStayEnd: '2026-10-20' };
+    expect(packOccupantsIntoRows([first, overlapsFirst, afterFirst], retreat)).toEqual([
+      [first, afterFirst],
+      [overlapsFirst],
+    ]);
+  });
+
+  it('defaults a missing roomStayStart/End to the full retreat span', () => {
+    const fullStay = { _id: 'full-stay' };
+    const partial = { _id: 'partial', roomStayStart: '2026-10-13', roomStayEnd: '2026-10-15' };
+    expect(packOccupantsIntoRows([fullStay, partial], retreat)).toEqual([[fullStay], [partial]]);
   });
 });

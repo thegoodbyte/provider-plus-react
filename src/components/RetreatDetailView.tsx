@@ -72,6 +72,7 @@ interface RetreatDetailViewProps {
 
 const IntegrationCalendar = lazy(() => import('./IntegrationCalendar'));
 const RetreatRoomsTab = lazy(() => import('./RetreatRoomsTab'));
+const RetreatOccupancyTab = lazy(() => import('./RetreatOccupancyTab'));
 const AnnouncementsPage = lazy(() => import('./AnnouncementsPage'));
 const CeremonyAnalytics = lazy(() => import('./CeremonyAnalytics'));
 
@@ -79,7 +80,7 @@ const CeremonyAnalytics = lazy(() => import('./CeremonyAnalytics'));
 // the URL-routing allowlist in AppleLayout.tsx derive from this array, so a
 // new tab can't be added to the UI while staying invisible to deep-linking
 // (the bug that silently dropped 'reserveList' and 'foodMatrix' from URLs).
-export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks', 'announcements', 'rooms', 'integration', 'closeout'] as const;
+export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks', 'announcements', 'rooms', 'occupancy', 'integration', 'closeout'] as const;
 export type RetreatDetailTab = typeof RETREAT_DETAIL_TABS[number];
 
 export function isTabAvailableForRetreat(tab: RetreatDetailTab, retreat?: Retreat | null): boolean {
@@ -1190,6 +1191,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {isTabAvailableForRetreat('rooms', retreat) && (
           <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Room allocation</button>
         )}
+        {isTabAvailableForRetreat('occupancy', retreat) && (
+          <button className={`tab-btn ${activeTab === 'occupancy' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'occupancy'} onClick={() => handleTabChange('occupancy')}>Occupancy</button>
+        )}
         {isTabAvailableForRetreat('announcements', retreat) && authService.getUser()?.role === 'admin' && (
           <button className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'announcements'} onClick={() => handleTabChange('announcements')}>Announcements</button>
         )}
@@ -1593,6 +1597,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         )}
 
         {activeTab === 'rooms' && <RoomAllocationBoard retreatId={retreatId} />}
+
+        {activeTab === 'occupancy' && <RouteContentBoundary><RetreatOccupancyTab retreatId={retreatId} /></RouteContentBoundary>}
 
         {activeTab === 'reserveList' && (
         <div className="reserve-list-section">
