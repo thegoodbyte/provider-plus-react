@@ -1,8 +1,11 @@
+import type { BookingDocument } from '../types';
+import { libraryArtifacts } from './documentLibraryRecords';
+import { useDocumentLibrary, DocumentLibraryControls } from './useDocumentLibrary';
 import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, ChevronDown, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
-import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
+import { bookingDocumentsApi, medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import { parseCalendarDate } from '../utils/dateFormat';
@@ -284,7 +287,10 @@ const MedicalArtifactsPage: React.FC = () => {
   const location = useLocation();
   const savedView = location.state?.artifactView || {};
   const [createdMrr, setCreatedMrr] = useState<MedicalReviewRequest | null>(null);
-  const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const library = useDocumentLibrary('medical');
+  const [storedArtifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [sourceDocuments,setSourceDocuments] = useState<BookingDocument[]>([]);
+  const artifacts=useMemo(()=>libraryArtifacts(storedArtifacts,sourceDocuments,library.types||[]),[storedArtifacts,sourceDocuments,library.types]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchFilter, setSearchFilter] = useState<string>(savedView.searchFilter ?? '');
@@ -338,12 +344,14 @@ const MedicalArtifactsPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [artifactsResponse, retreatsResponse, reviewsResponse] = await Promise.all([
+      const [artifactsResponse, retreatsResponse, reviewsResponse, documentsResponse] = await Promise.all([
         medicalArtifactsApi.getAll(),
         retreatsApi.getAll().catch(() => ({ data: [] as Retreat[] })),
         medicalReviewRequestsApi.getAll(),
+        bookingDocumentsApi.getAll({compact:true}),
       ]);
       setArtifacts(artifactsResponse.data || []);
+      setSourceDocuments(documentsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
       setReviewRequests(reviewsResponse.data || []);
     } finally {
@@ -427,6 +435,7 @@ const MedicalArtifactsPage: React.FC = () => {
     const retreatId = retreatIdFilter.trim().toLowerCase();
 
     return artifacts.filter((artifact) => {
+      if (!library.visible(artifact.artifactType)) return false;
       const artifactBookingId = String(getObjectId(artifact.bookingId) || '').toLowerCase();
       const artifactClientId = String(getObjectId(artifact.clientId) || '').toLowerCase();
       const artifactRetreatSearch = getRetreatSearchText(artifact.retreatId).toLowerCase();
@@ -447,7 +456,7 @@ const MedicalArtifactsPage: React.FC = () => {
       if (futureRetreatsOnly && !isRetreatFuture(resolveArtifactRetreat(artifact.retreatId))) return false;
       return true;
     });
-  }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, futureRetreatsOnly, outcomeFilter, resolveArtifactRetreat, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
+  }, [library.visible, artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, futureRetreatsOnly, outcomeFilter, resolveArtifactRetreat, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
 
   useEffect(() => {
     setSelectedArtifactIds((prev) => {
@@ -632,7 +641,7 @@ const MedicalArtifactsPage: React.FC = () => {
   );
 
   const sortedSubmissionRows = useMemo(() => {
-    const rows = [...filterRetreatSubmissionRowsByMrr(submissionData?.rows || [], submissionMrrFilter)];
+    const rows = filterRetreatSubmissionRowsByMrr(submissionData?.rows || [], submissionMrrFilter).filter(row => library.visible(row.artifactType));
     const compareText = (a = '', b = '') => a.localeCompare(b, undefined, { sensitivity: 'base' });
     return rows.sort((a, b) => {
       if (submissionSort === 'type') {
@@ -646,7 +655,7 @@ const MedicalArtifactsPage: React.FC = () => {
       }
       return compareText(a.clientName, b.clientName) || compareText(getArtifactTypeLabel(a.artifactType), getArtifactTypeLabel(b.artifactType));
     });
-  }, [submissionData, submissionMrrFilter, submissionSort]);
+  }, [submissionData, submissionMrrFilter, submissionSort, library.visible]);
 
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
@@ -727,10 +736,10 @@ const MedicalArtifactsPage: React.FC = () => {
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"><span className="rounded bg-rose-100 px-2 py-1 text-rose-700">Admin</span><span>Medical records</span></div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Medical Artifacts</h1>
-          <p className="mt-2 max-w-3xl text-sm text-slate-500">Stored EKGs, liver panels, medication forms, questionnaires, and other medical records.</p>
+          <p className="mt-2 max-w-3xl text-sm text-slate-500">Records assigned to Medical Artifacts in Document Types & Libraries.</p>
         </div>
         <div className="flex flex-row-reverse items-center justify-end gap-2 md:flex-row">
-          <button onClick={loadData} className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          <button onClick={() => { void loadData(); void library.reload(); }} className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
@@ -741,6 +750,7 @@ const MedicalArtifactsPage: React.FC = () => {
         </div>
       </div>
 
+      <DocumentLibraryControls library={library} />
       <div className="mb-5 flex w-full border-b border-slate-200 bg-white px-2 pt-2 md:max-w-fit md:rounded-t-md md:border md:border-b-0">
         <button
           type="button"
@@ -902,6 +912,8 @@ const MedicalArtifactsPage: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {sortedArtifacts.map((artifact) => {
+              const sourceDocumentId = artifact.data?.librarySourceDocumentId;
+              if (sourceDocumentId) return <tr key={`document:${sourceDocumentId}`}><td colSpan={12} className="p-4"><strong>{artifact.title || 'Document'}</strong><span className="mx-3 text-sm">Document record · {getClientLabel(artifact.clientId)}</span><button type="button" className="text-blue-700 underline" onClick={()=>navigate(`/admin/booking-documents?documentId=${sourceDocumentId}`)}>Open original document</button></td></tr>;
               const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
               const latestReview = artifactReviews[0];
               const compactDocumentType = getCompactDocumentType(artifact);
@@ -1079,6 +1091,8 @@ const MedicalArtifactsPage: React.FC = () => {
       <div className="space-y-3 md:hidden">
         <div className="border-t-4 border-slate-900 bg-white px-3 py-3 text-sm text-slate-500">{filteredArtifacts.length} of {artifacts.length} artifacts</div>
         {sortedArtifacts.map((artifact) => {
+          const sourceDocumentId = artifact.data?.librarySourceDocumentId;
+          if (sourceDocumentId) return <article key={`document:${sourceDocumentId}`} className="rounded-md border border-slate-200 bg-white p-4"><strong>{artifact.title || 'Document'}</strong><p className="my-2 text-sm">Document record · {getClientLabel(artifact.clientId)}</p><button type="button" className="text-blue-700 underline" onClick={()=>navigate(`/admin/booking-documents?documentId=${sourceDocumentId}`)}>Open original document</button></article>;
           const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
           const latestReview = artifactReviews[0];
           const outcome = getArtifactOutcome(artifact, latestReview);
@@ -1154,7 +1168,7 @@ const MedicalArtifactsPage: React.FC = () => {
               <div className="flex items-center text-sm text-gray-500 xl:col-span-3">
                 {submissionData?.retreat ? (
                   <span>
-                    {submissionData.retreat.code || submissionData.retreat.name}: {submissionData.totals.bookings} bookings, {submissionData.totals.missing} missing ({submissionData.totals.missingFiles || 0} no file), {submissionData.totals.received} received
+                    {submissionData.retreat.code || submissionData.retreat.name}: {submissionData.totals.bookings} bookings · {sortedSubmissionRows.length} matching requirements · {sortedSubmissionRows.filter(row => row.status === 'missing').length} missing · {sortedSubmissionRows.filter(row => row.status === 'received').length} received
                   </span>
                 ) : (
                   <span>Enter a retreat code to see missing and received submissions.</span>

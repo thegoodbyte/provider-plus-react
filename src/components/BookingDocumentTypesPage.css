@@ -135,6 +135,7 @@
 }
 
 .booking-document-type-row input,
+.booking-document-type-row select,
 .booking-document-type-row textarea {
   width: 100%;
   border: 1px solid #d1d5db;
@@ -225,4 +226,11 @@
   .form-grid.two-columns {
     grid-template-columns: 1fr;
   }
+}
+
+/* Keep all fields usable inside the narrow settings card. */
+.booking-document-type-row .form-grid > label { min-width: 0; }
+@media (max-width: 768px) {
+  .booking-document-type-row .form-grid,
+  .booking-document-type-row .form-grid.two-columns { grid-template-columns: minmax(0, 1fr); }
 }

@@ -1704,6 +1704,7 @@ export interface BookingFlowProgress {
 
 export interface BookingDocumentType {
   _id?: string;
+  builtIn?: boolean;
   key: string;
   label: string;
   description?: string;
@@ -1713,6 +1714,7 @@ export interface BookingDocumentType {
   bookingFlowSentStepKey?: string;
   reviewRequired?: boolean;
   reviewRequestType?: MedicalReviewRequest['requestType'];
+  libraryPlacement?: 'documents' | 'medical' | 'both';
   storeAsMedicalArtifact?: boolean;
   medicalArtifactType?: string;
   medicalDocumentStage?: string;

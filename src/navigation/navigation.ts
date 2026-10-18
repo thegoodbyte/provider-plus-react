@@ -8,7 +8,7 @@ export const NAVIGATION: Record<string, { label: string; description: string; se
   'booking-flow': { label: 'Booking Requirements', description: 'Track each booking’s required steps, due dates and completion.', aliases: 'Booking Flow' },
   'retreat-flow': { label: 'Retreat Readiness Setup', description: 'Choose the readiness steps required for a retreat.', setup: true },
   'retreat-flow-library': { label: 'Booking Step Library', description: 'Define reusable steps copied into bookings.', setup: true, aliases: 'Booking Step Setup' },
-  'booking-document-types': { label: 'Booking Document Types', description: 'Configure document categories and their booking-step links.', setup: true },
+  'booking-document-types': { label: 'Document Types & Libraries', description: 'Configure library placement, document categories and booking-step links.', setup: true },
   requirements: { label: 'Requirements', description: 'Configure reusable retreat requirements.', setup: true },
   houses: { label: 'Houses', description: 'Manage retreat locations and accommodation.', setup: true },
   announcements: { label: 'Announcement Schedule', description: 'Configure reusable emails before and after retreats.', setup: true },

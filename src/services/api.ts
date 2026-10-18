@@ -1750,10 +1750,8 @@ export const documentRequestsApi = {
 };
 
 export const bookingDocumentsApi = {
-  getTypes: (includeInactive = false) => cachedGet<BookingDocumentType[]>(
-    `booking-documents:types:${includeInactive}`,
-    () => api.get<BookingDocumentType[]>(`/booking-documents/types${includeInactive ? '?includeInactive=true' : ''}`)
-  ),
+  // Library placement is shared configuration; a page refresh must read current settings.
+  getTypes: (includeInactive = false) => api.get<BookingDocumentType[]>(`/booking-documents/types${includeInactive ? '?includeInactive=true' : ''}`),
   seedTypes: () => {
     cacheService.clearPattern('booking-documents:');
     return api.post<{ created: number; updated: number; types: BookingDocumentType[] }>('/booking-documents/types/seed', {});

@@ -1,9 +1,11 @@
+import { libraryDocuments } from './documentLibraryRecords';
+import { useDocumentLibrary, DocumentLibraryControls } from './useDocumentLibrary';
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpDown, Download, Eye, FileText, Pencil, RefreshCw, Search, Trash2, X } from 'lucide-react';
-import { bookingDocumentsApi } from '../services/api';
-import { BookingDocument, BookingDocumentContent, Client, Retreat, RetreatClient } from '../types';
+import { bookingDocumentsApi, medicalArtifactsApi } from '../services/api';
+import { BookingDocument, BookingDocumentContent, MedicalArtifact, Client, Retreat, RetreatClient } from '../types';
 
 type SortKey = 'receivedAt' | 'documentType' | 'booking' | 'client' | 'retreat';
 type SortDirection = 'asc' | 'desc';
@@ -175,7 +177,10 @@ const BookingDocumentsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const routePrefix = location.pathname.split('/').filter(Boolean)[0] || 'admin';
-  const [documents, setDocuments] = useState<BookingDocument[]>([]);
+  const library = useDocumentLibrary('documents');
+  const [storedDocuments, setDocuments] = useState<BookingDocument[]>([]);
+  const [sourceArtifacts,setSourceArtifacts] = useState<MedicalArtifact[]>([]);
+  const documents = useMemo(()=>libraryDocuments(storedDocuments,sourceArtifacts,library.types||[]),[storedDocuments,sourceArtifacts,library.types]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
@@ -226,7 +231,8 @@ const BookingDocumentsPage: React.FC = () => {
     setTranslationStatus('idle');
     setViewMode('file');
     try {
-      const response = await bookingDocumentsApi.getFile(document._id, storedPath);
+      const sourceArtifactId = document.metadata?.librarySourceArtifactId;
+      const response = sourceArtifactId ? await medicalArtifactsApi.getFileBlob(sourceArtifactId, storedPath) : await bookingDocumentsApi.getFile(document._id, storedPath);
       setViewerUrl(URL.createObjectURL(response.data));
     } catch (previewError: any) {
       setViewerError(previewError?.response?.data?.message || previewError?.message || 'Unable to load this file preview.');
@@ -234,7 +240,7 @@ const BookingDocumentsPage: React.FC = () => {
       setViewerLoading(false);
     }
 
-    if (!isHtmlViewSupported(document.documentType)) return;
+    if (document.metadata?.librarySourceArtifactId || !isHtmlViewSupported(document.documentType)) return;
     setHtmlLoading(true);
     try {
       const response = await bookingDocumentsApi.getContent(document._id);
@@ -286,12 +292,15 @@ const BookingDocumentsPage: React.FC = () => {
     }
   };
 
+  useEffect(()=>{if(focusedDocumentId)library.setIncludeOther(true);},[focusedDocumentId]);
+
   const loadDocuments = async () => {
     setLoading(true);
     setError('');
     try {
-      const response = await bookingDocumentsApi.getAll({ compact: true });
+      const [response,artifacts] = await Promise.all([bookingDocumentsApi.getAll({ compact: true }),medicalArtifactsApi.getAll()]);
       setDocuments(response.data || []);
+      setSourceArtifacts(artifacts.data || []);
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking documents.');
     } finally {
@@ -320,8 +329,8 @@ const BookingDocumentsPage: React.FC = () => {
   }, [focusedDocumentId, loading, documents]);
 
   const documentTypes = useMemo(() => {
-    return Array.from(new Set(documents.map((document) => normalizeKey(document.documentType)).filter((type) => type && type !== 'ekg' && type !== 'liver_panel'))).sort();
-  }, [documents]);
+    return Array.from(new Set(documents.map((document) => normalizeKey(document.documentType)).filter((type) => type && library.visible(type)))).sort();
+  }, [documents, library.visible]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -378,7 +387,7 @@ const BookingDocumentsPage: React.FC = () => {
     const normalizedQuery = query.trim().toLowerCase();
     const filtered = documents.filter((document) => {
       const type = normalizeKey(document.documentType);
-      if (type === 'ekg' || type === 'liver_panel') return false;
+      if (!library.visible(type)) return false;
       if (typeFilter !== 'all' && type !== typeFilter) return false;
 
       if (!normalizedQuery) return true;
@@ -412,7 +421,7 @@ const BookingDocumentsPage: React.FC = () => {
       if (leftValue > rightValue) return 1 * direction;
       return 0;
     });
-  }, [documents, query, sortDirection, sortKey, typeFilter]);
+  }, [documents, query, sortDirection, sortKey, typeFilter, library.visible]);
 
   return (
     <div className="min-h-full bg-[#f7ecd9] p-4 text-[#29251f] sm:p-6">
@@ -423,7 +432,7 @@ const BookingDocumentsPage: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={loadDocuments}
+          onClick={() => { void loadDocuments(); void library.reload(); }}
           disabled={loading}
           className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d7c9b4] bg-[#fffaf1] px-5 py-2.5 text-sm font-semibold hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -432,6 +441,7 @@ const BookingDocumentsPage: React.FC = () => {
         </button>
       </div>
 
+      <DocumentLibraryControls library={library} />
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -529,8 +539,9 @@ const BookingDocumentsPage: React.FC = () => {
                     <td className="px-5 py-4 text-right align-middle">
                       <div className="inline-flex gap-2">
                         <button type="button" onClick={() => primaryFile && openViewer(document, primaryFile)} disabled={!primaryFile} className="rounded-full border border-[#d7c9b4] bg-[#fffaf1] p-2 hover:bg-white disabled:opacity-40" aria-label={`View ${document.title || 'document'}`}><Eye className="h-4 w-4" /></button>
-                        <button type="button" onClick={() => beginEdit(document)} className="rounded-full border border-[#d7c9b4] bg-[#fffaf1] p-2 hover:bg-white" aria-label={`Edit ${document.title || 'document'}`}><Pencil className="h-4 w-4" /></button>
-                        <button type="button" onClick={() => { setDeletingDocument(document); setDeleteReason(''); }} className="rounded-full border border-[#d7c9b4] bg-[#fffaf1] p-2 text-[#a34d1d] hover:bg-white" aria-label={`Delete ${document.title || 'document'}`}><Trash2 className="h-4 w-4" /></button>
+                        {!document.metadata?.librarySourceArtifactId && <button type="button" onClick={() => beginEdit(document)} className="rounded-full border border-[#d7c9b4] bg-[#fffaf1] p-2 hover:bg-white" aria-label={`Edit ${document.title || 'document'}`}><Pencil className="h-4 w-4" /></button>}
+                        {!document.metadata?.librarySourceArtifactId && <button type="button" onClick={() => { setDeletingDocument(document); setDeleteReason(''); }} className="rounded-full border border-[#d7c9b4] bg-[#fffaf1] p-2 text-[#a34d1d] hover:bg-white" aria-label={`Delete ${document.title || 'document'}`}><Trash2 className="h-4 w-4" /></button>}
+                        {document.metadata?.librarySourceArtifactId && <button type="button" className="text-sm text-blue-700 underline" onClick={()=>navigate(`/admin/medical-artifacts/${document.metadata?.librarySourceArtifactId}`)}>Open original record</button>}
                       </div>
                     </td>
                   </tr>

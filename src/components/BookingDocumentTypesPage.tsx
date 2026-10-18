@@ -18,6 +18,7 @@ const emptyDraft = (): DraftType => ({
   bookingFlowSentStepKey: '',
   reviewRequired: false,
   reviewRequestType: undefined,
+  libraryPlacement: 'documents',
   storeAsMedicalArtifact: false,
   medicalArtifactType: '',
   medicalDocumentStage: 'entry',
@@ -84,6 +85,7 @@ const BookingDocumentTypesPage: React.FC = () => {
       bookingFlowSentStepKey: draft.bookingFlowSentStepKey || undefined,
       reviewRequired: Boolean(draft.reviewRequired),
       reviewRequestType: draft.reviewRequestType || undefined,
+      libraryPlacement: draft.libraryPlacement || 'documents',
       storeAsMedicalArtifact: Boolean(draft.storeAsMedicalArtifact),
       medicalArtifactType: draft.medicalArtifactType || undefined,
       medicalDocumentStage: draft.medicalDocumentStage || undefined,
@@ -145,14 +147,14 @@ const BookingDocumentTypesPage: React.FC = () => {
       <div className="booking-document-types-header">
         <div>
           <h1>{NAVIGATION['booking-document-types'].label}</h1>
-          <p>Configure the document categories shown in Booking → Documents and the booking-step keys they update.</p>
+          <p>One place to choose which library displays each document type, its upload/review behavior and booking-step links.</p>
         </div>
         <div className="booking-document-types-actions">
           <button className="btn btn-secondary" type="button" onClick={loadTypes} disabled={loading}>
             <RefreshCw size={16} /> Refresh
           </button>
           <button className="btn btn-secondary" type="button" onClick={seedDefaults} disabled={loading}>
-            Seed defaults
+            Add missing defaults
           </button>
           <button className="btn btn-primary" type="button" onClick={() => setTypes((current) => [emptyDraft(), ...current])}>
             <Plus size={16} /> Add type
@@ -181,7 +183,7 @@ const BookingDocumentTypesPage: React.FC = () => {
                 <button className="btn btn-sm btn-primary" type="button" onClick={() => saveType(index)} disabled={Boolean(savingId)}>
                   <Save size={16} /> {savingId === (type._id || `new-${index}`) ? 'Saving...' : 'Save'}
                 </button>
-                <button className="btn btn-sm btn-danger" type="button" onClick={() => deleteType(index)} disabled={Boolean(savingId)}>
+                <button className="btn btn-sm btn-danger" type="button" onClick={() => deleteType(index)} disabled={Boolean(savingId) || type.builtIn} title={type.builtIn ? 'Default type: turn Active off to disable new uploads' : undefined}>
                   <Trash2 size={16} /> Delete
                 </button>
               </div>
@@ -245,10 +247,17 @@ const BookingDocumentTypesPage: React.FC = () => {
               </section>
 
               <section className="type-section">
-                <h2>Medical Artifact</h2>
+                <h2>Library placement</h2>
+                <label>Display in
+                  <select aria-label={`Library placement for ${type.label || type.key || 'new type'}`} value={type.libraryPlacement || 'documents'} onChange={event => updateDraft(index, { libraryPlacement: event.target.value as BookingDocumentType['libraryPlacement'] })}>
+                    <option value="documents">Documents Library</option><option value="medical">Medical Artifacts</option><option value="both">Both libraries</option>
+                  </select>
+                </label>
+                <p className="text-sm text-gray-600">Controls the main library lists for existing and future records. Files, original records and review links are retained. It does not move or create files. Use “Include records assigned to the other library” on either list to inspect historical records.</p>
+                <h2>Medical record &amp; review support</h2>
                 <label className="checkbox-row medical-artifact-toggle">
                   <input type="checkbox" checked={Boolean(type.storeAsMedicalArtifact)} onChange={(event) => updateDraft(index, { storeAsMedicalArtifact: event.target.checked })} />
-                  Also store as a medical artifact
+                  Create a linked medical record for uploads (for review workflows)
                 </label>
                 <div className="form-grid" aria-disabled={!type.storeAsMedicalArtifact}>
                   <label>
