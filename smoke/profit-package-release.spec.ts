@@ -10,11 +10,12 @@ for(const width of [1440,390]) {
    if(p===`/retreat-expenses/retreat/${id}/summary`)data={plannedExpensesUSD:1000,actualExpensesUSD:250,expensesByCategory:{}};
    if(p.includes('/payments/retreat-summary/'))data={paymentsByMethod:{}};if(p==='/environment/status')data={production:true};if(p==='/config-summary'||p==='/users/navigation-permissions')data={};
    return route.fulfill({json:data});});
-  await page.goto(`/admin/retreats/${id}`);await page.addStyleTag({content:'.ant-modal,.ant-modal *{animation:none!important;transition:none!important;transform:none!important;}'});await page.getByRole('button',{name:'Metrics',exact:true}).click();const dialog=page.getByRole('dialog');
+  await page.goto(`/admin/retreats/${id}`);await page.getByRole('button',{name:'Metrics',exact:true}).click();const dialog=page.getByRole('dialog');
   for(const name of ['Bottom line','Revenue in','Expenses out','Occupancy'])await expect(dialog.getByRole('heading',{name,exact:true})).toBeVisible();
   await expect(dialog).toContainText('25% of budget spent');await expect(dialog).toContainText('$250.00');await expect(dialog).toContainText('F477');
   await expect.poll(async()=> (await dialog.boundingBox())?.width||0).toBeGreaterThan(Math.min(width-50,900));
-  await dialog.screenshot({path:`../profit-${width}.png`,animations:'disabled'});
+  await expect(dialog).not.toHaveClass(/ant-zoom-appear/);
+  await page.screenshot({fullPage:true,path:`../profit-${width}.png`,animations:'disabled'});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await dialog.getByRole('button',{name:'Budget',exact:true}).click();await expect(dialog).not.toBeVisible();await expect(page).toHaveURL(/\/expenses$/);
   await page.getByRole('button',{name:'Metrics',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Payments',exact:true}).click();await expect(page).toHaveURL(/\/payments$/);expect(writes).toBe(0);
