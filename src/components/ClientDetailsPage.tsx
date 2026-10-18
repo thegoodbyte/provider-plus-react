@@ -28,6 +28,8 @@ import Toast from './Toast';
 import { clientPaymentCreatePath, clientPaymentEditPath } from './clientPaymentNavigation';
 import { loadClientCoreData } from '../services/clientCoreDataService';
 import './ClientsGrid.css';
+import IntegrationCalls from './IntegrationCalls';
+import { useAuth } from '../context/AuthContext';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -100,6 +102,8 @@ const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
 };
 
 const ClientDetailsPage: React.FC = () => {
+  const { user } = useAuth();
+  const canManageIntegration = ['admin', 'facilitator'].includes(user?.role || '');
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
@@ -1010,6 +1014,7 @@ const ClientDetailsPage: React.FC = () => {
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6 overflow-x-auto">
         <div className="flex min-w-max space-x-3 sm:space-x-6 pb-2">
+          {canManageIntegration && <Tab label="Integration" icon={FiCalendar} isActive={activeTab === 'integration'} onClick={() => setActiveTab('integration')} />}
           <Tab
             label="Overview"
             icon={FiUser}
@@ -1069,6 +1074,7 @@ const ClientDetailsPage: React.FC = () => {
 
       {/* Tab Content */}
       <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+        {activeTab === 'integration' && canManageIntegration && <IntegrationCalls clientId={clientId} />}
         {activeTab === 'overview' && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Personal Information</h2>

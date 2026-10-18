@@ -249,6 +249,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'users') return 'users';
     if (route === 'audit-logs') return 'audit-logs';
     if (route === 'tasks') return 'tasks';
+    if (route === 'integration') return 'integration';
 
     return getDefaultRoute();
   };

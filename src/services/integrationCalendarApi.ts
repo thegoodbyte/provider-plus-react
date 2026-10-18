@@ -2,7 +2,8 @@ import { api } from "./api";
 export const integrationCalendarApi = {
   supportRequests: (retreatId?: string) => api.get("/integration/support-requests", { params: { retreatId } }),
   updateSupportRequest: (id: string, status: string) => api.patch("/integration/support-requests/" + id, { status }),
-  get: (params: { retreatId?: string; from?: string; to?: string }) =>
+  options: (params: { search?: string; clientId?: string }) => api.get('/integration/call-options', { params }),
+  get: (params: { retreatId?: string; clientId?: string; bookingId?: string; from?: string; to?: string }) =>
     api.get("/integration/calendar", { params }),
   save: (id: string | undefined, body: any) =>
     id

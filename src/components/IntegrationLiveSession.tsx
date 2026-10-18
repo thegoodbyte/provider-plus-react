@@ -5,12 +5,12 @@ import "./IntegrationLiveSession.css";
 const localKey = (clientId: string, field: string, rowId = "") =>
   [clientId, field, rowId].join("|");
 const same = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
-export default function IntegrationLiveSession() {
+export default function IntegrationLiveSession({ initialCallId = '' }: { initialCallId?: string } = {}) {
   const { user } = useAuth(),
     actor = String(user?.id || user?.email || ""),
     readonly = !!user?.readOnly;
   const [calls, setCalls] = useState<any[]>([]),
-    [callId, setCallId] = useState(""),
+    [callId, setCallId] = useState(initialCallId),
     [data, setData] = useState<any>(null),
     [drafts, setDrafts] = useState<Record<string, any>>({}),
     [error, setError] = useState(""),
@@ -39,6 +39,7 @@ export default function IntegrationLiveSession() {
       () => window.matchMedia?.("(max-width: 900px)").matches || false,
     );
   const current = useRef({ actor, callId });
+  useEffect(() => { if (initialCallId) setCallId(initialCallId); }, [initialCallId]);
   current.current = { actor, callId };
   const draftRef = useRef(drafts);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({}),
@@ -574,10 +575,12 @@ export default function IntegrationLiveSession() {
         Integration call
         <select
           aria-label="Integration call"
+          disabled={!!initialCallId}
           value={callId}
           onChange={(e) => setCallId(e.target.value)}
         >
           <option value="">Choose call</option>
+          {initialCallId && !calls.some(c => c._id === initialCallId) && <option value={initialCallId}>Selected support call</option>}
           {calls.map((c) => (
             <option key={c._id} value={c._id}>
               {c.title} · {new Date(c.startsAt).toLocaleString()} ·{" "}
@@ -826,7 +829,7 @@ export default function IntegrationLiveSession() {
                       expectedRevision: existingAction?.revision || 0,
                     });
                     setNotice(
-                      "Owned action saved to post-retreat care and the control centre.",
+                      selected.bookingId ? "Owned action saved to post-retreat care and the control centre." : "Owned follow-up saved with this support call.",
                     );
                   })
                 }

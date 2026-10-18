@@ -57,6 +57,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: Fi.FiUsers },
       { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
       { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+      { id: 'integration', label: 'Integration Calls', Icon: Fi.FiHeart },
       { id: 'houses', label: NAVIGATION['houses'].label, Icon: Fi.FiHome },
       { id: 'booster-offers', label: 'Booster Offers', Icon: Fi.FiZap },
       { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, Icon: Fi.FiCalendar },
@@ -305,6 +306,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         return [
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
           { id: 'retreats', label: 'Retreat Operations', Icon: Fi.FiCalendar, items: [
+            { id: 'integration', label: 'Integration Calls', Icon: Fi.FiHeart },
             { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
             { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: Fi.FiUsers },
             { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },

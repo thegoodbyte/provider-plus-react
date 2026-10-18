@@ -19,6 +19,8 @@ import { formatCalendarDate } from '../utils/dateFormat';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import IntegrationCalls from './IntegrationCalls';
+import { useAuth } from '../context/AuthContext';
 
 interface ClientDetailViewProps {
   clientId: string;
@@ -27,6 +29,8 @@ interface ClientDetailViewProps {
 
 const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManageCalls = ['admin', 'facilitator'].includes(user?.role || '');
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
   const [medicalData, setMedicalData] = useState<ClientMedical[]>([]);
@@ -470,6 +474,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       </div>
 
       <div className="client-detail-tabs">
+        {canManageCalls && <button className={`tab-btn ${activeTab === 'integration' ? 'active' : ''}`} onClick={() => setActiveTab('integration')}>Integration</button>}
         <button
           className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
           onClick={() => setActiveTab('overview')}
@@ -533,6 +538,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       </div>
 
       <div className="client-detail-content">
+        {activeTab === 'integration' && canManageCalls && <IntegrationCalls clientId={clientId} />}
         {activeTab === 'overview' && (
           <div className="overview-tab">
             <div className="info-columns">

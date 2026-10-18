@@ -8,6 +8,7 @@ import IntegrationProviderSettings from "./IntegrationProviderSettings";
 import IntegrationCredits from "./IntegrationCredits";
 import IntegrationLibrary from "./IntegrationLibrary";
 import IntegrationCalendar from "./IntegrationCalendar";
+import IntegrationCalls from './IntegrationCalls';
 import IntegrationPrograms from "./IntegrationPrograms";
 import IntegrationCare from "./IntegrationCare";
 import IntegrationDashboard from "./IntegrationDashboard";
@@ -30,7 +31,7 @@ const formatDate = (value?: string) =>
 
 const IntegrationRetreatsPage: React.FC = () => {
   const navigate = useNavigate();
-  const [view, setView] = useState("retreats");
+  const [view, setView] = useState("calls");
   const [careId, setCareId] = useState("");
   const [retreats, setRetreats] = useState<IntegrationRetreatSummary[] | null>(
     null,
@@ -72,6 +73,7 @@ const IntegrationRetreatsPage: React.FC = () => {
         aria-label="Integration views"
         className="integration-view-tabs flex flex-wrap gap-3 my-4"
       >
+        <button type="button" aria-pressed={view === 'calls'} onClick={() => setView('calls')}>Calls · calendar & list</button>
         <button
           type="button"
           aria-pressed={view === "dashboard"}
@@ -185,7 +187,7 @@ const IntegrationRetreatsPage: React.FC = () => {
           Past-client reconnection
         </button>
       </nav>
-      {view === "reconnect" ? (
+      {view === 'calls' ? <IntegrationCalls /> : view === "reconnect" ? (
         <IntegrationReconnect />
       ) : view === "coach" ? (
         <IntegrationCoach />

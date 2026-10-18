@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 export const NAVIGATION_PERMISSIONS_STORAGE_KEY = 'navigationPermissions:v1';
 export const SETTINGS_LABEL = 'Settings & Setup';
 export const NAVIGATION: Record<string, { label: string; description: string; setup?: boolean; aliases?: string }> = {
+  integration: { label: 'Integration Calls', description: 'Schedule group and individual calls and record private notes.' },
   launcher: { label: 'Home', description: 'Daily work and application setup.' },
   workflow: { label: 'Readiness Dashboard', description: 'Review booking readiness across a retreat and resolve blockers.', aliases: 'Workflow' },
   'booking-flow': { label: 'Booking Requirements', description: 'Track each booking’s required steps, due dates and completion.', aliases: 'Booking Flow' },

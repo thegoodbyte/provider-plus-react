@@ -17,6 +17,7 @@ import BookingRequirementsPanel from './BookingRequirementsPanel';
 import BookingMedicalOverviewPanel from './BookingMedicalOverviewPanel';
 import BookingCeremoniesPanel from './BookingCeremoniesPanel';
 import BookingTasksPanel from './BookingTasksPanel';
+import IntegrationCalls from './IntegrationCalls';
 import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 import BookingRescheduleDialog from './BookingRescheduleDialog';
 import { confirmationLanguage, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
@@ -245,6 +246,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   return (
     <div className="booking-detail-container">
       <BookingDetailShell
+        canManageIntegration={['admin', 'facilitator'].includes(user?.role || '')}
         nextActionSummary={<BookingNextActionSummary bookingId={bookingId} bookingStatus={booking.status} source={readinessSource} onRetry={refreshReadiness} onOpen={(tab, itemId) => { setFocusedStepId(itemId); setActiveTab(tab); }} />}
         bookingId={bookingId}
         bookingNumber={booking.bookingNumber}
@@ -399,6 +401,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             <ClientBookingWorkflowTab key={bookingId} bookings={[booking]} hideBookingSelector focusStepId={focusedStepId} onUpdated={refreshReadiness} />
           </div>
         )}
+
+        {activeTab === 'integration' && ['admin', 'facilitator'].includes(user?.role || '') && <IntegrationCalls clientId={clientId} bookingId={bookingId} retreatId={retreatId} />}
 
         {activeTab === 'notes' && (
           <>

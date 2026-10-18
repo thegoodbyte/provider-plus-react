@@ -8,6 +8,7 @@ jest.mock('../services/api', () => ({
   integrationApi: { listRetreats: jest.fn() },
 }));
 
+jest.mock('./IntegrationCalls', () => () => <div>Calls workspace</div>);
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -35,6 +36,7 @@ describe('IntegrationRetreatsPage', () => {
 
   it('lists retreats with per-checkpoint reached counts and navigates on click', async () => {
     view();
+    fireEvent.click(await screen.findByRole('button', { name: 'Retreat checkpoints' }));
 
     expect(await screen.findByText('BEN-05-30-26')).toBeInTheDocument();
     expect(screen.getByText(/2\s*\/\s*3/)).toBeInTheDocument();
@@ -48,6 +50,7 @@ describe('IntegrationRetreatsPage', () => {
     (integrationApi.listRetreats as jest.Mock).mockResolvedValue({ data: [] });
 
     view();
+    fireEvent.click(await screen.findByRole('button', { name: 'Retreat checkpoints' }));
 
     expect(await screen.findByText(/no retreats/i)).toBeInTheDocument();
   });
