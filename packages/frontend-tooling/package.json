@@ -1,0 +1,29 @@
+{
+  "name": "@ibogaspirit/frontend-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared build and serving contract for Retreat Engine and IbogaReady",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "exports": {
+    "./config": {
+      "types": "./config.d.mts",
+      "import": "./config.mjs"
+    },
+    "./serve": "./serve.cjs",
+    "./check-config": "./check-config.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "config.mjs",
+    "config.d.mts",
+    "serve.cjs",
+    "check-config.mjs",
+    "test",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.cjs"
+  }
+}
