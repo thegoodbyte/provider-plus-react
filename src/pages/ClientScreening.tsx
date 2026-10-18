@@ -8,6 +8,7 @@ import ClientReferralFields from '../components/ClientReferralFields';
 import { TasksWidget } from '../components/Tasks/TasksWidget';
 import { clientsApi, referralsApi, screeningApi } from '../services/api';
 import { Client, Referral } from '../types';
+import { clientWorkflowStatusLabels } from '../config/clientWorkflowStatus';
 import { validateScreeningBirth } from '../utils/screeningBirth';
 
 interface ScreeningData {
@@ -149,7 +150,8 @@ interface ScreeningData {
   desiredRetreat: string;
   quotedPrice: string;
   screenedBy: string;
-  status: string;
+  screeningOutcome: '' | 'accepted' | 'conditional' | 'declined';
+  screeningOutcomeNotes: string;
 }
 
 interface AlcoholUseEntry {
@@ -191,7 +193,23 @@ const sectionStyles = {
     container: 'bg-yellow-50 rounded-lg border border-yellow-200 p-6 mb-6 shadow-sm',
     heading: 'text-lg font-semibold mb-4 text-yellow-900',
   },
+  outcome: {
+    container: 'bg-slate-900 rounded-lg border border-slate-900 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-white',
+  },
 };
+
+const screeningOutcomeOptions: Array<{ value: 'accepted' | 'conditional' | 'declined'; label: string; selectedClass: string }> = [
+  { value: 'accepted', label: 'Accepted', selectedClass: 'bg-emerald-500 text-white border-emerald-500' },
+  { value: 'conditional', label: 'Conditional', selectedClass: 'bg-teal-500 text-white border-teal-500' },
+  { value: 'declined', label: 'Declined', selectedClass: 'bg-red-500 text-white border-red-500' },
+];
+
+const screeningOutcomeWorkflowStatus = {
+  accepted: 'screened_accepted',
+  conditional: 'screened_conditional',
+  declined: 'screened_declined',
+} as const;
 
 const getCurrentYear = () => new Date().getFullYear();
 
@@ -400,7 +418,8 @@ const ClientScreening: React.FC = () => {
     desiredRetreat: '',
     quotedPrice: '',
     screenedBy: user?.email || '',
-    status: 'pending'
+    screeningOutcome: '',
+    screeningOutcomeNotes: '',
   });
 
   useEffect(() => {
@@ -576,6 +595,8 @@ const ClientScreening: React.FC = () => {
         },
         plantMedicineExperience: hasPlantMedicineExperience,
         generalNotes: existingValue('generalNotes', 'notes') ?? prev.generalNotes,
+        screeningOutcome: (existingValue('screeningOutcome', 'screeningOutcome') ?? prev.screeningOutcome) as ScreeningData['screeningOutcome'],
+        screeningOutcomeNotes: existingValue('screeningOutcomeNotes', 'screeningOutcomeNotes') ?? prev.screeningOutcomeNotes,
         desiredAccommodationKey: existingValue('desiredAccommodationKey') ?? prev.desiredAccommodationKey,
         nextSteps: existingValue('nextSteps') ?? prev.nextSteps,
         handwritingImageUrl: existingValue('handwritingImageUrl', 'handwritingImageUrl') ?? prev.handwritingImageUrl,
@@ -879,6 +900,14 @@ const ClientScreening: React.FC = () => {
         ...prev.vitaminsSupplements,
         [name]: value,
       },
+    }));
+  };
+
+  const handleOutcomeSelect = (outcome: ScreeningData['screeningOutcome']) => {
+    setHasChanges(true);
+    setFormData(prev => ({
+      ...prev,
+      screeningOutcome: prev.screeningOutcome === outcome ? '' : outcome,
     }));
   };
 
@@ -2057,6 +2086,48 @@ const ClientScreening: React.FC = () => {
 
       {/* PPVC-20: quick tasks while screening, without leaving this page */}
       {clientId && <TasksWidget clientId={clientId} title="Quick Tasks" />}
+
+      {/* PPVC-861: the decision made at the end of the screening call. Choosing
+          one of these sets the client's workflow status on save -- Accepted ->
+          Screened accepted, Conditional -> Screened conditional, Declined ->
+          Screened declined. Leaving it unset (the default) never touches
+          workflow status, so earlier autosaves made before the call wraps up
+          don't change the client's status. */}
+      <div className={sectionStyles.outcome.container}>
+        <h2 className={sectionStyles.outcome.heading}>Screening Outcome</h2>
+        <div className="flex flex-wrap gap-3 mb-4">
+          {screeningOutcomeOptions.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => handleOutcomeSelect(option.value)}
+              className={`px-5 py-2.5 rounded-md border text-sm font-semibold transition-colors ${
+                formData.screeningOutcome === option.value
+                  ? option.selectedClass
+                  : 'bg-transparent text-white border-white/40 hover:border-white'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        {formData.screeningOutcome && (
+          <p className="text-sm text-white/70 mb-4">
+            Saving will set this client's status to &ldquo;{clientWorkflowStatusLabels[screeningOutcomeWorkflowStatus[formData.screeningOutcome]]}&rdquo;.
+          </p>
+        )}
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-1">Notes on the decision</label>
+          <textarea
+            name="screeningOutcomeNotes"
+            value={formData.screeningOutcomeNotes}
+            onChange={handleInputChange}
+            rows={3}
+            placeholder="Why this decision -- conditions to clear, concerns, next steps for the client"
+            className="w-full px-3 py-2 border border-gray-200 rounded-md"
+          />
+        </div>
+      </div>
 
       {/* Footer Actions */}
       <div className="flex justify-end gap-3">

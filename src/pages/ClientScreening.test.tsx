@@ -140,4 +140,61 @@ describe('ClientScreening referral capture', () => {
     expect(mockedScreeningApi.create).not.toHaveBeenCalled();
   });
 
+  // PPVC-861: an explicit screening outcome (accepted/conditional/declined),
+  // chosen at the end of the call, plus its own notes.
+  describe('screening outcome', () => {
+    it('saves no screeningOutcome when nothing is chosen', async () => {
+      renderPage();
+      await screen.findByDisplayValue('Eva');
+      fireEvent.click(screen.getAllByRole('button', { name: 'Save Screening' })[0]);
+      await waitFor(() => expect(mockedScreeningApi.create).toHaveBeenCalled());
+      expect(mockedScreeningApi.create.mock.calls[0][0]).toEqual(expect.objectContaining({ screeningOutcome: '' }));
+      expect(screen.queryByText(/Saving will set this client's status/)).not.toBeInTheDocument();
+    });
+
+    it('selects Accepted, previews the resulting status, and saves the outcome with its notes', async () => {
+      renderPage();
+      await screen.findByDisplayValue('Eva');
+      fireEvent.click(screen.getByRole('button', { name: 'Accepted' }));
+      expect(screen.getByText(/Saving will set this client's status to “Screened accepted”/)).toBeInTheDocument();
+      fireEvent.change(screen.getByPlaceholderText(/Why this decision/), { target: { value: 'Cleared, no concerns.' } });
+      fireEvent.click(screen.getAllByRole('button', { name: 'Save Screening' })[0]);
+      await waitFor(() => expect(mockedScreeningApi.create).toHaveBeenCalledWith(expect.objectContaining({
+        screeningOutcome: 'accepted', screeningOutcomeNotes: 'Cleared, no concerns.',
+      })));
+    });
+
+    it('selects Conditional and previews Screened conditional', async () => {
+      renderPage();
+      await screen.findByDisplayValue('Eva');
+      fireEvent.click(screen.getByRole('button', { name: 'Conditional' }));
+      expect(screen.getByText(/Saving will set this client's status to “Screened conditional”/)).toBeInTheDocument();
+    });
+
+    it('selects Declined and previews Screened declined', async () => {
+      renderPage();
+      await screen.findByDisplayValue('Eva');
+      fireEvent.click(screen.getByRole('button', { name: 'Declined' }));
+      expect(screen.getByText(/Saving will set this client's status to “Screened declined”/)).toBeInTheDocument();
+    });
+
+    it('toggles an outcome off when clicked again, clearing the preview', async () => {
+      renderPage();
+      await screen.findByDisplayValue('Eva');
+      fireEvent.click(screen.getByRole('button', { name: 'Accepted' }));
+      expect(screen.getByText(/Saving will set this client's status/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Accepted' }));
+      expect(screen.queryByText(/Saving will set this client's status/)).not.toBeInTheDocument();
+    });
+
+    it('restores a previously saved outcome when screening is reopened', async () => {
+      mockedClientsApi.getOne.mockResolvedValue({
+        data: { ...client, screeningData: { screeningOutcome: 'conditional', screeningOutcomeNotes: 'Needs a recent liver panel first.' } },
+      } as any);
+      renderPage();
+      await screen.findByDisplayValue('Eva');
+      expect(screen.getByRole('button', { name: 'Conditional' })).toHaveClass('bg-teal-500');
+      expect(screen.getByDisplayValue('Needs a recent liver panel first.')).toBeInTheDocument();
+    });
+  });
 });

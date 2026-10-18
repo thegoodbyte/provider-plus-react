@@ -15,4 +15,9 @@ describe('clientWorkflowStatus', () => {
     expect(clientWorkflowStatusLabels.screening_scheduled).toBe('Screening scheduled');
     expect(clientWorkflowStatusLabels.booked_paid).toBe('Booked - paid');
   });
+
+  it('includes the screened_conditional status added for PPVC-861', () => {
+    expect(normalizeClientWorkflowStatus('screened_conditional')).toBe('screened_conditional');
+    expect(clientWorkflowStatusLabels.screened_conditional).toBe('Screened conditional');
+  });
 });

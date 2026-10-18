@@ -12,6 +12,7 @@ export const clientWorkflowStatusValues = [
   'entered',
   'screening_scheduled',
   'screened_accepted',
+  'screened_conditional',
   'screened_declined',
   'payment_request_sent',
   'booked_paid',
@@ -29,6 +30,7 @@ export const clientWorkflowStatusLabels: Record<ClientWorkflowStatus | keyof typ
   entered: 'Entered',
   screening_scheduled: 'Screening scheduled',
   screened_accepted: 'Screened accepted',
+  screened_conditional: 'Screened conditional',
   screened_declined: 'Screened declined',
   payment_request_sent: 'Payment request sent',
   booked_paid: 'Booked - paid',
@@ -48,6 +50,7 @@ export const clientWorkflowStatusTone: Record<ClientWorkflowStatus, string> = {
   entered: 'bg-blue-100 text-blue-800',
   screening_scheduled: 'bg-amber-100 text-amber-800',
   screened_accepted: 'bg-emerald-100 text-emerald-800',
+  screened_conditional: 'bg-teal-100 text-teal-800',
   screened_declined: 'bg-red-100 text-red-800',
   payment_request_sent: 'bg-yellow-100 text-yellow-800',
   booked_paid: 'bg-violet-100 text-violet-800',
@@ -61,6 +64,7 @@ export const clientWorkflowStatusSelectOptions = [
   'entered',
   'screening_scheduled',
   'screened_accepted',
+  'screened_conditional',
   'screened_declined',
   'payment_request_sent',
   'booked_paid',
@@ -72,7 +76,7 @@ export const clientWorkflowStatusSelectOptions = [
 export const clientWorkflowStatusAliasKeys = Object.keys(clientWorkflowStatusAliases) as Array<keyof typeof clientWorkflowStatusAliases>;
 
 export const clientWorkflowStatusLeadValues = ['entered', 'screening_scheduled'] as const satisfies readonly ClientWorkflowStatus[];
-export const clientWorkflowStatusBookedValues = ['screened_accepted', 'payment_request_sent', 'booked_paid', 'retreat_completed'] as const satisfies readonly ClientWorkflowStatus[];
+export const clientWorkflowStatusBookedValues = ['screened_accepted', 'screened_conditional', 'payment_request_sent', 'booked_paid', 'retreat_completed'] as const satisfies readonly ClientWorkflowStatus[];
 export const clientWorkflowStatusTerminalValues = ['screened_declined', 'cancelled', 'blacklisted'] as const satisfies readonly ClientWorkflowStatus[];
 
 export const leadWorkflowStatuses = new Set<ClientWorkflowStatus>(clientWorkflowStatusLeadValues);
