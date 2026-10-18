@@ -121,7 +121,7 @@ it('excludes WhatsApp-handled requests from packet pendingCount yellow badge', a
   expect(badge).toHaveTextContent('1');
 });
 
-it('sends accepted WhatsApp handoff fields without server-managed delivery status', async () => {
+it('opens the WhatsApp form first and only saves accepted handoff fields on explicit save', async () => {
   (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({
     data: [
       { _id: 'r1', display_id: 8001, status: 'pending', reviewChannel: 'internal', assignedToUserId: 'advisor', retreatId: 'retreat' },
@@ -141,10 +141,31 @@ it('sends accepted WhatsApp handoff fields without server-managed delivery statu
   const handleButton = await screen.findByRole('button', { name: 'Handle via WhatsApp' });
   fireEvent.click(handleButton);
 
+  expect(await screen.findByRole('dialog', { name: 'WhatsApp · MRR #8001' })).toBeInTheDocument();
+  expect(medicalReviewRequestsApi.update).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Medical advisor')).toHaveValue('advisor');
+  fireEvent.click(screen.getByRole('button', { name: 'Save and return to list' }));
+
   await waitFor(() => expect(medicalReviewRequestsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({
     reviewChannel: 'whatsapp',
     whatsappStatus: 'awaiting_response',
     status: 'awaiting_whatsapp',
   })));
   expect((medicalReviewRequestsApi.update as jest.Mock).mock.calls.at(-1)[1]).not.toHaveProperty('advisorDeliveryStatus');
+});
+
+it.each(['Cancel', 'Close modal', 'Escape'])('closes an unsaved WhatsApp form using %s without updating the MRR', async action => {
+  (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'new-request',display_id:8003,status:'pending',reviewChannel:'internal',assignedToUserId:'advisor',requestType:'ekg_review',clientId:'client'}]});
+  (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'client',display_id:1264,firstName:'Fixture',lastName:'Client'}]});
+  render(<MemoryRouter><MedicalReviewRequestsGrid/></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('button',{name:'All',exact:true}));
+  fireEvent.click(await screen.findByRole('button',{name:'Handle via WhatsApp'}));
+  expect(await screen.findByRole('dialog',{name:'WhatsApp · MRR #8003'})).toHaveTextContent('Fixture Client');
+  fireEvent.change(screen.getByLabelText('Medical advisor'),{target:{value:''}});
+  if(action==='Escape')fireEvent.keyDown(document,{key:'Escape'});
+  else fireEvent.click(screen.getByRole('button',{name:action}));
+  await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(medicalReviewRequestsApi.update).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'Handle via WhatsApp'}));
+  expect(screen.getByLabelText('Medical advisor')).toHaveValue('advisor');
 });

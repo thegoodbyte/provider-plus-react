@@ -1,7 +1,7 @@
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MedicalReviewRequest } from '../types';
 import { User } from '../services/usersApi';
 import { medicalReviewRequestsApi } from '../services/api';
@@ -12,8 +12,9 @@ const userId = (value: any): string => typeof value === 'string' ? value : value
 const decisions = { OK: 'OK', caution: 'Caution', more_info_needed: 'More information needed', 'NOT OK': 'Declined', WONT_DO: 'Won’t do' };
 const statuses = { OK: 'approved', caution: 'caution', more_info_needed: 'needs_resubmission', 'NOT OK': 'rejected', WONT_DO: 'wont_do' } as const;
 
-export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, onSaved }: {
+export default function MedicalReviewWhatsAppForm({ request, clientLabel, advisors, onClose, onSaved }: {
   request: MedicalReviewRequest;
+  clientLabel?: string;
   advisors: User[];
   onClose: () => void;
   onSaved: (request: MedicalReviewRequest) => void;
@@ -27,6 +28,31 @@ export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, 
   const [saving, setSaving] = useState(false);
   const { toast, showError, dismiss } = useToast();
   const [error, setError] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const dialog = formRef.current?.closest('[role="dialog"]');
+    const focusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]') || []);
+    formRef.current?.querySelector<HTMLSelectElement>('select')?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const fields = focusable();
+      const first = fields[0], last = fields[fields.length - 1];
+      if (!first || !last) return;
+      if (!dialog?.contains(document.activeElement) || (event.shiftKey && document.activeElement === first)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', trapFocus);
+    return () => {
+      document.removeEventListener('keydown', trapFocus);
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
     if (saving || !request._id) return;
@@ -56,8 +82,9 @@ export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, 
   const fieldClass = 'mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2';
   return <ResponsiveModal isOpen onClose={() => { if (!saving) onClose(); }} title={`WhatsApp · MRR #${request.display_id || '—'}`} size="md">
     <Toast toast={toast} onDismiss={dismiss} />
-    <form onSubmit={save} className="space-y-4 p-4">
-      <p className="text-sm text-gray-600">Record the WhatsApp status, then save to return to the list and continue with the next MRR.</p>
+    <form ref={formRef} onSubmit={save} className="space-y-4 p-4">
+      {clientLabel && <p className="font-semibold text-gray-900">{clientLabel}</p>}
+      <p className="text-sm text-gray-600">Record the advisor and WhatsApp status, then save to return to the list. Opening or cancelling this form makes no changes. Send the message in WhatsApp separately.</p>
       <fieldset disabled={saving} className="space-y-4">
         <label className="block text-sm">Medical advisor<select required value={advisor} onChange={e => setAdvisor(e.target.value)} className={fieldClass}>
           <option value="">Select advisor</option>
