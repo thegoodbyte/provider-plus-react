@@ -71,7 +71,7 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
     .filter(row => !selectedReferral || row.referralId === selectedReferral)
     .map(row => row.packageName)
     .filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b)), [report, selectedReferral]);
-  useEffect(() => { if (selectedPackage && !packageOptions.includes(selectedPackage)) setSelectedPackage(''); }, [packageOptions, selectedPackage]);
+  useEffect(() => { if (!loading && selectedPackage && !packageOptions.includes(selectedPackage)) setSelectedPackage(''); }, [loading, packageOptions, selectedPackage]);
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return report
