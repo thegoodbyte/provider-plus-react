@@ -1,6 +1,7 @@
 import React from 'react';
-import { configure, render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { ConfigProvider } from 'antd';
 import RetreatDetailView from './RetreatDetailView';
 import { communicationsApi, retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, bookingFlowApi } from '../services/api';
 
@@ -38,13 +39,20 @@ class FormMessageChannel {
 (globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
 Object.defineProperty(window, 'matchMedia', { writable: true, value: () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }) });
 
-// Ant Design form rendering in jsdom is substantially slower than the real browser.
-jest.setTimeout(120000);
-configure({ asyncUtilTimeout: 10000 });
+// Exercise the real Ant Design form and modal without generating runtime CSS
+// or waiting for decorative motion in jsdom. Visual styling is covered by
+// browser tests; all input, validation and email API assertions remain real.
+const testTheme = { zeroRuntime: true, token: { motion: false } };
 
 const template = { _id: 't1', name: 'Arrival fixture', language: 'en', subject: 'Template subject', bodyText: 'Template message', bodyHtml: '<p>Template message</p>' };
 async function openComposer() {
-  render(<MemoryRouter><RetreatDetailView retreatId="r1" onBack={jest.fn()} /></MemoryRouter>);
+  render(
+    <ConfigProvider theme={testTheme}>
+      <MemoryRouter>
+        <RetreatDetailView retreatId="r1" onBack={jest.fn()} />
+      </MemoryRouter>
+    </ConfigProvider>,
+  );
   fireEvent.click(await screen.findByRole('button', { name: 'Email retreat clients (1)' }));
   await screen.findByRole('dialog');
   await waitFor(() => expect(communicationsApi.getTemplates).toHaveBeenCalled());

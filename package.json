@@ -35,6 +35,7 @@
     "build": "tsc --noEmit -p tsconfig.build.json && vite build",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:timings": "node scripts/unit-test-timings.cjs",
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

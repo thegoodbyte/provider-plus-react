@@ -9,6 +9,7 @@ React, React DOM and their type packages all use major version 19. Application c
 - `npm run build`: type-check application code and generate `build/`.
 - `npm run serve`: production SPA server, listening on Railway's `PORT`.
 - `npm test -- --runInBand`: existing Jest unit tests, independent of CRA.
+- `npm run test:timings`: run a serial, uncached unit benchmark and save per-test timings to `test-results/unit-timings.json`; see [PPVC-652](docs/PPVC-652.md).
 - `npm run test:smoke`: production browser tests; build first.
 - `SMOKE_DEV=true npm run test:smoke`: development and hot-reload checks.
 
