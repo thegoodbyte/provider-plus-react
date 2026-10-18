@@ -84,6 +84,31 @@ describe('ClientScreening referral capture', () => {
     expect(screen.getByLabelText('Attribution type')).toHaveValue(attribution);
   });
 
+  it.each(['never', 'minimal', 'normal', 'more_than_normal', 'every_weekend', 'every_day', 'dependency'] as const)(
+    'saves and restores the %s alcohol use level when screening is reopened (PPVC-888)',
+    async (level) => {
+      const firstRender = renderPage();
+      await screen.findByDisplayValue('Eva');
+      fireEvent.change(screen.getByLabelText('Alcohol Use Level'), { target: { value: level } });
+      expect(screen.getByLabelText('Alcohol Use Level')).toHaveValue(level);
+      fireEvent.click(screen.getAllByRole('button', { name: 'Save Screening' })[0]);
+      await waitFor(() => expect(mockedScreeningApi.create).toHaveBeenCalledWith(expect.objectContaining({ alcoholUseLevel: level })));
+
+      const saved = mockedScreeningApi.create.mock.calls[0][0];
+      firstRender.unmount();
+      mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, screeningData: saved } } as any);
+      renderPage();
+      await screen.findByDisplayValue('Eva');
+      expect(screen.getByLabelText('Alcohol Use Level')).toHaveValue(level);
+    },
+  );
+
+  it('defaults alcohol use level to "Not assessed" when nothing has been saved yet', async () => {
+    renderPage();
+    await screen.findByDisplayValue('Eva');
+    expect(screen.getByLabelText('Alcohol Use Level')).toHaveValue('');
+  });
+
   it('loads attribution from the client profile when screening has no saved value', async () => {
     mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, referralAttributionType: 'self_identified' } } as any);
     renderPage();

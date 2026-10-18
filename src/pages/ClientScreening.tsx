@@ -80,6 +80,7 @@ interface ScreeningData {
   otherDrugs: boolean;
   otherDrugsDetails: string;
   alcoholSober: boolean;
+  alcoholUseLevel: '' | 'never' | 'minimal' | 'normal' | 'more_than_normal' | 'every_weekend' | 'every_day' | 'dependency';
   alcoholUse: {
     wine: AlcoholUseEntry;
     beer: AlcoholUseEntry;
@@ -348,6 +349,7 @@ const ClientScreening: React.FC = () => {
     otherDrugs: false,
     otherDrugsDetails: '',
     alcoholSober: false,
+    alcoholUseLevel: '',
     alcoholUse: {
       wine: { selected: false, frequency: '', amount: '' },
       beer: { selected: false, frequency: '', amount: '' },
@@ -577,6 +579,7 @@ const ClientScreening: React.FC = () => {
         nicotineNotes: existingValue('nicotineNotes', 'nicotineDetails') ?? prev.nicotineNotes,
         alcoholHistory: existingValue('alcoholHistory', 'alcoholConsumption') ?? prev.alcoholHistory,
         alcoholSober: existingScreening.alcoholSober === true,
+        alcoholUseLevel: (existingValue('alcoholUseLevel', 'alcoholUseLevel') ?? prev.alcoholUseLevel) as ScreeningData['alcoholUseLevel'],
         alcoholUse: {
           ...prev.alcoholUse,
           ...(typeof existingScreening.alcoholUse === 'object' && existingScreening.alcoholUse
@@ -1847,6 +1850,26 @@ const ClientScreening: React.FC = () => {
         </div>
 
           <div className="mt-6 space-y-4">
+            <div>
+              <label htmlFor="alcoholUseLevel" className="block text-sm font-medium text-gray-700 mb-1">Alcohol Use Level</label>
+              <select
+                id="alcoholUseLevel"
+                name="alcoholUseLevel"
+                value={formData.alcoholUseLevel}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              >
+                <option value="">Not assessed</option>
+                <option value="never">Never</option>
+                <option value="minimal">Minimal</option>
+                <option value="normal">Normal</option>
+                <option value="more_than_normal">More than normal</option>
+                <option value="every_weekend">Every weekend</option>
+                <option value="every_day">Every day</option>
+                <option value="dependency">Alcohol dependency</option>
+              </select>
+            </div>
+
             <div>
               <label className="flex items-center space-x-2">
                 <input
