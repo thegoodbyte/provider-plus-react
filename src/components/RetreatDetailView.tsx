@@ -167,6 +167,12 @@ const formatUSD = (amount: number) => {
   });
 };
 
+// Rounded percent of `part` against `whole`, clamped to 0-100 and safe against a zero/negative whole.
+export const percentOf = (part: number, whole: number) => {
+  if (!Number.isFinite(part) || !Number.isFinite(whole) || whole <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((part / whole) * 100)));
+};
+
 const RetreatClientAvatar: React.FC<{ clientId: string; name: string; profilePictureUrl?: string; profilePictureS3Key?: string; profilePictureFileUploadId?: string }> = ({
   clientId,
   name,
@@ -1096,53 +1102,81 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       </div>
 
       <Modal
-        title="Financial Metrics"
+        title={<div><p className="m-0 text-xs font-semibold uppercase tracking-wide text-slate-500">Retreat {retreatCode} · {retreatDateText}</p><h2 className="m-0 text-lg font-bold text-slate-900">Financial metrics</h2></div>}
         open={!metricsCollapsed}
         onCancel={() => setMetricsCollapsed(true)}
         footer={null}
         width={1000}
         destroyOnClose
       >
-          <div className="retreat-stats">
-            <div className="stat-card metric-clients">
-              <div className="stat-number">{activeClientCount}</div>
-              <div className="stat-label">Active Clients</div>
-            </div>
-            <div className="stat-card metric-occupancy">
-              <div className="stat-number">{occupancyRate}%</div>
-              <div className="stat-label">Occupancy Rate</div>
-            </div>
-            <div className="stat-card metric-revenue">
-              <div className="stat-number">{formatUSD(totalRevenueUSD)}</div>
-              <div className="stat-label">Revenue Collected</div>
-            </div>
-            <div className="stat-card metric-expected-revenue">
-              <div className="stat-number">{missingUsdQuotes ? 'USD total unavailable' : formatUSD(totalExpectedUSD)}</div>
-              <div className="stat-label">Expected Revenue</div>
-            </div>
-            <div className="stat-card metric-confirmed">
-              <div className="stat-number">{clients.filter(c => c.status === 'confirmed').length}</div>
-              <div className="stat-label">Confirmed</div>
-            </div>
-            <div className="stat-card metric-planned-expenses">
-              <div className="stat-number">{formatUSD(plannedExpensesUSD)}</div>
-              <div className="stat-label">Planned Expenses</div>
-            </div>
-            <div className="stat-card metric-actual-expenses">
-              <div className="stat-number">{formatUSD(actualExpensesUSD)}</div>
-              <div className="stat-label">Actual Expenses</div>
-            </div>
-            <div className={`stat-card ${profitUSD >= 0 ? 'metric-profit' : 'metric-loss'}`}>
-              <div className={`stat-number ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                {formatUSD(profitUSD)}
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 border-l-4 border-l-emerald-600">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="m-0 text-base font-bold text-slate-900">Bottom line</h3>
+                <p className="m-0 text-xs text-slate-500">Profit is revenue collected less expenses actually paid</p>
               </div>
-              <div className="stat-label">Profit</div>
-            </div>
-            <div className={`stat-card ${expectedProfitUSD >= 0 ? 'metric-expected-profit' : 'metric-loss'}`}>
-              <div className={`stat-number ${expectedProfitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                {missingUsdQuotes ? 'USD total unavailable' : formatUSD(expectedProfitUSD)}
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="m-0 text-xs font-semibold uppercase tracking-wide text-slate-500">Profit so far</p>
+                  <p className={`m-0 text-2xl font-bold ${profitUSD >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{formatUSD(profitUSD)}</p>
+                  <p className="m-0 text-xs text-slate-500">Collected {formatUSD(totalRevenueUSD)} · paid out {formatUSD(actualExpensesUSD)}</p>
+                </div>
+                <div>
+                  <p className="m-0 text-xs font-semibold uppercase tracking-wide text-slate-500">Expected profit</p>
+                  <p className="m-0 text-2xl font-bold text-slate-900">{missingUsdQuotes ? 'USD total unavailable' : formatUSD(expectedProfitUSD)}</p>
+                  <p className="m-0 text-xs text-slate-500">If all bookings pay and plans hold</p>
+                </div>
+                <div>
+                  <p className="m-0 text-xs font-semibold uppercase tracking-wide text-slate-500">Still to come</p>
+                  <p className="m-0 text-2xl font-bold text-amber-600">{missingUsdQuotes ? 'USD total unavailable' : formatUSD(Math.max(0, expectedProfitUSD - profitUSD))}</p>
+                  <p className="m-0 text-xs text-slate-500">Gap between now and expected</p>
+                </div>
               </div>
-              <div className="stat-label">Expected Profit</div>
+              {!missingUsdQuotes && (
+                <div className="mt-4">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-emerald-600" style={{ width: `${percentOf(profitUSD, expectedProfitUSD)}%` }} /></div>
+                  <p className="m-0 mt-1 text-right text-xs text-slate-500">{percentOf(profitUSD, expectedProfitUSD)}% of expected profit already realised</p>
+                </div>
+              )}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 border-l-4 border-l-sky-600">
+                <div className="flex items-center justify-between"><h3 className="m-0 text-base font-bold text-slate-900">Revenue in</h3><button type="button" className="text-sm font-semibold text-sky-700 underline" onClick={() => { setMetricsCollapsed(true); handleTabChange('payments'); }}>Payments</button></div>
+                <div className="mt-3 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2"><div><p className="m-0 font-semibold text-slate-900">Collected</p><p className="m-0 text-xs text-slate-500">Payments received and matched</p></div><p className="m-0 font-bold text-slate-900">{formatUSD(totalRevenueUSD)}</p></div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2"><div><p className="m-0 font-semibold text-slate-900">Outstanding</p><p className="m-0 text-xs text-slate-500">Invoiced, not yet paid</p></div><p className="m-0 font-bold text-amber-600">{missingUsdQuotes ? '—' : formatUSD(Math.max(0, totalExpectedUSD - totalRevenueUSD))}</p></div>
+                  <div className="flex items-center justify-between"><div><p className="m-0 font-semibold text-slate-900">Expected total</p><p className="m-0 text-xs text-slate-500">All bookings at agreed price</p></div><p className="m-0 font-bold text-slate-900">{missingUsdQuotes ? 'USD total unavailable' : formatUSD(totalExpectedUSD)}</p></div>
+                </div>
+                {!missingUsdQuotes && (
+                  <div className="mt-4">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-sky-600" style={{ width: `${percentOf(totalRevenueUSD, totalExpectedUSD)}%` }} /></div>
+                    <p className="m-0 mt-1 text-right text-xs text-slate-500">{percentOf(totalRevenueUSD, totalExpectedUSD)}% collected</p>
+                  </div>
+                )}
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-5 border-l-4 border-l-amber-500">
+                <div className="flex items-center justify-between"><h3 className="m-0 text-base font-bold text-slate-900">Expenses out</h3><button type="button" className="text-sm font-semibold text-sky-700 underline" onClick={() => { setMetricsCollapsed(true); handleTabChange('expenses'); }}>Budget</button></div>
+                <div className="mt-3 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2"><div><p className="m-0 font-semibold text-slate-900">Actually paid</p><p className="m-0 text-xs text-slate-500">Invoices settled</p></div><p className="m-0 font-bold text-slate-900">{formatUSD(actualExpensesUSD)}</p></div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2"><div><p className="m-0 font-semibold text-slate-900">Planned</p><p className="m-0 text-xs text-slate-500">Committed in the budget</p></div><p className="m-0 font-bold text-amber-600">{formatUSD(plannedExpensesUSD)}</p></div>
+                  <div className="flex items-center justify-between"><div><p className="m-0 font-semibold text-slate-900">Remaining to pay</p><p className="m-0 text-xs text-slate-500">Planned less paid</p></div><p className="m-0 font-bold text-slate-900">{formatUSD(Math.max(0, plannedExpensesUSD - actualExpensesUSD))}</p></div>
+                </div>
+                <div className="mt-4">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-amber-500" style={{ width: `${percentOf(actualExpensesUSD, plannedExpensesUSD)}%` }} /></div>
+                  <p className="m-0 mt-1 text-right text-xs text-slate-500">{percentOf(actualExpensesUSD, plannedExpensesUSD)}% of budget spent</p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="m-0 text-base font-bold text-slate-900">Occupancy</h3>
+                <p className="m-0 text-xs text-slate-500">{activeClientCount} of {retreatCapacity} places taken{activeClientCount >= retreatCapacity && retreatCapacity > 0 ? ' — retreat is full' : ''}</p>
+              </div>
+              <div className="mt-4 grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-3">
+                <div><p className="m-0 text-xs font-semibold uppercase tracking-wide text-slate-500">Active clients</p><p className="m-0 text-2xl font-bold text-slate-900">{activeClientCount}</p><p className="m-0 text-xs text-slate-500">Bookings not cancelled</p></div>
+                <div><p className="m-0 text-xs font-semibold uppercase tracking-wide text-slate-500">Confirmed</p><p className="m-0 text-2xl font-bold text-slate-900">{clients.filter(c => c.status === 'confirmed').length}</p><p className="m-0 text-xs text-slate-500">{Math.max(0, activeClientCount - clients.filter(c => c.status === 'confirmed').length)} still to confirm</p></div>
+                <div><p className="m-0 text-xs font-semibold uppercase tracking-wide text-slate-500">Occupancy rate</p><p className="m-0 text-2xl font-bold text-slate-900">{occupancyRate}%</p><p className="m-0 text-xs text-slate-500">{activeClientCount} of {retreatCapacity} places</p></div>
+              </div>
             </div>
           </div>
       </Modal>

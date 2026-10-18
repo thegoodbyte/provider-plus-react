@@ -1,6 +1,6 @@
 import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { filterRetreatEmailTemplates, normalizeTemplateLanguage, retreatEmailTemplateSearchText } from './retreatEmailTemplateFilters';
-import { isTabAvailableForRetreat } from './RetreatDetailView';
+import { isTabAvailableForRetreat, percentOf } from './RetreatDetailView';
 import { Payment } from '../types';
 
 const payment = (overrides: Partial<Payment>): Payment => ({
@@ -120,5 +120,23 @@ describe('isTabAvailableForRetreat', () => {
     expect(isTabAvailableForRetreat('ceremonies', customRetreat)).toBe(false);
     expect(isTabAvailableForRetreat('drugScreening', customRetreat)).toBe(false);
     expect(isTabAvailableForRetreat('foodMatrix', customRetreat)).toBe(false);
+  });
+});
+
+describe('percentOf', () => {
+  it('rounds the share of part against whole', () => {
+    expect(percentOf(13936, 15730)).toBe(89);
+    expect(percentOf(13936, 16900)).toBe(82);
+    expect(percentOf(0, 1170)).toBe(0);
+  });
+
+  it('is safe against a zero or negative whole instead of dividing by it', () => {
+    expect(percentOf(100, 0)).toBe(0);
+    expect(percentOf(100, -5)).toBe(0);
+  });
+
+  it('clamps to the 0-100 range', () => {
+    expect(percentOf(150, 100)).toBe(100);
+    expect(percentOf(-10, 100)).toBe(0);
   });
 });
