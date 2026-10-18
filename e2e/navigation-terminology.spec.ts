@@ -18,7 +18,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     for (const name of ['Clients', 'Bookings', 'Retreats', 'Medical Dashboard', 'Payments', 'Payment Requests', 'Readiness Dashboard', 'Booking Requirements']) {
       await expect(daily.getByRole('button', { name, exact: true })).toBeVisible();
     }
-    for (const name of ['Booking Step Library', 'Booking Document Types', 'Retreat Readiness Setup']) {
+    for (const name of ['Booking Step Library', 'Document Types & Libraries', 'Retreat Readiness Setup']) {
       await expect(setup.getByRole('button', { name, exact: true })).toBeVisible();
       await expect(daily.getByRole('button', { name, exact: true })).toHaveCount(0);
     }
@@ -42,7 +42,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 for (const [path, heading] of [
   ['workflow', 'Readiness Dashboard'], ['booking-flow', 'Booking Requirements'],
   ['retreat-flow', 'Retreat Readiness Setup'], ['retreat-flow-library', 'Booking Step Library'],
-  ['booking-document-types', 'Booking Document Types'], ['payment-requests', 'Payment Requests'],
+  ['booking-document-types', 'Document Types & Libraries'], ['payment-requests', 'Payment Requests'],
 ]) {
   test(`existing bookmark ${path} keeps resolving with the agreed heading`, async ({ page }) => {
     await page.goto(`/admin/${path}`);
