@@ -18,6 +18,11 @@ const clients = clientsApi as jest.Mocked<typeof clientsApi>;
 const retreats = retreatsApi as jest.Mocked<typeof retreatsApi>;
 const bookings = bookingsApi as jest.Mocked<typeof bookingsApi>;
 
+// PPVC-868: Type/Category/the context selector/Source/checkboxes/Urgency/Due
+// Date/Tags/Notes all live behind a collapsed "More options" accordion now --
+// open it before interacting with any of them, same as a real user would.
+const openMore = () => fireEvent.click(screen.getByText('More options'));
+
 describe('TaskForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -33,6 +38,7 @@ describe('TaskForm', () => {
     expect(screen.getByText('Create New Task')).toBeInTheDocument();
     expect(screen.getByText('Please review')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Task Name *'), { target: { value: 'Upload EKG tonight' } });
+    openMore();
     fireEvent.change(screen.getByLabelText('Category *'), { target: { value: 'medical' } });
     fireEvent.change(screen.getByLabelText('Urgency *'), { target: { value: 'urgent' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Create Task' }).closest('form')!);
@@ -44,14 +50,49 @@ describe('TaskForm', () => {
     expect(onCancel).toHaveBeenCalledTimes(2);
   });
 
-  it('preselects booking context and derives client and retreat from a searchable booking', async () => {
+  it('defaults the "More options" accordion closed when creating, open when editing (PPVC-868)', () => {
+    const { unmount } = render(<TaskForm onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.queryByLabelText('Urgency *')).not.toBeVisible();
+    unmount();
+
+    render(<TaskForm task={{ id: 't1', name: 'Existing', description: '', type: 'generic', urgency: 'low', status: 'pending', tags: [], createdAt: '', updatedAt: '' } as any} onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    expect(screen.getByLabelText('Urgency *')).toBeVisible();
+  });
+
+  it('hides the client selector entirely when the page already knows the client (PPVC-868)', async () => {
     const onSubmit = jest.fn();
-    render(<TaskForm bookingId="booking-1" bookingLabel="Booking #1267 — Eva" onSubmit={onSubmit} onCancel={jest.fn()} />);
+    render(<TaskForm clientId="client-1" onSubmit={onSubmit} onCancel={jest.fn()} />);
+    openMore();
+    expect(screen.getByLabelText('Type *')).toHaveValue('client');
+    expect(screen.queryByLabelText('Select Client *')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Search for a client...')).not.toBeInTheDocument();
+    // Source/notify/visible toggles -- still client-specific fields -- remain.
+    expect(screen.getByLabelText('Source')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Task Name *'), { target: { value: 'Call about EKG' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Create Task' }).closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ type: 'client', clientId: 'client-1' }));
+  });
+
+  it('hides the booking selector when bookingId is already known, but still shows the context banner', async () => {
+    const onSubmit = jest.fn();
+    render(<TaskForm bookingId="booking-1" bookingLabel="Booking #1267 — Eva" clientId="client-1" retreatId="retreat-1" onSubmit={onSubmit} onCancel={jest.fn()} />);
     expect(screen.getByText('Booking #1267 — Eva')).toBeInTheDocument();
+    openMore();
+    expect(screen.queryByLabelText('Select Booking *')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Search by booking or client...')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Task Name *'), { target: { value: 'Check arrival' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Create Task' }).closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ type: 'booking', bookingId: 'booking-1', clientId: 'client-1', retreatId: 'retreat-1' }));
+  });
+
+  it('still derives client and retreat from a searchable booking when no booking context was already supplied', async () => {
+    const onSubmit = jest.fn();
+    render(<TaskForm onSubmit={onSubmit} onCancel={jest.fn()} />);
+    openMore();
+    fireEvent.change(screen.getByLabelText('Type *'), { target: { value: 'booking' } });
     const select = await screen.findByLabelText('Search by booking or client...');
-    await waitFor(() => expect(select).toHaveValue('booking-1'));
-    expect(screen.getByText(/Booking #1267 — Eva Novak/)).toBeInTheDocument();
-    fireEvent.change(select, { target: { value: '' } });
     fireEvent.change(select, { target: { value: 'booking-1' } });
     fireEvent.change(screen.getByLabelText('Task Name *'), { target: { value: 'Check arrival' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Create Task' }).closest('form')!);
@@ -60,6 +101,7 @@ describe('TaskForm', () => {
 
   it('switches between searchable client, retreat and booking task types', async () => {
     render(<TaskForm onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    openMore();
     fireEvent.change(screen.getByLabelText('Type *'), { target: { value: 'client' } });
     await waitFor(() => expect(screen.getByText('Ready clientId')).toBeInTheDocument());
     expect(screen.getByText(/Client #1201 - Eva Novak/)).toBeInTheDocument();
@@ -96,6 +138,7 @@ describe('TaskForm', () => {
   it('supports today and tomorrow quick due dates', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-08-29T12:00:00Z'));
     render(<TaskForm onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    openMore();
     fireEvent.click(screen.getByRole('button', { name: 'Today' }));
     expect(screen.getByLabelText('Due Date')).toHaveValue('2026-08-29');
     fireEvent.click(screen.getByRole('button', { name: 'Tomorrow' }));
@@ -115,6 +158,7 @@ describe('TaskForm', () => {
     (retreats.getAll as jest.Mock).mockResolvedValue({ data: [{ id: 'legacy-retreat', code: 'OCT', title: 'October', dates: { startDate: 'invalid' } }, {}] });
     (bookings.getAll as jest.Mock).mockResolvedValue({ data: { results: [{ id: 'legacy-booking', bookingHash: 'hash', clientId: 'client', retreatId: 'retreat' }, {}] } });
     render(<TaskForm initialType="client" onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    openMore();
     expect(await screen.findByText(/Client #88 - Legacy Client/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Type *'), { target: { value: 'retreat' } });
     expect(screen.getByText(/Retreat #OCT - October/)).toBeInTheDocument();
@@ -125,6 +169,7 @@ describe('TaskForm', () => {
   it('defaults client-only notify/visible toggles and a WhatsApp source, and lets staff turn them off (PPVC-795)', async () => {
     const onSubmit = jest.fn();
     render(<TaskForm onSubmit={onSubmit} onCancel={jest.fn()} />);
+    openMore();
     expect(screen.queryByLabelText('Source')).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Type *'), { target: { value: 'client' } });
@@ -154,6 +199,7 @@ describe('TaskForm', () => {
     const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     (clients.getAll as jest.Mock).mockRejectedValue(new Error('offline'));
     render(<TaskForm initialType="client" onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    openMore();
     expect(screen.getByText('Loading clientId')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('Ready clientId')).toBeInTheDocument());
     expect(error).toHaveBeenCalledWith('Error loading clients and retreats:', expect.any(Error));

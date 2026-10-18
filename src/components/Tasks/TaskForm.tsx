@@ -44,6 +44,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     visibleToClient: true,
   });
 
+  // PPVC-868: quick task creation should default to collapsed -- staff just
+  // wants to type a title and go. Editing an existing task defaults open
+  // since the fields it's showing are already meaningfully filled in.
+  const [advancedOpen, setAdvancedOpen] = useState(Boolean(task));
   const [tagInput, setTagInput] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [retreats, setRetreats] = useState<any[]>([]);
@@ -287,221 +291,230 @@ export const TaskForm: React.FC<TaskFormProps> = ({
               <strong>{bookingLabel || `#${bookingId.slice(-6)}`}</strong>
             </div>
           )}
-      <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="name">Task Name *</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                placeholder="Enter task name..."
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="type">Type *</label>
-              <select
-                id="type"
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                required
-              >
-                <option value="generic">Generic</option>
-                <option value="client">Client Related</option>
-                <option value="booking">Booking Related</option>
-                <option value="retreat">Retreat Related</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="category">Category *</label>
-              <select id="category" name="category" value={formData.category || 'operations'} onChange={handleChange} required>
-                <option value="medical">Medical</option>
-                <option value="documents">Documents</option>
-                <option value="financial">Financial</option>
-                <option value="communication">Communication</option>
-                <option value="operations">Operations</option>
-              </select>
-            </div>
+          <div className="form-group full-width">
+            <label htmlFor="name">Task Name *</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              placeholder="Enter task name..."
+              autoFocus
+            />
           </div>
 
-          {/* Dynamic fields based on type */}
-          {formData.type === 'client' && (
-            <div className="form-group">
-              <label htmlFor="clientId">Select Client *</label>
-              <SearchableSelect
-                id="clientId"
-                name="clientId"
-                value={formData.clientId || ''}
-                options={clientOptions}
-                placeholder="Search for a client..."
-                onChange={handleClientChange}
-                required
-                loading={loadingClients}
-              />
-            </div>
-          )}
-
-          {formData.type === 'client' && (
-            <>
-              <div className="form-group">
-                <label htmlFor="sourceType">Source</label>
-                <select id="sourceType" name="sourceType" value={formData.sourceType || ''} onChange={handleChange}>
-                  <option value="">Not specified</option>
-                  <option value="whatsapp">WhatsApp message</option>
-                </select>
-              </div>
-
-              <div className="form-row">
-                <label>
-                  <input
-                    type="checkbox"
-                    name="notifyClient"
-                    checked={formData.notifyClient ?? true}
-                    onChange={handleCheckboxChange}
-                  />
-                  {' '}Email client on status change
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
-                    name="visibleToClient"
-                    checked={formData.visibleToClient ?? true}
-                    onChange={handleCheckboxChange}
-                  />
-                  {' '}Visible in client portal
-                </label>
-              </div>
-            </>
-          )}
-
-          {formData.type === 'retreat' && (
-            <div className="form-group">
-              <label htmlFor="retreatId">Select Retreat *</label>
-              <SearchableSelect
-                id="retreatId"
-                name="retreatId"
-                value={formData.retreatId || ''}
-                options={retreatOptions}
-                placeholder="Search for a retreat..."
-                onChange={handleRetreatChange}
-                required
-                loading={loadingRetreats}
-              />
-            </div>
-          )}
-
-          {formData.type === 'booking' && (
-            <div className="form-group">
-              <label htmlFor="bookingId">Select Booking *</label>
-              <SearchableSelect
-                id="bookingId"
-                name="bookingId"
-                value={formData.bookingId || ''}
-                options={bookingOptions}
-                placeholder="Search by booking or client..."
-                onChange={handleBookingChange}
-                required
-                loading={loadingBookings}
-              />
-            </div>
-          )}
-
-          <div className="form-group">
+          <div className="form-group full-width">
             <label htmlFor="description">Description (optional)</label>
             <textarea
               id="description"
               name="description"
               value={formData.description}
               onChange={handleChange}
-              rows={3}
+              rows={2}
               placeholder="Add details only if the title is not enough."
             />
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="urgency">Urgency *</label>
-              <select
-                id="urgency"
-                name="urgency"
-                value={formData.urgency}
-                onChange={handleChange}
-                required
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
+          {/* PPVC-868: everything below is only needed occasionally -- keep
+              it out of the way behind an accordion so creating a task is
+              just "type a title, hit Create". */}
+          <details className="task-form-advanced" open={advancedOpen} onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}>
+            <summary>More options</summary>
 
-            <div className="form-group">
-              <label htmlFor="dueDate">Due Date</label>
-              <input
-                type="date"
-                id="dueDate"
-                name="dueDate"
-                value={formData.dueDate}
-                onChange={handleChange}
-                min={formatInputDate(new Date())}
-              />
-              <div className="quick-date-actions" aria-label="Quick due date actions">
-                <button type="button" onClick={() => setDueDateOffset(0)}>
-                  Today
-                </button>
-                <button type="button" onClick={() => setDueDateOffset(1)}>
-                  Tomorrow
-                </button>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="type">Type *</label>
+                <select
+                  id="type"
+                  name="type"
+                  value={formData.type}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="generic">Generic</option>
+                  <option value="client">Client Related</option>
+                  <option value="booking">Booking Related</option>
+                  <option value="retreat">Retreat Related</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="category">Category *</label>
+                <select id="category" name="category" value={formData.category || 'operations'} onChange={handleChange} required>
+                  <option value="medical">Medical</option>
+                  <option value="documents">Documents</option>
+                  <option value="financial">Financial</option>
+                  <option value="communication">Communication</option>
+                  <option value="operations">Operations</option>
+                </select>
               </div>
             </div>
-          </div>
 
+            {/* Dynamic fields based on type -- skipped entirely when the
+                surrounding page already knows the client/retreat/booking
+                (e.g. the screening page), since re-picking from a dropdown
+                with one obvious option is pure friction. */}
+            {formData.type === 'client' && !clientId && (
+              <div className="form-group">
+                <label htmlFor="clientId">Select Client *</label>
+                <SearchableSelect
+                  id="clientId"
+                  name="clientId"
+                  value={formData.clientId || ''}
+                  options={clientOptions}
+                  placeholder="Search for a client..."
+                  onChange={handleClientChange}
+                  required
+                  loading={loadingClients}
+                />
+              </div>
+            )}
 
+            {formData.type === 'client' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="sourceType">Source</label>
+                  <select id="sourceType" name="sourceType" value={formData.sourceType || ''} onChange={handleChange}>
+                    <option value="">Not specified</option>
+                    <option value="whatsapp">WhatsApp message</option>
+                  </select>
+                </div>
 
-          <div className="form-group">
-            <label htmlFor="tags">Tags</label>
-            <div className="tags-input-container">
-              <input
-                type="text"
-                id="tags"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleAddTag}
-                placeholder="Type a tag and press Enter"
-              />
-              <div className="tags-display">
-                {formData.tags?.map((tag, index) => (
-                  <span key={index} className="tag">
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="tag-remove"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                <div className="form-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="notifyClient"
+                      checked={formData.notifyClient ?? true}
+                      onChange={handleCheckboxChange}
+                    />
+                    {' '}Email client on status change
+                  </label>
+                  <label>
+                    <input
+                      type="checkbox"
+                      name="visibleToClient"
+                      checked={formData.visibleToClient ?? true}
+                      onChange={handleCheckboxChange}
+                    />
+                    {' '}Visible in client portal
+                  </label>
+                </div>
+              </>
+            )}
+
+            {formData.type === 'retreat' && !retreatId && (
+              <div className="form-group">
+                <label htmlFor="retreatId">Select Retreat *</label>
+                <SearchableSelect
+                  id="retreatId"
+                  name="retreatId"
+                  value={formData.retreatId || ''}
+                  options={retreatOptions}
+                  placeholder="Search for a retreat..."
+                  onChange={handleRetreatChange}
+                  required
+                  loading={loadingRetreats}
+                />
+              </div>
+            )}
+
+            {formData.type === 'booking' && !bookingId && (
+              <div className="form-group">
+                <label htmlFor="bookingId">Select Booking *</label>
+                <SearchableSelect
+                  id="bookingId"
+                  name="bookingId"
+                  value={formData.bookingId || ''}
+                  options={bookingOptions}
+                  placeholder="Search by booking or client..."
+                  onChange={handleBookingChange}
+                  required
+                  loading={loadingBookings}
+                />
+              </div>
+            )}
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="urgency">Urgency *</label>
+                <select
+                  id="urgency"
+                  name="urgency"
+                  value={formData.urgency}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="dueDate">Due Date</label>
+                <input
+                  type="date"
+                  id="dueDate"
+                  name="dueDate"
+                  value={formData.dueDate}
+                  onChange={handleChange}
+                  min={formatInputDate(new Date())}
+                />
+                <div className="quick-date-actions" aria-label="Quick due date actions">
+                  <button type="button" onClick={() => setDueDateOffset(0)}>
+                    Today
+                  </button>
+                  <button type="button" onClick={() => setDueDateOffset(1)}>
+                    Tomorrow
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="form-group">
-            <label htmlFor="notes">Notes</label>
-            <textarea
-              id="notes"
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={3}
-              placeholder="Additional notes or comments..."
-            />
-          </div>
+            <div className="form-group">
+              <label htmlFor="tags">Tags</label>
+              <div className="tags-input-container">
+                <input
+                  type="text"
+                  id="tags"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleAddTag}
+                  placeholder="Type a tag and press Enter"
+                />
+                <div className="tags-display">
+                  {formData.tags?.map((tag, index) => (
+                    <span key={index} className="tag">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="tag-remove"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="notes">Notes</label>
+              <textarea
+                id="notes"
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Additional notes or comments..."
+              />
+            </div>
+          </details>
 
           <div className="form-actions">
             <button type="button" className="btn btn-secondary" onClick={onCancel}>
