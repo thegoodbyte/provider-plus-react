@@ -65,3 +65,16 @@ it('clears selected items and updates totals when changing retreats', () => {
  expect(screen.queryByRole('region',{name:'Selected payment total'})).toBeNull();
  expect(screen.getByText('Retreat total to pay').parentElement).toHaveTextContent('500.00');
 });
+it('filters to just the selected package, and finds a package by search', () => {
+ view([{ ...first, packageName: 'Package A' }, { ...second, packageName: 'Package B' }]);
+ expect(screen.getByText('Julian B')).toBeVisible();expect(screen.getByText('Anna N')).toBeVisible();
+ fireEvent.change(screen.getByLabelText('Filter by commission package'),{target:{value:'Package B'}});
+ expect(screen.queryByText('Julian B')).toBeNull();expect(screen.getByText('Anna N')).toBeVisible();
+ fireEvent.change(screen.getByLabelText('Filter by commission package'),{target:{value:''}});
+ fireEvent.change(screen.getByPlaceholderText('Search client, referred-by or package'),{target:{value:'package a'}});
+ expect(screen.getByText('Julian B')).toBeVisible();expect(screen.queryByText('Anna N')).toBeNull();
+});
+it('does not show a package filter when no row in the report has a package', () => {
+ view([first, second]);
+ expect(screen.queryByLabelText('Filter by commission package')).toBeNull();
+});

@@ -278,7 +278,7 @@ describe('ReferralsPage payout workflow', () => {
     await screen.findAllByText('Eva Novak');
     expect(screen.queryByRole('columnheader', { name: 'Referred by' })).toBeNull();
 
-    fireEvent.change(screen.getByPlaceholderText(/Search client or referred-by/i), { target: { value: 'Basia' } });
+    fireEvent.change(screen.getByPlaceholderText(/Search client.*referred-by/i), { target: { value: 'Basia' } });
 
     expect(screen.queryByText('Eva Novak')).not.toBeInTheDocument();
     expect(screen.getByText('Jan Kowalski')).toBeInTheDocument();

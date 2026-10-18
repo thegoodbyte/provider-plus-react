@@ -33,8 +33,10 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
   const [params, setParams] = useSearchParams();
   const selectedReferral = params.get('referralId') || '';
   const selectedRetreat = params.get('retreatId') || '';
+  const selectedPackage = params.get('packageName') || '';
   const setSelectedReferral = (id: string) => setParams(current => { const next = new URLSearchParams(current); id ? next.set('referralId', id) : next.delete('referralId'); return next; });
   const setSelectedRetreat = (id: string) => setParams(current => { const next = new URLSearchParams(current); id ? next.set('retreatId', id) : next.delete('retreatId'); return next; });
+  const setSelectedPackage = (name: string) => setParams(current => { const next = new URLSearchParams(current); name ? next.set('packageName', name) : next.delete('packageName'); return next; });
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'client' | 'retreat' | 'referral'>('referral');
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set());
@@ -60,23 +62,29 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
   const [payoutForm, setPayoutForm] = useState({ expenseDate: today(), paymentMethod: 'bank_transfer', paymentAccount: '', reference: '', notes: '' });
   const dialogRef = useRef<HTMLDivElement>(null);
   useDialogFocus(payoutRows.length > 0, dialogRef, () => { if (!paying) setPayoutRows([]); });
-  useEffect(() => { setSelectedBookings(new Set()); }, [selectedReferral, selectedRetreat, report]);
+  useEffect(() => { setSelectedBookings(new Set()); }, [selectedReferral, selectedRetreat, selectedPackage, report]);
   const retreatOptions = useMemo(() => Object.values(report.reduce<Record<string, { id: string; label: string }>>((sum, row) => {
     sum[row.retreatId] = sum[row.retreatId] || { id: row.retreatId, label: row.retreatCode || row.retreatName || 'Retreat' };
     return sum;
   }, {})).sort((a, b) => a.label.localeCompare(b.label)), [report]);
+  const packageOptions = useMemo(() => [...new Set(report
+    .filter(row => !selectedReferral || row.referralId === selectedReferral)
+    .map(row => row.packageName)
+    .filter((name): name is string => Boolean(name)))].sort((a, b) => a.localeCompare(b)), [report, selectedReferral]);
+  useEffect(() => { if (selectedPackage && !packageOptions.includes(selectedPackage)) setSelectedPackage(''); }, [packageOptions, selectedPackage]);
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return report
       .filter(row => !selectedReferral || row.referralId === selectedReferral)
       .filter(row => !selectedRetreat || row.retreatId === selectedRetreat)
-      .filter(row => !query || [row.clientName, row.referralName, row.referredByLabel].filter(Boolean).some(value => String(value).toLowerCase().includes(query)))
+      .filter(row => !selectedPackage || row.packageName === selectedPackage)
+      .filter(row => !query || [row.clientName, row.referralName, row.referredByLabel, row.packageName].filter(Boolean).some(value => String(value).toLowerCase().includes(query)))
       .sort((a, b) => {
         const av = sort === 'client' ? a.clientName : sort === 'retreat' ? a.retreatCode || a.retreatName || '' : a.referralName;
         const bv = sort === 'client' ? b.clientName : sort === 'retreat' ? b.retreatCode || b.retreatName || '' : b.referralName;
         return av.localeCompare(bv);
       });
-  }, [report, selectedReferral, selectedRetreat, search, sort]);
+  }, [report, selectedReferral, selectedRetreat, selectedPackage, search, sort]);
   const totals = useMemo(() => filtered.filter(row => !row.paid && !row.commissionIssue).reduce<Record<string, number>>((sum, row) => ({ ...sum, [row.owedCurrency]: (sum[row.owedCurrency] || 0) + row.amountOwed }), {}), [filtered]);
   const retreatTotals = useMemo(() => Object.values(filtered.filter(row => !row.paid && !row.commissionIssue).reduce<Record<string, { referralId: string; retreatId: string; label: string; currency: string; amount: number; rows: ReferralReportRow[] }>>((sum, row) => {
     const key = `${row.referralId}:${row.retreatId}:${row.owedCurrency}`;
@@ -139,7 +147,7 @@ export default function ReferralCommissionsPage({ rows, report, loading, base, o
     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div><h2 className="text-xl font-black">{selectedName ? `Clients referred by ${selectedName}` : 'Referred clients'}</h2><p className="text-sm text-slate-500">Review applied packages and outstanding commissions, then record payments already made.</p></div>
-        <div className="flex flex-wrap gap-2">{selectedRows.length > 0 && <button type="button" onClick={() => startPayout(selectedRows)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 font-bold text-white"><Wallet size={17} />Pay selected ({selectedRows.length})</button>}<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search client or referred-by (e.g. a friend's name)" className="min-h-11 w-full sm:w-auto min-w-0 rounded-xl border border-slate-300 px-3" /><select aria-label="Filter by referral" value={selectedReferral} onChange={event => { setSelectedReferral(event.target.value); setSelectedBookings(new Set()); }} className="min-h-11 max-w-full rounded-xl border border-slate-300 px-3"><option value="">All referrals</option>{rows.map(row => <option key={row._id} value={row._id}>{row.referralCode ? `${row.referralCode} · ` : ''}{row.name}</option>)}</select><select aria-label="Filter by retreat" value={selectedRetreat} onChange={event => setSelectedRetreat(event.target.value)} className="min-h-11 max-w-full rounded-xl border border-slate-300 px-3"><option value="">All retreats</option>{retreatOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select><select aria-label="Sort referred clients" value={sort} onChange={event => setSort(event.target.value as any)} className="min-h-11 max-w-full rounded-xl border border-slate-300 px-3"><option value="referral">Sort by referral</option><option value="client">Sort by client</option><option value="retreat">Sort by retreat</option></select></div>
+        <div className="flex flex-wrap gap-2">{selectedRows.length > 0 && <button type="button" onClick={() => startPayout(selectedRows)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 font-bold text-white"><Wallet size={17} />Pay selected ({selectedRows.length})</button>}<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search client, referred-by or package" className="min-h-11 w-full sm:w-auto min-w-0 rounded-xl border border-slate-300 px-3" /><select aria-label="Filter by referral" value={selectedReferral} onChange={event => { setSelectedReferral(event.target.value); setSelectedBookings(new Set()); }} className="min-h-11 max-w-full rounded-xl border border-slate-300 px-3"><option value="">All referrals</option>{rows.map(row => <option key={row._id} value={row._id}>{row.referralCode ? `${row.referralCode} · ` : ''}{row.name}</option>)}</select><select aria-label="Filter by retreat" value={selectedRetreat} onChange={event => setSelectedRetreat(event.target.value)} className="min-h-11 max-w-full rounded-xl border border-slate-300 px-3"><option value="">All retreats</option>{retreatOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select>{packageOptions.length > 0 && <select aria-label="Filter by commission package" value={selectedPackage} onChange={event => setSelectedPackage(event.target.value)} className="min-h-11 max-w-full rounded-xl border border-slate-300 px-3"><option value="">All packages</option>{packageOptions.map(name => <option key={name} value={name}>{name}</option>)}</select>}<select aria-label="Sort referred clients" value={sort} onChange={event => setSort(event.target.value as any)} className="min-h-11 max-w-full rounded-xl border border-slate-300 px-3"><option value="referral">Sort by referral</option><option value="client">Sort by client</option><option value="retreat">Sort by retreat</option></select></div>
       </div>
       <div className="mb-4 flex flex-wrap gap-3">
         {Object.entries(filtered.filter(row => row.paid).reduce<Record<string, number>>((sum, row) => ({ ...sum, [row.owedCurrency]: (sum[row.owedCurrency] || 0) + row.amountOwed }), {})).map(([currency, total]) => <div key={currency} className="rounded-xl bg-blue-50 px-4 py-3"><div className="text-xs font-bold uppercase">Already paid</div><div className="text-xl font-black">{money(total, currency)}</div><UsdTotal items={filtered.filter(row => row.paid && row.owedCurrency === currency)} /></div>)}
