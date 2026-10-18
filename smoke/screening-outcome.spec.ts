@@ -33,6 +33,6 @@ for (const width of [1440,390]) test(`screening decision save and reopen at ${wi
   expect(writes.at(-1)).toMatchObject({screeningOutcome:outcome,screeningOutcomeNotes:`Synthetic ${outcome} notes`});
   await page.goto(path);await expect(section.locator('textarea')).toHaveValue(`Synthetic ${outcome} notes`);
   await expect(section).toContainText(`Screened ${outcome}`);
-  await section.scrollIntoViewIfNeeded();await page.screenshot({path:`test-results/ppvc861-${width}-${outcome}.png`});
+  await section.scrollIntoViewIfNeeded();await page.screenshot({path:`../screening-artifacts/ppvc861-${width}-${outcome}.png`});
  }
 });
