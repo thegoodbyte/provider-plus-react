@@ -1,20 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { FiAlertCircle, FiHeart, FiMail } from 'react-icons/fi';
-import { paymentRequestsApi, paymentsApi } from '../services/api';
+import React, { useMemo } from 'react';
+import BookingPaymentManagement from './BookingPaymentManagement';
 import { useBookingRequirements } from './useBookingRequirements';
-import { bookingSettlementSummary, confirmationState, isActivePaymentRequest } from './bookingStatusSelectors';
-import { loadBookingPayments } from './loadBookingPayments';
+import { confirmationState } from './bookingStatusSelectors';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { BookingType } from '../constants/eventTypes';
-
-const AlertIcon = FiAlertCircle as any; const HeartIcon = FiHeart as any; const MailIcon = FiMail as any;
 
 export const formatBookingDate = (date?: string | Date) => formatCalendarDate(date, 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 export const formatHistoryDateTime = (date?: string | Date) => { if (!date) return 'N/A'; const value = new Date(date); if (Number.isNaN(value.getTime())) return 'N/A'; return value.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 export const retreatTown = (retreat: any) => String(retreat?.location_town || retreat?.locationTown || retreat?.generalTown || retreat?.general_town || retreat?.house?.generalTown || retreat?.house?.general_town || retreat?.house?.city || retreat?.houseId?.generalTown || retreat?.houseId?.general_town || retreat?.houseId?.city || retreat?.location || '').trim();
 export { sentConfirmationStep } from './bookingStatusSelectors';
 
-type Props = { bookingId: string; booking: any; client: any; retreat: any; clientName: string; bookingTypeCode: string; retreatCode: string; retreatAddress: string; onEditClient: () => void; onBookingRefresh: () => void; onOpenTab?: (tab: 'payments' | 'requirements' | 'medical') => void; onSendConfirmation?: () => void; };
+type Props = { refreshKey?: number; bookingId: string; booking: any; client: any; retreat: any; clientName: string; bookingTypeCode: string; retreatCode: string; retreatAddress: string; onEditClient: () => void; onBookingRefresh: () => void; onOpenTab?: (tab: 'payments' | 'requirements' | 'medical') => void; onSendConfirmation?: () => void; };
 const objectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 const dateValue = (retreat: any, edge: 'startDate' | 'endDate', booking?: any) => {
   if (booking?.bookingType === BookingType.BOOSTER) {
@@ -37,54 +33,55 @@ const timeValue = (retreat: any, edge: 'startTime' | 'endTime', booking?: any) =
   return retreat?.[edge] || retreat?.dates?.[edge] || '';
 };
 const daysUntil = (value: any) => { const date = new Date(value); if (Number.isNaN(date.getTime())) return null; return Math.ceil((date.getTime() - Date.now()) / 86400000); };
-const money = (amount: number, currency: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount || 0);
+const OverviewSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => <details className="booking-overview-disclosure">
+  <summary><span>{title}</span><span aria-hidden="true" className="overview-show">Show</span><span aria-hidden="true" className="overview-hide">Hide</span></summary>
+  <div className="booking-overview-disclosure-body">{children}</div>
+</details>;
 
-const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, retreat, clientName, retreatCode, onEditClient, onBookingRefresh, onOpenTab, onSendConfirmation }) => {
-  const [payments, setPayments] = useState<any[]>([]);
-  const [requests, setRequests] = useState<any[]>([]);
-  const [totalUsd, setTotalUsd] = useState<number | null>(null);
+const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, retreat, clientName, retreatCode, retreatAddress, onEditClient, onBookingRefresh, onOpenTab, onSendConfirmation, refreshKey = 0 }) => {
   const clientId = objectId(client); const retreatId = objectId(retreat);
-  const requirements = useBookingRequirements({ bookingId, clientId, retreatId, refreshKey: 0 });
-  useEffect(() => { let live = true; Promise.all([loadBookingPayments(bookingId, booking.bookingHash), paymentRequestsApi.getByBooking(bookingId)]).then(([paid, requested]) => { if (live) { setPayments(paid); setRequests(requested.data || []); } }).catch(() => undefined); return () => { live = false; }; }, [bookingId, booking.bookingHash]);
-  const currency = booking.currency || 'EUR';
-  const total = Number(booking.totalAmount || 0);
-  useEffect(() => {
-    let live = true;
-    paymentsApi.convertToUsd(total, currency).then(response => {
-      if (live) setTotalUsd(Number(response.data?.usd_amount));
-    }).catch(() => { if (live) setTotalUsd(null); });
-    return () => { live = false; };
-  }, [total, currency]);
-  const settlement = bookingSettlementSummary(payments, total, currency, totalUsd);
-  const { received, outstanding, overpaid, paidPercent, paidInFull, basis } = settlement;
-  const settlementCurrency = basis === 'USD' ? 'USD' : currency;
+  const requirements = useBookingRequirements({ bookingId, clientId, retreatId, refreshKey });
   const confirmation = useMemo(() => confirmationState(booking, requirements.items), [booking, requirements.items]);
   const confirmationSent = confirmation.sent; const confirmationSentAt = confirmation.sentAt;
-  const ekg = requirements.rows.find(row => row.key === 'ekg');
   const missingRows = requirements.rows.filter(row => row.required && !row.satisfied);
-  const complete = Math.max(0, requirements.rows.length - missingRows.length);
-  const start = dateValue(retreat, 'startDate', booking); const end = dateValue(retreat, 'endDate', booking); const startTime = timeValue(retreat, 'startTime', booking); const endTime = timeValue(retreat, 'endTime', booking); const startIn = daysUntil(start);
-  const attention = [
-    ...(outstanding > 0 && !requests.some(isActivePaymentRequest) ? [{ icon: <AlertIcon />, title: 'Balance not requested', detail: `${money(outstanding, settlementCurrency)} outstanding and no active payment request exists yet.`, badge: 'Blocking', action: 'Create request', tab: 'payments' as const }] : []),
-    ...(ekg && !ekg.satisfied ? [{ icon: <HeartIcon />, title: 'Entry EKG not received', detail: 'Required before the medical cut-off.', badge: 'Action needed', action: 'Request file', tab: 'medical' as const }] : []),
-    ...(!confirmationSent ? [{ icon: <MailIcon />, title: 'Confirmation not sent', detail: 'The client has not received a booking confirmation.', badge: 'Not sent', action: 'Send now' }] : []),
-  ];
-  const activities = [
-    ...requirements.rows.filter(row => row.uploaded).slice(0, 3).map(row => ({ date: row.latestArtifact?.updatedAt || row.latestDocument?.updatedAt, text: `${row.label} received` })),
-    ...(confirmationSentAt ? [{ date: confirmationSentAt, text: 'Confirmation sent' }] : []),
-    { date: booking.registrationDate || booking.createdAt, text: 'Booking created' },
-  ].filter(item => item.date).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
-  return <div className="booking-dashboard">
-    <main className="booking-dashboard-main">
-      <section className="overview-section"><header><h2>Needs attention</h2><span>{attention.length} thing{attention.length === 1 ? '' : 's'} waiting for you</span></header>{attention.length ? <div className="attention-list">{attention.map((item, index) => <article className="attention-item" key={item.title}><b>{String(index + 1).padStart(2, '0')}</b><i>{item.icon}</i><div><strong>{item.title}</strong><span>{item.detail}</span></div><em>{item.badge}</em><button type="button" onClick={() => 'tab' in item ? onOpenTab?.(item.tab!) : onSendConfirmation?.()}>{item.action}</button></article>)}</div> : <div className="overview-empty">Nothing needs attention.</div>}</section>
-      <div className="overview-card-grid"><section className="overview-card money-card"><header><h3>Money</h3><button onClick={() => onOpenTab?.('payments')}>Payments tab</button></header><small>{basis === 'USD' ? 'USD booking price' : 'Total cost'}</small><strong>{money(basis === 'USD' ? Number(totalUsd) : total, settlementCurrency)}</strong>{basis === 'USD' && <small>{money(total, currency)} original price</small>}<div className="payment-progress"><span>{overpaid > 0.005 ? `Overpaid ${money(overpaid, settlementCurrency)}` : paidInFull ? 'Paid in full' : 'Not fully paid'}</span><div><i style={{ width: `${paidPercent}%` }} /></div><b>{paidPercent}%</b></div><footer><span>Received<b>{money(received, settlementCurrency)}</b></span><span>{overpaid > 0.005 ? 'Client credit' : 'Outstanding'}<b>{money(overpaid > 0.005 ? overpaid : outstanding, settlementCurrency)}</b></span></footer></section>
-      <section className="overview-card requirements-card"><header><h3>Requirements</h3><button onClick={() => onOpenTab?.('requirements')}>All {requirements.rows.length}</button></header><strong>{complete} <small>/ {requirements.rows.length} done</small></strong><div className="requirement-segments">{requirements.rows.map(row => <i key={row.key} className={row.satisfied ? 'done' : row.required ? 'missing' : ''} />)}</div>{missingRows.slice(0, 3).map(row => <div className="requirement-next" key={row.key}><span>○</span><b>{row.label}</b><small>pending</small></div>)}</section></div>
-      <section className="overview-retreat"><h3>{booking?.bookingType === BookingType.BOOSTER ? 'Booster booking' : 'Retreat'}</h3><div><b>{retreatCode}</b><strong>{formatBookingDate(start)}{startTime ? ` · ${startTime}` : ''} – {formatBookingDate(end)}{endTime ? ` · ${endTime}` : ''}</strong><span>{retreat?.name || retreatTown(retreat) || 'Retreat'}</span><em>{retreat?.capacity ? `${retreat.capacity} places` : ''}</em></div></section>
-      <section className="overview-activity"><h3>Recent activity</h3>{activities.map((item, index) => <div key={`${item.text}-${index}`}><time>{formatHistoryDateTime(item.date)}</time><span>{item.text}</span></div>)}</section>
+  const start = dateValue(retreat, 'startDate', booking); const end = dateValue(retreat, 'endDate', booking);
+  const startTime = timeValue(retreat, 'startTime', booking); const endTime = timeValue(retreat, 'endTime', booking);
+  const startIn = daysUntil(start);
+  const checkIn = booking?.bookingType === BookingType.BOOSTER ? start : booking?.checkInDate || start;
+  const checkOut = booking?.bookingType === BookingType.BOOSTER ? end : booking?.checkOutDate || end;
+  return <div className="booking-overview-layout" aria-label="Booking overview">
+    <main className="booking-overview-main">
+      <section className="booking-overview-payments" aria-label="Booking payments">
+        <BookingPaymentManagement bookingId={bookingId} bookingNumber={booking.bookingNumber} clientName={clientName} bookingHash={booking.bookingHash}
+          clientId={clientId} retreatId={retreatId} totalAmount={booking.totalAmount || 0} currency={booking.currency || 'EUR'} pricingSummary={booking.pricingSummary} onPaymentUpdate={onBookingRefresh} />
+      </section>
+      <OverviewSection title="Requirements next up">
+        {requirements.loading ? <p role="status">Loading booking requirements…</p> : requirements.error ? <div role="alert"><p>{requirements.error}</p><button type="button" onClick={requirements.reload}>Retry requirements</button></div> : <>
+          {missingRows.length ? <><p>{missingRows.length} required {missingRows.length === 1 ? 'item needs' : 'items need'} attention.</p><ul>{missingRows.slice(0,5).map(row=><li key={row.key}>{row.label}</li>)}</ul></> : <p>No outstanding required items.</p>}
+          <button type="button" className="booking-overview-text-action" onClick={()=>onOpenTab?.('requirements')}>Open all requirements</button>
+        </>}
+      </OverviewSection>
+      <OverviewSection title="Retreat information">
+        <dl className="booking-overview-fields"><div><dt>Retreat</dt><dd>{retreatCode || 'N/A'} · {retreat?.name || retreatTown(retreat) || 'Retreat'}</dd></div>
+          <div><dt>Address</dt><dd>{retreatAddress || retreatTown(retreat) || 'N/A'}</dd></div>
+          <div><dt>{booking?.bookingType === BookingType.BOOSTER ? 'Booster booking' : 'Retreat dates'}</dt><dd>{formatBookingDate(start)}{startTime ? ` · ${startTime}` : ''} – {formatBookingDate(end)}{endTime ? ` · ${endTime}` : ''}</dd></div>
+          {retreat?.capacity && <div><dt>Capacity</dt><dd>{retreat.capacity} places</dd></div>}
+        </dl>
+      </OverviewSection>
+      <OverviewSection title="Booking dates">
+        <dl className="booking-overview-fields"><div><dt>Check-in</dt><dd>{formatBookingDate(checkIn)}{startTime ? ` · ${startTime}` : ''}</dd></div><div><dt>Check-out</dt><dd>{formatBookingDate(checkOut)}{endTime ? ` · ${endTime}` : ''}</dd></div>
+          <div><dt>Booked</dt><dd>{formatBookingDate(booking.registrationDate || booking.createdAt)}</dd></div></dl>
+      </OverviewSection>
     </main>
-    <aside className="booking-dashboard-rail"><section><header><h3>Client</h3><button onClick={onEditClient}>Edit</button></header><strong>{clientName}</strong><small>Email</small><a href={`mailto:${client?.email || ''}`}>{client?.email || 'N/A'}</a><small>Phone</small><span>{client?.phone || 'N/A'}</span><small>Country</small><span>{client?.country || 'N/A'}</span>{/* PPVC-711: bookings carry no referral data of their own -- this reads through from the linked client. */}<small>Referral</small><span>{(typeof client?.referralId === 'object' ? client.referralId?.name : '') || client?.source || 'N/A'}{client?.referralAttributionType && client.referralAttributionType !== 'na' ? ` · ${client.referralAttributionType === 'direct' ? 'Direct' : 'Self-identified'}` : ''}</span>{/* PPVC-712: roomType/roomNumber live on the booking, not the client -- was previously editable only, never shown as a read-only summary anywhere booking basics are displayed. */}<small>Accommodation</small><span>{booking?.roomType === 'private_ensuite' ? 'Private room, private bathroom' : booking?.roomType === 'private' ? 'Private room' : booking?.roomType === 'shared' ? 'Shared room' : 'Not decided'}{booking?.roomNumber ? ` · ${booking.roomNumber}` : ''}</span><div className="rail-actions"><a href={`mailto:${client?.email || ''}`}>Email</a><button onClick={onEditClient}>Client file</button></div></section>
-    <section><h3>Confirmation</h3><em>{confirmationSent ? 'Sent' : 'Not sent'}</em><p>{confirmationSent ? (confirmationSentAt ? `Last sent ${formatHistoryDateTime(confirmationSentAt)}.` : 'Booking confirmation sent.') : 'The client has had no confirmation email for this booking.'}</p><button className="rail-primary" onClick={onSendConfirmation}>{confirmationSent ? 'Send again' : 'Send confirmation'}</button></section>
-    <section><h3>Dates</h3><small>Retreat</small><span>{formatBookingDate(start)} – {formatBookingDate(end)}</span><small>Booked</small><span>{formatBookingDate(booking.registrationDate || booking.createdAt)}</span><small>Starts in</small><span>{startIn === null ? 'N/A' : `${startIn} days`}</span></section></aside>
+    <aside className="booking-dashboard-rail booking-overview-aside" aria-label="Booking client summary"><section><header><h3>Client</h3><button type="button" onClick={onEditClient}>Edit</button></header><strong>{clientName}</strong><small>Email</small>{client?.email ? <a href={`mailto:${client.email}`}>{client.email}</a> : <span>N/A</span>}<small>Phone</small><span>{client?.phone || 'N/A'}</span><small>Country</small><span>{client?.country || 'N/A'}</span>
+      <small>Referral</small><span>{(typeof client?.referralId === 'object' ? client.referralId?.name : '') || client?.source || 'N/A'}{client?.referralAttributionType && client.referralAttributionType !== 'na' ? ` · ${client.referralAttributionType === 'direct' ? 'Direct' : 'Self-identified'}` : ''}</span>
+      <small>Accommodation</small><span>{booking?.roomType === 'private_ensuite' ? 'Private room, private bathroom' : booking?.roomType === 'private' ? 'Private room' : booking?.roomType === 'shared' ? 'Shared room' : 'Not decided'}{booking?.roomNumber ? ` · ${booking.roomNumber}` : ''}</span>
+    </section>
+    <section><h3>Confirmation</h3><em>{confirmationSent ? 'Sent' : requirements.loading ? 'Checking…' : requirements.error ? 'Status unavailable' : 'Not sent'}</em>
+      {confirmationSent && <p>{confirmationSentAt ? `Last sent ${formatHistoryDateTime(confirmationSentAt)}.` : 'Booking confirmation sent.'}</p>}
+      <button type="button" className="rail-primary" onClick={onSendConfirmation} disabled={!onSendConfirmation || requirements.loading || Boolean(requirements.error)}>{confirmationSent ? 'Send again' : 'Send confirmation'}</button>
+    </section>
+    <section><h3>Dates</h3><small>{booking?.bookingType === BookingType.BOOSTER ? 'Booster' : 'Retreat'}</small><span>{formatBookingDate(start)} – {formatBookingDate(end)}</span><small>Booked</small><span>{formatBookingDate(booking.registrationDate || booking.createdAt)}</span><small>Starts in</small><span>{startIn === null ? 'N/A' : startIn < 0 ? `Started ${Math.abs(startIn)} days ago` : `${startIn} days`}</span></section></aside>
   </div>;
 };
 export default BookingOverviewPanel;

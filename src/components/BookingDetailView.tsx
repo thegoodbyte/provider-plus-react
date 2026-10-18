@@ -299,7 +299,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             retreatCode={retreatCode}
             retreatAddress={retreatAddress}
             onEditClient={navigateToClientEdit}
-            onBookingRefresh={fetchBookingDetails}
+            onBookingRefresh={handleBookingRelatedUpdate}
+            refreshKey={requirementsRefreshKey}
             onOpenTab={setActiveTab}
             onSendConfirmation={requestQuickSendBookingConfirmation}
           />

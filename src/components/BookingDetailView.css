@@ -2188,3 +2188,21 @@
 .booking-next-action-blockers ul { list-style: none; margin: 0; padding: 0; }
 .booking-next-action-blockers li { padding: 12px 0; border-bottom: 1px solid #e2e8f0; }
 @media (max-width: 640px) { .booking-next-action { margin: 0 10px 12px; padding: 14px; } .booking-next-action-main, .booking-next-action-blockers li { align-items: stretch; flex-direction: column; } }
+
+/* PPVC-494: payment-first overview, matching the ticket's reference screenshots. */
+.booking-overview-disclosure { border-bottom: 1px solid #d9dde3; }
+.booking-overview-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 52px; padding: 14px 0; color: #172033; font-size: 14px; font-weight: 650; cursor: pointer; list-style: none; }
+.booking-overview-disclosure > summary::-webkit-details-marker { display: none; }
+.booking-overview-disclosure > summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.booking-overview-disclosure .overview-show, .booking-overview-disclosure .overview-hide { color: #475569; font-size: 12px; }
+.booking-overview-disclosure .overview-hide, .booking-overview-disclosure[open] .overview-show { display: none; }
+.booking-overview-disclosure[open] .overview-hide { display: inline; }
+.booking-overview-disclosure-body { padding: 0 0 20px; color: #475569; font-size: 13px; line-height: 1.65; }
+.booking-overview-disclosure-body ul { margin: 10px 0; padding-left: 22px; list-style: disc; }
+.booking-overview-fields { display: grid; gap: 12px; margin: 0; }
+.booking-overview-fields > div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
+.booking-overview-fields dt { color: #64748b; }.booking-overview-fields dd { margin: 0; overflow-wrap: anywhere; }
+.booking-overview-text-action { padding: 4px 0; border: 0; background: transparent; color: #075985; text-decoration: underline; cursor: pointer; }
+.booking-overview-aside { min-width: 0; overflow-wrap: anywhere; }
+.booking-overview-aside .rail-primary:disabled { cursor: not-allowed; opacity: .5; }
+@media (max-width: 640px) { .booking-overview-fields > div { grid-template-columns: 1fr; gap: 2px; } }
