@@ -21,7 +21,7 @@ it('separates configuration and uses the same feature names as the sidebar', asy
   view();
   const setup = screen.getByRole('region', { name: 'Settings & Setup' });
   const daily = screen.getByRole('region', { name: 'Daily Work' });
-  for (const name of ['Booking Step Library', 'Booking Document Types', 'Retreat Readiness Setup']) {
+  for (const name of ['Booking Step Library', 'Document Types & Libraries', 'Retreat Readiness Setup']) {
     expect(within(setup).getByRole('button', { name })).toBeVisible();
     expect(within(daily).queryByRole('button', { name })).not.toBeInTheDocument();
   }

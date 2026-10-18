@@ -117,7 +117,7 @@ describe('AppleSidebar impersonation navigation', () => {
     expect(screen.getByText('Bookings')).toBeInTheDocument();
     expect(screen.getByText('Booking Step Library')).toBeInTheDocument();
     expect(screen.getByText('Booking Requirements')).toBeInTheDocument();
-    expect(screen.getByText('Booking Document Types')).toBeInTheDocument();
+    expect(screen.getByText('Document Types & Libraries')).toBeInTheDocument();
     expect(screen.queryByText('Clients')).not.toBeInTheDocument();
     expect(screen.queryByText('Payments')).not.toBeInTheDocument();
   });
