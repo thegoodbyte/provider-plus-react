@@ -1,3 +1,4 @@
+import MedicalDecisionTemplateEditors from './MedicalDecisionTemplateEditors';
 import { emailSendFeedback } from '../utils/emailSendFeedback';
 import EmailSafetySettings from './EmailSafetySettings';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -946,6 +947,7 @@ const CommunicationsPage: React.FC = () => {
                 return <div key={language} className="rounded-md border p-3"><h3 className="font-semibold">{label}</h3><input className="mt-2 w-full rounded-md border px-3 py-2 text-sm" value={template.subject} onChange={(event) => update('subject', event.target.value)}/><textarea className="mt-2 min-h-36 w-full rounded-md border px-3 py-2 text-sm" value={template.body} onChange={(event) => update('body', event.target.value)}/></div>;
               })}
             </div>
+            <MedicalDecisionTemplateEditors settings={settings} onChange={setSettings} />
             <button type="button" onClick={handleSettingsSave} disabled={savingSettings} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">Save notification settings</button>
           </section>
 
