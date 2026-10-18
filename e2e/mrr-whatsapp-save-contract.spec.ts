@@ -24,6 +24,9 @@ for(const width of [1440,390]) test(`WhatsApp saves pass production DTO validati
  await page.goto('/admin/medical-review-requests');
  await page.getByText('Synthetic WhatsApp Packet',{exact:true}).click();
  await page.getByRole('button',{name:'Handle via WhatsApp',exact:true}).click();
+ await expect(page.getByRole('dialog')).toBeVisible();
+ expect(saves).toBe(0);
+ await page.getByRole('button',{name:'Save and return to list',exact:true}).click();
  await expect.poll(()=>saves).toBe(1);
  await page.reload();await page.getByText('Synthetic WhatsApp Packet',{exact:true}).click();
  await page.getByRole('button',{name:'WhatsApp: awaiting answer',exact:true}).click();
