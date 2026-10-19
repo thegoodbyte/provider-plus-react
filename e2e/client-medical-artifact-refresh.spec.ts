@@ -56,7 +56,7 @@ test.describe('PPVC-238 client medical artifact refresh', () => {
     await page.getByRole('button', { name: 'Medical Info' }).click();
 
     await expect(page.getByText('Entry EKG Test')).toBeVisible();
-    await expect(page.getByText('Pending', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Booking-specific EKG status is shown above. These are stored file records.')).toBeVisible();
     await page.getByRole('button', { name: 'Upload Entry EKG' }).click();
     await expect(page.getByRole('heading', { name: 'Upload EKG Files' })).toBeVisible();
 
@@ -74,7 +74,8 @@ test.describe('PPVC-238 client medical artifact refresh', () => {
       documentStage: 'entry',
       contextType: 'client',
     });
-    await expect(page.getByText('Received', { exact: true }).first()).toBeVisible();
+    // The artifact is visible immediately; approval comes from the booking projection.
+    await expect(page.getByText('Received:', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('entry-ekg.pdf').first()).toBeVisible();
     await expect(page.getByText('1 EKG document(s) uploaded')).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`/admin/clients/${clientId}$`));
