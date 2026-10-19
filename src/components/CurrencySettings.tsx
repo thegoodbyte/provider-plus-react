@@ -1,5 +1,6 @@
 import InvoiceVisitSettings from './InvoiceVisitSettings';
 import MorningDigestSettings from './MorningDigestSettings';
+import MissingItemsReminderSettings from './MissingItemsReminderSettings';
 import AccommodationSettings from './AccommodationSettings';
 import PortalContactSettings from './PortalContactSettings';
 import MedicalReviewAutomationSettings from './MedicalReviewAutomationSettings';
@@ -38,7 +39,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [converterSource, setConverterSource] = useState<string>('');
   const [converterError, setConverterError] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'invoice-visits' | 'currency' | 'payment-types' | 'expense-types' | 'payment-plan' | 'email-safety' | 'accommodation' | 'medical-contact' | 'medical-reviews' | 'morning-digest'>('currency');
+  const [activeTab, setActiveTab] = useState<'invoice-visits' | 'currency' | 'payment-types' | 'expense-types' | 'payment-plan' | 'email-safety' | 'accommodation' | 'medical-contact' | 'medical-reviews' | 'morning-digest' | 'missing-items-reminder'>('currency');
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
   const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
   const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
@@ -188,6 +189,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
           <button className={activeTab === 'accommodation' ? 'active' : ''} onClick={() => setActiveTab('accommodation')}>Accommodation</button>
           <button className={activeTab === 'medical-contact' ? 'active' : ''} onClick={() => setActiveTab('medical-contact')}>IR medical contact</button>
           <button className={activeTab === 'morning-digest' ? 'active' : ''} onClick={() => setActiveTab('morning-digest')}>Morning digest</button>
+          <button className={activeTab === 'missing-items-reminder' ? 'active' : ''} onClick={() => setActiveTab('missing-items-reminder')}>Missing items reminder</button>
           <button className={activeTab === 'medical-reviews' ? 'active' : ''} onClick={() => setActiveTab('medical-reviews')}>Medical review automation</button>
           <button className={activeTab === 'email-safety' ? 'active' : ''} onClick={() => setActiveTab('email-safety')}>Email safety</button>
           <button className={activeTab === 'currency' ? 'active' : ''} onClick={() => setActiveTab('currency')}>Currency</button>
@@ -196,7 +198,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
           <button className={activeTab === 'payment-plan' ? 'active' : ''} onClick={() => setActiveTab('payment-plan')}>Payment plan</button>
         </div>
 
-        {activeTab === 'morning-digest' ? <MorningDigestSettings /> : activeTab === 'medical-reviews' ? <MedicalReviewAutomationSettings /> : activeTab === 'medical-contact' ? <PortalContactSettings /> : activeTab === 'accommodation' ? <AccommodationSettings /> : activeTab === 'email-safety' ? <EmailSafetySettings /> : activeTab === 'payment-plan' ? (
+        {activeTab === 'morning-digest' ? <MorningDigestSettings /> : activeTab === 'missing-items-reminder' ? <MissingItemsReminderSettings /> : activeTab === 'medical-reviews' ? <MedicalReviewAutomationSettings /> : activeTab === 'medical-contact' ? <PortalContactSettings /> : activeTab === 'accommodation' ? <AccommodationSettings /> : activeTab === 'email-safety' ? <EmailSafetySettings /> : activeTab === 'payment-plan' ? (
           <div className="payment-types-settings payment-plan-settings">
             <h3>Booking payment plan</h3>
             <p>This rule creates one final-balance request per booking. It is updated when the booking, price, currency, or retreat date changes and cancelled when the booking is cancelled.</p>

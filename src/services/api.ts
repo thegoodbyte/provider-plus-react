@@ -2207,6 +2207,12 @@ export const morningDigestApi = {
   preview: () => api.get('/morning-digest/preview'),
 };
 
+export const missingItemsReminderApi = {
+  get: () => api.get('/missing-items-reminder/settings'),
+  save: (settings: any) => api.put('/missing-items-reminder/settings', settings),
+  preview: () => api.get('/missing-items-reminder/preview'),
+};
+
 export const serviceRequestsApi = {
  settings: () => api.get('/service-payment-requests/settings'),
  saveSettings: (data: any) => api.put('/service-payment-requests/settings',data),
