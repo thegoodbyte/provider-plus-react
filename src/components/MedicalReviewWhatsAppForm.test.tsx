@@ -53,3 +53,22 @@ test('keeps dialog open and displays a failed save for retry', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the WhatsApp status.');
   expect(onSaved).not.toHaveBeenCalled();
 });
+
+test('work-mode handoff uses the supplied save action without sending server-owned delivery fields', async () => {
+  const save=jest.fn().mockResolvedValue(request);const saved=jest.fn();
+  render(<MedicalReviewWhatsAppForm request={request} advisors={advisors} onClose={jest.fn()} onSaved={saved} workMode={{action:'sent',save}} />);
+  fireEvent.click(screen.getByText('Record sent'));
+  await waitFor(()=>expect(save).toHaveBeenCalledWith(expect.objectContaining({advisorId:'advisor1'})));
+  expect(save.mock.calls[0][0]).not.toHaveProperty('advisorDeliveryStatus');expect(update).not.toHaveBeenCalled();
+});
+
+test('work-mode reply preserves the actual notes and delegation draft on a failed save',async()=>{
+ const save=jest.fn().mockRejectedValue(new Error('offline'));
+ render(<MedicalReviewWhatsAppForm request={{...request,whatsappSentAt:'2026-01-01'}} advisors={advisors} onClose={jest.fn()} onSaved={jest.fn()} workMode={{action:'reply',save}} />);
+ fireEvent.change(screen.getByLabelText('Advisor result'),{target:{value:'more_info_needed'}});
+ fireEvent.change(screen.getByLabelText('What did the advisor say?'),{target:{value:'Synthetic advisor requests further information'}});
+ fireEvent.change(screen.getByLabelText('Reason for recording on behalf of the advisor'),{target:{value:'Transcribed actual advisor response'}});
+ fireEvent.click(screen.getByText('Save advisor reply'));await screen.findByRole('alert');
+ expect(screen.getByLabelText('What did the advisor say?')).toHaveValue('Synthetic advisor requests further information');
+ expect(save).toHaveBeenCalledWith(expect.objectContaining({decision:'more_info_needed',delegationReason:'Transcribed actual advisor response'}));expect(update).not.toHaveBeenCalled();
+});

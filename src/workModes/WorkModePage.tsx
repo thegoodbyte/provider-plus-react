@@ -1,10 +1,12 @@
+import { groupMedicalHandoffs } from "./medicalWorkGroups";
+import MedicalWorkTask from "./MedicalWorkTask";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useWorkMode, workApi, workError } from "./WorkModeContext";
 import "./workModes.css";
 const labels: Record<string, string> = {
   pending: "Remaining",
-  reviewed: "Reviewed by you",
+  reviewed: "Completed by you",
   external: "Resolved outside this session",
   skipped: "Skipped",
   blocked: "Blocked",
@@ -41,6 +43,7 @@ export default function WorkModePage() {
   const note = drafts[draftKey] || "";
   const setNote = (value: string) =>
     setDrafts((d) => ({ ...d, [draftKey]: value }));
+  const [waitingSource, setWaitingSource] = useState<any>(null);
   const [confirmFinish, setConfirmFinish] = useState(false);
   const requestId = useRef(crypto.randomUUID());
   const generation = useRef(0);
@@ -96,6 +99,7 @@ export default function WorkModePage() {
       if (clearDraft) setNote("");
       setArrivals([]);
       await mode.refresh();
+      if (generationId === generation.current) return value;
     } catch (e) {
       if (generationId === generation.current) setError(workError(e));
     } finally {
@@ -155,13 +159,14 @@ export default function WorkModePage() {
               : ""}
       </div>
       <p>
-        Medical processing foundation · A fixed batch, with your progress saved
-        across devices.
+        Medical processing · A fixed batch, with your progress saved across
+        devices.
       </p>
       <p>
-        Use the existing editors to change medical records. A recorded
-        operational review does not approve a client, create a review request,
-        or send a packet. Medical actions stay in the existing editors.
+        Prepare reviews, download documents for manual WhatsApp handoff, and
+        record the assigned advisor’s actual replies. A download never sends a
+        message or marks a review sent. Existing editors remain available for
+        full context and follow-up.
       </p>
       {(error || mode.error) && (
         <div role="alert" className="wm-error">
@@ -215,6 +220,17 @@ export default function WorkModePage() {
           {queue && (
             <>
               <h2>Current queues</h2>
+              {groupMedicalHandoffs(queue.items).length > 0 && (
+                <div aria-label="Advisor handoff groups">
+                  <h3>Advisor handoff groups</h3>
+                  {groupMedicalHandoffs(queue.items).map((group) => (
+                    <p key={group.key}>
+                      {group.label} · {group.actionable} actionable ·{" "}
+                      {group.blocked} blocked
+                    </p>
+                  ))}
+                </div>
+              )}
               {queue.steps.map((step: any) => (
                 <p key={step.key}>
                   <strong>
@@ -361,114 +377,127 @@ export default function WorkModePage() {
               <h3>Current item · {current.source?.label}</h3>
               <p>{current.source?.explanation}</p>
               {sourceLink(current.source)}
+              <MedicalWorkTask
+                key={current.key}
+                session={session}
+                source={current.source}
+                onSession={setSession}
+              />
               <p>
                 Return here with the Medical mode banner after saving in the
                 editor. Refresh rechecks the source; changed work is counted
                 separately.
               </p>
               {session.status === "active" && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void act(
-                      `/sessions/${sessionId}/outcomes`,
-                      {
-                        revision: session.revision,
-                        key: current.key,
-                        sourceVersion: current.source.version,
-                        outcome,
-                        reason,
-                        nextAction,
-                        note,
-                      },
-                      true,
-                    );
-                  }}
-                >
-                  <label>
-                    Outcome
-                    <select
-                      aria-label="Outcome"
-                      value={outcome}
-                      disabled={busy}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setOutcome(v);
-                        setReason(
-                          v === "reviewed"
-                            ? "no_further_operational_action"
-                            : "needs_context",
-                        );
-                        setNextAction(v === "reviewed" ? "none" : "revisit");
-                      }}
-                    >
-                      <option value="reviewed">
-                        Record an explicit operational review
-                      </option>
-                      <option value="skip">Skip</option>
-                      <option value="block">Block</option>
-                    </select>
-                  </label>
-                  <label>
-                    Reason
-                    <select
-                      aria-label="Reason"
-                      value={reason}
-                      disabled={busy}
-                      onChange={(e) => setReason(e.target.value)}
-                    >
-                      {(outcome === "reviewed"
-                        ? [
-                            [
-                              "no_further_operational_action",
-                              "No further operational action required",
-                            ],
-                            [
-                              "handled_in_existing_workflow",
-                              "Handled in the existing workflow",
-                            ],
-                          ]
-                        : reasons
-                      ).map(([v, label]) => (
-                        <option key={v} value={v}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {outcome !== "reviewed" && (
+                <details>
+                  <summary>Operational review, skip or block this item</summary>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void act(
+                        `/sessions/${sessionId}/outcomes`,
+                        {
+                          revision: session.revision,
+                          key: current.key,
+                          sourceVersion: current.source.version,
+                          outcome,
+                          reason,
+                          nextAction,
+                          note,
+                        },
+                        true,
+                      );
+                    }}
+                  >
                     <label>
-                      Next action
+                      Outcome
                       <select
-                        aria-label="Next action"
-                        value={nextAction}
-                        onChange={(e) => setNextAction(e.target.value)}
+                        aria-label="Outcome"
+                        value={outcome}
                         disabled={busy}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setOutcome(v);
+                          setReason(
+                            v === "reviewed"
+                              ? "no_further_operational_action"
+                              : "needs_context",
+                          );
+                          setNextAction(v === "reviewed" ? "none" : "revisit");
+                        }}
                       >
-                        {nextActions.map(([v, label]) => (
+                        <option value="reviewed">
+                          Record an explicit operational review
+                        </option>
+                        <option value="skip">Skip</option>
+                        <option value="block">Block</option>
+                      </select>
+                    </label>
+                    <label>
+                      Reason
+                      <select
+                        aria-label="Reason"
+                        value={reason}
+                        disabled={busy}
+                        onChange={(e) => setReason(e.target.value)}
+                      >
+                        {(outcome === "reviewed"
+                          ? [
+                              [
+                                "no_further_operational_action",
+                                "No further operational action required",
+                              ],
+                              [
+                                "handled_in_existing_workflow",
+                                "Handled in the existing workflow",
+                              ],
+                            ]
+                          : reasons
+                        ).map(([v, label]) => (
                           <option key={v} value={v}>
                             {label}
                           </option>
                         ))}
                       </select>
                     </label>
-                  )}
-                  <label>
-                    Short operational note (no medical details)
-                    <textarea
-                      maxLength={200}
-                      minLength={outcome === "reviewed" ? 8 : undefined}
-                      required={outcome === "reviewed"}
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
+                    {outcome !== "reviewed" && (
+                      <label>
+                        Next action
+                        <select
+                          aria-label="Next action"
+                          value={nextAction}
+                          onChange={(e) => setNextAction(e.target.value)}
+                          disabled={busy}
+                        >
+                          {nextActions.map(([v, label]) => (
+                            <option key={v} value={v}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    <label>
+                      Short operational note (no medical details)
+                      <textarea
+                        maxLength={200}
+                        minLength={outcome === "reviewed" ? 8 : undefined}
+                        required={outcome === "reviewed"}
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        disabled={busy}
+                      />
+                    </label>
+                    <button
+                      className="wm-primary"
                       disabled={busy}
-                    />
-                  </label>
-                  <button className="wm-primary" disabled={busy} type="submit">
-                    Save {outcome === "reviewed" ? "review outcome" : outcome}{" "}
-                    and advance
-                  </button>
-                </form>
+                      type="submit"
+                    >
+                      Save {outcome === "reviewed" ? "review outcome" : outcome}{" "}
+                      and advance
+                    </button>
+                  </form>
+                </details>
               )}
             </article>
           )}
@@ -533,6 +562,7 @@ export default function WorkModePage() {
               )}
             </>
           )}
+          {session.items.some((i: any) => i.domainAction) && <><h3>Saved medical actions</h3><ul className="wm-list">{session.items.filter((i: any) => i.domainAction).map((i: any) => <li key={i.key}><span>{i.source?.label || i.key} · {({create: 'Prepared MRR', attach: 'Attached artifact', sent: 'Recorded manual handoff', reply: 'Recorded advisor reply'} as Record<string,string>)[i.domainAction]}{i.domainAction === 'reply' && <small>Open the saved review for the advisor’s result and any required follow-up.</small>}</span>{sourceLink(i.source, 'Open saved source')}</li>)}</ul></>}
           <h3>Unresolved items in this batch</h3>
           <ul className="wm-list">
             {session.items
@@ -551,6 +581,14 @@ export default function WorkModePage() {
                     </small>
                   </span>
                   {sourceLink(i.source)}
+                  {i.disposition === "waiting" && i.source?.step === "C" && (
+                    <button
+                      disabled={busy || session.status !== "active"}
+                      onClick={() => setWaitingSource(i.source)}
+                    >
+                      Record reply for {i.source.label}
+                    </button>
+                  )}
                   {session.status === "active" &&
                     ["blocked", "skipped"].includes(i.disposition) &&
                     i.source?.state === "actionable" && (
@@ -595,6 +633,28 @@ export default function WorkModePage() {
           >
             Add selected arrivals ({arrivals.length})
           </button>
+          {waitingSource && (
+            <div className="wm-task">
+              <h3>Record a received reply · {waitingSource.label}</h3>
+              <p>
+                This waiting review was explicitly added to the batch. Record
+                only an actual advisor reply; saving the reply updates its
+                medical record, audit and this step’s progress.
+              </p>
+              <button onClick={() => setWaitingSource(null)}>
+                Close reply entry
+              </button>
+              <MedicalWorkTask
+                key={waitingSource.key}
+                session={session}
+                source={waitingSource}
+                onSession={(value) => {
+                  setSession(value);
+                  setWaitingSource(null);
+                }}
+              />
+            </div>
+          )}
           <h3>Outside this batch</h3>
           <p>
             {session.waitingSources.length} waiting ·{" "}
@@ -610,6 +670,20 @@ export default function WorkModePage() {
                     <small>{i.explanation}</small>
                   </span>
                   {sourceLink(i)}
+                  {i.state === "waiting" && (
+                    <button
+                      disabled={busy || session.status !== "active"}
+                      onClick={async () => {
+                        const result = await control("add", {
+                          keys: [i.key],
+                          includeWaiting: true,
+                        });
+                        if (result) setWaitingSource(i);
+                      }}
+                    >
+                      Add to batch and record reply for {i.label}
+                    </button>
+                  )}
                 </li>
               ),
             )}

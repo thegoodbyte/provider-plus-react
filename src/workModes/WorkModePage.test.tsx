@@ -76,6 +76,9 @@ it("keeps source context and draft after a failed outcome; retry uses the same s
       : Promise.reject(new Error("offline")),
   );
   renderPage();
+  fireEvent.click(
+    await screen.findByText("Operational review, skip or block this item"),
+  );
   const note = await screen.findByLabelText(
     "Short operational note (no medical details)",
   );
@@ -145,4 +148,11 @@ it("shows waiting-only queues without allowing an empty batch", async () => {
     screen.getByRole("button", { name: "Start all actionable" }),
   ).toBeDisabled();
   expect(screen.getAllByText("Not available yet")).toHaveLength(2);
+});
+
+it('keeps completed medical actions linked to their saved source for follow-up', async () => {
+  const value = {...session, current:null, items:[{key:source.key,domainAction:'reply',source}]};
+  (workApi.get as jest.Mock).mockResolvedValue(value);(workApi.post as jest.Mock).mockResolvedValue(value);
+  renderPage();await screen.findByRole('heading',{name:'Saved medical actions'});
+  expect(screen.getByRole('link',{name:'Open saved source'})).toHaveAttribute('href', '/admin/medical-artifacts/a?returnTo=%2Fadmin%2Fwork-modes%2Fsessions%2Fsession');
 });

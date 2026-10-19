@@ -66,20 +66,23 @@ for (const width of [1440, 390])
           .filter({ has: page.locator("dt", { hasText: key }) })
           .locator("dd"),
       ).toHaveText(value);
+    await page.getByText("Operational review, skip or block this item").click();
     const note = page.getByLabel("Short operational note (no medical details)");
     await note.fill("Reviewed existing operational context");
     await page
       .getByRole("button", { name: "Save review outcome and advance" })
       .click();
-    await counts("Reviewed by you", "1");
+    await counts("Completed by you", "1");
+    if (!(await page.getByLabel("Outcome", {exact:true}).isVisible())) await page.getByText("Operational review, skip or block this item").click();
     await page.getByLabel("Outcome", { exact: true }).selectOption("skip");
     await page.getByRole("button", { name: "Save skip and advance" }).click();
     await counts("Skipped", "1");
+    if (!(await page.getByLabel("Outcome", {exact:true}).isVisible())) await page.getByText("Operational review, skip or block this item").click();
     await page.getByLabel("Outcome", { exact: true }).selectOption("block");
     await page.getByRole("button", { name: "Save block and advance" }).click();
     await counts("Blocked", "1");
     await page.reload();
-    await counts("Reviewed by you", "1");
+    await counts("Completed by you", "1");
     await counts("Remaining", "2");
     await request.post(fixture.url + "/fixture/arrival");
     await page
@@ -109,6 +112,7 @@ for (const width of [1440, 390])
     await page.getByRole("link", { name: "Return to work session" }).click();
     await expect(page).toHaveURL(sessionUrl);
     await counts("Remaining", "3");
+    await page.getByText("Operational review, skip or block this item").click();
     await page
       .getByLabel("Short operational note (no medical details)")
       .fill("Retain this exact operational draft");
@@ -119,14 +123,14 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole("alert").filter({ hasText: "Synthetic save failure" }),
     ).toBeVisible();
-    await counts("Reviewed by you", "1");
+    await counts("Completed by you", "1");
     await expect(
       page.getByLabel("Short operational note (no medical details)"),
     ).toHaveValue("Retain this exact operational draft");
     await page
       .getByRole("button", { name: "Save review outcome and advance" })
       .click();
-    await counts("Reviewed by you", "2");
+    await counts("Completed by you", "2");
     const live = await (
       await request.get(fixture.url + "/work-modes/sessions/" + sessionId, {
         headers: { authorization: "Bearer " + fixture.tokens.a },
@@ -139,7 +143,7 @@ for (const width of [1440, 390])
       .getByRole("button", { name: "Refresh queue and progress" })
       .click();
     await counts("Resolved outside this session", "1");
-    await counts("Reviewed by you", "2");
+    await counts("Completed by you", "2");
     await page.getByRole("button", { name: "Take a break" }).click();
     await expect(
       page.getByRole("heading", { name: "Medical session · paused" }),
