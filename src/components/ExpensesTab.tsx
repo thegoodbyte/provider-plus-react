@@ -553,7 +553,8 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                         type="button"
                         onClick={() => handleEditExpense(expense)}
                         className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                        title="Edit expense"
+                        disabled={!!expense.medicalObligationId}
+                        title={expense.medicalObligationId ? "Use medical payout history to correct this payment" : "Edit expense"}
                       >
                         <Icon icon={FiEdit2} className="w-4 h-4" />
                         <span>Edit</span>
@@ -562,7 +563,8 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                         type="button"
                         onClick={() => handleDeleteExpense(expense._id!)}
                         className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-100"
-                        title="Delete expense"
+                        disabled={!!expense.medicalObligationId}
+                        title={expense.medicalObligationId ? "Keep medical payout history; void the payment above" : "Delete expense"}
                       >
                         <Icon icon={FiTrash2} className="w-4 h-4" />
                         <span>Delete</span>

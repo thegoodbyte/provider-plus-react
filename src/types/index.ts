@@ -641,6 +641,9 @@ export interface ExpenseType {
 
 export interface RetreatExpense {
   paymentReconciliation?: ReferralPaymentReconciliation;
+  medicalObligationId?: string;
+  medicalPayment?: Record<string, any>;
+  medicalFeeExclusion?: Record<string, any>;
   _id?: string;
   expenseKind?: 'planned' | 'actual';
   retreatId?: string | Retreat;

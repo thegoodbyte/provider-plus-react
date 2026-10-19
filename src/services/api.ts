@@ -481,6 +481,17 @@ export const paymentRequestTypesApi = {
   update: (key: string, data: { label?: string; active?: boolean; sortOrder?: number }) => api.patch<PaymentRequestTypeSetting>(`/payment-request-types/${encodeURIComponent(key)}`, data),
 };
 
+export const medicalPayoutsApi = {
+  summary: (id: string) => api.get(`/medical-payouts/retreat/${id}`, { params: { _fresh: Date.now() } }),
+  recipients: () => api.get<any[]>('/medical-payouts/recipients'),
+  approve: (id: string, body: any) => api.post(`/medical-payouts/retreat/${id}/approve`, body),
+  pay: (id: string, body: any) => api.post(`/medical-payouts/retreat/${id}/payments`, body),
+  void: (id: string, reason: string) => api.post(`/medical-payouts/payments/${id}/void`, { reason }),
+  exclude: (id: string, reason: string) => api.post(`/medical-payouts/legacy-expenses/${id}/exclude`, { reason }),
+  saveSettings: (body: any) => api.post('/medical-payouts/settings', body),
+  resume: (id: string, requestId: string) => api.post(`/medical-payouts/retreat/${id}/retry-entry`, { requestId }),
+};
+
 export const retreatExpensesApi = {
   getDetailItems: (id: string) => api.get<ExpenseReceiptItemization>(`/retreat-expenses/${id}/detail-items`, { suppressGlobalError: true } as ReadOptions),
   itemizeReceipt: (id: string) => api.post<ExpenseReceiptItemization>(`/retreat-expenses/${id}/itemize-receipt`, {}, { timeout: 120000 }),

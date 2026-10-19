@@ -51,6 +51,7 @@ const ExpenseDetailPage: React.FC = () => {
           </button>
         )}
       </div>
+      {expense.medicalObligationId && <section className="rounded border border-teal-200 bg-teal-50 p-4"><h2 className="font-semibold">Medical payout</h2><p>{expense.medicalPayment?.recipient?.name} · {expense.medicalPayment?.feeAmountUsd} USD applied to the approved fee.</p><p>Approval version {expense.medicalPayment?.approvalRevision} · Recorded by {expense.medicalPayment?.recordedBy}</p>{expense.medicalPayment?.voidedAt && <p>Voided: {expense.medicalPayment.voidReason}. Original payment: {expense.medicalPayment.originalAmount} {expense.currency}.</p>}<a className="text-blue-700 underline" href={`${prefix}/retreats/${expense.medicalObligationId}/expenses`}>Open medical payout history</a></section>}
       <ReferralExpenseDetails expense={expense} prefix={prefix} />
       {expense.receiptS3Key && id && <ExpenseReceiptItems expenseId={id} currency={expense.currency} />}
     </div>

@@ -1,3 +1,4 @@
+import MedicalPayoutPanel from './MedicalPayoutPanel';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import RetreatCloseout from './RetreatCloseout';
 import { quoteBookingUsd, retreatExpectedUsd } from './retreatUsdTotals';
@@ -190,6 +191,7 @@ const RetreatClientAvatar: React.FC<{ clientId: string; name: string; profilePic
 
 const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack, initialTab = 'clients', onTabChange }) => {
   const location = useLocation();
+  const [medicalExpenseRefresh, setMedicalExpenseRefresh] = useState(0);
   const navigate = useNavigate();
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [scheduledRetreats, setScheduledRetreats] = useState<Retreat[]>([]);
@@ -1646,7 +1648,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
         {activeTab === 'expenses' && (
         <div className="expenses-section">
-          <ExpensesTab retreatId={retreatId} />
+          {['admin', 'medical_staff'].includes(authService.getUser()?.role || '') && <MedicalPayoutPanel key={retreatId} retreatId={retreatId} canManage={authService.getUser()?.role === 'admin'} onPaymentChanged={() => setMedicalExpenseRefresh(current => current + 1)} />}
+          <ExpensesTab key={medicalExpenseRefresh} retreatId={retreatId} />
         </div>
         )}
 
