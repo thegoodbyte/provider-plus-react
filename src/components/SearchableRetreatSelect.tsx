@@ -1,6 +1,6 @@
+import { ChevronDown, Search, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Retreat } from '../types';
-import { FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -94,11 +94,11 @@ const SearchableRetreatSelect: React.FC<SearchableRetreatSelectProps> = ({
         <div className="absolute inset-y-0 right-0 flex items-center px-2">
           {selectedRetreatId && (
             <button type="button" onClick={clearSelection} className="text-gray-400 hover:text-gray-600 mr-1">
-              <Icon icon={FiX} className="w-4 h-4" />
+              <Icon icon={X} className="w-4 h-4" />
             </button>
           )}
           <button type="button" onClick={() => setIsOpen(prev => !prev)} className="text-gray-400 hover:text-gray-600">
-            {isOpen ? <Icon icon={FiSearch} className="w-4 h-4" /> : <Icon icon={FiChevronDown} className="w-4 h-4" />}
+            {isOpen ? <Icon icon={Search} className="w-4 h-4" /> : <Icon icon={ChevronDown} className="w-4 h-4" />}
           </button>
         </div>
       </div>

@@ -1,10 +1,10 @@
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Clock, Copy as CopyIcon, Download as DownloadIcon, Edit2, Eye, Folder, Link as LinkIcon, Lock as LockIcon, Menu, Plus as PlusIcon, RefreshCw, Search as SearchIcon, Send as SendIcon, ThumbsDown, ThumbsUp, Trash2, Unlock as UnlockIcon, X, Zap } from 'lucide-react';
 import MedicalReviewListRow from './MedicalReviewListRow';
 import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
 import MedicalReviewWhatsAppForm from './MedicalReviewWhatsAppForm';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
@@ -124,13 +124,13 @@ const noteExcerpt = (note?: string, maxLength = 80) => {
 const statusClass = Object.fromEntries(Object.entries(medicalReviewStatusPresentation).map(([status, value]) => [status, value.badgeClass]));
 
 const statusIcon: Record<string, any> = {
-  pending: FiClock,
-  in_review: FiClock,
-  approved: FiThumbsUp,
-  rejected: FiThumbsDown,
-  caution: FiAlertTriangle,
-  needs_resubmission: FiAlertTriangle,
-  completed: FiCheck,
+  pending: Clock,
+  in_review: Clock,
+  approved: ThumbsUp,
+  rejected: ThumbsDown,
+  caution: AlertTriangle,
+  needs_resubmission: AlertTriangle,
+  completed: Check,
 };
 
 const statusRowClass = Object.fromEntries(Object.entries(medicalReviewStatusPresentation).map(([status, value]) => [status, value.rowClass]));
@@ -246,7 +246,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     <button type="button" onClick={() => void downloadSingleRequest(request)} disabled={Boolean(downloadingRequestId)}
       aria-label={`Download MRR #${request.display_id} for WhatsApp`}
       className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50">
-      <Icon icon={FiDownload} className="h-3.5 w-3.5" />
+      <Icon icon={DownloadIcon} className="h-3.5 w-3.5" />
       {downloadingRequestId === request._id ? 'Preparing…' : 'Download for WhatsApp'}
     </button>
   );
@@ -945,7 +945,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const renderReviewRow = (request: EnrichedReviewRequest, packet?: MedicalReviewGroup) => <MedicalReviewListRow
     requestId={<button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="text-sm font-semibold text-blue-700 hover:underline">#{request.display_id || '—'}</button>}
     client={clientCell(request)} retreat={request.retreatName} type={<MedicalReviewTypeBadge requestType={request.requestType} />}
-    status={<span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}><Icon icon={statusIcon[request.status] || FiClock} className="h-3.5 w-3.5" />{String(request.status || 'unknown').replace(/_/g, ' ')}</span>}
+    status={<span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}><Icon icon={statusIcon[request.status] || Clock} className="h-3.5 w-3.5" />{String(request.status || 'unknown').replace(/_/g, ' ')}</span>}
     details={<>
       <div><dt>Stage · attempt</dt><dd>{String(request.documentStage || '—').replace(/_/g, ' ')} · {request.attemptNumber || 1}</dd></div>
       <div><dt>Created</dt><dd>{formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</dd></div>
@@ -1001,7 +1001,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             onClick={loadData}
             className="inline-flex w-auto shrink-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
-            <Icon icon={FiRefreshCw} className="h-4 w-4" />
+            <Icon icon={RefreshCw} className="h-4 w-4" />
             Refresh
           </button>
           {canManageRequests && (
@@ -1010,14 +1010,14 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 onClick={openGroupModal}
                 className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
               >
-                <Icon icon={FiLink} className="h-4 w-4" />
+                <Icon icon={LinkIcon} className="h-4 w-4" />
                 Create Group
               </button>
               <button
                 onClick={() => navigate(`${basePath}/new`)}
                 className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
               >
-                <Icon icon={FiPlus} className="h-4 w-4" />
+                <Icon icon={PlusIcon} className="h-4 w-4" />
                 Add New Request
               </button>
             </>
@@ -1130,7 +1130,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <Icon icon={packetAssignmentUnlocked ? FiLock : FiUnlock} className="h-4 w-4" />
+                  <Icon icon={packetAssignmentUnlocked ? LockIcon : UnlockIcon} className="h-4 w-4" />
                   {packetAssignmentUnlocked ? 'Lock assignments' : 'Unlock assignments'}
                 </button>
                 <button
@@ -1140,7 +1140,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-60"
                   title="Assign unfiled MRRs only when exactly one packet matches their retreat"
                 >
-                  <Icon icon={FiZap} className="h-4 w-4" />
+                  <Icon icon={Zap} className="h-4 w-4" />
                   {autoAssignSaving ? 'Assigning...' : 'Assign unfiled by retreat'}
                 </button>
                 {visibleGroups.length > 1 && (
@@ -1156,7 +1156,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <Icon icon={groupOrderUnlocked ? FiLock : FiUnlock} className="h-4 w-4" />
+                    <Icon icon={groupOrderUnlocked ? LockIcon : UnlockIcon} className="h-4 w-4" />
                     {groupOrderUnlocked ? 'Lock order' : 'Unlock order'}
                   </button>
                 )}
@@ -1164,7 +1164,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   onClick={openGroupModal}
                   className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
                 >
-                  <Icon icon={FiLink} className="h-4 w-4" />
+                  <Icon icon={LinkIcon} className="h-4 w-4" />
                   Create Group
                 </button>
               </div>
@@ -1273,11 +1273,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         title="Drag to move packet; use Up or Down arrow keys when focused"
                         aria-label={`Move ${group.title}`}
                       >
-                        <Icon icon={FiMenu} className="h-5 w-5" />
+                        <Icon icon={Menu} className="h-5 w-5" />
                       </span>
                     )}
                     <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-700">
-                      <Icon icon={FiFolder} className="h-4 w-4" />
+                      <Icon icon={Folder} className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
                       <div className={`truncate text-sm font-semibold ${group.requests?.length ? 'text-gray-900' : 'text-gray-400'}`}>{group.title}</div>
@@ -1298,7 +1298,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         title={`Copy link to ${group.title}`}
                         aria-label={`Copy link to ${group.title}`}
                       >
-                        <Icon icon={FiCopy} className="h-3.5 w-3.5" />
+                        <Icon icon={CopyIcon} className="h-3.5 w-3.5" />
                       </button>
                     )}
                     {canManageRequests && group._id && (
@@ -1314,7 +1314,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         title={`Download artifacts from ${group.title}`}
                         aria-label={`Download artifacts from ${group.title}`}
                       >
-                        <Icon icon={FiDownload} className={`h-3.5 w-3.5 ${downloadingPacketId === group._id ? 'animate-pulse' : ''}`} />
+                        <Icon icon={DownloadIcon} className={`h-3.5 w-3.5 ${downloadingPacketId === group._id ? 'animate-pulse' : ''}`} />
                       </button>
                     )}
                     {(group.pendingCount || 0) > 0 && (
@@ -1341,7 +1341,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             title="Add MRRs"
                             aria-label="Add MRRs"
                           >
-                            <Icon icon={FiPlus} className="h-3.5 w-3.5" />
+                            <Icon icon={PlusIcon} className="h-3.5 w-3.5" />
                           </button>
                           <button
                             type="button"
@@ -1353,7 +1353,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             title="Edit packet"
                             aria-label="Edit packet"
                           >
-                            <Icon icon={FiEdit2} className="h-3.5 w-3.5" />
+                            <Icon icon={Edit2} className="h-3.5 w-3.5" />
                           </button>
                           <button
                             type="button"
@@ -1365,11 +1365,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             title="Delete packet"
                             aria-label="Delete packet"
                           >
-                            <Icon icon={FiTrash2} className="h-3.5 w-3.5" />
+                            <Icon icon={Trash2} className="h-3.5 w-3.5" />
                           </button>
                         </>
                       )}
-                      <Icon icon={expanded ? FiChevronDown : FiChevronRight} className="h-5 w-5 shrink-0 text-gray-500" />
+                      <Icon icon={expanded ? ChevronDown : ChevronRight} className="h-5 w-5 shrink-0 text-gray-500" />
                     </div>
                   </button>
                   {expanded && (
@@ -1377,7 +1377,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       <div className="bg-gray-50 px-4 py-3">
                         <label className="relative block">
                           <span className="sr-only">Search within {group.title}</span>
-                          <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                          <Icon icon={SearchIcon} className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                           <input
                             type="search"
                             value={packetSearch}
@@ -1402,7 +1402,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         onDragEnd={handleRequestDragEnd}
                         className={`${statusRowClass[request.status] || 'bg-white'} ${packetAssignmentUnlocked ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       >
-                        {packetAssignmentUnlocked && <div className="mrr-row-drag" title="Drag MRR to a packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
+                        {packetAssignmentUnlocked && <div className="mrr-row-drag" title="Drag MRR to a packet"><Icon icon={Menu} className="h-5 w-5" /></div>}
                         {renderReviewRow(request, group)}
                       </div>
                       )) : group.requests?.length ? (
@@ -1416,7 +1416,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               onClick={() => openAddToPacketModal(group)}
                               className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100"
                             >
-                              <Icon icon={FiPlus} className="h-3.5 w-3.5" />
+                              <Icon icon={PlusIcon} className="h-3.5 w-3.5" />
                               Add MRRs
                             </button>
                           )}
@@ -1440,14 +1440,14 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-50 text-gray-700">
-                      <Icon icon={FiFolder} className="h-4 w-4" />
+                      <Icon icon={Folder} className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-gray-900">Potentials &amp; unmatched</div>
                       <div className="text-xs text-gray-500">{ungroupedRequests.length} requests</div>
                     </div>
                   </div>
-                  <Icon icon={expandedGroupIds.includes('ungrouped') ? FiChevronDown : FiChevronRight} className="h-5 w-5 shrink-0 text-gray-500" />
+                  <Icon icon={expandedGroupIds.includes('ungrouped') ? ChevronDown : ChevronRight} className="h-5 w-5 shrink-0 text-gray-500" />
                 </button>
                 {expandedGroupIds.includes('ungrouped') && (
                   <div className="divide-y divide-gray-100">
@@ -1465,7 +1465,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         onDragEnd={handleRequestDragEnd}
                         className={`${statusRowClass[request.status] || 'bg-white'} ${packetAssignmentUnlocked ? 'cursor-grab active:cursor-grabbing' : ''}`}
                       >
-                        {packetAssignmentUnlocked && <div className="mrr-row-drag" title="Drag MRR to a packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
+                        {packetAssignmentUnlocked && <div className="mrr-row-drag" title="Drag MRR to a packet"><Icon icon={Menu} className="h-5 w-5" /></div>}
                         {renderReviewRow(request)}
                       </div>
                     ))}
@@ -1599,7 +1599,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                 title="Close"
               >
-                <Icon icon={FiX} className="h-5 w-5" />
+                <Icon icon={X} className="h-5 w-5" />
               </button>
             </div>
 
@@ -1871,7 +1871,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                 title="Close"
               >
-                <Icon icon={FiX} className="h-5 w-5" />
+                <Icon icon={X} className="h-5 w-5" />
               </button>
             </div>
             <div className="max-h-[calc(90vh-150px)] overflow-y-auto px-5 py-4">

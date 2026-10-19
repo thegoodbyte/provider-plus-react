@@ -1,4 +1,5 @@
 import MedicalPayoutPanel from './MedicalPayoutPanel';
+import { ChevronLeft, ChevronRight, Edit2, Eye, Mail, Plus, Printer, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import RetreatCloseout from './RetreatCloseout';
 import { quoteBookingUsd, retreatExpectedUsd } from './retreatUsdTotals';
@@ -25,19 +26,6 @@ import RetreatReserveListPanel from './RetreatReserveListPanel';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, Checkbox, message } from 'antd';
 import { Client } from '../types';
-import {
-  FiEdit2,
-  FiChevronLeft,
-  FiChevronRight,
-  FiEye,
-  FiMail,
-  FiPlus,
-  FiPrinter,
-  FiRefreshCw,
-  FiTrash2,
-  FiUserPlus,
-  FiX,
-} from 'react-icons/fi';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
@@ -1058,7 +1046,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             title={previousRetreat ? `Previous retreat: ${previousRetreat.name || previousRetreat.code || formatDate(previousRetreat.startDate || '')}` : 'No previous scheduled retreat'}
             aria-label="Previous scheduled retreat"
           >
-            <Icon icon={FiChevronLeft} className="w-5 h-5" />
+            <Icon icon={ChevronLeft} className="w-5 h-5" />
           </button>
           <button
             type="button"
@@ -1068,7 +1056,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             title={nextRetreat ? `Next retreat: ${nextRetreat.name || nextRetreat.code || formatDate(nextRetreat.startDate || '')}` : 'No next scheduled retreat'}
             aria-label="Next scheduled retreat"
           >
-            <Icon icon={FiChevronRight} className="w-5 h-5" />
+            <Icon icon={ChevronRight} className="w-5 h-5" />
           </button>
           <button
             type="button"
@@ -1098,7 +1086,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <span className="retreat-action-label">Metrics</span>
           </button>
           <button onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/edit`)} className="edit-retreat-btn retreat-icon-action" title="Edit retreat" aria-label="Edit retreat">
-            <Icon icon={FiEdit2} className="w-4 h-4" />
+            <Icon icon={Edit2} className="w-4 h-4" />
             <span className="retreat-action-label">Edit Retreat</span>
           </button>
         </div>
@@ -1228,7 +1216,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'reserveList'}
           >
-            <Icon icon={FiUserPlus} className="w-5 h-5 retreat-tab-icon" />
+            <Icon icon={UserPlus} className="w-5 h-5 retreat-tab-icon" />
             <span>Reserve List</span>
           </button>
         )}
@@ -1355,7 +1343,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 title="Open the A4 landscape client grid"
                 aria-label="Print retreat client grid"
               >
-                <Icon icon={FiPrinter} className="w-4 h-4" />
+                <Icon icon={Printer} className="w-4 h-4" />
                 <span>Print Client Grid</span>
               </button>
 
@@ -1365,7 +1353,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 title="Add existing client"
                 aria-label="Add existing client"
               >
-                <Icon icon={FiUserPlus} className="w-4 h-4" />
+                <Icon icon={UserPlus} className="w-4 h-4" />
                 <span>Add Existing Client</span>
               </button>
               <button
@@ -1375,7 +1363,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 title={retreatEmailRecipientCount === 0 ? 'No clients with email addresses in this retreat' : 'Send email to all clients in this retreat'}
                 aria-label={`Email retreat clients (${retreatEmailRecipientCount})`}
               >
-                <Icon icon={FiMail} className="w-4 h-4" />
+                <Icon icon={Mail} className="w-4 h-4" />
                 <span>Email Retreat ({retreatEmailRecipientCount})</span>
               </button>
               <button
@@ -1384,7 +1372,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 title="Refresh"
                 aria-label="Refresh retreat clients"
               >
-                <Icon icon={FiRefreshCw} className="w-4 h-4" />
+                <Icon icon={RefreshCw} className="w-4 h-4" />
                 <span>Refresh</span>
               </button>
             </div>
@@ -1552,14 +1540,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             className="icon-action-btn icon-action-btn-view"
                             title="View Client"
                           >
-                            <Icon icon={FiEye} />
+                            <Icon icon={Eye} />
                           </button>
                           <button
                             onClick={() => handleEditBooking(client._id)}
                             className="icon-action-btn icon-action-btn-edit"
                             title="Edit Booking"
                           >
-                            <Icon icon={FiEdit2} />
+                            <Icon icon={Edit2} />
                           </button>
                           {!isCancelledBookingStatus(client.status) && (
                             <button
@@ -1575,7 +1563,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             className="icon-action-btn icon-action-btn-danger"
                             title="Delete Booking"
                           >
-                            <Icon icon={FiTrash2} />
+                            <Icon icon={Trash2} />
                           </button>
                         </div>
                       </td>
@@ -2286,7 +2274,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                     onClick={addStaffAssignment}
                     className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
-                    <Icon icon={FiPlus} className="h-4 w-4" />
+                    <Icon icon={Plus} className="h-4 w-4" />
                     Add person
                   </button>
                 </div>
@@ -2412,7 +2400,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                           title="Remove assignment"
                           aria-label="Remove assignment"
                         >
-                          <Icon icon={FiX} className="h-4 w-4" />
+                          <Icon icon={X} className="h-4 w-4" />
                         </button>
                       </div>
 

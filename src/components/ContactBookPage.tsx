@@ -1,5 +1,5 @@
+import { Edit2, Mail, MapPin, Phone as PhoneIcon, Plus, Search as SearchIcon, Trash2, Users } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiEdit2, FiMail, FiMapPin, FiPhone, FiPlus, FiSearch, FiTrash2, FiUsers } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import { contactBookApi } from '../services/api';
 import { ContactBookEntry } from '../types';
@@ -191,7 +191,7 @@ const ContactBookPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
-              <Icon icon={FiUsers} className="h-5 w-5" />
+              <Icon icon={Users} className="h-5 w-5" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">Contact Book</h1>
@@ -203,14 +203,14 @@ const ContactBookPage: React.FC = () => {
           onClick={openCreate}
           className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
         >
-          <Icon icon={FiPlus} className="h-4 w-4" />
+          <Icon icon={Plus} className="h-4 w-4" />
           Add Contact
         </button>
       </div>
 
       <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_220px_auto]">
         <label className="relative block">
-          <Icon icon={FiSearch} className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Icon icon={SearchIcon} className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -297,10 +297,10 @@ const ContactBookPage: React.FC = () => {
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
                     <button onClick={() => openEdit(contact)} className="icon-action-btn icon-action-btn-edit" title="Edit contact">
-                      <Icon icon={FiEdit2} />
+                      <Icon icon={Edit2} />
                     </button>
                     <button onClick={() => handleDelete(contact)} className="icon-action-btn icon-action-btn-delete" title="Delete contact">
-                      <Icon icon={FiTrash2} />
+                      <Icon icon={Trash2} />
                     </button>
                   </div>
                 </td>
@@ -321,29 +321,29 @@ const ContactBookPage: React.FC = () => {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => openEdit(contact)} className="icon-action-btn icon-action-btn-edit" title="Edit contact">
-                  <Icon icon={FiEdit2} />
+                  <Icon icon={Edit2} />
                 </button>
                 <button onClick={() => handleDelete(contact)} className="icon-action-btn icon-action-btn-delete" title="Delete contact">
-                  <Icon icon={FiTrash2} />
+                  <Icon icon={Trash2} />
                 </button>
               </div>
             </div>
             <div className="space-y-2 text-sm text-gray-700">
               {contact.phone && (
                 <a href={`tel:${contact.phone}`} className="flex items-center gap-2">
-                  <Icon icon={FiPhone} className="h-4 w-4 text-gray-400" />
+                  <Icon icon={PhoneIcon} className="h-4 w-4 text-gray-400" />
                   {contact.phone}
                 </a>
               )}
               {contact.email && (
                 <a href={`mailto:${contact.email}`} className="flex items-center gap-2">
-                  <Icon icon={FiMail} className="h-4 w-4 text-gray-400" />
+                  <Icon icon={Mail} className="h-4 w-4 text-gray-400" />
                   {contact.email}
                 </a>
               )}
               {contact.location && (
                 <div className="flex items-center gap-2">
-                  <Icon icon={FiMapPin} className="h-4 w-4 text-gray-400" />
+                  <Icon icon={MapPin} className="h-4 w-4 text-gray-400" />
                   {contact.location}
                 </div>
               )}

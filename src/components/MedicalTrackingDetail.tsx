@@ -1,9 +1,9 @@
+import { ArrowLeft, Edit2, Trash2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { medicalTrackingApi, clientsApi } from '../services/api';
 import { MedicalItem, Client } from '../types';
 import AppleButton from './AppleButton';
-import { FiArrowLeft, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -222,18 +222,18 @@ const MedicalTrackingDetail: React.FC = () => {
             onClick={() => navigate('/medical-tracking')}
             className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
           >
-            <Icon icon={FiArrowLeft} className="w-5 h-5" />
+            <Icon icon={ArrowLeft} className="w-5 h-5" />
             Back to List
           </button>
           <h1 className="text-2xl font-bold">Medical Tracking #{item.display_id}</h1>
         </div>
         <div className="flex gap-2">
           <AppleButton onClick={handleEdit} variant="secondary">
-            <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
+            <Icon icon={Edit2} className="w-4 h-4 mr-2" />
             Edit
           </AppleButton>
           <AppleButton onClick={handleDelete} variant="danger">
-            <Icon icon={FiTrash2} className="w-4 h-4 mr-2" />
+            <Icon icon={Trash2} className="w-4 h-4 mr-2" />
             Delete
           </AppleButton>
         </div>

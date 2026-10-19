@@ -1,6 +1,6 @@
+import { AlertTriangle, ArrowRight, CheckCircle, Cpu, RefreshCw, Search as SearchIcon, Send } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiArrowRight, FiCheckCircle, FiCpu, FiRefreshCw, FiSearch, FiSend } from 'react-icons/fi';
 import {
   assistantApi,
   bookingsApi,
@@ -177,7 +177,7 @@ const AssistantPage: React.FC = () => {
       <div className="mb-5 flex flex-col gap-3 border-b border-gray-200 pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-blue-700">
-            <Icon icon={FiCpu} className="h-4 w-4" />
+            <Icon icon={Cpu} className="h-4 w-4" />
             Assistant
           </div>
           <h1 className="mt-1 text-2xl font-semibold text-gray-950">Readiness Assistant</h1>
@@ -193,7 +193,7 @@ const AssistantPage: React.FC = () => {
             Booking
           </button>
           <button type="button" onClick={runAnalysis} disabled={loadingAnalysis} className="inline-flex items-center justify-center gap-2 rounded-apple bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300">
-            <Icon icon={FiRefreshCw} className={`h-4 w-4 ${loadingAnalysis ? 'animate-spin' : ''}`} />
+            <Icon icon={RefreshCw} className={`h-4 w-4 ${loadingAnalysis ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
@@ -210,7 +210,7 @@ const AssistantPage: React.FC = () => {
             <div className="mt-3">
               <label className="mb-2 block text-sm font-semibold text-gray-900">{mode === 'retreat' ? 'Retreat' : 'Booking'}</label>
               <div className="mb-3 flex items-center gap-2 rounded-apple border border-gray-200 px-3 py-2">
-                <Icon icon={FiSearch} className="h-4 w-4 text-gray-400" />
+                <Icon icon={SearchIcon} className="h-4 w-4 text-gray-400" />
                 <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={mode === 'retreat' ? 'Search retreat' : 'Search booking, client, retreat'} className="w-full border-0 bg-transparent text-sm outline-none" />
               </div>
               <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
@@ -246,7 +246,7 @@ const AssistantPage: React.FC = () => {
           <div className="hidden xl:block">
             <label className="mb-2 block text-sm font-semibold text-gray-900">{mode === 'retreat' ? 'Retreat' : 'Booking'}</label>
             <div className="mb-3 flex items-center gap-2 rounded-apple border border-gray-200 px-3 py-2">
-              <Icon icon={FiSearch} className="h-4 w-4 text-gray-400" />
+              <Icon icon={SearchIcon} className="h-4 w-4 text-gray-400" />
               <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={mode === 'retreat' ? 'Search retreat' : 'Search booking, client, retreat'} className="w-full border-0 bg-transparent text-sm outline-none" />
             </div>
 
@@ -305,7 +305,7 @@ const AssistantPage: React.FC = () => {
               <div className="flex gap-2">
                 <input value={chatInput} onChange={(event) => setChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendChat(); }} placeholder="Ask about this retreat..." className="min-w-0 flex-1 rounded-apple border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
                 <button type="button" onClick={() => sendChat()} disabled={loadingChat || !chatInput.trim()} className="inline-flex h-10 w-10 items-center justify-center rounded-apple bg-blue-600 text-white disabled:bg-gray-300">
-                  <Icon icon={FiSend} className="h-4 w-4" />
+                  <Icon icon={Send} className="h-4 w-4" />
                 </button>
               </div>
             </section>
@@ -335,7 +335,7 @@ const AssistantPage: React.FC = () => {
             <div className="flex gap-2">
               <input value={chatInput} onChange={(event) => setChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendChat(); }} placeholder="Ask about this retreat..." className="min-w-0 flex-1 rounded-apple border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
               <button type="button" onClick={() => sendChat()} disabled={loadingChat || !chatInput.trim()} className="inline-flex h-10 w-10 items-center justify-center rounded-apple bg-blue-600 text-white disabled:bg-gray-300">
-                <Icon icon={FiSend} className="h-4 w-4" />
+                <Icon icon={Send} className="h-4 w-4" />
               </button>
             </div>
           </aside>
@@ -347,7 +347,7 @@ const AssistantPage: React.FC = () => {
 
 const SummaryPanel: React.FC<{ analysis: RetreatReadinessAssistantResult | BookingReadinessAssistantResult | null; selectedBooking?: RetreatClient; mode: Mode }> = ({ analysis, selectedBooking, mode }) => {
   if (!analysis) {
-    return <div className="flex min-h-[220px] flex-col items-center justify-center rounded-apple border border-gray-200 bg-white text-center text-gray-500"><Icon icon={FiCpu} className="mb-3 h-10 w-10 text-gray-300" /><div className="text-sm font-medium">Select {mode === 'retreat' ? 'a retreat' : 'a booking'} and ask a question.</div></div>;
+    return <div className="flex min-h-[220px] flex-col items-center justify-center rounded-apple border border-gray-200 bg-white text-center text-gray-500"><Icon icon={Cpu} className="mb-3 h-10 w-10 text-gray-300" /><div className="text-sm font-medium">Select {mode === 'retreat' ? 'a retreat' : 'a booking'} and ask a question.</div></div>;
   }
   const generatedBy = analysis.generatedBy === 'openai' ? `AI: ${analysis.model || 'OpenAI'}` : 'Rules fallback';
   return (
@@ -411,7 +411,7 @@ const RetreatClientTable: React.FC<{ analysis: RetreatReadinessAssistantResult; 
               <td className="px-3 py-3 text-gray-700">{row.missingSteps.length ? row.missingSteps.join(', ') : '-'}</td>
               <td className="px-3 py-3">
                 <button type="button" onClick={() => onOpen(row.bookingLink)} className="inline-flex items-center gap-1 rounded-apple border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-                  {row.nextAction}<Icon icon={FiArrowRight} className="h-3 w-3" />
+                  {row.nextAction}<Icon icon={ArrowRight} className="h-3 w-3" />
                 </button>
               </td>
             </tr>
@@ -430,7 +430,7 @@ const BookingDetails: React.FC<{ analysis: BookingReadinessAssistantResult; onOp
     </div>
     <div>
       <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Suggested Next Actions</h3>
-      <div className="grid gap-3 md:grid-cols-2">{analysis.suggestedActions.map((action, index) => <button key={`${action.label}-${index}`} type="button" onClick={() => onOpen(action.link)} className="rounded-apple border border-gray-200 bg-white p-4 text-left shadow-sm transition-colors hover:bg-gray-50"><div className="flex items-center justify-between gap-3"><div className="font-semibold text-gray-950">{action.label}</div><Icon icon={FiArrowRight} className="h-4 w-4 text-gray-400" /></div><div className="mt-2 text-sm text-gray-600">{action.reason}</div></button>)}</div>
+      <div className="grid gap-3 md:grid-cols-2">{analysis.suggestedActions.map((action, index) => <button key={`${action.label}-${index}`} type="button" onClick={() => onOpen(action.link)} className="rounded-apple border border-gray-200 bg-white p-4 text-left shadow-sm transition-colors hover:bg-gray-50"><div className="flex items-center justify-between gap-3"><div className="font-semibold text-gray-950">{action.label}</div><Icon icon={ArrowRight} className="h-4 w-4 text-gray-400" /></div><div className="mt-2 text-sm text-gray-600">{action.reason}</div></button>)}</div>
     </div>
   </div>
 );
@@ -438,9 +438,9 @@ const BookingDetails: React.FC<{ analysis: BookingReadinessAssistantResult; onOp
 const FindingButton: React.FC<{ finding: any; onOpen: (link?: string) => void }> = ({ finding, onOpen }) => (
   <button type="button" onClick={() => onOpen(finding.link)} className={`w-full rounded-apple border p-4 text-left ${severityClass[finding.severity] || severityClass.low}`}>
     <div className="flex items-start gap-3">
-      {finding.severity === 'low' ? <Icon icon={FiCheckCircle} className="mt-0.5 h-5 w-5" /> : <Icon icon={FiAlertTriangle} className="mt-0.5 h-5 w-5" />}
+      {finding.severity === 'low' ? <Icon icon={CheckCircle} className="mt-0.5 h-5 w-5" /> : <Icon icon={AlertTriangle} className="mt-0.5 h-5 w-5" />}
       <div className="min-w-0 flex-1"><div className="font-semibold">{finding.title}</div><div className="mt-1 text-sm opacity-85">{finding.detail}</div></div>
-      {finding.link && <Icon icon={FiArrowRight} className="mt-1 h-4 w-4 flex-shrink-0" />}
+      {finding.link && <Icon icon={ArrowRight} className="mt-1 h-4 w-4 flex-shrink-0" />}
     </div>
   </button>
 );

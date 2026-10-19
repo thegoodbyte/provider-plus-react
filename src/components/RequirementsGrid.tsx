@@ -1,9 +1,9 @@
+import { Check, Edit2, Package, Plus, Trash2, X } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { requirementsApi } from '../services/api';
 import { Requirement } from '../types';
 import RetreatRequirementsGrid from './RetreatRequirementsGrid';
 import AppleButton from './AppleButton';
-import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiPackage } from 'react-icons/fi';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -192,11 +192,11 @@ const RequirementsGrid: React.FC = () => {
           {activeTab === 'requirements' && (
             <>
               <AppleButton onClick={handleSeedRequirements} className="apple-button-secondary">
-                <Icon icon={FiPackage} className="w-4 h-4 mr-2" />
+                <Icon icon={Package} className="w-4 h-4 mr-2" />
                 Seed Defaults
               </AppleButton>
               <AppleButton onClick={handleAdd} className="apple-button-primary">
-                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                <Icon icon={Plus} className="w-4 h-4 mr-2" />
                 Add Requirement
               </AppleButton>
             </>
@@ -285,9 +285,9 @@ const RequirementsGrid: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           {requirement.isActive ? (
-                            <Icon icon={FiCheck} className="w-5 h-5 text-green-500" />
+                            <Icon icon={Check} className="w-5 h-5 text-green-500" />
                           ) : (
-                            <Icon icon={FiX} className="w-5 h-5 text-red-500" />
+                            <Icon icon={X} className="w-5 h-5 text-red-500" />
                           )}
                           <span className="ml-2 text-sm text-gray-900">
                             {requirement.isActive ? 'Active' : 'Inactive'}
@@ -301,14 +301,14 @@ const RequirementsGrid: React.FC = () => {
                             className="text-indigo-600 hover:text-indigo-900"
                             title="Edit"
                           >
-                            <Icon icon={FiEdit2} className="w-4 h-4" />
+                            <Icon icon={Edit2} className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(requirement._id!)}
                             className="text-red-600 hover:text-red-900"
                             title="Delete"
                           >
-                            <Icon icon={FiTrash2} className="w-4 h-4" />
+                            <Icon icon={Trash2} className="w-4 h-4" />
                           </button>
                         </div>
                       </td>

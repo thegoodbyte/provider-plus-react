@@ -1,5 +1,5 @@
+import { CheckCircle, Edit2, ExternalLink, Mail, Plus, RefreshCw, Save as SaveIcon, Upload as UploadIcon } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheckCircle, FiEdit2, FiExternalLink, FiMail, FiPlus, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact } from '../types';
@@ -21,8 +21,8 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 export const BookingStepsEditActions: React.FC<{ isEditing: boolean; saving: boolean; onEdit: () => void; onCancel: () => void; onSave: () => void; compact?: boolean }> = ({ isEditing, saving, onEdit, onCancel, onSave, compact = false }) => isEditing ? <div className="flex items-center gap-2">
   <AppleButton onClick={onCancel} variant="ghost" className={compact ? 'px-3 py-2' : 'px-4 py-2'} disabled={saving}>Cancel</AppleButton>
-  <AppleButton onClick={onSave} variant="primary" className={compact ? 'px-3 py-2' : 'min-w-[138px] px-4 py-2'} disabled={saving}><Icon icon={FiSave} className="mr-2 h-4 w-4" />{saving ? 'Saving...' : 'Save changes'}</AppleButton>
-</div> : <AppleButton onClick={onEdit} variant="secondary" className={compact ? 'px-3 py-2' : 'rounded-full px-5 py-2'}><Icon icon={FiEdit2} className="mr-2 h-4 w-4" />{compact ? 'Edit' : 'Edit steps & deadlines'}</AppleButton>;
+  <AppleButton onClick={onSave} variant="primary" className={compact ? 'px-3 py-2' : 'min-w-[138px] px-4 py-2'} disabled={saving}><Icon icon={SaveIcon} className="mr-2 h-4 w-4" />{saving ? 'Saving...' : 'Save changes'}</AppleButton>
+</div> : <AppleButton onClick={onEdit} variant="secondary" className={compact ? 'px-3 py-2' : 'rounded-full px-5 py-2'}><Icon icon={Edit2} className="mr-2 h-4 w-4" />{compact ? 'Edit' : 'Edit steps & deadlines'}</AppleButton>;
 
 const fulfilledStatuses = evidenceReceivedStatuses;
 
@@ -668,7 +668,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   if (bookings.length === 0) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
-        <Icon icon={FiCheckCircle} className="mx-auto h-10 w-10 text-gray-400" />
+        <Icon icon={CheckCircle} className="mx-auto h-10 w-10 text-gray-400" />
         <h3 className="mt-3 text-sm font-medium text-gray-900">No booking steps yet</h3>
         <p className="mt-1 text-sm text-gray-500">Create or link a booking before tracking booking steps.</p>
       </div>
@@ -715,7 +715,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
             )}
             <BookingStepsEditActions isEditing={isEditing} saving={savingId === 'all'} onEdit={() => setIsEditing(true)} onCancel={cancelEditing} onSave={saveDrafts} compact />
             <AppleButton onClick={() => loadItems(undefined, true)} variant="ghost" className="px-3 py-2">
-              <Icon icon={FiRefreshCw} className="mr-2 h-4 w-4" />
+              <Icon icon={RefreshCw} className="mr-2 h-4 w-4" />
               Refresh
             </AppleButton>
             <span className="text-xs text-gray-500">{filteredItems.length} of {items.length} steps shown</span>
@@ -730,7 +730,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
         {isEditing ? (
           <>
             <AppleButton onClick={addStep} variant="ghost" className="px-3 py-2" disabled={Boolean(savingId)}>
-              <Icon icon={FiPlus} className="mr-2 h-4 w-4" />
+              <Icon icon={Plus} className="mr-2 h-4 w-4" />
               Add step
             </AppleButton>
             <BookingStepsEditActions isEditing saving={savingId === 'all'} onEdit={() => setIsEditing(true)} onCancel={cancelEditing} onSave={saveDrafts} />
@@ -898,7 +898,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                                 className="inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white"
                                 title={action.type}
                               >
-                                {action.type === 'email' && <Icon icon={FiMail} className="mr-2 h-4 w-4" />}
+                                {action.type === 'email' && <Icon icon={Mail} className="mr-2 h-4 w-4" />}
                                 {actionSavingKey === savingKey ? 'Loading...' : action.label}
                               </button>
                               <ActionHistoryHover logs={actionLogs} />
@@ -911,7 +911,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                             className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
                             onClick={() => navigate(`/medical-artifacts/${linkedArtifactId}`)}
                           >
-                            <Icon icon={FiExternalLink} className="mr-2 h-4 w-4" />
+                            <Icon icon={ExternalLink} className="mr-2 h-4 w-4" />
                             Artifact {linkedArtifactDisplayId ? `#${linkedArtifactDisplayId}` : ''}
                           </button>
                         )}
@@ -921,13 +921,13 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                             className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
                             onClick={() => navigate(`/booking-documents`)}
                           >
-                            <Icon icon={FiExternalLink} className="mr-2 h-4 w-4" />
+                            <Icon icon={ExternalLink} className="mr-2 h-4 w-4" />
                             Document #{linkedBookingDocumentDisplayId || relatedBookingDocument?.display_id || 'linked'}
                           </button>
                         )}
                         {(uploadConfig || uploadAction) && (
                           <label className="inline-flex cursor-pointer items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50">
-                            <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
+                            <Icon icon={UploadIcon} className="mr-2 h-4 w-4" />
                             {uploadingId === item._id ? 'Uploading...' : uploadAction?.label || 'Upload'}
                             <input
                               type="file"

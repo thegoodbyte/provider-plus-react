@@ -1,6 +1,6 @@
+import { ArrowLeft, Download as DownloadIcon } from 'lucide-react';
 import React from 'react';
 import AppleButton from './AppleButton';
-import { FiArrowLeft, FiDownload } from 'react-icons/fi';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -36,7 +36,7 @@ const FileBlobViewer: React.FC<FileBlobViewerProps> = ({
             onClick={onBack}
             className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
           >
-            <Icon icon={FiArrowLeft} className="w-5 h-5" />
+            <Icon icon={ArrowLeft} className="w-5 h-5" />
             Back
           </button>
           <div className="min-w-0">
@@ -48,7 +48,7 @@ const FileBlobViewer: React.FC<FileBlobViewerProps> = ({
         {fileUrl && (
           <a href={fileUrl} download={fileName} className="inline-flex">
             <AppleButton type="button">
-              <Icon icon={FiDownload} className="mr-2" />
+              <Icon icon={DownloadIcon} className="mr-2" />
               Download
             </AppleButton>
           </a>

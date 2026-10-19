@@ -1,4 +1,5 @@
 import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
+import { ArrowLeft, Save as SaveIcon } from 'lucide-react';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -9,7 +10,6 @@ import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import SearchableBookingSelect from './SearchableBookingSelect';
-import { FiArrowLeft, FiSave } from 'react-icons/fi';
 import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 
@@ -461,7 +461,7 @@ const PaymentEditorPage: React.FC = () => {
             onClick={() => navigate(returnTo || defaultReturnPath)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
-            <Icon icon={FiArrowLeft} className="w-4 h-4" />
+            <Icon icon={ArrowLeft} className="w-4 h-4" />
             {returnTo ? 'Back to Booking' : 'Back'}
           </button>
           <div className="min-w-0">
@@ -842,7 +842,7 @@ const PaymentEditorPage: React.FC = () => {
                 disabled={saving || (isExisting && selectedPaymentRequest?.context === 'standalone_service')}
                 className="inline-flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
               >
-                <Icon icon={FiSave} className="w-4 h-4" />
+                <Icon icon={SaveIcon} className="w-4 h-4" />
                 {saving ? 'Saving…' : isEdit ? 'Update Payment' : 'Add Payment'}
               </button>
             )}

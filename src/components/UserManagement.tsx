@@ -1,3 +1,4 @@
+import { Check, Clock, Edit2, Key, Lock, LogIn, Mail, Plus, Trash2, User as UserIcon, X } from 'lucide-react';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -6,7 +7,6 @@ import { usersApi, User, CreateUserData, UpdateUserData } from '../services/user
 import { useAuth } from '../context/AuthContext';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
-import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiUser, FiMail, FiLock, FiClock, FiKey, FiLogIn } from 'react-icons/fi';
 
 // Icon wrapper to fix TypeScript issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -365,7 +365,7 @@ const UserManagement: React.FC = () => {
               value={searchTerm}
               onChange={(value) => setSearchTerm(value)}
               className="w-full sm:w-64"
-              icon={<Icon icon={FiUser} className="w-4 h-4" />}
+              icon={<Icon icon={UserIcon} className="w-4 h-4" />}
             />
             <select
               value={filterRole}
@@ -379,7 +379,7 @@ const UserManagement: React.FC = () => {
             </select>
           </div>
           <AppleButton onClick={() => setShowAddModal(true)}>
-            <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+            <Icon icon={Plus} className="w-4 h-4 mr-2" />
             Add User
           </AppleButton>
         </div>
@@ -425,7 +425,7 @@ const UserManagement: React.FC = () => {
                             user.email}
                         </div>
                         <div className="text-sm text-gray-500 flex items-center">
-                          <Icon icon={FiMail} className="w-3 h-3 mr-1" />
+                          <Icon icon={Mail} className="w-3 h-3 mr-1" />
                           {user.email}
                         </div>
                       </div>
@@ -443,7 +443,7 @@ const UserManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center">
-                      <Icon icon={FiClock} className="w-3 h-3 mr-1" />
+                      <Icon icon={Clock} className="w-3 h-3 mr-1" />
                       {user.lastLogin ?
                         new Date(user.lastLogin).toLocaleDateString() :
                         'Never'}
@@ -457,7 +457,7 @@ const UserManagement: React.FC = () => {
                         title="Edit user"
                         aria-label="Edit user"
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={Edit2} className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleResetPassword(user)}
@@ -465,7 +465,7 @@ const UserManagement: React.FC = () => {
                         title="Reset password"
                         aria-label="Reset password"
                       >
-                        <Icon icon={FiKey} className="w-4 h-4" />
+                        <Icon icon={Key} className="w-4 h-4" />
                       </button>
                       {user.role !== 'admin' && user.isActive && user._id !== currentUser?.id && (
                         <button
@@ -475,7 +475,7 @@ const UserManagement: React.FC = () => {
                           aria-label={`Login as ${[user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email}`}
                           disabled={impersonatingUserId === user._id}
                         >
-                          <Icon icon={FiLogIn} className="w-4 h-4" />
+                          <Icon icon={LogIn} className="w-4 h-4" />
                           <span>{impersonatingUserId === user._id ? 'Logging in...' : 'Login as'}</span>
                         </button>
                       )}
@@ -486,7 +486,7 @@ const UserManagement: React.FC = () => {
                           title="Delete user"
                           aria-label="Delete user"
                         >
-                          <Icon icon={FiTrash2} className="w-4 h-4" />
+                          <Icon icon={Trash2} className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -564,13 +564,13 @@ const UserManagement: React.FC = () => {
                   resetForm();
                 }}
               >
-                <Icon icon={FiX} className="w-4 h-4 mr-2" />
+                <Icon icon={X} className="w-4 h-4 mr-2" />
                 Cancel
               </AppleButton>
               <AppleButton
                 onClick={handleCreateUser}
               >
-                <Icon icon={FiCheck} className="w-4 h-4 mr-2" />
+                <Icon icon={Check} className="w-4 h-4 mr-2" />
                 Create User
               </AppleButton>
             </div>
@@ -624,13 +624,13 @@ const UserManagement: React.FC = () => {
                   resetForm();
                 }}
               >
-                <Icon icon={FiX} className="w-4 h-4 mr-2" />
+                <Icon icon={X} className="w-4 h-4 mr-2" />
                 Cancel
               </AppleButton>
               <AppleButton
                 onClick={handlePasswordReset}
               >
-                <Icon icon={FiLock} className="w-4 h-4 mr-2" />
+                <Icon icon={Lock} className="w-4 h-4 mr-2" />
                 Reset Password
               </AppleButton>
             </div>
@@ -703,13 +703,13 @@ const UserManagement: React.FC = () => {
                   resetForm();
                 }}
               >
-                <Icon icon={FiX} className="w-4 h-4 mr-2" />
+                <Icon icon={X} className="w-4 h-4 mr-2" />
                 Cancel
               </AppleButton>
               <AppleButton
                 onClick={handleUpdateUser}
               >
-                <Icon icon={FiCheck} className="w-4 h-4 mr-2" />
+                <Icon icon={Check} className="w-4 h-4 mr-2" />
                 Update User
               </AppleButton>
             </div>

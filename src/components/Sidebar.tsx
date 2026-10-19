@@ -1,21 +1,6 @@
+import { Activity, BarChart2, Bell, Calendar, Clipboard, CreditCard, DollarSign, Grid, Home as HomeIcon, LogOut, Mail, Menu, Users, X } from 'lucide-react';
 import React from 'react';
 import './Sidebar.css';
-import {
-  FiGrid,
-  FiUsers,
-  FiCalendar,
-  FiActivity,
-  FiHome,
-  FiBell,
-  FiCreditCard,
-  FiDollarSign,
-  FiClipboard,
-  FiBarChart2,
-  FiMail,
-  FiLogOut,
-  FiMenu,
-  FiX
-} from 'react-icons/fi';
 
 interface SidebarProps {
   activeItem: string;
@@ -39,19 +24,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
     {
       id: 'launcher',
       label: 'Home',
-      icon: FiGrid,
+      icon: Grid,
       description: 'Pick a module'
     },
     {
       id: 'medical-dashboard',
       label: 'Reviews',
-      icon: FiActivity,
+      icon: Activity,
       description: 'Review medical records'
     },
     {
       id: 'medical-retreats',
       label: 'Retreats',
-      icon: FiCalendar,
+      icon: Calendar,
       description: 'View upcoming retreats'
     }
   ];
@@ -61,109 +46,109 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
     {
       id: 'launcher',
       label: 'Home',
-      icon: FiGrid,
+      icon: Grid,
       description: 'Pick a module'
     },
     {
       id: 'clients',
       label: 'Clients',
-      icon: FiUsers,
+      icon: Users,
       description: 'Manage all clients (potential, screening, active)'
     },
     {
       id: 'screening',
       label: 'Screening',
-      icon: FiClipboard,
+      icon: Clipboard,
       description: 'Manage screening clients'
     },
     {
       id: 'retreats',
       label: 'Retreats',
-      icon: FiCalendar,
+      icon: Calendar,
       description: 'Manage retreat programs'
     },
     {
       id: 'bookings',
       label: 'Bookings',
-      icon: FiClipboard,
+      icon: Clipboard,
       description: 'Retreat-client bookings'
     },
     {
       id: 'retreat-flow',
       label: 'Retreat Readiness Setup',
-      icon: FiCalendar,
+      icon: Calendar,
       description: 'Per-retreat step setup and timing'
     },
     {
       id: 'retreat-flow-library',
       label: 'Booking Step Setup',
-      icon: FiClipboard,
+      icon: Clipboard,
       description: 'Master booking step configuration'
     },
     {
       id: 'booking-step-deadlines',
       label: 'Step Deadlines',
-      icon: FiCalendar,
+      icon: Calendar,
       description: 'All booking-step deadlines across retreats'
     },
     {
       id: 'reserve-lists',
       label: 'Reserve Lists',
-      icon: FiUsers,
+      icon: Users,
       description: 'Waiting list and reserve list management'
     },
     {
       id: 'houses',
       label: 'Houses',
-      icon: FiHome,
+      icon: HomeIcon,
       description: 'Manage retreat houses'
     },
     {
       id: 'reminders',
       label: 'Reminders',
-      icon: FiBell,
+      icon: Bell,
       description: 'Manage client reminders'
     },
     {
       id: 'payments',
       label: 'Payments',
-      icon: FiCreditCard,
+      icon: CreditCard,
       description: 'Manage retreat payments'
     },
     {
       id: 'expenses',
       label: 'Expenses',
-      icon: FiDollarSign,
+      icon: DollarSign,
       description: 'Manage expenses (retreat and general)'
     },
     {
       id: 'communications',
       label: 'Communications',
-      icon: FiMail,
+      icon: Mail,
       description: 'Gmail settings, templates, and sent email logs'
     },
     {
       id: 'medical',
       label: 'Medical',
-      icon: FiActivity,
+      icon: Activity,
       description: 'EKG and liver panel tracking'
     },
     {
       id: 'medical-review-requests',
       label: 'Review Requests',
-      icon: FiActivity,
+      icon: Activity,
       description: 'Medical review queue and history'
     },
     {
       id: 'requirements',
       label: 'Requirements',
-      icon: FiClipboard,
+      icon: Clipboard,
       description: 'Manage retreat requirements'
     },
     {
       id: 'analytics',
       label: 'Analytics',
-      icon: FiBarChart2,
+      icon: BarChart2,
       description: 'View reports and analytics'
     }
   ];

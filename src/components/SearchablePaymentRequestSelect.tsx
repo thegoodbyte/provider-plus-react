@@ -1,5 +1,5 @@
+import { Search as SearchIcon, X } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiSearch, FiX } from 'react-icons/fi';
 import { paymentRequestsApi } from '../services/api';
 import { PaymentRequest, Client, Retreat } from '../types';
 
@@ -112,14 +112,14 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
             ? `${selectedRequest.invoiceNumber || `#${selectedRequest.display_id || 'n/a'}`} - ${resolveClient(selectedRequest.clientId)}`
             : placeholder}
         </span>
-        <span className="text-gray-400">{open ? <Icon icon={FiX} /> : <Icon icon={FiSearch} />}</span>
+        <span className="text-gray-400">{open ? <Icon icon={X} /> : <Icon icon={SearchIcon} />}</span>
       </button>
 
       {open && (
         <div className="absolute z-20 mt-2 w-full rounded-md border border-gray-200 bg-white shadow-lg">
           <div className="p-3 border-b border-gray-100">
             <div className="relative">
-              <Icon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Icon icon={SearchIcon} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

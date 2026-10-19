@@ -1,3 +1,4 @@
+import { Activity, AlertCircle, ArrowLeft, Bell, Calendar, Camera, CheckSquare, DollarSign, Edit2, ExternalLink, Eye, EyeOff, FileText, Heart as HeartIcon, Mail, MapPin, MessageSquare, Plus, Trash2, User } from 'lucide-react';
 import EkgRequirementStatus from './EkgRequirementStatus';
 import ScreeningPdfViewer from './ScreeningPdfViewer';
 import ScreeningCallPanel from './ScreeningCallPanel';
@@ -12,7 +13,6 @@ import EmailHistoryPanel from './EmailHistoryPanel';
 import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 import NotificationCountBadge, { useNotificationCount } from './NotificationCountBadge';
 import { MedicalArtifact, PaymentRequest } from '../types';
-import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff, FiMail, FiBell, FiExternalLink } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { CreateTaskDto, Task, taskService } from '../services/taskService';
@@ -916,11 +916,11 @@ const ClientDetailsPage: React.FC = () => {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          <Icon icon={FiAlertCircle} className="inline w-5 h-5 mr-2" />
+          <Icon icon={AlertCircle} className="inline w-5 h-5 mr-2" />
           {error || 'Client not found'}
         </div>
         <AppleButton onClick={() => navigate(-1)} className="mt-4">
-          <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
+          <Icon icon={ArrowLeft} className="w-4 h-4 mr-2" />
           Go Back
         </AppleButton>
       </div>
@@ -939,18 +939,18 @@ const ClientDetailsPage: React.FC = () => {
                 <img src={profilePictureUrl} alt={`${client.firstName} ${client.lastName}`} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-gray-400">
-                  <Icon icon={FiUser} className="h-10 w-10" />
+                  <Icon icon={User} className="h-10 w-10" />
                 </div>
               )}
               <label className="absolute inset-x-0 bottom-0 flex cursor-pointer items-center justify-center gap-1 bg-black/55 px-2 py-2 text-xs font-medium text-white transition hover:bg-black/70">
-                <Icon icon={FiCamera} className="h-3.5 w-3.5" />
+                <Icon icon={Camera} className="h-3.5 w-3.5" />
                 {uploadingProfilePicture ? 'Uploading' : 'Photo'}
                 <input type="file" accept="image/*" onChange={handleProfilePictureUpload} className="hidden" disabled={uploadingProfilePicture} />
               </label>
             </div>
             <div className="min-w-0 flex-1 pt-1">
               <button onClick={() => navigate(-1)} className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900">
-                <Icon icon={FiArrowLeft} className="h-4 w-4" />
+                <Icon icon={ArrowLeft} className="h-4 w-4" />
                 Back
               </button>
               <div className="text-xl font-semibold leading-none text-gray-900 sm:text-2xl">
@@ -975,7 +975,7 @@ const ClientDetailsPage: React.FC = () => {
                   aria-label={openingIbogaReady ? 'Opening IbogaReady' : 'View in IbogaReady'}
                   title="Open a 20-minute, read-only and audited client support session"
                 >
-                  <Icon icon={FiExternalLink} className="h-4 w-4" />
+                  <Icon icon={ExternalLink} className="h-4 w-4" />
                   <span className="hidden sm:inline">{openingIbogaReady ? 'Opening…' : 'View in IbogaReady'}</span>
                 </button>
                 <button
@@ -984,7 +984,7 @@ const ClientDetailsPage: React.FC = () => {
                   onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-md sm:h-auto sm:w-auto border border-gray-200 bg-white p-2 text-sm sm:px-3 font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  <Icon icon={FiPlus} className="h-4 w-4" />
+                  <Icon icon={Plus} className="h-4 w-4" />
                   <span className="hidden sm:inline">Screening</span>
                 </button>
                 <button
@@ -994,7 +994,7 @@ const ClientDetailsPage: React.FC = () => {
                   disabled={creatingPreCallLink}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-md sm:h-auto sm:w-auto border border-gray-200 bg-white p-2 text-sm sm:px-3 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                 >
-                  <Icon icon={FiMessageSquare} className="h-4 w-4" />
+                  <Icon icon={MessageSquare} className="h-4 w-4" />
                   <span className="hidden sm:inline">{creatingPreCallLink ? 'Creating…' : 'Pre-call intake link'}</span>
                 </button>
                 <button
@@ -1003,7 +1003,7 @@ const ClientDetailsPage: React.FC = () => {
                   aria-label="Edit client"
                   title="Edit client"
                 >
-                  <Icon icon={FiEdit2} className="h-4 w-4" />
+                  <Icon icon={Edit2} className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -1014,58 +1014,58 @@ const ClientDetailsPage: React.FC = () => {
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6 overflow-x-auto">
         <div className="flex min-w-max space-x-3 sm:space-x-6 pb-2">
-          {canManageIntegration && <Tab label="Integration" icon={FiCalendar} isActive={activeTab === 'integration'} onClick={() => setActiveTab('integration')} />}
+          {canManageIntegration && <Tab label="Integration" icon={Calendar} isActive={activeTab === 'integration'} onClick={() => setActiveTab('integration')} />}
           <Tab
             label="Overview"
-            icon={FiUser}
+            icon={User}
             isActive={activeTab === 'overview'}
             onClick={() => setActiveTab('overview')}
           />
           <Tab
             label="Screening Info"
-            icon={FiFileText}
+            icon={FileText}
             isActive={activeTab === 'screening'}
             onClick={() => setActiveTab('screening')}
           />
           <Tab
             label="Medical Info"
-            icon={FiActivity}
+            icon={Activity}
             isActive={activeTab === 'medical'}
             onClick={() => setActiveTab('medical')}
           />
           <Tab
             label="Bookings"
-            icon={FiCalendar}
+            icon={Calendar}
             isActive={activeTab === 'bookings'}
             onClick={() => setActiveTab('bookings')}
           />
           <Tab
             label="Payments"
-            icon={FiDollarSign}
+            icon={DollarSign}
             isActive={activeTab === 'payments'}
             onClick={() => setActiveTab('payments')}
           />
           <Tab
             label="Emails"
-            icon={FiMail}
+            icon={Mail}
             isActive={activeTab === 'emails'}
             onClick={() => setActiveTab('emails')}
           />
           <Tab
             label={<span className="inline-flex items-center">Notifications <NotificationCountBadge count={notificationCount} /></span> as any}
-            icon={FiBell}
+            icon={Bell}
             isActive={activeTab === 'notifications'}
             onClick={() => setActiveTab('notifications')}
           />
           <Tab
             label="Notes"
-            icon={FiMessageSquare}
+            icon={MessageSquare}
             isActive={activeTab === 'notes'}
             onClick={() => setActiveTab('notes')}
           />
           <Tab
             label={`Tasks (${tasks.length})`}
-            icon={FiCheckSquare}
+            icon={CheckSquare}
             isActive={activeTab === 'tasks'}
             onClick={() => setActiveTab('tasks')}
           />
@@ -1104,7 +1104,7 @@ const ClientDetailsPage: React.FC = () => {
                           aria-label={showLoginPin ? 'Hide client portal login PIN' : 'Reveal client portal login PIN'}
                           title={showLoginPin ? 'Hide PIN' : 'Reveal PIN'}
                         >
-                          <Icon icon={showLoginPin ? FiEyeOff : FiEye} className="w-4 h-4" />
+                          <Icon icon={showLoginPin ? EyeOff : Eye} className="w-4 h-4" />
                         </button>
                       )}
                       <button
@@ -1251,7 +1251,7 @@ const ClientDetailsPage: React.FC = () => {
                   aria-label={hasScreeningDetails ? 'Edit screening' : 'Add screening'}
                   title={hasScreeningDetails ? 'Edit screening' : 'Add screening'}
                 >
-                  <Icon icon={hasScreeningDetails ? FiEdit2 : FiPlus} className="w-5 h-5" />
+                  <Icon icon={hasScreeningDetails ? Edit2 : Plus} className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -1405,7 +1405,7 @@ const ClientDetailsPage: React.FC = () => {
                 onClick={() => setShowAddMedicalModal(true)}
                 className="apple-button-primary px-3 py-2"
               >
-                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                <Icon icon={Plus} className="w-4 h-4 mr-2" />
                 Add Medical Record
               </AppleButton>
             </div>
@@ -1463,7 +1463,7 @@ const ClientDetailsPage: React.FC = () => {
                   {/* EKG Test Section */}
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                      <Icon icon={FiActivity} className="w-4 h-4 mr-2" />
+                      <Icon icon={Activity} className="w-4 h-4 mr-2" />
                       Entry EKG Test
                     </h3>
                     {(() => {
@@ -1519,7 +1519,7 @@ const ClientDetailsPage: React.FC = () => {
                               variant="secondary"
                               className="w-full text-sm"
                             >
-                              <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                              <Icon icon={Plus} className="w-4 h-4 mr-2" />
                               Upload Entry EKG
                             </AppleButton>
                             {entryEkgArtifacts.length > 0 && (
@@ -1548,7 +1548,7 @@ const ClientDetailsPage: React.FC = () => {
                   {/* Liver Panel Test Section */}
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                      <Icon icon={FiHeart} className="w-4 h-4 mr-2" />
+                      <Icon icon={HeartIcon} className="w-4 h-4 mr-2" />
                       Entry Liver Panel Test
                     </h3>
                     {(() => {
@@ -1613,7 +1613,7 @@ const ClientDetailsPage: React.FC = () => {
                               variant="secondary"
                               className="w-full text-sm"
                             >
-                              <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                              <Icon icon={Plus} className="w-4 h-4 mr-2" />
                               Upload Entry Liver Panel
                             </AppleButton>
                             {entryLiverArtifacts.length > 0 && (
@@ -1642,7 +1642,7 @@ const ClientDetailsPage: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-6 bg-gray-50 rounded-lg">
-                <Icon icon={FiHeart} className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                <Icon icon={HeartIcon} className="mx-auto h-8 w-8 text-gray-400 mb-2" />
                 <p className="text-sm text-gray-500">No medical information available</p>
               </div>
             )}
@@ -1695,7 +1695,7 @@ const ClientDetailsPage: React.FC = () => {
                         <div className="text-sm text-white/85 space-y-1">
                           {bookingRetreat?.startDate && (
                             <div className="flex items-center">
-                              <Icon icon={FiCalendar} className="w-4 h-4 mr-2" />
+                              <Icon icon={Calendar} className="w-4 h-4 mr-2" />
                               <span>
                                 {formatDate(bookingRetreat.startDate)} - {' '}
                                 {bookingRetreat.endDate ? formatDate(bookingRetreat.endDate) : 'TBD'}
@@ -1704,12 +1704,12 @@ const ClientDetailsPage: React.FC = () => {
                           )}
                           {booking.house?.name && (
                             <div className="flex items-center">
-                              <Icon icon={FiMapPin} className="w-4 h-4 mr-2" />
+                              <Icon icon={MapPin} className="w-4 h-4 mr-2" />
                               <span>{booking.house.name}</span>
                             </div>
                           )}
                           <div className="flex items-center">
-                            <Icon icon={FiUser} className="w-4 h-4 mr-2" />
+                            <Icon icon={User} className="w-4 h-4 mr-2" />
                             <span>Booking ID: {booking._id.slice(-8)}</span>
                           </div>
                           {booking.bookingDate && (
@@ -1736,7 +1736,7 @@ const ClientDetailsPage: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-12">
-                <Icon icon={FiCalendar} className="mx-auto h-12 w-12 text-gray-400" />
+                <Icon icon={Calendar} className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No bookings found</h3>
                 <p className="mt-1 text-sm text-gray-500">
                   This client has no bookings yet.
@@ -1754,7 +1754,7 @@ const ClientDetailsPage: React.FC = () => {
                 onClick={openAddPaymentModal}
                 className="apple-button-primary ml-auto w-auto flex-none px-3 py-2 whitespace-nowrap"
               >
-                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                <Icon icon={Plus} className="w-4 h-4 mr-2" />
                 Add Payment
               </AppleButton>
             </div>
@@ -1769,7 +1769,7 @@ const ClientDetailsPage: React.FC = () => {
                   onClick={handleCreateDepositPaymentRequest}
                   className="apple-button-primary w-auto flex-none px-3 py-2 whitespace-nowrap"
                 >
-                  <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                  <Icon icon={Plus} className="w-4 h-4 mr-2" />
                   Create Deposit Request
                 </AppleButton>
               </div>
@@ -1923,7 +1923,7 @@ const ClientDetailsPage: React.FC = () => {
                                   className="inline-flex items-center rounded-md border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50"
                                   title="Create booking from this payment"
                                 >
-                                  <Icon icon={FiPlus} className="mr-1 h-3.5 w-3.5" />
+                                  <Icon icon={Plus} className="mr-1 h-3.5 w-3.5" />
                                   Create Booking
                                 </button>
                               )}
@@ -1932,7 +1932,7 @@ const ClientDetailsPage: React.FC = () => {
                                 onClick={() => navigate(`/admin/payments/${payment._id}`, { state: { returnTo: location.pathname } })}
                                 className="inline-flex items-center rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                               >
-                                <Icon icon={FiEye} className="mr-1 h-3.5 w-3.5" />
+                                <Icon icon={Eye} className="mr-1 h-3.5 w-3.5" />
                                 View
                               </button>
                               <button
@@ -1940,7 +1940,7 @@ const ClientDetailsPage: React.FC = () => {
                                 onClick={() => openEditPaymentModal(payment)}
                                 className="inline-flex items-center rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
                               >
-                                <Icon icon={FiEdit2} className="mr-1 h-3.5 w-3.5" />
+                                <Icon icon={Edit2} className="mr-1 h-3.5 w-3.5" />
                                 Edit
                               </button>
                               <button
@@ -1948,7 +1948,7 @@ const ClientDetailsPage: React.FC = () => {
                                 onClick={() => handleDeletePayment(payment)}
                                 className="inline-flex items-center rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
                               >
-                                <Icon icon={FiTrash2} className="mr-1 h-3.5 w-3.5" />
+                                <Icon icon={Trash2} className="mr-1 h-3.5 w-3.5" />
                                 Delete
                               </button>
                             </div>
@@ -1991,7 +1991,7 @@ const ClientDetailsPage: React.FC = () => {
                 aria-label="Add note"
                 title="Add note"
               >
-                <Icon icon={FiPlus} className="w-5 h-5" />
+                <Icon icon={Plus} className="w-5 h-5" />
               </button>
             </div>
 
@@ -2010,7 +2010,7 @@ const ClientDetailsPage: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-12">
-                <Icon icon={FiMessageSquare} className="mx-auto h-12 w-12 text-gray-400" />
+                <Icon icon={MessageSquare} className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No notes yet</h3>
                 <p className="mt-1 text-sm text-gray-500">
                   Add a note to keep track of important client information.
@@ -2032,7 +2032,7 @@ const ClientDetailsPage: React.FC = () => {
                 aria-label="Add task"
                 title="Add task"
               >
-                <Icon icon={FiPlus} className="w-5 h-5" />
+                <Icon icon={Plus} className="w-5 h-5" />
               </button>
             </div>
 
@@ -2051,7 +2051,7 @@ const ClientDetailsPage: React.FC = () => {
               />
             ) : (
               <div className="text-center py-12">
-                <Icon icon={FiCheckSquare} className="mx-auto h-12 w-12 text-gray-400" />
+                <Icon icon={CheckSquare} className="mx-auto h-12 w-12 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks yet</h3>
                 <p className="mt-1 text-sm text-gray-500">
                   Add a task to keep track of client-related activities.

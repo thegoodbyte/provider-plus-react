@@ -1,7 +1,7 @@
+import { Activity as FiActivity, AlertTriangle as FiAlertTriangle, BarChart as FiBarChart, Bell as FiBell, Book as FiBook, BookOpen as FiBookOpen, Bookmark as FiBookmark, Briefcase as FiBriefcase, Calendar as FiCalendar, Camera as FiCamera, CheckSquare as FiCheckSquare, ChevronDown as FiChevronDown, ChevronLeft as FiChevronLeft, Clipboard as FiClipboard, Clock as FiClock, Cpu as FiCpu, CreditCard as FiCreditCard, Database as FiDatabase, DollarSign as FiDollarSign, Edit3 as FiEdit3, FileText as FiFileText, Folder as FiFolder, Grid as FiGrid, Heart as FiHeart, Home as FiHome, Inbox as FiInbox, Layers as FiLayers, Link as FiLink, LogOut as FiLogOut, Mail as FiMail, Monitor as FiMonitor, MoreHorizontal as FiMoreHorizontal, Search as FiSearch, Settings as FiSettings, Share2 as FiShare2, Shield as FiShield, ShoppingBag as FiShoppingBag, User as FiUser, Users as FiUsers, X as FiX, Zap as FiZap } from 'lucide-react';
 import { NAVIGATION, SETTINGS_LABEL, canShowNavigation, useNavigationPreferences } from '../navigation/navigation';
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { Tooltip } from '@mui/material';
-import * as Fi from 'react-icons/fi';
 import { api } from '../services/api';
 
 interface AppleSidebarProps {
@@ -39,112 +39,112 @@ type MenuSection = {
 };
 
 const FULL_MENU_SECTIONS: MenuSection[] = [
-  { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
+  { id: 'home', label: 'Home', Icon: FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: FiGrid }] },
   {
     id: 'clients',
     label: 'Clients',
-    Icon: Fi.FiUsers,
+    Icon: FiUsers,
     items: [
-      { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
-      { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
+      { id: 'clients', label: 'Clients', Icon: FiUsers },
+      { id: 'screening', label: 'Screenings', Icon: FiClipboard },
     ],
   },
   {
     id: 'retreats',
     label: 'Retreat Operations',
-    Icon: Fi.FiCalendar,
+    Icon: FiCalendar,
     items: [
-      { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-      { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: Fi.FiUsers },
-      { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
-      { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-      { id: 'integration', label: 'Integration Calls', Icon: Fi.FiHeart },
-      { id: 'houses', label: NAVIGATION['houses'].label, Icon: Fi.FiHome },
-      { id: 'booster-offers', label: 'Booster Offers', Icon: Fi.FiZap },
-      { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, Icon: Fi.FiCalendar },
-      { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, Icon: Fi.FiLayers },
-      { id: 'booking-flow', label: NAVIGATION['booking-flow'].label, Icon: Fi.FiCheckSquare },
-      { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: Fi.FiCalendar },
-      { id: 'scheduled-reminders', label: 'Scheduled Reminders', Icon: Fi.FiBell },
-      { id: 'announcements', label: NAVIGATION['announcements'].label, Icon: Fi.FiMail },
-      { id: 'reserve-lists', label: 'Reserve Lists', Icon: Fi.FiBookmark },
-      { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
-      { id: 'booking-document-types', label: NAVIGATION['booking-document-types'].label, Icon: Fi.FiSettings },
+      { id: 'retreats', label: 'Retreats', Icon: FiCalendar },
+      { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: FiUsers },
+      { id: 'ceremonies', label: 'Ceremonies', Icon: FiClock },
+      { id: 'bookings', label: 'Bookings', Icon: FiBookOpen },
+      { id: 'integration', label: 'Integration Calls', Icon: FiHeart },
+      { id: 'houses', label: NAVIGATION['houses'].label, Icon: FiHome },
+      { id: 'booster-offers', label: 'Booster Offers', Icon: FiZap },
+      { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, Icon: FiCalendar },
+      { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, Icon: FiLayers },
+      { id: 'booking-flow', label: NAVIGATION['booking-flow'].label, Icon: FiCheckSquare },
+      { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: FiCalendar },
+      { id: 'scheduled-reminders', label: 'Scheduled Reminders', Icon: FiBell },
+      { id: 'announcements', label: NAVIGATION['announcements'].label, Icon: FiMail },
+      { id: 'reserve-lists', label: 'Reserve Lists', Icon: FiBookmark },
+      { id: 'booking-documents', label: 'Document Library', Icon: FiFileText },
+      { id: 'booking-document-types', label: NAVIGATION['booking-document-types'].label, Icon: FiSettings },
     ],
   },
   {
     id: 'workflow',
     label: 'Booking Readiness',
-    Icon: Fi.FiLayers,
+    Icon: FiLayers,
     items: [
-      { id: 'workflow', label: NAVIGATION['workflow'].label, Icon: Fi.FiLayers },
+      { id: 'workflow', label: NAVIGATION['workflow'].label, Icon: FiLayers },
     ],
   },
   {
     id: 'medical',
     label: 'Medical',
-    Icon: Fi.FiActivity,
+    Icon: FiActivity,
     items: [
-      { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: Fi.FiMonitor },
-      { id: 'medical-artifacts', label: NAVIGATION['medical-artifacts'].label, Icon: Fi.FiFileText },
-      { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, Icon: Fi.FiHeart },
-      { id: 'medical-review-requests', label: NAVIGATION['medical-review-requests'].label, Icon: Fi.FiInbox },
+      { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: FiMonitor },
+      { id: 'medical-artifacts', label: NAVIGATION['medical-artifacts'].label, Icon: FiFileText },
+      { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, Icon: FiHeart },
+      { id: 'medical-review-requests', label: NAVIGATION['medical-review-requests'].label, Icon: FiInbox },
     ],
   },
   {
     id: 'forms',
     label: 'Client Forms',
-    Icon: Fi.FiFileText,
+    Icon: FiFileText,
     items: [
-      { id: 'client-forms', label: NAVIGATION['client-forms'].label, Icon: Fi.FiFileText },
+      { id: 'client-forms', label: NAVIGATION['client-forms'].label, Icon: FiFileText },
     ],
   },
   {
     id: 'payments',
     label: 'Payments',
-    Icon: Fi.FiCreditCard,
+    Icon: FiCreditCard,
     items: [
-      { id: 'payments', label: NAVIGATION['payments'].label, Icon: Fi.FiCreditCard },
-      { id: 'payment-scratchpad', label: 'Scratchpad', Icon: Fi.FiEdit3 },
-      { id: 'payment-receipts', label: 'Receipts', Icon: Fi.FiFileText },
-      { id: 'payment-requests', label: NAVIGATION['payment-requests'].label, Icon: Fi.FiFileText },
-      { id: 'revolut-payment-links', label: 'Revolut Links', Icon: Fi.FiLink },
-      { id: 'expenses', label: 'Expenses', Icon: Fi.FiDollarSign },
+      { id: 'payments', label: NAVIGATION['payments'].label, Icon: FiCreditCard },
+      { id: 'payment-scratchpad', label: 'Scratchpad', Icon: FiEdit3 },
+      { id: 'payment-receipts', label: 'Receipts', Icon: FiFileText },
+      { id: 'payment-requests', label: NAVIGATION['payment-requests'].label, Icon: FiFileText },
+      { id: 'revolut-payment-links', label: 'Revolut Links', Icon: FiLink },
+      { id: 'expenses', label: 'Expenses', Icon: FiDollarSign },
     ],
   },
   {
     id: 'operations',
     label: 'Operations',
-    Icon: Fi.FiBriefcase,
+    Icon: FiBriefcase,
     items: [
-      { id: 'needs-attention', label: 'Needs Attention', Icon: Fi.FiAlertTriangle },
-      { id: 'ir-notifications', label: 'Notifications', Icon: Fi.FiBell },
-      { id: 'assistant', label: 'Assistant', Icon: Fi.FiCpu },
-      { id: 'tasks', label: NAVIGATION['tasks'].label, Icon: Fi.FiCheckSquare },
-      { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
-      { id: 'contact-book', label: 'Contact Book', Icon: Fi.FiBook },
-      { id: 'referrals', label: 'Referrals', Icon: Fi.FiShare2 },
-      { id: 'communications', label: NAVIGATION['communications'].label, Icon: Fi.FiMail },
+      { id: 'needs-attention', label: 'Needs Attention', Icon: FiAlertTriangle },
+      { id: 'ir-notifications', label: 'Notifications', Icon: FiBell },
+      { id: 'assistant', label: 'Assistant', Icon: FiCpu },
+      { id: 'tasks', label: NAVIGATION['tasks'].label, Icon: FiCheckSquare },
+      { id: 'reminders', label: 'Reminders', Icon: FiBell },
+      { id: 'contact-book', label: 'Contact Book', Icon: FiBook },
+      { id: 'referrals', label: 'Referrals', Icon: FiShare2 },
+      { id: 'communications', label: NAVIGATION['communications'].label, Icon: FiMail },
     ],
   },
   {
     id: 'misc',
     label: 'Files & Reports',
-    Icon: Fi.FiMoreHorizontal,
+    Icon: FiMoreHorizontal,
     items: [
-      { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
-      { id: 'analytics', label: NAVIGATION['analytics'].label, Icon: Fi.FiBarChart },
+      { id: 'file-uploads', label: 'File Uploads', Icon: FiFolder },
+      { id: 'analytics', label: NAVIGATION['analytics'].label, Icon: FiBarChart },
     ],
   },
   {
     id: 'admin',
     label: 'Activity',
-    Icon: Fi.FiShield,
+    Icon: FiShield,
     items: [
-      { id: 'permissions', label: NAVIGATION['permissions'].label, Icon: Fi.FiShield },
-      { id: 'users', label: NAVIGATION['users'].label, Icon: Fi.FiUser },
-      { id: 'audit-logs', label: NAVIGATION['audit-logs'].label, Icon: Fi.FiActivity },
-      { id: 'backups', label: NAVIGATION['backups'].label, Icon: Fi.FiDatabase },
+      { id: 'permissions', label: NAVIGATION['permissions'].label, Icon: FiShield },
+      { id: 'users', label: NAVIGATION['users'].label, Icon: FiUser },
+      { id: 'audit-logs', label: NAVIGATION['audit-logs'].label, Icon: FiActivity },
+      { id: 'backups', label: NAVIGATION['backups'].label, Icon: FiDatabase },
     ],
   },
 ];
@@ -236,93 +236,93 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         return FULL_MENU_SECTIONS.filter((section) => section.items.length > 0);
       case 'medical_staff':
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
+          { id: 'home', label: 'Home', Icon: FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: FiGrid }] },
           {
             id: 'medical',
             label: 'Medical',
-            Icon: Fi.FiActivity,
+            Icon: FiActivity,
             items: [
-              { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: Fi.FiHome },
-              { id: 'medical-artifacts', label: NAVIGATION['medical-artifacts'].label, Icon: Fi.FiFileText },
-              { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, Icon: Fi.FiHeart },
-              { id: 'review-requests', label: NAVIGATION['review-requests'].label, Icon: Fi.FiInbox },
-              { id: 'medical', label: 'Medical Profiles', Icon: Fi.FiActivity },
-              { id: 'integration-content', label: NAVIGATION['integration-content'].label, Icon: Fi.FiFileText },
+              { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: FiHome },
+              { id: 'medical-artifacts', label: NAVIGATION['medical-artifacts'].label, Icon: FiFileText },
+              { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, Icon: FiHeart },
+              { id: 'review-requests', label: NAVIGATION['review-requests'].label, Icon: FiInbox },
+              { id: 'medical', label: 'Medical Profiles', Icon: FiActivity },
+              { id: 'integration-content', label: NAVIGATION['integration-content'].label, Icon: FiFileText },
             ],
           },
           {
             id: 'forms',
             label: 'Client Forms',
-            Icon: Fi.FiFileText,
+            Icon: FiFileText,
             items: [
-              { id: 'client-forms', label: NAVIGATION['client-forms'].label, Icon: Fi.FiFileText },
+              { id: 'client-forms', label: NAVIGATION['client-forms'].label, Icon: FiFileText },
             ],
           },
           {
             id: 'retreats',
             label: 'Retreat Operations',
-            Icon: Fi.FiCalendar,
+            Icon: FiCalendar,
             items: [
-              { id: 'workflow', label: NAVIGATION['workflow'].label, Icon: Fi.FiLayers },
-              { id: 'medical-retreats', label: NAVIGATION['medical-retreats'].label, Icon: Fi.FiCalendar },
-              { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-              { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: Fi.FiUsers },
-              { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
-              { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-              { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, Icon: Fi.FiCalendar },
-              { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, Icon: Fi.FiLayers },
-              { id: 'booking-flow', label: NAVIGATION['booking-flow'].label, Icon: Fi.FiCheckSquare },
-              { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: Fi.FiCalendar },
-              { id: 'scheduled-reminders', label: 'Scheduled Reminders', Icon: Fi.FiBell },
-              { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
-              { id: 'booking-document-types', label: NAVIGATION['booking-document-types'].label, Icon: Fi.FiSettings },
+              { id: 'workflow', label: NAVIGATION['workflow'].label, Icon: FiLayers },
+              { id: 'medical-retreats', label: NAVIGATION['medical-retreats'].label, Icon: FiCalendar },
+              { id: 'retreats', label: 'Retreats', Icon: FiCalendar },
+              { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: FiUsers },
+              { id: 'ceremonies', label: 'Ceremonies', Icon: FiClock },
+              { id: 'bookings', label: 'Bookings', Icon: FiBookOpen },
+              { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, Icon: FiCalendar },
+              { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, Icon: FiLayers },
+              { id: 'booking-flow', label: NAVIGATION['booking-flow'].label, Icon: FiCheckSquare },
+              { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: FiCalendar },
+              { id: 'scheduled-reminders', label: 'Scheduled Reminders', Icon: FiBell },
+              { id: 'booking-documents', label: 'Document Library', Icon: FiFileText },
+              { id: 'booking-document-types', label: NAVIGATION['booking-document-types'].label, Icon: FiSettings },
             ],
           },
           {
             id: 'clients',
             label: 'Clients',
-            Icon: Fi.FiUsers,
+            Icon: FiUsers,
             items: [
-              { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
-              { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
+              { id: 'clients', label: 'Clients', Icon: FiUsers },
+              { id: 'screening', label: 'Screenings', Icon: FiClipboard },
             ],
           },
-          { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
-            { id: 'assistant', label: 'Assistant', Icon: Fi.FiCpu },
-            { id: 'communications', label: NAVIGATION['communications'].label, Icon: Fi.FiMail },
-            { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+          { id: 'operations', label: 'Operations', Icon: FiBriefcase, items: [
+            { id: 'assistant', label: 'Assistant', Icon: FiCpu },
+            { id: 'communications', label: NAVIGATION['communications'].label, Icon: FiMail },
+            { id: 'reminders', label: 'Reminders', Icon: FiBell },
           ] },
-          { id: 'misc', label: 'Files & Reports', Icon: Fi.FiMoreHorizontal, items: [
-            { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
+          { id: 'misc', label: 'Files & Reports', Icon: FiMoreHorizontal, items: [
+            { id: 'file-uploads', label: 'File Uploads', Icon: FiFolder },
           ] },
         ];
       case 'medical_advisor':
         return [
-          { id: 'medical', label: 'Medical', Icon: Fi.FiActivity, items: [
-            { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: Fi.FiMonitor },
-            { id: 'review-requests', label: NAVIGATION['review-requests'].label, Icon: Fi.FiInbox },
-            { id: 'integration-content', label: NAVIGATION['integration-content'].label, Icon: Fi.FiFileText },
+          { id: 'medical', label: 'Medical', Icon: FiActivity, items: [
+            { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: FiMonitor },
+            { id: 'review-requests', label: NAVIGATION['review-requests'].label, Icon: FiInbox },
+            { id: 'integration-content', label: NAVIGATION['integration-content'].label, Icon: FiFileText },
           ] },
         ];
       case 'facilitator':
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
-          { id: 'retreats', label: 'Retreat Operations', Icon: Fi.FiCalendar, items: [
-            { id: 'integration', label: 'Integration Calls', Icon: Fi.FiHeart },
-            { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-            { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: Fi.FiUsers },
-            { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
-            { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-            { id: 'houses', label: NAVIGATION['houses'].label, Icon: Fi.FiHome },
-            { id: 'booster-offers', label: 'Booster Offers', Icon: Fi.FiZap },
+          { id: 'home', label: 'Home', Icon: FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: FiGrid }] },
+          { id: 'retreats', label: 'Retreat Operations', Icon: FiCalendar, items: [
+            { id: 'integration', label: 'Integration Calls', Icon: FiHeart },
+            { id: 'retreats', label: 'Retreats', Icon: FiCalendar },
+            { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: FiUsers },
+            { id: 'ceremonies', label: 'Ceremonies', Icon: FiClock },
+            { id: 'bookings', label: 'Bookings', Icon: FiBookOpen },
+            { id: 'houses', label: NAVIGATION['houses'].label, Icon: FiHome },
+            { id: 'booster-offers', label: 'Booster Offers', Icon: FiZap },
           ] },
-          { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [
-            { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
-            { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
+          { id: 'clients', label: 'Clients', Icon: FiUsers, items: [
+            { id: 'clients', label: 'Clients', Icon: FiUsers },
+            { id: 'screening', label: 'Screenings', Icon: FiClipboard },
           ] },
-          { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
-            { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
-            { id: 'communications', label: NAVIGATION['communications'].label, Icon: Fi.FiMail },
+          { id: 'operations', label: 'Operations', Icon: FiBriefcase, items: [
+            { id: 'reminders', label: 'Reminders', Icon: FiBell },
+            { id: 'communications', label: NAVIGATION['communications'].label, Icon: FiMail },
           ] },
         ];
       case 'helper':
@@ -330,22 +330,22 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           {
             id: 'helper',
             label: 'Current Retreat',
-            Icon: Fi.FiActivity,
+            Icon: FiActivity,
             items: [
-              { id: 'current-retreat', label: 'EKG & BP Entry', Icon: Fi.FiActivity },
+              { id: 'current-retreat', label: 'EKG & BP Entry', Icon: FiActivity },
             ],
           },
         ];
       case 'user':
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
-          { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [{ id: 'clients', label: 'Clients', Icon: Fi.FiUsers }] },
-          { id: 'communications', label: NAVIGATION['communications'].label, Icon: Fi.FiBell, items: [{ id: 'reminders', label: 'Reminders', Icon: Fi.FiBell }] },
+          { id: 'home', label: 'Home', Icon: FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: FiGrid }] },
+          { id: 'clients', label: 'Clients', Icon: FiUsers, items: [{ id: 'clients', label: 'Clients', Icon: FiUsers }] },
+          { id: 'communications', label: NAVIGATION['communications'].label, Icon: FiBell, items: [{ id: 'reminders', label: 'Reminders', Icon: FiBell }] },
         ];
       default:
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
-          { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [{ id: 'clients', label: 'Clients', Icon: Fi.FiUsers }] },
+          { id: 'home', label: 'Home', Icon: FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: FiGrid }] },
+          { id: 'clients', label: 'Clients', Icon: FiUsers, items: [{ id: 'clients', label: 'Clients', Icon: FiUsers }] },
         ];
     }
   }, [navigationRole]);
@@ -360,20 +360,20 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
       return [{
         id: 'shopping',
         label: 'Shopping',
-        Icon: Fi.FiShoppingBag,
-        items: [{ id: 'expenses', label: 'Receipts & expenses', Icon: Fi.FiCamera }],
+        Icon: FiShoppingBag,
+        items: [{ id: 'expenses', label: 'Receipts & expenses', Icon: FiCamera }],
       }];
     }
     if (appMode === 'retreat') {
       return [{
         id: 'retreat-mode',
         label: selectedRetreatLabel || 'This retreat',
-        Icon: Fi.FiCalendar,
-        items: [{ id: 'selected-retreat', label: 'Retreat dashboard', Icon: Fi.FiGrid }],
+        Icon: FiCalendar,
+        items: [{ id: 'selected-retreat', label: 'Retreat dashboard', Icon: FiGrid }],
       }];
     }
     const setup: MenuItem[] = [];
-    if (canShowNavigation('communications-settings', navigationRole, preferences)) setup.push({ id: 'communications-settings', label: NAVIGATION['communications-settings'].label, Icon: Fi.FiMail });
+    if (canShowNavigation('communications-settings', navigationRole, preferences)) setup.push({ id: 'communications-settings', label: NAVIGATION['communications-settings'].label, Icon: FiMail });
     const readiness: MenuItem[] = [];
     const daily = roleSections.map(section => ({ ...section, items: section.items
       .filter(item => canShowNavigation(item.id, navigationRole, preferences))
@@ -384,9 +384,9 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         return true;
       })
     })).filter(section => section.items.length);
-    if (navigationRole === 'admin') daily.unshift({ id: 'work-mode-launcher', label: 'Focused work', Icon: Fi.FiLayers, items: [{ id: 'work-modes', label: 'Work modes', Icon: Fi.FiCheckSquare }] });
-    if (readiness.length) daily.splice(Math.min(3, daily.length), 0, { id: 'workflow', label: 'Booking Readiness', Icon: Fi.FiLayers, items: readiness.sort((a, b) => Number(b.id === 'workflow') - Number(a.id === 'workflow')) });
-    return [...daily, ...(setup.length ? [{ id: 'setup', label: SETTINGS_LABEL, Icon: Fi.FiSettings, items: setup }] : [])];
+    if (navigationRole === 'admin') daily.unshift({ id: 'work-mode-launcher', label: 'Focused work', Icon: FiLayers, items: [{ id: 'work-modes', label: 'Work modes', Icon: FiCheckSquare }] });
+    if (readiness.length) daily.splice(Math.min(3, daily.length), 0, { id: 'workflow', label: 'Booking Readiness', Icon: FiLayers, items: readiness.sort((a, b) => Number(b.id === 'workflow') - Number(a.id === 'workflow')) });
+    return [...daily, ...(setup.length ? [{ id: 'setup', label: SETTINGS_LABEL, Icon: FiSettings, items: setup }] : [])];
   }, [focusedWorkMode, appMode, getMenuSectionsForRole, selectedRetreatLabel, navigationRole, preferences]);
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase();
@@ -502,7 +502,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                 className="md:hidden p-2 -ml-2 text-apple-gray-500 hover:text-apple-gray-700"
                 onClick={onClose}
               >
-                {React.createElement(Fi.FiX as any, { className: "w-5 h-5" })}
+                {React.createElement(FiX as any, { className: "w-5 h-5" })}
               </button>
             </div>
 
@@ -529,7 +529,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               className="w-full flex items-center justify-center p-2 rounded-apple hover:bg-apple-gray-100 transition-colors"
               aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {React.createElement(Fi.FiChevronLeft as any, {
+              {React.createElement(FiChevronLeft as any, {
                 className: `w-5 h-5 text-apple-gray-500 transition-transform duration-300 ${!isExpanded && 'rotate-180'}`
               })}
               {isExpanded && (
@@ -548,7 +548,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                   Search menu
                 </label>
                 <div className="relative">
-                  {React.createElement(Fi.FiSearch as any, {
+                  {React.createElement(FiSearch as any, {
                     className: "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-apple-gray-400",
                   })}
                   <input
@@ -569,7 +569,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                       aria-label="Clear menu search"
                       className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-apple-gray-400 hover:bg-apple-gray-100 hover:text-apple-gray-700"
                     >
-                      {React.createElement(Fi.FiX as any, { className: "h-4 w-4" })}
+                      {React.createElement(FiX as any, { className: "h-4 w-4" })}
                     </button>
                   )}
                 </div>
@@ -606,7 +606,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                         <span className={`text-sm font-semibold whitespace-nowrap ${sectionIsActive ? 'font-bold' : ''}`}>
                           {section.label}
                         </span>
-                        {!directSection && React.createElement(Fi.FiChevronDown as any, {
+                        {!directSection && React.createElement(FiChevronDown as any, {
                           className: `ml-auto w-4 h-4 transition-transform ${sectionIsOpen ? 'rotate-180' : ''}`
                         })}
                       </>
@@ -730,7 +730,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                     transition-all duration-200
                   "
                 >
-                  {React.createElement(Fi.FiLogOut as any, { className: "w-5 h-5" })}
+                  {React.createElement(FiLogOut as any, { className: "w-5 h-5" })}
                 </button>
               </Tooltip>
             ) : (
@@ -742,7 +742,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                   transition-all duration-200
                 "
               >
-                {React.createElement(Fi.FiLogOut as any, { className: "w-5 h-5 flex-shrink-0" })}
+                {React.createElement(FiLogOut as any, { className: "w-5 h-5 flex-shrink-0" })}
                 <span className="text-sm font-medium whitespace-nowrap">Sign Out</span>
               </button>
             )}

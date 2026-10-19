@@ -1,8 +1,8 @@
+import { Loader } from 'lucide-react';
 import React from 'react';
-import { FiLoader } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
-const LoaderIcon: any = FiLoader;
+const LoaderIcon: any = Loader;
 
 const languageLabels: Record<BookingConfirmationLanguage, string> = { pl: 'Polish', cz: 'Czech', en: 'English' };
 const clientName = (client: any) => String(client?.fullName || client?.name || [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ')).trim() || 'this client';

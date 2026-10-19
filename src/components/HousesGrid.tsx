@@ -1,3 +1,4 @@
+import { DollarSign, Edit2, Home, Plus, Trash2, Users } from 'lucide-react';
 import HouseRoomConfiguration from './HouseRoomConfiguration';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
@@ -5,7 +6,6 @@ import { housesApi } from '../services/api';
 import { House } from '../types';
 import { resolveNumberOfRooms } from './HousesGrid.helpers';
 import AppleButton from './AppleButton';
-import { FiPlus, FiEdit2, FiTrash2, FiHome, FiUsers, FiDollarSign } from 'react-icons/fi';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -277,7 +277,7 @@ const HousesGrid: React.FC = () => {
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Houses Management</h1>
         <AppleButton onClick={handleAdd} className="apple-button-primary">
-          <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+          <Icon icon={Plus} className="w-4 h-4 mr-2" />
           Add New House
         </AppleButton>
       </div>
@@ -330,7 +330,7 @@ const HousesGrid: React.FC = () => {
                 <tr key={house._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <Icon icon={FiHome} className="w-5 h-5 mr-3 text-gray-400" />
+                      <Icon icon={Home} className="w-5 h-5 mr-3 text-gray-400" />
                       <div>
                         <div className="text-sm font-medium text-gray-900">
                           {house.name || house.city || 'Unnamed House'}
@@ -361,7 +361,7 @@ const HousesGrid: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
-                      <Icon icon={FiUsers} className="w-4 h-4 mr-1 text-gray-400" />
+                      <Icon icon={Users} className="w-4 h-4 mr-1 text-gray-400" />
                       {house.capacity || house.guestCapacity || 0} guests
                     </div>
                   </td>
@@ -371,7 +371,7 @@ const HousesGrid: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
-                      <Icon icon={FiDollarSign} className="w-4 h-4 mr-1 text-gray-400" />
+                      <Icon icon={DollarSign} className="w-4 h-4 mr-1 text-gray-400" />
                       {house.pricePerNight ? `$${house.pricePerNight}` : 'N/A'}
                     </div>
                   </td>
@@ -396,14 +396,14 @@ const HousesGrid: React.FC = () => {
                         className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} />
+                        <Icon icon={Edit2} />
                       </button>
                       <button
                         onClick={() => handleDelete(house._id!)}
                         className="icon-action-btn icon-action-btn-danger"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} />
+                        <Icon icon={Trash2} />
                       </button>
                     </div>
                   </td>

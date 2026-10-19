@@ -1,7 +1,7 @@
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Clock, Copy as CopyIcon, Edit2, FileText, Folder, Plus, Sliders, ThumbsDown, ThumbsUp, Trash2 } from 'lucide-react';
 import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiEdit2, FiFileText, FiFolder, FiPlus, FiSliders, FiThumbsDown, FiThumbsUp, FiTrash2 } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import ResponsiveModal from './ResponsiveModal';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
@@ -14,18 +14,18 @@ import { isPendingMedicalReviewStatus, medicalReviewStatusPresentation, medicalR
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
 const statusIconByName: Record<string, any> = {
-  clock: FiClock,
-  'thumbs-up': FiThumbsUp,
-  'thumbs-down': FiThumbsDown,
-  alert: FiAlertTriangle,
-  check: FiCheck,
+  clock: Clock,
+  'thumbs-up': ThumbsUp,
+  'thumbs-down': ThumbsDown,
+  alert: AlertTriangle,
+  check: Check,
 };
 
 const statusClass = Object.fromEntries(
   Object.entries(medicalReviewStatusPresentation).map(([status, presentation]) => [status, presentation.badgeClass]),
 );
 const statusIcon = Object.fromEntries(
-  Object.entries(medicalReviewStatusPresentation).map(([status, presentation]) => [status, statusIconByName[presentation.icon] || FiClock]),
+  Object.entries(medicalReviewStatusPresentation).map(([status, presentation]) => [status, statusIconByName[presentation.icon] || Clock]),
 );
 const statusRowClass = Object.fromEntries(
   Object.entries(medicalReviewStatusPresentation).map(([status, presentation]) => [status, presentation.rowClass]),
@@ -350,7 +350,7 @@ const MedicalReviewGroupPage: React.FC = () => {
               aria-label="Filter requests"
               title="Filter requests"
             >
-              <Icon icon={FiSliders} className="h-5 w-5" />
+              <Icon icon={Sliders} className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -369,7 +369,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                       aria-label="Copy packet link"
                       title="Copy packet link"
                     >
-                      <Icon icon={FiCopy} className="h-4 w-4" />
+                      <Icon icon={CopyIcon} className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
@@ -378,7 +378,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                       aria-label="Add MRR to packet"
                       title="Add MRR to packet"
                     >
-                      <Icon icon={FiPlus} className="h-4 w-4" />
+                      <Icon icon={Plus} className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
@@ -387,7 +387,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                       aria-label={packetEditMode ? 'Stop editing packet' : 'Edit packet'}
                       title={packetEditMode ? 'Stop editing packet' : 'Edit packet'}
                     >
-                      <Icon icon={FiEdit2} className="h-4 w-4" />
+                      <Icon icon={Edit2} className="h-4 w-4" />
                     </button>
                   </>
                 )}
@@ -407,7 +407,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                     aria-label="Save title"
                     title="Save title"
                   >
-                    <Icon icon={FiCheck} className="h-4 w-4" />
+                    <Icon icon={Check} className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
@@ -417,7 +417,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                     aria-label="Delete packet"
                     title="Delete packet"
                   >
-                    <Icon icon={FiTrash2} className="h-4 w-4" />
+                    <Icon icon={Trash2} className="h-4 w-4" />
                   </button>
                 </div>
               )}
@@ -432,7 +432,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                     disabled={!selectedRequestIds.length}
                     className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                   >
-                    <Icon icon={FiFolder} className="h-4 w-4" />
+                    <Icon icon={Folder} className="h-4 w-4" />
                     Move selected
                   </button>
                 </div>
@@ -462,14 +462,14 @@ const MedicalReviewGroupPage: React.FC = () => {
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-700">
-                      <Icon icon={FiFolder} className="h-4 w-4" />
+                      <Icon icon={Folder} className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
                       <div className={`truncate text-sm font-semibold text-gray-900 ${section.title === group?.title ? 'md:block hidden' : ''}`}>{section.title}</div>
                       <div className="text-xs text-gray-500">{section.subtitle}</div>
                     </div>
                   </div>
-                  <Icon icon={expanded ? FiChevronDown : FiChevronRight} className="h-5 w-5 shrink-0 text-gray-500" />
+                  <Icon icon={expanded ? ChevronDown : ChevronRight} className="h-5 w-5 shrink-0 text-gray-500" />
                 </button>
                 {expanded && (
                   <div className="divide-y divide-gray-100">
@@ -494,7 +494,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                           <span className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
                             {String(request.status || 'unknown').replace(/_/g, ' ')}
                           </span>
-                          <Icon icon={FiChevronRight} className="h-5 w-5 shrink-0 text-gray-300" />
+                          <Icon icon={ChevronRight} className="h-5 w-5 shrink-0 text-gray-300" />
                         </button>
 
                         <div
@@ -529,7 +529,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                         </div>
                         <div>
                           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                            <Icon icon={statusIcon[request.status] || FiClock} className="h-3.5 w-3.5" />
+                            <Icon icon={statusIcon[request.status] || Clock} className="h-3.5 w-3.5" />
                             {String(request.status || 'unknown').replace(/_/g, ' ')}
                           </span>
                         </div>

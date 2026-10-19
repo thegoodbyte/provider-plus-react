@@ -1,7 +1,7 @@
+import { Edit2, Home, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { retreatExpensesApi, expenseTypesApi } from '../services/api';
 import { RetreatExpense, ExpenseType, ExpenseSummary } from '../types';
-import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiHome } from 'react-icons/fi';
 import './ClientsGrid.css';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
@@ -282,21 +282,21 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
           disabled={showAddForm}
         >
-          <Icon icon={FiPlus} className="w-4 h-4" />
+          <Icon icon={Plus} className="w-4 h-4" />
           Add Expense
         </button>
         <button
           onClick={handleAutoGenerateHouseCost}
           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
         >
-          <Icon icon={FiHome} className="w-4 h-4" />
+          <Icon icon={Home} className="w-4 h-4" />
           Sync Planned Budget
         </button>
         <button
           onClick={fetchData}
           className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center gap-2"
         >
-          <Icon icon={FiRefreshCw} className="w-4 h-4" />
+          <Icon icon={RefreshCw} className="w-4 h-4" />
           Refresh
         </button>
       </div>
@@ -556,7 +556,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                         disabled={!!expense.medicalObligationId}
                         title={expense.medicalObligationId ? "Use medical payout history to correct this payment" : "Edit expense"}
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={Edit2} className="w-4 h-4" />
                         <span>Edit</span>
                       </button>
                       <button
@@ -566,7 +566,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                         disabled={!!expense.medicalObligationId}
                         title={expense.medicalObligationId ? "Keep medical payout history; void the payment above" : "Delete expense"}
                       >
-                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <Icon icon={Trash2} className="w-4 h-4" />
                         <span>Delete</span>
                       </button>
                     </div>

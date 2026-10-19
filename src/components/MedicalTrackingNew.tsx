@@ -1,3 +1,4 @@
+import { Activity, Edit2, FileText, Heart, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -5,7 +6,6 @@ import { api, clientsApi, medicalTrackingApi } from '../services/api';
 import { MedicalItem, Client } from '../types';
 import AppleButton from './AppleButton';
 import SearchableClientDropdown from './SearchableClientDropdown';
-import { FiPlus, FiEdit2, FiTrash2, FiImage, FiFileText, FiHeart, FiActivity } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
@@ -234,13 +234,13 @@ const MedicalTrackingNew: React.FC = () => {
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'EKG':
-        return FiActivity;
+        return Activity;
       case 'Liver':
-        return FiHeart;
+        return Heart;
       case 'Question':
-        return FiFileText;
+        return FileText;
       default:
-        return FiFileText;
+        return FileText;
     }
   };
 
@@ -463,7 +463,7 @@ const MedicalTrackingNew: React.FC = () => {
           </div>
           {user?.role !== 'medical_advisor' && (
             <AppleButton onClick={handleAdd} className="apple-button-primary w-full justify-center sm:w-auto">
-              <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+              <Icon icon={Plus} className="w-4 h-4 mr-2" />
               Add Medical Tracking
             </AppleButton>
           )}
@@ -595,12 +595,12 @@ const MedicalTrackingNew: React.FC = () => {
                           >
                             {isImage ? (
                               <div className="flex items-center">
-                                <Icon icon={FiImage} className="w-4 h-4 mr-1" />
+                                <Icon icon={ImageIcon} className="w-4 h-4 mr-1" />
                                 <span className="text-xs">Image</span>
                               </div>
                             ) : (
                               <div className="flex items-center">
-                                <Icon icon={FiFileText} className="w-4 h-4 mr-1" />
+                                <Icon icon={FileText} className="w-4 h-4 mr-1" />
                                 <span className="text-xs max-w-24 truncate" title={filename}>
                                   {filename}
                                 </span>
@@ -640,14 +640,14 @@ const MedicalTrackingNew: React.FC = () => {
                           className="text-indigo-600 hover:text-indigo-900"
                           title="Edit"
                         >
-                          <Icon icon={FiEdit2} className="w-4 h-4" />
+                          <Icon icon={Edit2} className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(item._id!)}
                           className="text-red-600 hover:text-red-900"
                           title="Delete"
                         >
-                          <Icon icon={FiTrash2} className="w-4 h-4" />
+                          <Icon icon={Trash2} className="w-4 h-4" />
                         </button>
                       </div>
                     </td>

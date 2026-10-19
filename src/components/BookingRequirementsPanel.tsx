@@ -1,12 +1,12 @@
+import { X } from 'lucide-react';
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import type { BookingReadinessSource } from './bookingNextAction';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiX } from 'react-icons/fi';
 import { artifactMatches, documentMatches, RequirementDefinition } from './bookingRequirementRows';
 import { useBookingRequirements } from './useBookingRequirements';
 import EmailComposeModal from './EmailComposeModal';
-const CloseIcon: React.FC = () => React.createElement(FiX as any);
+const CloseIcon: React.FC = () => React.createElement(X as any);
 
 export interface BookingRequirementsPanelProps { bookingId: string; clientId?: string; retreatId?: string; recipientEmail?: string; refreshKey: number; focusItemId?: string; onReadinessChange?: (source: BookingReadinessSource) => void; onStatusChange?: (status: { missing: number; total: number; unavailable?: number }) => void; }
 export const routePrefixForPath = (pathname: string) => { const first = pathname.split('/').filter(Boolean)[0]; return ['admin', 'medical', 'staff', 'user'].includes(first) ? `/${first}` : ''; };

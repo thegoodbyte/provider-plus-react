@@ -1,5 +1,5 @@
+import { ArrowLeft, Save as SaveIcon } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiArrowLeft, FiSave } from 'react-icons/fi';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { contactBookApi, retreatsApi } from '../services/api';
 import { ContactBookEntry, Retreat, RetreatStaffAssignment } from '../types';
@@ -87,11 +87,11 @@ const RetreatStaffAssignmentsPage: React.FC = () => {
   return <main className="mx-auto min-h-full max-w-7xl border-t-4 border-blue-600 bg-[#eceff3] text-gray-900">
     <header className="flex flex-col gap-4 border-b border-gray-900 bg-white px-5 py-5 md:flex-row md:items-center md:justify-between md:px-8">
       <div>
-        <button className="mb-3 inline-flex items-center gap-2 text-sm text-blue-700" onClick={() => navigate(`${prefix}/retreats/${retreatId}`)}><Icon component={FiArrowLeft} /> Back to retreat</button>
+        <button className="mb-3 inline-flex items-center gap-2 text-sm text-blue-700" onClick={() => navigate(`${prefix}/retreats/${retreatId}`)}><Icon component={ArrowLeft} /> Back to retreat</button>
         <h1 className="text-2xl font-bold">Cooks and helpers</h1>
         <p className="mt-1 text-sm text-gray-600">{retreat.code || retreat.retreatCode || retreat.name}</p>
       </div>
-      <button disabled={saving} onClick={save} className="inline-flex min-h-11 items-center justify-center gap-2 bg-gray-950 px-6 text-sm font-semibold text-white disabled:opacity-50"><Icon component={FiSave} />{saving ? 'Saving…' : 'Save team'}</button>
+      <button disabled={saving} onClick={save} className="inline-flex min-h-11 items-center justify-center gap-2 bg-gray-950 px-6 text-sm font-semibold text-white disabled:opacity-50"><Icon component={SaveIcon} />{saving ? 'Saving…' : 'Save team'}</button>
     </header>
     {error && <div className="mx-5 mt-5 border border-red-300 bg-red-50 p-3 text-sm text-red-800 md:mx-8">{error}</div>}
     {saved && <div className="mx-5 mt-5 border border-green-300 bg-green-50 p-3 text-sm text-green-800 md:mx-8">Team saved.</div>}

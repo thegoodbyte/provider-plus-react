@@ -1,6 +1,6 @@
+import { Loader, Send as SendIcon, X } from 'lucide-react';
 import { emailSendFeedback, uncertainWrite } from '../utils/emailSendFeedback';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FiLoader, FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi, communicationsApi } from '../services/api';
 import { EmailAsset, EmailTemplate, MailSettings } from '../types';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
@@ -463,7 +463,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <Toast toast={toast} onDismiss={dismissToast} />
       {deliveryUncertain && <p className="absolute bottom-4 rounded-lg bg-white p-3 text-sm"><a href="/admin/communications">Check sent messages in Communications</a></p>}
-      {sending && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45" role="status" aria-live="polite" aria-label="Sending email"><div className="flex min-w-[220px] flex-col items-center gap-4 rounded-xl bg-white px-8 py-7 text-gray-900 shadow-2xl"><Icon icon={FiLoader} className="h-10 w-10 animate-spin text-blue-600" /><strong className="text-base">Sending email</strong><span className="text-center text-sm text-gray-500">Please keep this window open.</span></div></div>}
+      {sending && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45" role="status" aria-live="polite" aria-label="Sending email"><div className="flex min-w-[220px] flex-col items-center gap-4 rounded-xl bg-white px-8 py-7 text-gray-900 shadow-2xl"><Icon icon={Loader} className="h-10 w-10 animate-spin text-blue-600" /><strong className="text-base">Sending email</strong><span className="text-center text-sm text-gray-500">Please keep this window open.</span></div></div>}
       <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <div>
@@ -476,7 +476,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
             aria-label="Close"
           >
-            <Icon icon={FiX} className="h-5 w-5" />
+            <Icon icon={X} className="h-5 w-5" />
           </button>
         </div>
 
@@ -656,7 +656,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             disabled={sending || deliveryUncertain || (isBookingConfirmationEmail && (attachmentPreparing || attachments.length === 0))}
             className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            <Icon icon={FiSend} className="h-4 w-4" />
+            <Icon icon={SendIcon} className="h-4 w-4" />
             {sending ? 'Sending...' : attachmentPreparing ? 'Preparing PDF…' : 'Send Email'}
           </button>
         </div>

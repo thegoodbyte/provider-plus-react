@@ -1,8 +1,8 @@
+import { Calendar, Check, Clock, Edit2, Plus, Trash2, User } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { remindersApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
 import { Reminder, Client, Retreat, RetreatClient } from '../types';
 import { AutoReminderTemplates } from './AutoReminderTemplates';
-import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiClock, FiUser, FiCalendar } from 'react-icons/fi';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -364,7 +364,7 @@ const RemindersPage: React.FC = () => {
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
             disabled={showAddForm}
           >
-            <Icon icon={FiPlus} className="w-4 h-4" />
+            <Icon icon={Plus} className="w-4 h-4" />
             Add New Reminder
           </button>
         </div>
@@ -414,7 +414,7 @@ const RemindersPage: React.FC = () => {
                         onChange={(e) => setFormData({...formData, reminderType: 'client', retreatId: ''})}
                         style={{ marginRight: '8px' }}
                       />
-                      <Icon icon={FiUser} className="w-4 h-4 mr-1" />
+                      <Icon icon={User} className="w-4 h-4 mr-1" />
                       Client-based
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
@@ -425,7 +425,7 @@ const RemindersPage: React.FC = () => {
                         onChange={(e) => setFormData({...formData, reminderType: 'retreat', clientId: ''})}
                         style={{ marginRight: '8px' }}
                       />
-                      <Icon icon={FiCalendar} className="w-4 h-4 mr-1" />
+                      <Icon icon={Calendar} className="w-4 h-4 mr-1" />
                       Retreat-based
                     </label>
                   </div>
@@ -674,7 +674,7 @@ const RemindersPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {reminder.clientName ? (
                       <div className="flex items-center text-sm text-gray-900">
-                        <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
+                        <Icon icon={User} className="w-4 h-4 mr-2 text-gray-400" />
                         <span className="font-semibold text-blue-700">
                           {reminder.clientDisplayId ? `#${reminder.clientDisplayId}` : ''}
                         </span>
@@ -687,7 +687,7 @@ const RemindersPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {reminder.retreatName ? (
                       <div className="flex items-center text-sm text-gray-900">
-                        <Icon icon={FiCalendar} className="w-4 h-4 mr-2 text-gray-400" />
+                        <Icon icon={Calendar} className="w-4 h-4 mr-2 text-gray-400" />
                         {reminder.retreatName}
                       </div>
                     ) : (
@@ -706,7 +706,7 @@ const RemindersPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
-                      <Icon icon={FiClock} className="w-4 h-4 mr-2 text-gray-400" />
+                      <Icon icon={Clock} className="w-4 h-4 mr-2 text-gray-400" />
                       {formatDate(reminder.dueDate)}
                     </div>
                   </td>
@@ -720,21 +720,21 @@ const RemindersPage: React.FC = () => {
                         className="text-indigo-600 hover:text-indigo-900"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={Edit2} className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleCompleteReminder(reminder._id!)}
                         className="text-green-600 hover:text-green-900"
                         title="Mark Complete"
                       >
-                        <Icon icon={FiCheck} className="w-4 h-4" />
+                        <Icon icon={Check} className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteReminder(reminder._id!)}
                         className="text-red-600 hover:text-red-900"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <Icon icon={Trash2} className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

@@ -1,3 +1,4 @@
+import { Camera, Check, ChevronDown, Edit2, Plus, Search as SearchIcon, Trash2, User, UserCheck, X } from 'lucide-react';
 import { matchesPhoneSearch, sanitizePhoneNumber } from '../utils/phoneUtils';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -25,18 +26,6 @@ import {
   leadWorkflowStatuses,
   normalizeClientWorkflowStatus,
 } from '../config/clientWorkflowStatus';
-import {
-  FiPlus,
-  FiSearch,
-  FiChevronDown,
-  FiEdit2,
-  FiUserCheck,
-  FiCheck,
-  FiX,
-  FiTrash2,
-  FiCamera,
-  FiUser
-} from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -83,7 +72,7 @@ const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client }
       {profilePictureUrl ? (
         <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" />
       ) : (
-        <Icon icon={FiUser} className="h-4 w-4" />
+        <Icon icon={User} className="h-4 w-4" />
       )}
     </span>
   );
@@ -596,7 +585,7 @@ const UnifiedClientManager: React.FC = () => {
           onClick={handleNewClient}
           className="w-auto shrink-0 whitespace-nowrap"
         >
-          <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+          <Icon icon={Plus} className="w-4 h-4 mr-2" />
           Add Client
         </AppleButton>
       </div>
@@ -605,7 +594,7 @@ const UnifiedClientManager: React.FC = () => {
       <div className="mb-3 flex flex-col sm:flex-row gap-2">
         <div className="flex-1">
           <div className="relative">
-            <Icon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Icon icon={SearchIcon} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               aria-label="Search clients"
@@ -643,7 +632,7 @@ const UnifiedClientManager: React.FC = () => {
                   <div className="flex items-center">
                     ID
                     {sortField === 'display_id' &&
-                      <Icon icon={FiChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
+                      <Icon icon={ChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
                     }
                   </div>
                 </th>
@@ -654,7 +643,7 @@ const UnifiedClientManager: React.FC = () => {
                   <div className="flex items-center">
                     Name
                     {sortField === 'lastName' &&
-                      <Icon icon={FiChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
+                      <Icon icon={ChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
                     }
                   </div>
                 </th>
@@ -668,7 +657,7 @@ const UnifiedClientManager: React.FC = () => {
                   <div className="flex items-center">
                     Status
                     {sortField === 'workflowStatus' &&
-                      <Icon icon={FiChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
+                      <Icon icon={ChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
                     }
                   </div>
                 </th>
@@ -679,7 +668,7 @@ const UnifiedClientManager: React.FC = () => {
                   <div className="flex items-center">
                     Retreat
                     {sortField === 'retreatCode' &&
-                      <Icon icon={FiChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
+                      <Icon icon={ChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
                     }
                   </div>
                 </th>
@@ -766,7 +755,7 @@ const UnifiedClientManager: React.FC = () => {
                         className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} />
+                        <Icon icon={Edit2} />
                       </button>
                       {normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'entered' && (
                         <button
@@ -774,7 +763,7 @@ const UnifiedClientManager: React.FC = () => {
                           className="icon-action-btn icon-action-btn-view"
                           title="Start Screening"
                         >
-                          <Icon icon={FiUserCheck} />
+                          <Icon icon={UserCheck} />
                         </button>
                       )}
                       {normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'screening_scheduled' && (
@@ -784,14 +773,14 @@ const UnifiedClientManager: React.FC = () => {
                             className="icon-action-btn icon-action-btn-success"
                             title="Approve"
                           >
-                            <Icon icon={FiCheck} />
+                            <Icon icon={Check} />
                           </button>
                           <button
                             onClick={() => handleWorkflowStatusUpdate(client._id!, 'screened_declined', 'Not suitable')}
                             className="icon-action-btn icon-action-btn-danger"
                             title="Reject"
                           >
-                            <Icon icon={FiX} />
+                            <Icon icon={X} />
                           </button>
                         </>
                       )}
@@ -800,7 +789,7 @@ const UnifiedClientManager: React.FC = () => {
                         className="icon-action-btn icon-action-btn-danger"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} />
+                        <Icon icon={Trash2} />
                       </button>
                     </div>
                   </td>
@@ -831,7 +820,7 @@ const UnifiedClientManager: React.FC = () => {
                   onClick={handleCloseForm}
                   className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
-                  <Icon icon={FiX} className="w-5 h-5" />
+                  <Icon icon={X} className="w-5 h-5" />
                 </button>
             </div>
 
@@ -844,11 +833,11 @@ const UnifiedClientManager: React.FC = () => {
                         <img src={profilePicturePreviewUrl} alt="Client profile preview" className="h-full w-full object-cover" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-slate-400">
-                          <Icon icon={FiUser} className="h-12 w-12" />
+                          <Icon icon={User} className="h-12 w-12" />
                         </div>
                       )}
                       <label className="absolute inset-x-0 bottom-0 flex cursor-pointer items-center justify-center gap-2 bg-black/60 px-3 py-2 text-xs font-semibold text-white hover:bg-black/75">
-                        <Icon icon={FiCamera} className="h-3.5 w-3.5" />
+                        <Icon icon={Camera} className="h-3.5 w-3.5" />
                         Upload
                         <input type="file" accept="image/*" onChange={handleProfilePictureSelect} className="hidden" />
                       </label>

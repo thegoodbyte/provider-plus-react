@@ -1,6 +1,6 @@
+import { ChevronDown, Search as SearchIcon, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MedicalItem } from '../types';
-import { FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -88,7 +88,7 @@ const SearchableMedicalTrackingSelect: React.FC<Props> = ({
               onClick={() => { onChange(''); setSearchTerm(''); }}
               className="inline-flex h-7 w-7 items-center justify-center rounded bg-transparent p-0 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
-              <Icon icon={FiX} className="h-4 w-4" />
+              <Icon icon={X} className="h-4 w-4" />
             </button>
           )}
           <button
@@ -96,7 +96,7 @@ const SearchableMedicalTrackingSelect: React.FC<Props> = ({
             onClick={() => setIsOpen((prev) => !prev)}
             className="inline-flex h-7 w-7 items-center justify-center rounded bg-transparent p-0 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           >
-            <Icon icon={isOpen ? FiSearch : FiChevronDown} className="h-4 w-4" />
+            <Icon icon={isOpen ? SearchIcon : ChevronDown} className="h-4 w-4" />
           </button>
         </div>
       </div>

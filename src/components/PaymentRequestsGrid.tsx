@@ -1,3 +1,4 @@
+import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, Plus, Search as SearchIcon, Send as SendIcon, Settings, Slash, Trash2 } from 'lucide-react';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -5,7 +6,6 @@ import { paymentRequestsApi, serviceRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiDollarSign, FiChevronDown, FiEye, FiCopy, FiExternalLink, FiSettings, FiSlash } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 import { paymentRequestFinancialSummary } from './bookingFinancialSummary';
@@ -273,7 +273,7 @@ const PaymentRequestsGrid: React.FC = () => {
     >
       {label}
       <Icon
-        icon={FiChevronDown}
+        icon={ChevronDown}
         className={`h-3 w-3 transition-transform ${sortKey === key && sortDirection === 'asc' ? 'rotate-180' : ''} ${sortKey === key ? 'opacity-100' : 'opacity-35'}`}
       />
     </button>
@@ -296,14 +296,14 @@ const PaymentRequestsGrid: React.FC = () => {
           className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
           aria-label="Manage payment request types"
         >
-          <Icon icon={FiSettings} className="w-4 h-4" />
+          <Icon icon={Settings} className="w-4 h-4" />
           Request Types
         </button>
         <button
           onClick={() => navigate('/admin/payment-requests/new')}
           className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
         >
-          <Icon icon={FiPlus} className="w-4 h-4" />
+          <Icon icon={Plus} className="w-4 h-4" />
           Add Payment Request
         </button>
       </div>
@@ -322,7 +322,7 @@ const PaymentRequestsGrid: React.FC = () => {
         {(paymentFilter !== 'all' || searchTerm) && <button type="button" onClick={() => { setPaymentFilter('all'); setSearchTerm(''); }} className="text-sm text-blue-700 underline">Clear filters</button>}
       </div>
       <div className="mb-4 relative max-w-xl">
-        <Icon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Icon icon={SearchIcon} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text"
           value={searchTerm}
@@ -410,10 +410,10 @@ const PaymentRequestsGrid: React.FC = () => {
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
                         title={request.status === 'cancelled' && request.cancellationReason ? `Cancelled: ${request.cancellationReason}` : undefined}
                       >
-                        {request.status === 'paid' && <Icon icon={FiCheckCircle} className="w-3 h-3" />}
-                        {request.status === 'pending' && <Icon icon={FiClock} className="w-3 h-3" />}
-                        {request.status === 'overdue' && <Icon icon={FiAlertTriangle} className="w-3 h-3" />}
-                        {request.status === 'cancelled' && <Icon icon={FiSlash} className="w-3 h-3" />}
+                        {request.status === 'paid' && <Icon icon={CheckCircle} className="w-3 h-3" />}
+                        {request.status === 'pending' && <Icon icon={Clock} className="w-3 h-3" />}
+                        {request.status === 'overdue' && <Icon icon={AlertTriangle} className="w-3 h-3" />}
+                        {request.status === 'cancelled' && <Icon icon={Slash} className="w-3 h-3" />}
                         {request.status}
                       </span>
                     </td>
@@ -425,28 +425,28 @@ const PaymentRequestsGrid: React.FC = () => {
                           title="Add payment from this request"
                           disabled={request.context === 'standalone_service' && ['paid','cancelled'].includes(request.status)}
                         >
-                          <Icon icon={FiDollarSign} />
+                          <Icon icon={DollarSign} />
                         </button>
                         <button
                           onClick={() => handleSendPaymentRequest(request)}
                           className="icon-action-btn icon-action-btn-view disabled:opacity-50"
                           title="Compose payment request email"
                         >
-                          <Icon icon={FiSend} />
+                          <Icon icon={SendIcon} />
                         </button>
                         <button
                           onClick={() => navigate(request.context === 'standalone_service' ? `/admin/payment-requests/services/${request._id}` : `/admin/payment-requests/${request._id}`)}
                           className="icon-action-btn icon-action-btn-view"
                           title="View"
                         >
-                          <Icon icon={FiEye} />
+                          <Icon icon={Eye} />
                         </button>
                         <button
                           onClick={() => navigate(request.context === 'standalone_service' ? `/admin/payment-requests/services/${request._id}` : `/admin/payment-requests/${request._id}/edit`)}
                           className="icon-action-btn icon-action-btn-edit"
                           title={request.context === 'standalone_service' ? 'Open immutable service document' : 'Edit'}
                         >
-                          <Icon icon={FiEdit2} />
+                          <Icon icon={Edit2} />
                         </button>
                         {request.status !== 'cancelled' && request.status !== 'paid' && (
                           <button
@@ -457,7 +457,7 @@ const PaymentRequestsGrid: React.FC = () => {
                             className="icon-action-btn icon-action-btn-danger"
                             title="Cancel invoice (Storno)"
                           >
-                            <Icon icon={FiSlash} />
+                            <Icon icon={Slash} />
                           </button>
                         )}
                         <button
@@ -466,7 +466,7 @@ const PaymentRequestsGrid: React.FC = () => {
                           title={request.context === 'standalone_service' ? 'Use cancellation from the service document' : 'Delete'}
                           disabled={request.context === 'standalone_service'}
                         >
-                          <Icon icon={FiTrash2} />
+                          <Icon icon={Trash2} />
                         </button>
                       </div>
                     </td>
@@ -515,7 +515,7 @@ const PaymentRequestsGrid: React.FC = () => {
                     onClick={() => copyToClipboard(getIbogaReadyPaymentUrl(selectedSendRequest))}
                     className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"
                   >
-                    <Icon icon={FiCopy} className="h-4 w-4" />
+                    <Icon icon={CopyIcon} className="h-4 w-4" />
                     Copy
                   </button>
                   <button
@@ -523,7 +523,7 @@ const PaymentRequestsGrid: React.FC = () => {
                     onClick={() => window.open(getIbogaReadyPaymentUrl(selectedSendRequest), '_blank', 'noopener,noreferrer')}
                     className="inline-flex items-center justify-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50"
                   >
-                    <Icon icon={FiExternalLink} className="h-4 w-4" />
+                    <Icon icon={ExternalLink} className="h-4 w-4" />
                     Open
                   </button>
                 </div>
@@ -532,8 +532,8 @@ const PaymentRequestsGrid: React.FC = () => {
                 <div className="mb-1 text-xs font-semibold uppercase text-blue-800">Polish ISCZ website URL</div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input readOnly value={getPolishWebsitePaymentUrl(selectedSendRequest)} className="min-w-0 flex-1 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs text-gray-800" />
-                  <button type="button" onClick={() => copyToClipboard(getPolishWebsitePaymentUrl(selectedSendRequest))} className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"><Icon icon={FiCopy} className="h-4 w-4" />Copy</button>
-                  <button type="button" onClick={() => window.open(getPolishWebsitePaymentUrl(selectedSendRequest), '_blank', 'noopener,noreferrer')} className="inline-flex items-center justify-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50"><Icon icon={FiExternalLink} className="h-4 w-4" />Open</button>
+                  <button type="button" onClick={() => copyToClipboard(getPolishWebsitePaymentUrl(selectedSendRequest))} className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"><Icon icon={CopyIcon} className="h-4 w-4" />Copy</button>
+                  <button type="button" onClick={() => window.open(getPolishWebsitePaymentUrl(selectedSendRequest), '_blank', 'noopener,noreferrer')} className="inline-flex items-center justify-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50"><Icon icon={ExternalLink} className="h-4 w-4" />Open</button>
                 </div>
               </div>
               <div>

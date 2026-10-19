@@ -1,3 +1,4 @@
+import { Edit2, Eye, List as ListIcon, Plus, Trash2 } from 'lucide-react';
 import { countOccupyingRetreatBookings } from './RetreatsGrid.helpers';
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -6,7 +7,6 @@ import { retreatsApi, housesApi, bookingsApi, bookingFlowApi, referralsApi } fro
 import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate, Referral } from '../types';
 import { EventType } from '../constants/eventTypes';
 import AppleButton from './AppleButton';
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
 import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatEndDateFromStart, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import './RetreatsListRedesign.css';
@@ -490,7 +490,7 @@ const RetreatsGrid: React.FC = () => {
             }}
             className="retreat-register-add"
           >
-            <Icon icon={FiPlus} className="w-4 h-4 mr-1" />
+            <Icon icon={Plus} className="w-4 h-4 mr-1" />
             <span className="retreat-register-add-wide">Add retreat</span><span className="retreat-register-add-short">Add</span>
           </button>
         </div>
@@ -689,10 +689,10 @@ const RetreatsGrid: React.FC = () => {
               <div className="retreat-register-capacity"><strong>{occupied}<small>/{capacity || '—'}</small></strong><span>{places === 0 ? 'no places left' : `${places} place${places === 1 ? '' : 's'} open`}</span></div>
               <div className="retreat-register-progress"><div><i style={{ width: `${percent}%` }} /></div><span>{daysAway === null ? 'Date not set' : `${daysAway} days away`}</span></div>
               <div className="retreat-register-actions">
-                <button onClick={() => handleViewRetreat(retreat._id!)} title="View retreat"><Icon icon={FiEye} /><span>View</span></button>
-                <button onClick={edit} title="Edit retreat"><Icon icon={FiEdit2} /><span>Edit</span></button>
-                <button onClick={() => { setViewMode('holistic'); }} title="View retreat clients"><Icon icon={FiList} /></button>
-                <button className="is-danger" onClick={() => handleDelete(retreat._id!)} title="Delete retreat"><Icon icon={FiTrash2} /></button>
+                <button onClick={() => handleViewRetreat(retreat._id!)} title="View retreat"><Icon icon={Eye} /><span>View</span></button>
+                <button onClick={edit} title="Edit retreat"><Icon icon={Edit2} /><span>Edit</span></button>
+                <button onClick={() => { setViewMode('holistic'); }} title="View retreat clients"><Icon icon={ListIcon} /></button>
+                <button className="is-danger" onClick={() => handleDelete(retreat._id!)} title="Delete retreat"><Icon icon={Trash2} /></button>
               </div>
             </article>;
           })}

@@ -1,9 +1,9 @@
+import { AlertCircle, ArrowLeft, Calendar, Check, Edit2, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { retreatsApi, bookingsApi, clientsApi } from '../services/api';
 import AppleButton from '../components/AppleButton';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { FiArrowLeft, FiEdit2, FiCheck, FiX, FiCalendar, FiAlertCircle } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -294,7 +294,7 @@ const RetreatDetailView: React.FC = () => {
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <AppleButton variant="ghost" onClick={() => navigate(-1)}>
-            <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
+            <Icon icon={ArrowLeft} className="w-4 h-4 mr-2" />
             Back
           </AppleButton>
           <h1 className="text-2xl font-bold">{retreat?.title || 'Retreat Detail'}</h1>

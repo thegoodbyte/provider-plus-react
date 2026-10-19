@@ -1,8 +1,8 @@
+import { Edit2, RefreshCw, Trash2 } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { paymentsApi } from '../services/api';
 import { Payment, PaymentSummary } from '../types';
-import { FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
 import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
@@ -554,14 +554,14 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                           className="icon-action-btn icon-action-btn-edit"
                           title="Edit Payment"
                         >
-                          <Icon icon={FiEdit2} />
+                          <Icon icon={Edit2} />
                         </button>
                         <button
                           onClick={() => handleDeletePayment(payment._id)}
                           className="icon-action-btn icon-action-btn-danger"
                           title="Delete Payment"
                         >
-                          <Icon icon={FiTrash2} />
+                          <Icon icon={Trash2} />
                         </button>
                         {payment.status === 'completed' && (
                           <button
@@ -569,7 +569,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                             className="icon-action-btn icon-action-btn-edit"
                             title="Process Refund"
                           >
-                            <Icon icon={FiRefreshCw} />
+                            <Icon icon={RefreshCw} />
                           </button>
                         )}
                       </div>

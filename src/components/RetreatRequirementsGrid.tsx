@@ -1,8 +1,8 @@
+import { Check, Clock, X } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { clientRequirementsApi, retreatsApi, requirementsApi } from '../services/api';
 import { Retreat, ClientRequirement, Requirement } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
-import { FiCheck, FiX, FiClock } from 'react-icons/fi';
 import './RetreatsGrid.css';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';

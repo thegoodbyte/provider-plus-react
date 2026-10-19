@@ -1,3 +1,4 @@
+import { ArrowLeft, Save as SaveIcon } from 'lucide-react';
 import PaymentAccommodation from './PaymentAccommodation';
 import React, { useEffect, useState } from 'react';
 import { PaymentRequest, PaymentRequestLineItem, Client, Retreat, Ceremony } from '../types';
@@ -6,7 +7,6 @@ import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchableBookingSelect from './SearchableBookingSelect';
 import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi, PaymentRequestTypeSetting, paymentsApi, retreatsApi } from '../services/api';
-import { FiSave, FiArrowLeft } from 'react-icons/fi';
 import { formatCalendarDate, parseCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
 import RevolutPaymentLinkPicker from './RevolutPaymentLinkPicker';
@@ -485,7 +485,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             onClick={onCancel}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
-            <Icon icon={FiArrowLeft} className="w-4 h-4" />
+            <Icon icon={ArrowLeft} className="w-4 h-4" />
             Back
           </button>
           <div className="min-w-0">
@@ -1092,7 +1092,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               disabled={loading || Boolean(balanceConflict)}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Icon icon={FiSave} className="w-4 h-4" />
+              <Icon icon={SaveIcon} className="w-4 h-4" />
               {loading ? 'Saving...' : isEdit ? 'Update Request' : 'Create Request'}
             </button>
           </div>

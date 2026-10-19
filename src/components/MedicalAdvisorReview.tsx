@@ -1,9 +1,9 @@
+import { AlertTriangle, ArrowLeft, Calendar, Check, FileText, Image as ImageIcon, Save as SaveIcon, User, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { medicalTrackingApi, clientsApi } from '../services/api';
 import { MedicalItem, Client } from '../types';
 import AppleButton from './AppleButton';
-import { FiArrowLeft, FiSave, FiImage, FiUser, FiCalendar, FiFileText, FiCheck, FiX, FiAlertTriangle } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
@@ -137,11 +137,11 @@ const MedicalAdvisorReview: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'OK':
-        return FiCheck;
+        return Check;
       case 'NOT OK':
-        return FiX;
+        return X;
       case 'caution':
-        return FiAlertTriangle;
+        return AlertTriangle;
       default:
         return null;
     }
@@ -228,7 +228,7 @@ const MedicalAdvisorReview: React.FC = () => {
             onClick={() => navigate('/medical/medical-tracking')}
             className="text-gray-600 hover:text-gray-900 flex items-center gap-2 transition-colors"
           >
-            <Icon icon={FiArrowLeft} className="w-5 h-5" />
+            <Icon icon={ArrowLeft} className="w-5 h-5" />
             Back to Medical Tracking
           </button>
           <div>
@@ -252,7 +252,7 @@ const MedicalAdvisorReview: React.FC = () => {
           {/* Item Details Card */}
           <div className="bg-white rounded-apple-lg shadow-apple-sm p-6 border border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Icon icon={FiFileText} className="w-5 h-5 mr-2 text-gray-600" />
+              <Icon icon={FileText} className="w-5 h-5 mr-2 text-gray-600" />
               Item Details
             </h2>
 
@@ -272,7 +272,7 @@ const MedicalAdvisorReview: React.FC = () => {
               <div className="col-span-2 p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-600 font-medium flex items-center">
-                    <Icon icon={FiUser} className="w-4 h-4 mr-1" />
+                    <Icon icon={User} className="w-4 h-4 mr-1" />
                     Client:
                   </span>
                   {client ? (
@@ -297,7 +297,7 @@ const MedicalAdvisorReview: React.FC = () => {
               <div className="col-span-2 p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-600 font-medium flex items-center">
-                    <Icon icon={FiCalendar} className="w-4 h-4 mr-1" />
+                    <Icon icon={Calendar} className="w-4 h-4 mr-1" />
                     Date Received:
                   </span>
                   <span className="font-medium text-gray-900">{formatDate(item.date_received)}</span>
@@ -340,7 +340,7 @@ const MedicalAdvisorReview: React.FC = () => {
           {imageUrl && (
             <div className="bg-white rounded-apple-lg shadow-apple-sm p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Icon icon={FiImage} className="w-5 h-5 mr-2 text-gray-600" />
+                <Icon icon={ImageIcon} className="w-5 h-5 mr-2 text-gray-600" />
                 Primary Medical Document
               </h2>
 
@@ -354,7 +354,7 @@ const MedicalAdvisorReview: React.FC = () => {
                   />
                 ) : (
                   <div className="text-center text-red-500 py-8">
-                    <Icon icon={FiX} className="w-8 h-8 mx-auto mb-2" />
+                    <Icon icon={X} className="w-8 h-8 mx-auto mb-2" />
                     Failed to load medical document
                   </div>
                 )}
@@ -366,7 +366,7 @@ const MedicalAdvisorReview: React.FC = () => {
           {additionalFiles.length > 0 && (
             <div className="bg-white rounded-apple-lg shadow-apple-sm p-6 border border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Icon icon={FiFileText} className="w-5 h-5 mr-2 text-gray-600" />
+                <Icon icon={FileText} className="w-5 h-5 mr-2 text-gray-600" />
                 Additional Files ({additionalFiles.length})
               </h2>
 
@@ -404,13 +404,13 @@ const MedicalAdvisorReview: React.FC = () => {
                             }}
                           />
                           <div className="text-center text-red-500 py-4" style={{ display: 'none' }}>
-                            <Icon icon={FiX} className="w-6 h-6 mx-auto mb-1" />
+                            <Icon icon={X} className="w-6 h-6 mx-auto mb-1" />
                             Failed to load image
                           </div>
                         </div>
                       ) : (
                         <div className="text-center text-gray-500 py-4">
-                          <Icon icon={FiFileText} className="w-8 h-8 mx-auto mb-2" />
+                          <Icon icon={FileText} className="w-8 h-8 mx-auto mb-2" />
                           <p className="text-sm">{isImage ? 'Image file' : 'Document file'}</p>
                           <p className="text-xs text-gray-400">Click "View File" to open</p>
                         </div>
@@ -490,7 +490,7 @@ const MedicalAdvisorReview: React.FC = () => {
                   disabled={!reviewStatus || isSaving}
                   className={`w-full justify-center relative z-10 ${reviewStatus ? 'apple-button-primary' : 'apple-button-disabled'}`}
                 >
-                  <Icon icon={FiSave} className="w-4 h-4 mr-2" />
+                  <Icon icon={SaveIcon} className="w-4 h-4 mr-2" />
                   {isSaving ? 'Saving Review...' : reviewStatus ? 'Save Review' : 'Select Review Status First'}
                 </AppleButton>
               </div>

@@ -1,8 +1,8 @@
+import { Check, Download, FileText, Mail, RefreshCw, X } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientMedicalApi } from '../services/api';
 import AppleButton from './AppleButton';
-import { FiRefreshCw, FiDownload, FiMail, FiFileText, FiCheck, FiX } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -224,11 +224,11 @@ const MedicalGrid: React.FC = () => {
             </select>
           </div>
           <AppleButton onClick={handleExport} className="apple-button-secondary">
-            <Icon icon={FiDownload} className="w-4 h-4 mr-2" />
+            <Icon icon={Download} className="w-4 h-4 mr-2" />
             Export CSV
           </AppleButton>
           <AppleButton onClick={fetchMedicalData} className="apple-button-primary">
-            <Icon icon={FiRefreshCw} className="w-4 h-4 mr-2" />
+            <Icon icon={RefreshCw} className="w-4 h-4 mr-2" />
             Refresh
           </AppleButton>
         </div>
@@ -327,7 +327,7 @@ const MedicalGrid: React.FC = () => {
                     </span>
                     {record.ekgFileName && (
                       <div className="text-xs text-gray-500 mt-1 flex items-center">
-                        <Icon icon={FiFileText} className="w-3 h-3 mr-1" />
+                        <Icon icon={FileText} className="w-3 h-3 mr-1" />
                         {record.ekgFileName}
                       </div>
                     )}
@@ -341,7 +341,7 @@ const MedicalGrid: React.FC = () => {
                     </span>
                     {record.liverPanelFileName && (
                       <div className="text-xs text-gray-500 mt-1 flex items-center">
-                        <Icon icon={FiFileText} className="w-3 h-3 mr-1" />
+                        <Icon icon={FileText} className="w-3 h-3 mr-1" />
                         {record.liverPanelFileName}
                       </div>
                     )}
@@ -352,9 +352,9 @@ const MedicalGrid: React.FC = () => {
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       {record.finalMedicalClearance ? (
-                        <Icon icon={FiCheck} className="w-5 h-5 text-green-500" />
+                        <Icon icon={Check} className="w-5 h-5 text-green-500" />
                       ) : (
-                        <Icon icon={FiX} className="w-5 h-5 text-red-500" />
+                        <Icon icon={X} className="w-5 h-5 text-red-500" />
                       )}
                       <span className="ml-2 text-sm text-gray-900">
                         {record.finalMedicalClearance ? 'Cleared' : 'Not Cleared'}
@@ -384,7 +384,7 @@ const MedicalGrid: React.FC = () => {
                           className="text-blue-600 hover:text-blue-900"
                           title="Email Advisor"
                         >
-                          <Icon icon={FiMail} className="w-4 h-4" />
+                          <Icon icon={Mail} className="w-4 h-4" />
                         </button>
                       )}
                     </div>

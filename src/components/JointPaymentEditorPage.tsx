@@ -1,7 +1,7 @@
+import { ArrowLeft, Plus, Save as SaveIcon, Trash2 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Autocomplete, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiPlus, FiSave, FiTrash2 } from 'react-icons/fi';
 import { bookingsApi, paymentRequestsApi, paymentsApi } from '../services/api';
 import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -102,7 +102,7 @@ const JointPaymentEditorPage: React.FC = () => {
   if (loading) return <LoadingSpinner message="Loading joint payment form..." />;
   return <div className="h-full p-6">
     <div className="mb-6 flex items-center gap-4">
-      <button type="button" onClick={() => navigate('/admin/payments')} className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"><Icon icon={FiArrowLeft} /> Back</button>
+      <button type="button" onClick={() => navigate('/admin/payments')} className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"><Icon icon={ArrowLeft} /> Back</button>
       <div><h1 className="text-2xl font-semibold text-gray-900">Joint / Split Payment</h1><p className="text-sm text-gray-600">Record one received transaction and allocate it across multiple bookings.</p></div>
     </div>
     <form onSubmit={submit} className="space-y-6 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -138,7 +138,7 @@ const JointPaymentEditorPage: React.FC = () => {
         </div>
       </section>
       <section className="border-t border-gray-200 pt-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold text-gray-900">Booking allocations</h2><p className="text-sm text-gray-600">Split the received receipt across the bookings it pays for. These amounts are editable.</p></div><div className="flex gap-2"><button type="button" onClick={() => divideEvenly()} className="rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Divide equally</button><button type="button" onClick={() => setAllocations([...allocations, blankAllocation()])} className="inline-flex items-center gap-2 rounded-md border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"><Icon icon={FiPlus} /> Add booking</button></div></div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold text-gray-900">Booking allocations</h2><p className="text-sm text-gray-600">Split the received receipt across the bookings it pays for. These amounts are editable.</p></div><div className="flex gap-2"><button type="button" onClick={() => divideEvenly()} className="rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Divide equally</button><button type="button" onClick={() => setAllocations([...allocations, blankAllocation()])} className="inline-flex items-center gap-2 rounded-md border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"><Icon icon={Plus} /> Add booking</button></div></div>
         <div className="space-y-4">
           {allocations.map((allocation, index) => {
             return <div key={index} className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-[1.8fr_.7fr_auto]">
@@ -154,14 +154,14 @@ const JointPaymentEditorPage: React.FC = () => {
                 renderInput={params => <TextField {...params} label={`Booking ${index + 1}`} required={!allocation.bookingId} placeholder="Type booking number, client, or retreat" />}
               />
               <label className="text-sm font-medium text-gray-700">Allocated amount *<input type="number" min="0.01" step="0.01" required value={allocation.amount} onChange={(event) => updateAllocation(index, { amount: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label>
-              <button type="button" disabled={allocations.length <= 2} onClick={() => setAllocations(allocations.filter((_, itemIndex) => itemIndex !== index))} className="mt-6 rounded-md p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30" title="Remove allocation"><Icon icon={FiTrash2} /></button>
+              <button type="button" disabled={allocations.length <= 2} onClick={() => setAllocations(allocations.filter((_, itemIndex) => itemIndex !== index))} className="mt-6 rounded-md p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30" title="Remove allocation"><Icon icon={Trash2} /></button>
             </div>;
           })}
         </div>
         <div className={`mt-4 flex justify-end gap-6 rounded-md px-4 py-3 text-sm font-semibold ${Math.abs(difference) <= 0.005 && Number(form.totalAmount) > 0 ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}><span>Received: {(Number(form.totalAmount) || 0).toFixed(2)} {form.currency}</span><span>Allocated: {allocatedTotal.toFixed(2)} {form.currency}</span><span>Difference: {difference.toFixed(2)} {form.currency}</span></div>
       </section>
       <label className="block text-sm font-medium text-gray-700">Notes<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} rows={3} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Context about the joint payment" /></label>
-      <div className="flex justify-end gap-3 border-t border-gray-200 pt-4"><button type="button" onClick={() => navigate('/admin/payments')} className="rounded-md bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300">Cancel</button><button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"><Icon icon={FiSave} />{saving ? 'Saving allocations...' : 'Save Joint Payment'}</button></div>
+      <div className="flex justify-end gap-3 border-t border-gray-200 pt-4"><button type="button" onClick={() => navigate('/admin/payments')} className="rounded-md bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300">Cancel</button><button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"><Icon icon={SaveIcon} />{saving ? 'Saving allocations...' : 'Save Joint Payment'}</button></div>
     </form>
   </div>;
 };

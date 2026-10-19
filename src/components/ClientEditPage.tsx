@@ -1,3 +1,4 @@
+import { ArrowLeft, Camera, Save as SaveIcon, User } from 'lucide-react';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -7,7 +8,6 @@ import { clientsApi, referralsApi } from '../services/api';
 import { Client, Referral } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
-import { FiArrowLeft, FiCamera, FiSave, FiUser } from 'react-icons/fi';
 import { clientWorkflowStatusLabels, clientWorkflowStatusSelectOptions, type ClientWorkflowStatus } from '../config/clientWorkflowStatus';
 import './ClientEditPage.css';
 import ClientReferralFields from './ClientReferralFields';
@@ -318,7 +318,7 @@ const ClientEditPage: React.FC = () => {
           Client not found
         </div>
         <AppleButton onClick={() => navigate(-1)} className="mt-4">
-          <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
+          <Icon icon={ArrowLeft} className="w-4 h-4 mr-2" />
           Go Back
         </AppleButton>
       </div>
@@ -332,7 +332,7 @@ const ClientEditPage: React.FC = () => {
       <div className="mb-6 px-4 py-4">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
           <AppleButton onClick={() => navigate(returnTo || clientDetailPath)} variant="ghost">
-            <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
+            <Icon icon={ArrowLeft} className="w-4 h-4 mr-2" />
             {returnTo ? 'Back to Booking' : 'Back to Client'}
           </AppleButton>
         </div>
@@ -366,11 +366,11 @@ const ClientEditPage: React.FC = () => {
               <img src={profilePictureUrl} alt={`${formData.firstName || ''} ${formData.lastName || ''}`} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-gray-400">
-                <Icon icon={FiUser} className="h-10 w-10" />
+                <Icon icon={User} className="h-10 w-10" />
               </div>
             )}
             <label className="absolute inset-x-0 bottom-0 flex cursor-pointer items-center justify-center gap-2 bg-black/55 px-3 py-3 text-sm font-medium text-white transition hover:bg-black/70">
-              <Icon icon={FiCamera} className="h-4 w-4" />
+              <Icon icon={Camera} className="h-4 w-4" />
               {uploadingProfilePicture ? 'Uploading...' : 'Upload Photo'}
               <input type="file" accept="image/*" onChange={handleProfilePictureUpload} className="hidden" disabled={uploadingProfilePicture || isSubmitting} />
             </label>
@@ -775,7 +775,7 @@ const ClientEditPage: React.FC = () => {
             className="apple-button-primary"
             disabled={isSubmitting}
           >
-            <Icon icon={FiSave} className="w-4 h-4 mr-2" />
+            <Icon icon={SaveIcon} className="w-4 h-4 mr-2" />
             {isSubmitting ? 'Saving...' : 'Save Changes'}
           </AppleButton>
         </div>

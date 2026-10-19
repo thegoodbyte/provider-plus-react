@@ -1,6 +1,6 @@
+import { ArrowLeft, Printer } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FiArrowLeft, FiPrinter } from 'react-icons/fi';
 import { bookingsApi, retreatsApi } from '../services/api';
 import { Retreat } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
@@ -99,8 +99,8 @@ const RetreatClientsPrintPage: React.FC = () => {
   return (
     <div className="retreat-client-print-page">
       <div className="retreat-client-print-toolbar">
-        <button type="button" onClick={() => navigate(-1)}><Icon icon={FiArrowLeft} /> Back</button>
-        <button type="button" onClick={() => window.print()} disabled={loading || Boolean(error)}><Icon icon={FiPrinter} /> Print</button>
+        <button type="button" onClick={() => navigate(-1)}><Icon icon={ArrowLeft} /> Back</button>
+        <button type="button" onClick={() => window.print()} disabled={loading || Boolean(error)}><Icon icon={Printer} /> Print</button>
       </div>
       {loading && <div className="retreat-client-print-message">Loading retreat clients…</div>}
       {error && <div className="retreat-client-print-message retreat-client-print-error">{error}</div>}

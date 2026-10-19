@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { RefreshCw as FiRefreshCw, Search as FiSearch } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, medicalReviewRequestsApi, paymentRequestsApi, remindersApi } from '../services/api';
 import { AttentionItem, attentionActionLabel, attentionStatusLabel, classifyAttention, clientLabel, entityId, entityLabel, isCompleteStatus, isPastRetreat, retreatEndDate, sortAttentionItems } from './NeedsAttentionPage.helpers';
 import { formatCalendarDate } from '../utils/dateFormat';

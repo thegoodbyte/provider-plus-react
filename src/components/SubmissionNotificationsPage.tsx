@@ -1,6 +1,6 @@
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FiBell, FiCheck, FiExternalLink, FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { Bell as FiBell, Check as FiCheck, ExternalLink as FiExternalLink, RefreshCw as FiRefreshCw, Search as FiSearch } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api, bookingDocumentsApi } from '../services/api';
 

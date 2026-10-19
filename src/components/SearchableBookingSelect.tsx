@@ -1,6 +1,6 @@
+import { ChevronDown, Search as SearchIcon, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Client, Retreat, RetreatClient } from '../types';
-import { FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
 
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 export const normalizeBookingSearch = (value: unknown) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L').toLowerCase();
@@ -128,9 +128,9 @@ const SearchableBookingSelect: React.FC<Props> = ({
           className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 pr-16 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
-          {selected && <button type="button" aria-label="Clear booking" onClick={() => choose('')} className="p-1 text-gray-400 hover:text-gray-600"><Icon icon={FiX} className="h-4 w-4" /></button>}
+          {selected && <button type="button" aria-label="Clear booking" onClick={() => choose('')} className="p-1 text-gray-400 hover:text-gray-600"><Icon icon={X} className="h-4 w-4" /></button>}
           <button type="button" aria-label="Toggle booking options" onClick={() => { setOpen((current) => !current); inputRef.current?.focus(); }} className="p-1 text-gray-400 hover:text-gray-600">
-            {open ? <Icon icon={FiSearch} className="h-4 w-4" /> : <Icon icon={FiChevronDown} className="h-4 w-4" />}
+            {open ? <Icon icon={SearchIcon} className="h-4 w-4" /> : <Icon icon={ChevronDown} className="h-4 w-4" />}
           </button>
         </div>
       </div>

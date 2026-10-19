@@ -1,5 +1,5 @@
+import { AlertCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { FiAlertCircle } from 'react-icons/fi';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { canUseApiDebug, initializeApiDebug, setApiDebugEnabled } from '../utils/apiDebug';
@@ -111,7 +111,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
         {error.isPacketAccessError && <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" />}
         <section role={error.isPacketAccessError ? 'alertdialog' : 'alert'} aria-modal={error.isPacketAccessError || undefined} aria-label={error.title || 'Connection and loading feedback'} className={error.isPacketAccessError ? 'relative z-[10001] w-full max-w-md rounded-xl bg-white p-6 shadow-2xl' : 'rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 shadow-lg'}>
           <div className="flex items-start gap-3">
-            <FiAlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
+            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
             <div className="min-w-0 flex-1">
               {error.title && <h2 className="font-semibold text-slate-900">{error.title}</h2>}
               <p className={error.isPacketAccessError ? 'mt-1 text-sm text-slate-600' : 'text-sm'}>{error.message}</p>

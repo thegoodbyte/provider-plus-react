@@ -4,10 +4,10 @@ import ExternalResourcesPage from './ExternalResourcesPage';
 import IntegrationProviderSettings from './IntegrationProviderSettings';
 import CommunicationsSettingsPage from './CommunicationsSettingsPage';
 import IntegrationLibrary from './IntegrationLibrary';
+import { BookOpen, Calendar, ChevronDown, CreditCard, Grid, Menu as MenuIcon, ShoppingBag, Users, X } from 'lucide-react';
 import EnvironmentBanner from './EnvironmentBanner';
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiMenu, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
 import { NAVIGATION } from '../navigation/navigation';
 import { formatCalendarDate } from '../utils/dateFormat';
 import AppleSidebar from './AppleSidebar';
@@ -424,10 +424,10 @@ const AppleLayout: React.FC = () => {
   };
 
   const quickMenuItems = [
-    { label: 'Clients', route: 'clients', icon: FiUsers },
-    { label: 'Retreats', route: 'retreats', icon: FiCalendar },
-    { label: 'Bookings', route: 'bookings', icon: FiBookOpen },
-    { label: 'Payments', route: 'payments', icon: FiCreditCard },
+    { label: 'Clients', route: 'clients', icon: Users },
+    { label: 'Retreats', route: 'retreats', icon: Calendar },
+    { label: 'Bookings', route: 'bookings', icon: BookOpen },
+    { label: 'Payments', route: 'payments', icon: CreditCard },
   ];
 
   const handleQuickMenuClick = (route: string) => {
@@ -475,10 +475,10 @@ const AppleLayout: React.FC = () => {
           aria-controls="quick-menu"
           aria-label={appMode.mode === 'normal' ? 'Quick Menu' : appMode.mode === 'shopping' ? 'Shopping Mode' : appMode.retreatLabel || 'Retreat Mode'}
         >
-          <HeaderIcon icon={FiGrid} className="workspace-quick-icon h-4 w-4" />
+          <HeaderIcon icon={Grid} className="workspace-quick-icon h-4 w-4" />
           <span className="workspace-quick-label">{appMode.mode === 'normal' ? 'Quick Menu' : appMode.mode === 'shopping' ? 'Shopping Mode' : appMode.retreatLabel || 'Retreat Mode'}</span>
           <HeaderIcon
-            icon={FiChevronDown}
+            icon={ChevronDown}
             className={`h-4 w-4 transition-transform ${quickMenuOpen ? 'rotate-180' : ''}`}
           />
         </button>
@@ -494,23 +494,23 @@ const AppleLayout: React.FC = () => {
                 <div className="text-sm text-apple-gray-600">Large, simple controls for this device.</div>
               </div>
               <button type="button" onClick={() => setQuickMenuOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-full bg-apple-gray-100" aria-label="Close quick menu">
-                <HeaderIcon icon={FiX} className="h-6 w-6" />
+                <HeaderIcon icon={X} className="h-6 w-6" />
               </button>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               <button type="button" onClick={activateNormalMode} className={`min-h-28 rounded-2xl border-2 p-4 text-left ${appMode.mode === 'normal' ? 'border-blue-600 bg-blue-50' : 'border-apple-gray-200'}`}>
-                <HeaderIcon icon={FiGrid} className="mb-3 h-8 w-8 text-blue-700" />
+                <HeaderIcon icon={Grid} className="mb-3 h-8 w-8 text-blue-700" />
                 <div className="font-bold">Normal</div>
                 <div className="text-xs text-apple-gray-600">Full app</div>
               </button>
               <button type="button" onClick={activateShoppingMode} className={`min-h-28 rounded-2xl border-2 p-4 text-left ${appMode.mode === 'shopping' ? 'border-emerald-600 bg-emerald-50' : 'border-apple-gray-200'}`}>
-                <HeaderIcon icon={FiShoppingBag} className="mb-3 h-8 w-8 text-emerald-700" />
+                <HeaderIcon icon={ShoppingBag} className="mb-3 h-8 w-8 text-emerald-700" />
                 <div className="font-bold">Shopping</div>
                 <div className="text-xs text-apple-gray-600">Receipts & expenses</div>
               </button>
               <div className={`min-h-28 rounded-2xl border-2 p-4 ${appMode.mode === 'retreat' ? 'border-violet-600 bg-violet-50' : 'border-apple-gray-200'}`}>
-                <HeaderIcon icon={FiCalendar} className="mb-3 h-8 w-8 text-violet-700" />
+                <HeaderIcon icon={Calendar} className="mb-3 h-8 w-8 text-violet-700" />
                 <div className="font-bold">Retreat</div>
                 <div className="text-xs text-apple-gray-600">One retreat only</div>
               </div>
@@ -659,7 +659,7 @@ const AppleLayout: React.FC = () => {
         <header className="workspace-header">
           <div className="workspace-header-leading">
             <button type="button" className="workspace-icon-button md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu" aria-expanded={sidebarOpen} aria-controls="workspace-navigation">
-              <HeaderIcon icon={FiMenu} className="h-5 w-5" />
+              <HeaderIcon icon={MenuIcon} className="h-5 w-5" />
             </button>
             <span className="workspace-context">Workspace <span>/</span> <strong>{NAVIGATION[activeItem]?.label || activeItem.replace(/-/g, ' ')}</strong></span>
           </div>
@@ -667,7 +667,7 @@ const AppleLayout: React.FC = () => {
           <div className="workspace-header-tools">
             {!focusedWorkMode && renderQuickMenu()}
             <details ref={accountRef} className="workspace-account" key={location.pathname}>
-              <summary aria-label="Account and tools" title="Account and tools"><span>{(user?.firstName || userEmail || 'A')[0].toUpperCase()}</span><HeaderIcon icon={FiChevronDown} className="h-3 w-3" /></summary>
+              <summary aria-label="Account and tools" title="Account and tools"><span>{(user?.firstName || userEmail || 'A')[0].toUpperCase()}</span><HeaderIcon icon={ChevronDown} className="h-3 w-3" /></summary>
               <div className="workspace-account-menu" onClick={(event) => { if ((event.target as HTMLElement).closest('button')) accountRef.current?.removeAttribute('open'); }}>
                 <div className="workspace-account-info"><strong>{[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Your account'}</strong><small>{userEmail}</small></div>
                 {user?.role === 'admin' && <button type="button" onClick={() => { setAppMode({ mode: 'normal' }); navigate('/admin/work-modes'); }}>Work modes</button>}

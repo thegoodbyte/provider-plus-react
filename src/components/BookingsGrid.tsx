@@ -1,10 +1,10 @@
+import { Calendar, ChevronDown, ChevronUp, Edit2, Eye, FileText, Plus, Search as SearchIcon, Trash2, User } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { bookingsApi, retreatsApi } from '../services/api';
 import { RetreatClient, Client, Retreat } from '../types';
 import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiCalendar, FiFileText, FiSearch, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { generateBookingPDF } from './BookingConfirmationPDF';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
@@ -283,7 +283,7 @@ const BookingsGrid: React.FC = () => {
         <span>{children}</span>
         {sortField === field && (
           <Icon
-            icon={sortDirection === 'asc' ? FiChevronUp : FiChevronDown}
+            icon={sortDirection === 'asc' ? ChevronUp : ChevronDown}
             className="w-4 h-4"
           />
         )}
@@ -314,7 +314,7 @@ const BookingsGrid: React.FC = () => {
             onClick={() => navigate(`${routePrefix}/bookings/new`)}
             className="apple-button-primary"
           >
-            <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+            <Icon icon={Plus} className="w-4 h-4 mr-2" />
             Add Booking
           </AppleButton>
         </div>
@@ -326,7 +326,7 @@ const BookingsGrid: React.FC = () => {
         <div className="relative w-full md:max-w-md">
           <label htmlFor="booking-search" className="sr-only">Search bookings</label>
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Icon icon={FiSearch} className="h-5 w-5 text-gray-400" />
+            <Icon icon={SearchIcon} className="h-5 w-5 text-gray-400" />
           </div>
           <input
             id="booking-search"
@@ -391,7 +391,7 @@ const BookingsGrid: React.FC = () => {
                   </td>
                   <td data-label="Client" className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
+                      <Icon icon={User} className="w-4 h-4 mr-2 text-gray-400" />
                       {booking.resolvedClientId ? (
                         <button
                           type="button"
@@ -411,7 +411,7 @@ const BookingsGrid: React.FC = () => {
                   </td>
                   <td data-label="Retreat" className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <Icon icon={FiCalendar} className="w-4 h-4 mr-2 text-gray-400" />
+                      <Icon icon={Calendar} className="w-4 h-4 mr-2 text-gray-400" />
                       <span
                         className="text-sm px-3 py-1 rounded-full font-medium"
                         style={{
@@ -468,7 +468,7 @@ const BookingsGrid: React.FC = () => {
                         className="icon-action-btn icon-action-btn-view"
                         title="View Details"
                       >
-                        <Icon icon={FiEye} />
+                        <Icon icon={Eye} />
                       </button>
                       <button
                         onClick={async () => {
@@ -491,21 +491,21 @@ const BookingsGrid: React.FC = () => {
                         title={generatingPDF === booking._id ? 'Generating...' : 'Generate PDF'}
                         disabled={generatingPDF === booking._id}
                       >
-                        <Icon icon={FiFileText} className={generatingPDF === booking._id ? 'animate-pulse' : ''} />
+                        <Icon icon={FileText} className={generatingPDF === booking._id ? 'animate-pulse' : ''} />
                       </button>
                       <button
                         onClick={() => handleDelete(booking._id!)}
                         className="icon-action-btn icon-action-btn-danger"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} />
+                        <Icon icon={Trash2} />
                       </button>
                       <button
                         onClick={() => navigate(`${routePrefix}/bookings/${booking._id}/edit`)}
                         className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} />
+                        <Icon icon={Edit2} />
                       </button>
                     </div>
                   </td>

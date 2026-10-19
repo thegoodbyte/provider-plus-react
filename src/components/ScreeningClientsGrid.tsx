@@ -1,10 +1,10 @@
+import { Edit2, Eye, Mail, Phone as PhoneIcon, Plus, Search as SearchIcon, Trash2, User, UserCheck } from 'lucide-react';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientsApi, notesApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import { formatCalendarDate } from '../utils/dateFormat';
-import { FiPlus, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiEye, FiUserCheck, FiSearch } from 'react-icons/fi';
 import {
   clientWorkflowStatusLabels,
   clientWorkflowStatusTone,
@@ -117,7 +117,7 @@ const ScreeningClientsGrid: React.FC = () => {
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Screening Clients</h1>
         <AppleButton onClick={() => navigate('/admin/clients/add?workflowStatus=screening_scheduled')} className="apple-button-primary">
-          <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+          <Icon icon={Plus} className="w-4 h-4 mr-2" />
           Add New Screening
         </AppleButton>
       </div>
@@ -125,7 +125,7 @@ const ScreeningClientsGrid: React.FC = () => {
       {/* Filter and Search Controls */}
       <div className="mb-4 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Icon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Icon icon={SearchIcon} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
             aria-label="Search screening clients"
@@ -203,7 +203,7 @@ const ScreeningClientsGrid: React.FC = () => {
                         onClick={() => navigate(`/clients/${client._id}`)}
                         className="!inline-flex max-w-[220px] !items-center !justify-start gap-2 truncate !rounded-none !border-0 !bg-transparent !p-0 !text-left text-sm font-medium !text-blue-600 !shadow-none hover:!bg-transparent hover:!text-blue-800 hover:underline"
                       >
-                        <Icon icon={FiUser} className="h-4 w-4 shrink-0 text-gray-400" />
+                        <Icon icon={User} className="h-4 w-4 shrink-0 text-gray-400" />
                         <span className="truncate">{client.firstName} {client.lastName}</span>
                       </button>
                       {searchMatches.get(client._id)?.snippet && (
@@ -222,14 +222,14 @@ const ScreeningClientsGrid: React.FC = () => {
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                     <span className="inline-flex max-w-[170px] items-center gap-1 truncate">
-                      <Icon icon={FiPhone} className="h-4 w-4 shrink-0 text-gray-400" />
+                      <Icon icon={PhoneIcon} className="h-4 w-4 shrink-0 text-gray-400" />
                       <span className="truncate">{client.phone || 'N/A'}</span>
                     </span>
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                     {client.email ? (
                       <span className="inline-flex max-w-[230px] items-center gap-1 truncate">
-                        <Icon icon={FiMail} className="h-4 w-4 shrink-0 text-gray-400" />
+                        <Icon icon={Mail} className="h-4 w-4 shrink-0 text-gray-400" />
                         <span className="truncate">{client.email}</span>
                       </span>
                     ) : 'N/A'}
@@ -277,7 +277,7 @@ const ScreeningClientsGrid: React.FC = () => {
                           onClick={() => {/* TODO: View details */}}
                           className="icon-action-btn icon-action-btn-view"
                         >
-                          <Icon icon={FiEye} />
+                          <Icon icon={Eye} />
                         </button>
                       </div>
                       <div title="Edit">
@@ -285,7 +285,7 @@ const ScreeningClientsGrid: React.FC = () => {
                           onClick={() => {/* TODO: Edit client */}}
                           className="icon-action-btn icon-action-btn-edit"
                         >
-                          <Icon icon={FiEdit2} />
+                          <Icon icon={Edit2} />
                         </button>
                       </div>
                       {normalizeClientWorkflowStatus(client.workflowStatus) === 'screened_accepted' && (
@@ -294,7 +294,7 @@ const ScreeningClientsGrid: React.FC = () => {
                             onClick={() => handlePromote(client._id!)}
                             className="icon-action-btn icon-action-btn-success"
                           >
-                            <Icon icon={FiUserCheck} />
+                            <Icon icon={UserCheck} />
                           </button>
                         </div>
                       )}
@@ -303,7 +303,7 @@ const ScreeningClientsGrid: React.FC = () => {
                           onClick={() => handleDelete(client._id!)}
                           className="icon-action-btn icon-action-btn-danger"
                         >
-                          <Icon icon={FiTrash2} />
+                          <Icon icon={Trash2} />
                         </button>
                       </div>
                     </div>
@@ -316,7 +316,7 @@ const ScreeningClientsGrid: React.FC = () => {
 
         {filteredClients.length === 0 && !isLoading && (
           <div className="text-center py-12">
-            <Icon icon={FiUser} className="mx-auto h-12 w-12 text-gray-400" />
+            <Icon icon={User} className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No screening clients</h3>
             <p className="mt-1 text-sm text-gray-500">
               {filterStatus === 'all' ?
@@ -335,7 +335,7 @@ const ScreeningClientsGrid: React.FC = () => {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <Icon icon={FiUser} className="h-6 w-6 text-gray-400" />
+                  <Icon icon={User} className="h-6 w-6 text-gray-400" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
@@ -350,7 +350,7 @@ const ScreeningClientsGrid: React.FC = () => {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <Icon icon={FiUser} className="h-6 w-6 text-yellow-400" />
+                  <Icon icon={User} className="h-6 w-6 text-yellow-400" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
@@ -367,7 +367,7 @@ const ScreeningClientsGrid: React.FC = () => {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <Icon icon={FiUser} className="h-6 w-6 text-green-400" />
+                  <Icon icon={User} className="h-6 w-6 text-green-400" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
@@ -384,7 +384,7 @@ const ScreeningClientsGrid: React.FC = () => {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <Icon icon={FiUser} className="h-6 w-6 text-blue-400" />
+                  <Icon icon={User} className="h-6 w-6 text-blue-400" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>

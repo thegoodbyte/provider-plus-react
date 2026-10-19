@@ -1,8 +1,8 @@
+import { AlertCircle, CheckCircle, Download as DownloadIcon, Inbox, Mail as MailIcon, Plus as PlusIcon, RefreshCw, Save as SaveIcon, Search as SearchIcon, Send as SendIcon, Trash2 } from 'lucide-react';
 import MedicalDecisionTemplateEditors from './MedicalDecisionTemplateEditors';
 import { emailSendFeedback } from '../utils/emailSendFeedback';
 import EmailSafetySettings from './EmailSafetySettings';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiAlertCircle, FiCheckCircle, FiDownload, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
 import { bookingFlowApi, communicationsApi, clientsApi, contractGateApi, retreatsApi } from '../services/api';
 import { BookingFlowTemplate, Client, EmailAsset, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
@@ -801,7 +801,7 @@ const CommunicationsPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Gmail Connection</h2>
               <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${settings?.connected ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                <Icon icon={settings?.connected ? FiCheckCircle : FiAlertCircle} />
+                <Icon icon={settings?.connected ? CheckCircle : AlertCircle} />
                 {settings?.connected ? 'Connected' : 'Not connected'}
               </span>
             </div>
@@ -869,7 +869,7 @@ const CommunicationsPage: React.FC = () => {
                 className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 disabled={savingSettings}
               >
-                <Icon icon={FiSave} />
+                <Icon icon={SaveIcon} />
                 Save Settings
               </button>
               <button
@@ -877,7 +877,7 @@ const CommunicationsPage: React.FC = () => {
                 onClick={handleConnectGmail}
                 className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-black"
               >
-                <Icon icon={FiMail} />
+                <Icon icon={MailIcon} />
                 Connect Gmail
               </button>
               <button
@@ -885,7 +885,7 @@ const CommunicationsPage: React.FC = () => {
                 onClick={handleTestConnection}
                 className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                <Icon icon={FiRefreshCw} />
+                <Icon icon={RefreshCw} />
                 Test Connection
               </button>
               <button
@@ -893,7 +893,7 @@ const CommunicationsPage: React.FC = () => {
                 onClick={handleDisconnect}
                 className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
               >
-                <Icon icon={FiTrash2} />
+                <Icon icon={Trash2} />
                 Disconnect
               </button>
             </div>
@@ -1027,7 +1027,7 @@ const CommunicationsPage: React.FC = () => {
                   disabled={seedingTemplates}
                   className="inline-flex items-center gap-2 rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                 >
-                  <Icon icon={FiRefreshCw} />
+                  <Icon icon={RefreshCw} />
                   {seedingTemplates ? 'Seeding...' : 'Reseed'}
                 </button>
                 <button
@@ -1035,7 +1035,7 @@ const CommunicationsPage: React.FC = () => {
                   onClick={handleNewTemplate}
                   className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  <Icon icon={FiPlus} />
+                  <Icon icon={PlusIcon} />
                   New
                 </button>
               </div>
@@ -1095,7 +1095,7 @@ const CommunicationsPage: React.FC = () => {
                   disabled={seedingTemplates || selectedSeedKeys.length === 0}
                   className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                  <Icon icon={FiRefreshCw} />
+                  <Icon icon={RefreshCw} />
                   {seedingTemplates ? 'Seeding selected...' : `Seed ${selectedSeedKeys.length} selected`}
                 </button>
               </div>
@@ -1133,7 +1133,7 @@ const CommunicationsPage: React.FC = () => {
             </div>
             <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
               <div className="relative">
-                <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Icon icon={SearchIcon} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="search"
                   value={templateSearch}
@@ -1226,7 +1226,7 @@ const CommunicationsPage: React.FC = () => {
                   onClick={handleDeleteTemplate}
                   className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                 >
-                  <Icon icon={FiTrash2} />
+                  <Icon icon={Trash2} />
                   Delete
                 </button>
               )}
@@ -1337,7 +1337,7 @@ const CommunicationsPage: React.FC = () => {
                 <button type="button" disabled={uploadingAsset || !assetDraft.file} onClick={handleAssetUpload} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{uploadingAsset ? 'Uploading…' : 'Upload asset'}</button>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                {emailAssets.map((asset) => <label key={asset._id} className="flex items-center gap-2 rounded-md border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={Boolean(asset._id && (templateForm.attachmentAssetIds || []).includes(asset._id))} onChange={(e) => setTemplateForm((current) => ({ ...current, attachmentAssetIds: e.target.checked ? [...(current.attachmentAssetIds || []), asset._id! ] : (current.attachmentAssetIds || []).filter((id) => id !== asset._id) }))} /><span className="min-w-0 flex-1"><strong className="block truncate">{asset.name} · {asset.language.toUpperCase()}</strong><small className="block truncate text-gray-500">{asset.fileName}</small></span><button type="button" onClick={(event) => { event.preventDefault(); void handleAssetDelete(asset); }} className="text-red-600" aria-label={`Delete ${asset.fileName}`}><Icon icon={FiTrash2} /></button></label>)}
+                {emailAssets.map((asset) => <label key={asset._id} className="flex items-center gap-2 rounded-md border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={Boolean(asset._id && (templateForm.attachmentAssetIds || []).includes(asset._id))} onChange={(e) => setTemplateForm((current) => ({ ...current, attachmentAssetIds: e.target.checked ? [...(current.attachmentAssetIds || []), asset._id! ] : (current.attachmentAssetIds || []).filter((id) => id !== asset._id) }))} /><span className="min-w-0 flex-1"><strong className="block truncate">{asset.name} · {asset.language.toUpperCase()}</strong><small className="block truncate text-gray-500">{asset.fileName}</small></span><button type="button" onClick={(event) => { event.preventDefault(); void handleAssetDelete(asset); }} className="text-red-600" aria-label={`Delete ${asset.fileName}`}><Icon icon={Trash2} /></button></label>)}
                 {!emailAssets.length && <p className="text-sm text-gray-500">No reusable PDFs uploaded yet.</p>}
               </div>
             </section>
@@ -1407,7 +1407,7 @@ const CommunicationsPage: React.FC = () => {
                   className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   title="Download a Git-safe seed record. Use templates:pull locally to merge the live template into the seed library."
                 >
-                  <Icon icon={FiDownload} />
+                  <Icon icon={DownloadIcon} />
                   Export seed
                 </button>}
                 <button
@@ -1416,7 +1416,7 @@ const CommunicationsPage: React.FC = () => {
                   disabled={savingTemplate}
                   className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
-                  <Icon icon={FiSave} />
+                  <Icon icon={SaveIcon} />
                   Save Template
                 </button>
               </div>
@@ -1442,7 +1442,7 @@ const CommunicationsPage: React.FC = () => {
             {(['en', 'cz', 'pl'] as const).map((language) => <div key={language} className="rounded-md border border-blue-100 bg-white p-3"><div className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-900">{language === 'en' ? 'English' : language === 'cz' ? 'Czech' : 'Polish'}</div><input className="mb-2 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Subject" value={futureBroadcast.subjects[language]} onChange={(event) => setFutureBroadcast((current) => ({ ...current, subjects: { ...current.subjects, [language]: event.target.value } }))} /><textarea rows={5} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Message" value={futureBroadcast.bodies[language]} onChange={(event) => setFutureBroadcast((current) => ({ ...current, bodies: { ...current.bodies, [language]: event.target.value } }))} /></div>)}
             <p className="text-xs text-blue-900">Available date placeholders: <code>{'{{futureRetreatBroadcast.updatesAvailableDate}}'}</code> and <code>{'{{futureRetreatBroadcast.freerAfterDate}}'}</code>. The send is logged per booking and skips cancelled bookings, missing addresses, and duplicate addresses.</p>
             <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-blue-100 bg-white p-3">{futureRetreats.length ? futureRetreats.map((retreat) => <label key={retreat._id} className="flex items-center gap-3 rounded px-2 py-2 text-sm hover:bg-blue-50"><input type="checkbox" checked={futureRetreatIds.includes(retreat._id || '')} onChange={(event) => setFutureRetreatIds((current) => event.target.checked ? [...current, retreat._id!] : current.filter((id) => id !== retreat._id))} /><span className="font-medium">{retreat.name || retreat.code || retreat.retreatCode || 'Retreat'}</span><span className="text-gray-500">{retreat.startDate ? new Date(retreat.startDate).toLocaleDateString() : ''}</span></label>) : <span className="text-sm text-gray-500">No future retreats found.</span>}</div>
-            <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className="text-sm font-medium text-blue-700 underline" onClick={() => setFutureRetreatIds(futureRetreatIds.length === futureRetreats.length ? [] : futureRetreats.map((retreat) => retreat._id!))}>{futureRetreatIds.length === futureRetreats.length ? 'Clear selection' : 'Select all future retreats'}</button><button type="button" disabled={sendingFutureBroadcast || !futureRetreatIds.length} onClick={handleFutureBroadcastSend} className="inline-flex items-center gap-2 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Icon icon={FiSend} />{sendingFutureBroadcast ? 'Sending…' : `Send to ${futureRetreatIds.length} retreat${futureRetreatIds.length === 1 ? '' : 's'}`}</button></div>
+            <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className="text-sm font-medium text-blue-700 underline" onClick={() => setFutureRetreatIds(futureRetreatIds.length === futureRetreats.length ? [] : futureRetreats.map((retreat) => retreat._id!))}>{futureRetreatIds.length === futureRetreats.length ? 'Clear selection' : 'Select all future retreats'}</button><button type="button" disabled={sendingFutureBroadcast || !futureRetreatIds.length} onClick={handleFutureBroadcastSend} className="inline-flex items-center gap-2 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Icon icon={SendIcon} />{sendingFutureBroadcast ? 'Sending…' : `Send to ${futureRetreatIds.length} retreat${futureRetreatIds.length === 1 ? '' : 's'}`}</button></div>
           </div>
             <div className="text-xs text-gray-500">Messages are sent through Gmail and logged as sent records.</div>
           </div>
@@ -1581,7 +1581,7 @@ const CommunicationsPage: React.FC = () => {
               disabled={sendingEmail}
               className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
-              <Icon icon={FiSend} />
+              <Icon icon={SendIcon} />
               Send Email
             </button>
           </div>
@@ -1602,7 +1602,7 @@ const CommunicationsPage: React.FC = () => {
                   onClick={handleSetupGmailWatch}
                   className="inline-flex items-center gap-2 rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
                 >
-                  <Icon icon={FiInbox} />
+                  <Icon icon={Inbox} />
                   Start Gmail Watch
                 </button>
                 <button
@@ -1610,7 +1610,7 @@ const CommunicationsPage: React.FC = () => {
                   onClick={loadInboundEmails}
                   className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
-                  <Icon icon={FiRefreshCw} />
+                  <Icon icon={RefreshCw} />
                   Refresh
                 </button>
                 <button
@@ -1619,7 +1619,7 @@ const CommunicationsPage: React.FC = () => {
                   disabled={processingInbound}
                   className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                  <Icon icon={FiCheckCircle} />
+                  <Icon icon={CheckCircle} />
                   {processingInbound ? 'Processing...' : 'Process Pending'}
                 </button>
               </div>
@@ -1761,7 +1761,7 @@ const CommunicationsPage: React.FC = () => {
                     onClick={() => handleDeleteSentEmail(selectedSentEmail._id)}
                     className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
                   >
-                    <Icon icon={FiTrash2} />
+                    <Icon icon={Trash2} />
                     Delete Log
                   </button>
                 </div>

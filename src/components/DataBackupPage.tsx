@@ -1,5 +1,5 @@
+import { AlertTriangle, CheckCircle, Download as DownloadIcon, Loader, RefreshCw, Upload as UploadIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { FiAlertTriangle, FiCheckCircle, FiDownload, FiLoader, FiRefreshCw, FiUpload } from 'react-icons/fi';
 import { backupsApi } from '../services/api';
 import DevelopmentRefreshPanel from './DevelopmentRefreshPanel';
 
@@ -259,7 +259,7 @@ const DataBackupPage: React.FC = () => {
           className="fixed bottom-6 right-6 z-50 w-[min(28rem,calc(100vw-3rem))] rounded-lg border border-blue-300 bg-white p-4 shadow-2xl"
         >
           <div className="flex items-start gap-3">
-            <Icon icon={FiLoader} className="mt-0.5 shrink-0 animate-spin text-xl text-blue-600" />
+            <Icon icon={Loader} className="mt-0.5 shrink-0 animate-spin text-xl text-blue-600" />
             <div>
               <div className="font-semibold text-gray-950">{activeOperation.title}</div>
               <p className="mt-1 text-sm text-gray-700">{activeOperation.message}</p>
@@ -281,7 +281,7 @@ const DataBackupPage: React.FC = () => {
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       {notice && (
         <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          <div className="flex items-center gap-2 font-semibold"><Icon icon={FiCheckCircle} />{notice.title}</div>
+          <div className="flex items-center gap-2 font-semibold"><Icon icon={CheckCircle} />{notice.title}</div>
           <p className="mt-1">{notice.message}</p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {notice.details.map((detail) => {
@@ -325,10 +325,10 @@ const DataBackupPage: React.FC = () => {
           <p className="mt-1 text-sm text-gray-600">Local download or upload directly to S3. S3 uses server-side AES256 encryption.</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <button onClick={downloadLocalExport} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60">
-              <Icon icon={FiDownload} /> Download JSON
+              <Icon icon={DownloadIcon} /> Download JSON
             </button>
             <button onClick={exportToS3} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
-              <Icon icon={FiUpload} /> Upload Backup to S3
+              <Icon icon={UploadIcon} /> Upload Backup to S3
             </button>
           </div>
         </section>
@@ -339,7 +339,7 @@ const DataBackupPage: React.FC = () => {
           <label className="mt-4 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={overrideEmails} onChange={(e) => setOverrideEmails(e.target.checked)} />Override email fields during import</label>
           <input type="email" value={overrideEmail} onChange={(e) => setOverrideEmail(e.target.value)} className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            <div className="flex items-center gap-2 font-medium"><Icon icon={FiAlertTriangle} />Destructive restore requires confirmation</div>
+            <div className="flex items-center gap-2 font-medium"><Icon icon={AlertTriangle} />Destructive restore requires confirmation</div>
             <p className="mt-1">Type {RESTORE_CONFIRMATION} to enable restore.</p>
           </div>
           <input value={restoreConfirm} onChange={(e) => setRestoreConfirm(e.target.value)} placeholder={RESTORE_CONFIRMATION} className="mt-3 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
@@ -353,7 +353,7 @@ const DataBackupPage: React.FC = () => {
             <p className="text-sm text-gray-600">Select a backup from the configured bucket, or point to another bucket/prefix.</p>
           </div>
           <button onClick={loadS3Files} disabled={busy === 's3-list'} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
-            <Icon icon={FiRefreshCw} /> Refresh
+            <Icon icon={RefreshCw} /> Refresh
           </button>
         </div>
         <div className="mt-4 overflow-auto rounded-md border border-gray-200">
@@ -374,7 +374,7 @@ const DataBackupPage: React.FC = () => {
         <div className="mt-4 flex flex-wrap gap-2">
           <button onClick={downloadSelectedS3File} disabled={!selectedS3Key || !!busy} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">Download Selected</button>
           <button onClick={() => runS3Import(true)} disabled={!selectedS3Key || !!busy} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">
-            {busy === 's3-dry-run' && <Icon icon={FiLoader} className="animate-spin" />}
+            {busy === 's3-dry-run' && <Icon icon={Loader} className="animate-spin" />}
             {busy === 's3-dry-run' ? 'Running dry run…' : 'Dry Run S3 Restore'}
           </button>
           <button onClick={() => runS3Import(false)} disabled={!selectedS3Key || !!busy || restoreConfirm !== RESTORE_CONFIRMATION} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">Restore From S3</button>
@@ -386,7 +386,7 @@ const DataBackupPage: React.FC = () => {
         <input type="file" accept="application/json,.json" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="mt-4 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
         <div className="mt-4 flex flex-wrap gap-2">
           <button onClick={() => runLocalImport(true)} disabled={!selectedFile || !!busy} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">
-            {busy === 'local-dry-run' && <Icon icon={FiLoader} className="animate-spin" />}
+            {busy === 'local-dry-run' && <Icon icon={Loader} className="animate-spin" />}
             {busy === 'local-dry-run' ? 'Running dry run…' : 'Dry Run Local Restore'}
           </button>
           <button onClick={() => runLocalImport(false)} disabled={!selectedFile || !!busy || restoreConfirm !== RESTORE_CONFIRMATION} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">Restore Local File</button>

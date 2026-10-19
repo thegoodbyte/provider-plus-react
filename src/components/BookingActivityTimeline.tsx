@@ -1,5 +1,5 @@
+import { Activity as ActivityIcon, CreditCard, File, Mail, Package, RefreshCw, Shield, User } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiActivity, FiCreditCard, FiFile, FiMail, FiPackage, FiRefreshCw, FiShield, FiUser } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { bookingsApi } from '../services/api';
 import { BookingActivityEvent } from '../types';
@@ -8,14 +8,14 @@ import LoadingSpinner from './LoadingSpinner';
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
 const iconByType: Record<BookingActivityEvent['type'], any> = {
-  file_uploaded: FiFile,
-  step: FiActivity,
-  email: FiMail,
-  payment: FiCreditCard,
-  medical_decision: FiShield,
-  packet: FiPackage,
-  status_change: FiRefreshCw,
-  booking: FiActivity,
+  file_uploaded: File,
+  step: ActivityIcon,
+  email: Mail,
+  payment: CreditCard,
+  medical_decision: Shield,
+  packet: Package,
+  status_change: RefreshCw,
+  booking: ActivityIcon,
 };
 
 const labelByType: Record<BookingActivityEvent['type'], string> = {
@@ -63,7 +63,7 @@ const BookingActivityTimeline: React.FC<{ bookingId: string }> = ({ bookingId })
           <p className="mt-1 text-sm text-gray-500">Files, workflow actions, communications, payments, medical decisions, packet versions, and booking changes.</p>
         </div>
         <button type="button" onClick={load} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-          <Icon icon={FiRefreshCw} /> Refresh
+          <Icon icon={RefreshCw} /> Refresh
         </button>
       </div>
 
@@ -93,7 +93,7 @@ const BookingActivityTimeline: React.FC<{ bookingId: string }> = ({ bookingId })
                 {event.description && <div className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{event.description}</div>}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                   <time dateTime={event.occurredAt}>{new Date(event.occurredAt).toLocaleString()}</time>
-                  <span className="inline-flex items-center gap-1"><Icon icon={FiUser} /> {event.actor || (event.automatic ? 'System' : 'Unknown user')}</span>
+                  <span className="inline-flex items-center gap-1"><Icon icon={User} /> {event.actor || (event.automatic ? 'System' : 'Unknown user')}</span>
                   <span>{labelByType[event.type]}</span>
                 </div>
               </div>

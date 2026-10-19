@@ -1,10 +1,10 @@
+import { ArrowLeft, FileText, Image, Save as SaveIcon, Trash2, Upload as UploadIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { clientsApi, clientMedicalApi, medicalTrackingApi, retreatsApi } from '../services/api';
 import { Client, MedicalItem, Retreat } from '../types';
 import AppleButton from './AppleButton';
 import SearchableClientDropdown from './SearchableClientDropdown';
-import { FiArrowLeft, FiSave, FiTrash2, FiUpload, FiFileText, FiImage } from 'react-icons/fi';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -272,7 +272,7 @@ const MedicalTrackingEditPage: React.FC = () => {
             onClick={() => navigate(`/medical-tracking/${id}`)}
             className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
           >
-            <Icon icon={FiArrowLeft} className="w-5 h-5" />
+            <Icon icon={ArrowLeft} className="w-5 h-5" />
             Back
           </button>
           <div>
@@ -446,7 +446,7 @@ const MedicalTrackingEditPage: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <div className="mt-1">
-                        {isImage ? <Icon icon={FiImage} className="w-5 h-5 text-blue-500" /> : <Icon icon={FiFileText} className="w-5 h-5 text-gray-500" />}
+                        {isImage ? <Icon icon={Image} className="w-5 h-5 text-blue-500" /> : <Icon icon={FileText} className="w-5 h-5 text-gray-500" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <button
@@ -468,11 +468,11 @@ const MedicalTrackingEditPage: React.FC = () => {
                         variant="secondary"
                         onClick={() => clearMedicalFile(section.type)}
                       >
-                        <Icon icon={FiTrash2} className="mr-2" />
+                        <Icon icon={Trash2} className="mr-2" />
                         Remove from record
                       </AppleButton>
                       <label className="inline-flex items-center gap-2 text-sm text-blue-700 cursor-pointer">
-                        <Icon icon={FiUpload} className="w-4 h-4" />
+                        <Icon icon={UploadIcon} className="w-4 h-4" />
                         Replace file
                         <input
                         type="file"
@@ -499,7 +499,7 @@ const MedicalTrackingEditPage: React.FC = () => {
                   <div className="space-y-3">
                     <div className="text-sm text-gray-500">No files uploaded.</div>
                     <label className="inline-flex items-center gap-2 text-sm text-blue-700 cursor-pointer">
-                      <Icon icon={FiUpload} className="w-4 h-4" />
+                      <Icon icon={UploadIcon} className="w-4 h-4" />
                       Upload file
                       <input
                         type="file"
@@ -541,7 +541,7 @@ const MedicalTrackingEditPage: React.FC = () => {
             Cancel
           </AppleButton>
           <AppleButton type="submit" disabled={isSaving}>
-            <Icon icon={FiSave} className="mr-2" />
+            <Icon icon={SaveIcon} className="mr-2" />
             {isSaving ? 'Saving...' : 'Save Changes'}
           </AppleButton>
         </div>

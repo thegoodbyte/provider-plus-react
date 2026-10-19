@@ -1,10 +1,10 @@
+import { Calendar, Edit2, Eye, FileText, Plus, Trash2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientMedicationsApi, ClientMedication } from '../services/clientMedicationsApi';
 import { clientsApi, Client } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import AppleButton from './AppleButton';
-import { FiPlus, FiEdit2, FiEye, FiTrash2, FiFileText, FiCalendar } from 'react-icons/fi';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -125,7 +125,7 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
           <p className="text-gray-600 mt-1">Manage client medication documents and records</p>
         </div>
         <AppleButton onClick={() => navigate('/admin/client-medications/create')}>
-          <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+          <Icon icon={Plus} className="w-4 h-4 mr-2" />
           Add New Record
         </AppleButton>
       </div>
@@ -146,7 +146,7 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
         <div className="bg-white rounded-lg shadow-sm border p-4">
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
-              <Icon icon={FiFileText} className="w-6 h-6 text-blue-600" />
+              <Icon icon={FileText} className="w-6 h-6 text-blue-600" />
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">Total Records</p>
@@ -158,7 +158,7 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
         <div className="bg-white rounded-lg shadow-sm border p-4">
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
-              <Icon icon={FiCalendar} className="w-6 h-6 text-green-600" />
+              <Icon icon={Calendar} className="w-6 h-6 text-green-600" />
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">This Month</p>
@@ -176,7 +176,7 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
         <div className="bg-white rounded-lg shadow-sm border p-4">
           <div className="flex items-center">
             <div className="p-2 bg-purple-100 rounded-lg">
-              <Icon icon={FiFileText} className="w-6 h-6 text-purple-600" />
+              <Icon icon={FileText} className="w-6 h-6 text-purple-600" />
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-600">With PDF</p>
@@ -255,7 +255,7 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
                         rel="noopener noreferrer"
                         className="inline-flex items-center text-green-600 hover:text-green-800"
                       >
-                        <Icon icon={FiFileText} className="w-4 h-4 mr-1" />
+                        <Icon icon={FileText} className="w-4 h-4 mr-1" />
                         View PDF
                       </a>
                     ) : (
@@ -279,21 +279,21 @@ const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = fa
                         className="icon-action-btn icon-action-btn-view"
                         title="View"
                       >
-                        <Icon icon={FiEye} />
+                        <Icon icon={Eye} />
                       </button>
                       <button
                         onClick={() => handleEdit(medication._id)}
                         className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} />
+                        <Icon icon={Edit2} />
                       </button>
                       <button
                         onClick={() => handleDelete(medication._id, medication.display_id)}
                         className="icon-action-btn icon-action-btn-danger"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} />
+                        <Icon icon={Trash2} />
                       </button>
                     </div>
                   </td>

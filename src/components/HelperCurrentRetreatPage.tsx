@@ -1,5 +1,5 @@
+import { Activity, Edit2, FileText, RefreshCw, Save as SaveIcon, Trash2, Upload as UploadIcon, X } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiActivity, FiEdit2, FiFileText, FiRefreshCw, FiSave, FiTrash2, FiUpload, FiX } from 'react-icons/fi';
 import { helperAccessApi } from '../services/api';
 import { formatCalendarDate } from '../utils/dateFormat';
 
@@ -214,7 +214,7 @@ const HelperCurrentRetreatPage: React.FC = () => {
           onClick={loadDashboard}
           className="inline-flex items-center justify-center gap-2 rounded-apple border border-apple-gray-200 px-3 py-2 text-sm font-medium text-apple-gray-700 hover:bg-apple-gray-50"
         >
-          <Icon icon={FiRefreshCw} className="h-4 w-4" />
+          <Icon icon={RefreshCw} className="h-4 w-4" />
           Refresh
         </button>
       </div>
@@ -249,7 +249,7 @@ const HelperCurrentRetreatPage: React.FC = () => {
               <div className="grid gap-4 p-4 lg:grid-cols-2">
                 <div className="rounded-apple border border-apple-gray-100 p-3">
                   <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-apple-gray-800">
-                    <Icon icon={FiUpload} className="h-4 w-4" />
+                    <Icon icon={UploadIcon} className="h-4 w-4" />
                     EKG upload
                   </div>
                   <input
@@ -273,14 +273,14 @@ const HelperCurrentRetreatPage: React.FC = () => {
                     disabled={savingId === `ekg-${bookingId}`}
                     className="mt-3 inline-flex items-center gap-2 rounded-apple bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                   >
-                    <Icon icon={FiUpload} className="h-4 w-4" />
+                    <Icon icon={UploadIcon} className="h-4 w-4" />
                     Upload EKG
                   </button>
                 </div>
 
                 <div className="rounded-apple border border-apple-gray-100 p-3">
                   <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-apple-gray-800">
-                    <Icon icon={FiActivity} className="h-4 w-4" />
+                    <Icon icon={Activity} className="h-4 w-4" />
                     Blood pressure
                   </div>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -323,7 +323,7 @@ const HelperCurrentRetreatPage: React.FC = () => {
                     disabled={savingId === `bp-${bookingId}`}
                     className="mt-3 inline-flex items-center gap-2 rounded-apple bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
                   >
-                    <Icon icon={FiSave} className="h-4 w-4" />
+                    <Icon icon={SaveIcon} className="h-4 w-4" />
                     Save BP
                   </button>
                 </div>
@@ -341,7 +341,7 @@ const HelperCurrentRetreatPage: React.FC = () => {
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 text-sm font-semibold text-apple-gray-900">
-                                {isBp ? <Icon icon={FiActivity} className="h-4 w-4" /> : <Icon icon={FiFileText} className="h-4 w-4" />}
+                                {isBp ? <Icon icon={Activity} className="h-4 w-4" /> : <Icon icon={FileText} className="h-4 w-4" />}
                                 {isBp ? 'Blood pressure' : 'EKG'}
                                 <span className="text-xs font-normal text-apple-gray-500">{formatDate(record.receivedAt)}</span>
                               </div>
@@ -376,13 +376,13 @@ const HelperCurrentRetreatPage: React.FC = () => {
                             <div className="flex flex-shrink-0 gap-2">
                               {edit ? (
                                 <>
-                                  <button onClick={() => saveEdit(record)} className="rounded-apple p-2 text-emerald-700 hover:bg-emerald-50" aria-label="Save record"><Icon icon={FiSave} /></button>
-                                  <button onClick={() => setEditing((prev) => { const next = { ...prev }; delete next[record._id]; return next; })} className="rounded-apple p-2 text-apple-gray-600 hover:bg-white" aria-label="Cancel edit"><Icon icon={FiX} /></button>
+                                  <button onClick={() => saveEdit(record)} className="rounded-apple p-2 text-emerald-700 hover:bg-emerald-50" aria-label="Save record"><Icon icon={SaveIcon} /></button>
+                                  <button onClick={() => setEditing((prev) => { const next = { ...prev }; delete next[record._id]; return next; })} className="rounded-apple p-2 text-apple-gray-600 hover:bg-white" aria-label="Cancel edit"><Icon icon={X} /></button>
                                 </>
                               ) : (
-                                <button onClick={() => startEdit(record)} className="rounded-apple p-2 text-apple-gray-700 hover:bg-white" aria-label="Edit record"><Icon icon={FiEdit2} /></button>
+                                <button onClick={() => startEdit(record)} className="rounded-apple p-2 text-apple-gray-700 hover:bg-white" aria-label="Edit record"><Icon icon={Edit2} /></button>
                               )}
-                              <button onClick={() => deleteRecord(record)} className="rounded-apple p-2 text-red-700 hover:bg-red-50" aria-label="Delete record"><Icon icon={FiTrash2} /></button>
+                              <button onClick={() => deleteRecord(record)} className="rounded-apple p-2 text-red-700 hover:bg-red-50" aria-label="Delete record"><Icon icon={Trash2} /></button>
                             </div>
                           </div>
                         </div>

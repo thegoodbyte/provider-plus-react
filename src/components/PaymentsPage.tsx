@@ -1,6 +1,6 @@
+import { ChevronDown, DollarSign, Edit2, Plus, Search as SearchIcon, Trash2, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
 import { paymentsApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
 import { Payment, Client, Retreat, RetreatClient } from '../types';
 import CurrencyDisplay from './CurrencyDisplay';
@@ -211,7 +211,7 @@ const PaymentsPage: React.FC = () => {
     >
       {label}
       <Icon
-        icon={FiChevronDown}
+        icon={ChevronDown}
         className={`h-3 w-3 transition-transform ${sortKey === key && sortDirection === 'asc' ? 'rotate-180' : ''} ${sortKey === key ? 'opacity-100' : 'opacity-35'}`}
       />
     </button>
@@ -232,17 +232,17 @@ const PaymentsPage: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           <Link to="/admin/payments/scratchpad" className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">Scratchpad</Link>
           <button onClick={() => navigate('/admin/payments/receipts')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">Receipts</button>
-          <button onClick={() => navigate('/admin/payments/joint/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-blue-600 bg-white px-4 py-2 text-blue-700 hover:bg-blue-50"><Icon icon={FiPlus} className="w-4 h-4" />Joint / Split Payment</button>
-          <button onClick={() => navigate('/admin/payments/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"><Icon icon={FiPlus} className="w-4 h-4" />Add Payment</button>
+          <button onClick={() => navigate('/admin/payments/joint/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-blue-600 bg-white px-4 py-2 text-blue-700 hover:bg-blue-50"><Icon icon={Plus} className="w-4 h-4" />Joint / Split Payment</button>
+          <button onClick={() => navigate('/admin/payments/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"><Icon icon={Plus} className="w-4 h-4" />Add Payment</button>
         </div>
       </div>
 
       <div className="workspace-mobile-sort"><label htmlFor="mobile-payment-sort">Sort by</label><select id="mobile-payment-sort" value={sortKey} onChange={event => setSortKey(event.target.value as PaymentSortKey)}><option value="display">Payment number</option><option value="date">Date</option><option value="client">Client</option><option value="retreat">Retreat</option><option value="booking">Booking</option><option value="request">Payment request</option><option value="amount">Amount</option><option value="usd">USD amount</option><option value="method">Method</option><option value="status">Status</option><option value="type">Type</option></select><button type="button" onClick={() => setSortDirection(value => value === 'asc' ? 'desc' : 'asc')} aria-label="Reverse payment sort order">{sortDirection === 'asc' ? '↑' : '↓'}</button></div>
       <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
         <div className="relative min-w-0 flex-1">
-          <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Icon icon={SearchIcon} className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search client, client ID, booking, payment ID, reference, amount, status, notes..." className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" aria-label="Search payments" />
-          {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Clear search" aria-label="Clear payment search"><Icon icon={FiX} className="h-4 w-4" /></button>}
+          {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Clear search" aria-label="Clear payment search"><Icon icon={X} className="h-4 w-4" /></button>}
         </div>
         <span className="shrink-0 text-sm text-gray-500">{filteredPayments.length} of {payments.length}</span>
       </div>
@@ -360,7 +360,7 @@ const PaymentsPage: React.FC = () => {
                         className="text-indigo-600 hover:text-indigo-900"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={Edit2} className="w-4 h-4" />
                       </button>
                       {payment.status === 'completed' && !payment.isRefundable && (
                         <button
@@ -368,7 +368,7 @@ const PaymentsPage: React.FC = () => {
                           className="text-yellow-600 hover:text-yellow-900"
                           title="Refund"
                         >
-                          <Icon icon={FiDollarSign} className="w-4 h-4" />
+                          <Icon icon={DollarSign} className="w-4 h-4" />
                         </button>
                       )}
                       <button
@@ -376,7 +376,7 @@ const PaymentsPage: React.FC = () => {
                         className="text-red-600 hover:text-red-900"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <Icon icon={Trash2} className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

@@ -1,7 +1,7 @@
+import { ChevronDown, Search as SearchIcon, X } from 'lucide-react';
 import { matchesPhoneSearch } from '../utils/phoneUtils';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Client } from '../types';
-import { FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
 
 // Icon wrapper to fix TypeScript issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -178,7 +178,7 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
               onClick={clearSelection}
               className="p-1 text-gray-400 hover:text-gray-600 focus:outline-none"
             >
-              <Icon icon={FiX} className="w-4 h-4" />
+              <Icon icon={X} className="w-4 h-4" />
             </button>
           )}
 
@@ -192,12 +192,12 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
               }}
               className="p-1 text-gray-400 hover:text-gray-600 focus:outline-none ml-1"
             >
-              <Icon icon={FiChevronDown} className="w-4 h-4" />
+              <Icon icon={ChevronDown} className="w-4 h-4" />
             </button>
           )}
 
           {isOpen && (
-            <Icon icon={FiSearch} className="w-4 h-4 text-gray-400 ml-1" />
+            <Icon icon={SearchIcon} className="w-4 h-4 text-gray-400 ml-1" />
           )}
         </div>
       </div>

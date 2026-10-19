@@ -1,10 +1,10 @@
+import { ArrowLeft, FileText, Save, Upload as UploadIcon, X } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { clientMedicationsApi, ClientMedication, CreateClientMedicationDto, UpdateClientMedicationDto } from '../services/clientMedicationsApi';
 import { clientsApi, Client } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import AppleButton from './AppleButton';
-import { FiArrowLeft, FiUpload, FiFileText, FiSave, FiX } from 'react-icons/fi';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -176,7 +176,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
             onClick={() => navigate('/admin/client-forms?tab=medications')}
             className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
           >
-            <Icon icon={FiArrowLeft} className="w-5 h-5" />
+            <Icon icon={ArrowLeft} className="w-5 h-5" />
             Back to Medications
           </button>
           <div>
@@ -262,7 +262,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
               <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <Icon icon={FiFileText} className="w-5 h-5 text-green-600 mr-2" />
+                    <Icon icon={FileText} className="w-5 h-5 text-green-600 mr-2" />
                     <span className="text-green-800 font-medium">PDF document uploaded</span>
                   </div>
                   <a
@@ -284,7 +284,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
                   {formData.pdf_file ? 'Replace PDF Document' : 'Upload PDF Document'}
                 </label>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Icon icon={FiUpload} className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                  <Icon icon={UploadIcon} className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <div className="mb-2">
                     <label className="cursor-pointer">
                       <span className="text-blue-600 hover:text-blue-800 font-medium">
@@ -365,7 +365,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
                 variant="secondary"
                 onClick={() => navigate('/admin/client-forms?tab=medications')}
               >
-                <Icon icon={FiX} className="w-4 h-4 mr-2" />
+                <Icon icon={X} className="w-4 h-4 mr-2" />
                 Cancel
               </AppleButton>
 
@@ -373,7 +373,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
                 type="submit"
                 disabled={isSaving}
               >
-                <Icon icon={FiSave} className="w-4 h-4 mr-2" />
+                <Icon icon={Save} className="w-4 h-4 mr-2" />
                 {isSaving ? 'Saving...' : (isCreating ? 'Create Record' : 'Update Record')}
               </AppleButton>
             </div>

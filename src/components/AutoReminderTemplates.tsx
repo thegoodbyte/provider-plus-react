@@ -1,5 +1,5 @@
+import { Edit2, Pause as PauseIcon, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiPlay, FiPause, FiRefreshCw } from 'react-icons/fi';
 import './AutoReminderTemplates.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -216,14 +216,14 @@ export const AutoReminderTemplates: React.FC = () => {
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
             disabled={showAddForm}
           >
-            <Icon icon={FiPlus} className="w-4 h-4" />
+            <Icon icon={Plus} className="w-4 h-4" />
             Add Template
           </button>
           <button
             onClick={loadTemplates}
             className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center gap-2"
           >
-            <Icon icon={FiRefreshCw} className="w-4 h-4" />
+            <Icon icon={RefreshCw} className="w-4 h-4" />
             Refresh
           </button>
         </div>
@@ -303,21 +303,21 @@ export const AutoReminderTemplates: React.FC = () => {
                         className="text-indigo-600 hover:text-indigo-900"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={Edit2} className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleToggleActive(template)}
                         className={`${template.isActive ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}`}
                         title={template.isActive ? 'Pause' : 'Activate'}
                       >
-                        <Icon icon={template.isActive ? FiPause : FiPlay} className="w-4 h-4" />
+                        <Icon icon={template.isActive ? PauseIcon : Play} className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteTemplate(template._id!)}
                         className="text-red-600 hover:text-red-900"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <Icon icon={Trash2} className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
