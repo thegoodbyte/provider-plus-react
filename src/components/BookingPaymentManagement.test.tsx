@@ -120,4 +120,13 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Financial summary unavailable');
     expect(screen.queryByText('Paid in full')).not.toBeInTheDocument();
   });
+  it.each([null, [], {currency:'EUR'}])('keeps payment history usable for an invalid summary %p', async data => {
+    (paymentsApi.getFinancialSummary as jest.Mock).mockResolvedValue({data});
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Financial summary unavailable');
+    expect(screen.getByText(/Total unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText('Paid in full')).not.toBeInTheDocument();
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
+  });
+
 });

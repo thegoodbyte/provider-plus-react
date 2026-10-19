@@ -13,7 +13,7 @@ for (const width of [1440,390]) test(`occupancy packs sequential boosters and se
    {roomId:'r3',name:'Room III',occupants:[]}]}});
   return route.fulfill({json:u.pathname.includes('summary')?{}:[]});
  });
- await page.goto(`/admin/retreats/${id}?tab=occupancy`);
+ await page.goto(`/admin/retreats/${id}/occupancy`);
  const section=page.getByRole('region',{name:'Room occupancy overview'});await expect(section).toBeVisible();
  const first=section.getByText('Booster I',{exact:true}),second=section.getByText('Booster II',{exact:true});await expect(first).toBeVisible();await expect(second).toBeVisible();
  const a=await first.boundingBox(),b=await second.boundingBox();expect(Math.abs(a!.y-b!.y)).toBeLessThan(2);

@@ -304,7 +304,14 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setIsLoading(true);
       setFinancialSummary(null);
       setSummaryError('');
-      try { setFinancialSummary((await paymentsApi.getFinancialSummary(bookingId)).data); }
+      try {
+        const summary = (await paymentsApi.getFinancialSummary(bookingId)).data;
+        if (!summary || Array.isArray(summary) || typeof summary.currency !== 'string' ||
+            !['price', 'netPaid', 'balance', 'overpayment'].every(key => typeof summary[key] === 'number' && Number.isFinite(summary[key]))) {
+          throw new Error('Unavailable financial summary');
+        }
+        setFinancialSummary(summary);
+      }
       catch { setSummaryError('Financial summary unavailable. Reload before relying on settlement totals.'); }
       let exactPayments = await loadBookingPayments(bookingId, bookingHash);
       if (exactPayments.length === 0) {
@@ -788,7 +795,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       <div className="payments-list">
         <div className="payment-history-header">
           <h4>Payment history</h4>
-          <span className="payment-history-total">{payments.length} payment{payments.length === 1 ? '' : 's'} · <CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /> received</span>
+          <span className="payment-history-total">{payments.length} payment{payments.length === 1 ? '' : 's'} · {financialSummary ? <><CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /> received</> : 'Total unavailable'}</span>
             <button
               type="button"
               onClick={() => {

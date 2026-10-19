@@ -9,6 +9,8 @@ test.skip(
   "Requires the isolated PPVC-889 real-Mongo fixture, never production data.",
 );
 test.beforeEach(async ({ page, baseURL }) => {
+  page.on("pageerror", error => console.log("Browser error:", error.message));
+  page.on("console", msg => { if(msg.type() === "error") console.log("Console error:", msg.text()); });
   await page.addInitScript(() => {
     localStorage.setItem("token", "synthetic-integration-token");
     localStorage.setItem(
@@ -38,6 +40,7 @@ test.beforeEach(async ({ page, baseURL }) => {
           "access-control-allow-headers": "*",
         },
       });
+    if (p.endsWith("/financial-summary")) return route.fulfill({json:null});
     if (
       p.startsWith("/integration/") ||
       p.startsWith("/clients/") ||
