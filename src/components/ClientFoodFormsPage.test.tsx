@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import jsPDF from 'jspdf';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import ClientFoodFormsPage from './ClientFoodFormsPage';
 import { clientFoodFormsApi } from '../services/clientFoodFormsApi';
 import { highlightFoodAnswer } from './clientFormsControls';
@@ -45,4 +46,31 @@ test.each([undefined, null, '', ' ', 'None', 'none.', 'N/A', [], ['None'], 'No a
 
 test.each(['foodsDisliked', 'foodsAvoided', 'allergies', 'foodIntolerances'])('highlights a restriction in %s', key => {
   expect(highlightFoodAnswer(key, ['None', 'Peanuts'])).toBe(true);
+});
+
+
+const matrixPdf = () => ({
+  internal:{pageSize:{getWidth:()=>842,getHeight:()=>595}},
+  setFont:jest.fn(),setFontSize:jest.fn(),text:jest.fn(),setFillColor:jest.fn(),rect:jest.fn(),addPage:jest.fn(),setDrawColor:jest.fn(),line:jest.fn(),save:jest.fn(),
+});
+const openMatrix = async()=>{
+  render(<ClientFoodFormsPage/>);await screen.findByText('Zoe');
+  fireEvent.change(screen.getByRole('combobox',{name:'Retreat'}),{target:{value:'JNO-10'}});
+  fireEvent.click(await screen.findByRole('option',{name:'JNO-10'}));
+  fireEvent.click(screen.getByRole('button',{name:'Food matrix',exact:true}));
+};
+test('loads PDF generation only on export and still saves the selected matrix',async()=>{
+  const pdf=matrixPdf();(jsPDF as unknown as jest.Mock).mockImplementation(()=>pdf);
+  await openMatrix();expect(jsPDF).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'Download PDF',exact:true}));
+  await waitFor(()=>expect(pdf.save).toHaveBeenCalledWith('food-matrix-JNO-10.pdf'));
+  expect(jsPDF).toHaveBeenCalledTimes(1);expect(screen.queryByRole('alert')).toBeNull();
+});
+test('surfaces export failure and allows a subsequent export without losing the matrix',async()=>{
+  const pdf=matrixPdf();(jsPDF as unknown as jest.Mock).mockImplementationOnce(()=>{throw new Error('Synthetic PDF failure');}).mockImplementation(()=>pdf);
+  await openMatrix();fireEvent.click(screen.getByRole('button',{name:'Download PDF',exact:true}));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not create the PDF');
+  expect(screen.getByRole('dialog',{name:'Food matrix'})).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Download PDF',exact:true}));
+  await waitFor(()=>expect(pdf.save).toHaveBeenCalled());expect(screen.queryByRole('alert')).toBeNull();
 });

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import jsPDF from 'jspdf';
 import { Utensils } from 'lucide-react';
 import { RetreatFilter, useFormSort, answerText, isEmptyFoodAnswer, highlightFoodAnswer } from './clientFormsControls';
 import { clientFoodFormsApi, ClientFoodForm } from '../services/clientFoodFormsApi';
@@ -30,6 +29,8 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   const [search, setSearch] = useState('');
   const [retreatFilter, setRetreatFilter] = useState('');
   const [matrixOpen, setMatrixOpen] = useState(false);
+  const [matrixPdfBusy, setMatrixPdfBusy] = useState(false);
+  const [matrixPdfError, setMatrixPdfError] = useState('');
   const [matrixLanguage, setMatrixLanguage] = useState<'en' | 'cs' | 'pl'>('en');
   const [loading, setLoading] = useState(true);
 
@@ -64,8 +65,11 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   const matrixLabel = (key: string) => QUESTION_LABELS[matrixLanguage][key] || QUESTION_LABELS.en[key] || label(key);
   const matrixValue = (client: ClientFoodForm, key: string) => key === 'fullName' ? client.signature_name : answerText(client.answers?.[key]);
 
-  const downloadMatrix = () => {
-    if (!retreatFilter || !visible.length) return;
+  const downloadMatrix = async () => {
+    if (!retreatFilter || !visible.length || matrixPdfBusy) return;
+    setMatrixPdfBusy(true); setMatrixPdfError('');
+    try {
+    const { default: jsPDF } = await import('jspdf');
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
     const margin = 28;
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -93,6 +97,9 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       y += rowHeight;
     });
     pdf.save(`food-matrix-${retreatFilter}.pdf`);
+    } catch {
+      setMatrixPdfError('Could not create the PDF. Try again or refresh this page.');
+    } finally { setMatrixPdfBusy(false); }
   };
 
   const setStatus = async (row: ClientFoodForm, status: ClientFoodForm['status']) => {
@@ -164,7 +171,8 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
 
       {matrixOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Food matrix">
         <section className="max-h-[92vh] w-full max-w-[1400px] overflow-hidden bg-white p-6 shadow-2xl">
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-4"><div><h2 className="font-sans text-2xl font-bold">Food matrix · {retreatFilter}</h2><p className="mt-1 text-sm text-gray-500">Clients are columns; submitted questions are rows.</p></div><div className="flex items-center gap-3"><label className="text-sm text-gray-600">Translation<select className="ml-2 border border-gray-300 px-2 py-1" value={matrixLanguage} onChange={(event) => setMatrixLanguage(event.target.value as 'en' | 'cs' | 'pl')}><option value="en">English</option><option value="cs">Čeština</option><option value="pl">Polski</option></select></label><button type="button" onClick={downloadMatrix} className="bg-[#07516c] px-4 py-2 text-sm text-white hover:bg-[#063d51]">Download PDF</button><button type="button" onClick={() => setMatrixOpen(false)} className="text-sm text-gray-600 hover:underline">Close</button></div></div>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-4"><div><h2 className="font-sans text-2xl font-bold">Food matrix · {retreatFilter}</h2><p className="mt-1 text-sm text-gray-500">Clients are columns; submitted questions are rows.</p></div><div className="flex items-center gap-3"><label className="text-sm text-gray-600">Translation<select className="ml-2 border border-gray-300 px-2 py-1" value={matrixLanguage} onChange={(event) => setMatrixLanguage(event.target.value as 'en' | 'cs' | 'pl')}><option value="en">English</option><option value="cs">Čeština</option><option value="pl">Polski</option></select></label><button type="button" onClick={() => void downloadMatrix()} disabled={matrixPdfBusy} className="bg-[#07516c] px-4 py-2 text-sm text-white hover:bg-[#063d51]">{matrixPdfBusy ? 'Preparing PDF…' : 'Download PDF'}</button><button type="button" onClick={() => setMatrixOpen(false)} className="text-sm text-gray-600 hover:underline">Close</button></div></div>
+          {matrixPdfError && <p role="alert" className="mb-3 text-red-700">{matrixPdfError}</p>}
           <div className="max-h-[70vh] overflow-auto"><table className="min-w-full border-collapse text-sm"><thead className="sticky top-0 bg-[#e8f6fb]"><tr><th className="sticky left-0 z-10 min-w-[180px] border-b border-gray-300 bg-[#e8f6fb] p-3 text-left font-semibold">{matrixLanguage === 'cs' ? 'Otázka' : matrixLanguage === 'pl' ? 'Pytanie' : 'Question'}</th>{visible.map((client) => <th key={client._id} className="min-w-[150px] border-b border-gray-300 p-3 text-left font-semibold">{shortClientName(client.signature_name)}</th>)}</tr></thead><tbody>{matrixRows.map((key) => <tr key={key} className="border-b border-gray-200"><th className="sticky left-0 bg-white p-3 text-left font-semibold">{matrixLabel(key)}</th>{visible.map((client) => { const value = matrixValue(client, key); const highlighted = highlightFoodAnswer(key, client.answers?.[key]); return <td key={`${client._id}-${key}`} className={`max-w-[240px] whitespace-pre-wrap p-3 align-top ${isEmptyAnswer(value) ? 'font-bold text-emerald-600' : highlighted ? 'bg-red-50 font-semibold text-red-800' : 'text-gray-700'}`}>{isEmptyAnswer(value) ? '✓' : value}</td>; })}</tr>)}</tbody></table></div>
         </section>
       </div>}

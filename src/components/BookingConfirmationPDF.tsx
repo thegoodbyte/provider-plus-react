@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { bookingFlowApi, housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import { BookingType } from '../constants/eventTypes';
@@ -944,6 +942,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   });
 
   try {
+    // PDF engines are needed only when this action is invoked, not at app startup.
+    const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([import('jspdf'), import('html2canvas')]);
     await waitForImages(pdfContent);
     // Generate canvas from HTML with optimized quality
     const canvas = await html2canvas(pdfContent, {
