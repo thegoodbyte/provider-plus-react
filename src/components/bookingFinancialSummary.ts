@@ -1,7 +1,7 @@
 export type BookingFinancialSource = { totalAmount?: number | null; currency?: string | null; amountPaid?: number | null; totalAmountUsd?: number | null; totalAmountUSD?: number | null; amountPaidUsd?: number | null; amountPaidUSD?: number | null; grossReceived?: number | null; refundedAmount?: number | null; financialSummary?: Record<string, any> | null };
 const money = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0;
 export const bookingFinancialSummary = (booking?: BookingFinancialSource | null) => {
-  if (booking?.financialSummary?.state) return booking.financialSummary as { price: number; currency: string; grossReceived: number; refunded: number; netPaid: number; balance: number; overpayment: number; paidInFull: boolean; state: 'unpaid' | 'partial' | 'paid' | 'overpaid' };
+  if (booking?.financialSummary?.contractVersion === 1 && booking.financialSummary.sourceState) return booking.financialSummary as { price: number; currency: string; grossReceived: number; refunded: number; netPaid: number; balance: number; overpayment: number; paidInFull: boolean; sourceState?: string; state: 'unpaid' | 'partial' | 'paid' | 'overpaid' | 'unreconciled' };
   const price = Math.max(0, money(booking?.totalAmount));
   // amountPaid is maintained by the payment ledger in the booking currency.
   // USD snapshots can come from different exchange rates and must not inflate
@@ -12,6 +12,6 @@ export const bookingFinancialSummary = (booking?: BookingFinancialSource | null)
   const balance = Math.max(price - netPaid, 0);
   const overpayment = Math.max(netPaid - price, 0);
   const state = netPaid <= 0 ? 'unpaid' : overpayment > 0.005 ? 'overpaid' : balance <= 0.005 ? 'paid' : 'partial';
-  return { price, currency: booking?.currency || 'EUR', grossReceived, refunded, netPaid, balance, overpayment, paidInFull: state === 'paid' || state === 'overpaid', state };
+  return { sourceState: 'legacy_cached', price, currency: booking?.currency || 'EUR', grossReceived, refunded, netPaid, balance, overpayment, paidInFull: false, state };
 };
 export const paymentRequestFinancialSummary = (request: any) => ({ requested: money(request?.requestedAmount ?? request?.amountPaid), quotedPrice: money(request?.fullPrice ?? request?.fullPriceQuote), currency: request?.currency || 'EUR' });

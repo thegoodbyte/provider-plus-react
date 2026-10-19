@@ -924,6 +924,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const bookingStatusLabel = (status: string) => ({ pending: 'Conditional', confirmed: 'Confirmed', 'checked-in': 'Checked in', 'checked-out': 'Completed', cancelled: 'Cancelled' }[status] || status);
   const paymentStatusLabel = (client: RetreatClientData) => {
     const summary = bookingFinancialSummary(client);
+    if (summary.state === 'unreconciled' || summary.sourceState === 'legacy_cached') return 'Reconciliation required';
     if (isCancelledBookingStatus(client.status)) {
       if (client.cancellationDepositTreatment === 'none') return 'No payment';
       if (client.cancellationDepositTreatment === 'retained') return 'Deposit retained';

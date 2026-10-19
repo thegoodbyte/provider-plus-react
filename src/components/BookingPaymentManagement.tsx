@@ -6,7 +6,6 @@ import CurrencyDisplay from './CurrencyDisplay';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import './BookingPaymentManagement.css';
-import { bookingPaymentSummary, bookingSettlementSummary } from './bookingStatusSelectors';
 import { loadBookingPayments } from './loadBookingPayments';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
@@ -298,9 +297,15 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     };
   }, [totalAmount, currency]);
 
+  const [financialSummary, setFinancialSummary] = useState<any>(null);
+  const [summaryError, setSummaryError] = useState('');
   const fetchPayments = useCallback(async () => {
     try {
       setIsLoading(true);
+      setFinancialSummary(null);
+      setSummaryError('');
+      try { setFinancialSummary((await paymentsApi.getFinancialSummary(bookingId)).data); }
+      catch { setSummaryError('Financial summary unavailable. Reload before relying on settlement totals.'); }
       let exactPayments = await loadBookingPayments(bookingId, bookingHash);
       if (exactPayments.length === 0) {
         const response = await paymentsApi.getByClient(clientId);
@@ -688,16 +693,11 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
   const balanceUsd = totalCostUsd !== null ? totalCostUsd - totalPaidUsd : null;
 
-  const bookingCurrencySummary = bookingPaymentSummary(payments, Number(totalAmount || 0), bookingCurrency);
-  const settlement = bookingSettlementSummary(payments, Number(totalAmount || 0), bookingCurrency, totalCostUsd);
-  const isPaidInFull = settlement.paidInFull;
-  const paidPercentage = settlement.paidPercent;
-  const overpaymentUsd = settlement.basis === 'USD' ? settlement.overpaid : 0;
-  const totalPaidBookingCurrency = bookingCurrencySummary.received;
-  const bookingBalance = isPaidInFull ? 0 : bookingCurrencySummary.outstanding;
+  const isPaidInFull = financialSummary?.paidInFull === true;
+  const paidPercentage = financialSummary ? (financialSummary.price > 0 ? Math.min(isPaidInFull ? 100 : 99, Math.max(0, Math.round(financialSummary.netPaid / financialSummary.price * 100))) : isPaidInFull ? 100 : 0) : 0;
+  const totalPaidBookingCurrency = financialSummary?.netPaid;
+  const bookingBalance = financialSummary?.balance;
 
-  const totalRefundedUsd = payments
-    .reduce((sum, p) => sum + (p.refundedAmount ? (p.currency === 'USD' ? p.refundedAmount : 0) : 0), 0);
 
   if (isLoading) {
     return (
@@ -722,17 +722,17 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         </div>
       </div>
 
-      <div className={`booking-balance-summary ${isPaidInFull ? 'is-paid' : 'has-balance'}`}>
-        <div className="booking-balance-metric total"><span>Total cost · USD booking price</span><strong>{formatUsd(totalCostUsd)}</strong><small><CurrencyDisplay amount={totalAmount} currency={bookingCurrency} showUSD={false} /> final booking price</small><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Manage booking price</button></div>
-        <div className="booking-balance-metric received"><span>Received · USD</span><strong>{formatUsd(totalPaidUsd)}</strong><small><CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /> recorded in {bookingCurrency} · {payments.length} payment{payments.length === 1 ? '' : 's'}</small></div>
-        <div className="booking-balance-metric outstanding"><span>{overpaymentUsd > 0.005 ? 'Overpaid · client credit' : isPaidInFull ? 'Paid in full' : 'Balance outstanding · USD'}</span><strong>{formatUsd(overpaymentUsd > 0.005 ? overpaymentUsd : isPaidInFull ? 0 : balanceUsd)}</strong><small>{overpaymentUsd > 0.005 ? 'Paid above the USD booking price' : <><CurrencyDisplay amount={isPaidInFull ? 0 : bookingBalance} currency={bookingCurrency} showUSD={false} />{!isPaidInFull && paymentPlan?.dueDate ? ` · due ${formatCalendarDate(paymentPlan.dueDate)}` : ''}</>}</small></div>
-        <div className="booking-payment-progress">
-          <span className={`booking-payment-state ${isPaidInFull ? 'paid-in-full' : 'unpaid'}`}>{isPaidInFull ? '✓ Paid in full' : 'ⓘ Not fully paid'}</span>
-          <div><i style={{ width: `${paidPercentage}%` }} /></div><strong>{paidPercentage}% <span>paid</span></strong>
-        </div>
+      {summaryError && <p role="alert">{summaryError}</p>}
+      {financialSummary && <div className="booking-balance-summary">
+        <div className="booking-balance-metric total"><span>Agreed price</span><strong><CurrencyDisplay amount={financialSummary.price} currency={financialSummary.currency} showUSD={false}/></strong><button type="button" onClick={() => setShowPriceEditor(true)}>Manage booking price</button></div>
+        <div className="booking-balance-metric received"><span>Gross receipts</span><strong><CurrencyDisplay amount={financialSummary.grossReceived} currency={financialSummary.currency} showUSD={false}/></strong></div>
+        <div className="booking-balance-metric received"><span>Refunded</span><strong><CurrencyDisplay amount={financialSummary.refunded} currency={financialSummary.currency} showUSD={false}/></strong></div>
+        <div className="booking-balance-metric received"><span>Net paid</span><strong><CurrencyDisplay amount={totalPaidBookingCurrency} currency={financialSummary.currency} showUSD={false}/></strong></div>
+        <div className="booking-balance-metric outstanding"><span>{financialSummary.overpayment > 0 ? 'Overpaid · client credit' : 'Balance outstanding'}</span><strong><CurrencyDisplay amount={financialSummary.overpayment || bookingBalance} currency={financialSummary.currency} showUSD={false}/></strong></div>
+        <div><span>{financialSummary.sourceState === 'verified_ledger' ? isPaidInFull ? 'Paid in full' : 'Not fully paid' : 'Reconciliation required'}</span><strong>{paidPercentage}% paid</strong></div>
+        <details><summary>Ledger reconciliation · read only</summary><p>Source: {financialSummary.sourceState}. Cached: {financialSummary.cachedAmountPaid} {financialSummary.currency}. Ledger: {financialSummary.calculated?.netPaid} {financialSummary.currency}.</p>{financialSummary.mismatchReason && <p>{financialSummary.mismatchReason}</p>}</details>
         <button type="button" className="mobile-record-payment" onClick={openPaymentEditor}>Record a payment</button>
-        {totalRefundedUsd > 0 && <div className="booking-refund-summary">Refunded {formatUsd(totalRefundedUsd)}</div>}
-      </div>
+      </div>}
 
       {showPriceEditor && <div className="booking-price-editor" role="dialog" aria-label="Manage booking price">
         <div><strong>Manage booking price</strong><p>Start with the basic price, then itemize every discount and add-on. Payments remain unchanged.</p></div>

@@ -530,6 +530,8 @@ export const scratchpadApi = {
 };
 
 export const paymentsApi = {
+  getFinancialSummary: (bookingId: string) => api.get(`/payments/booking/${bookingId}/financial-summary`, { params: { _fresh: Date.now() } }),
+  getFinancialReconciliation: (after?: string) => api.get(`/payments/financial-reconciliation`, { params: { after } }),
   getPlanSettings: () => api.get('/payments/plan-settings'),
   savePlanSettings: (data: any) => api.patch('/payments/plan-settings', data),
   syncBookingPlan: (bookingId: string) => api.post(`/payments/plan-settings/sync-booking/${bookingId}`),

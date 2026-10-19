@@ -5,7 +5,7 @@ import { configSummaryApi, paymentRequestsApi, paymentsApi } from '../services/a
 
 jest.mock('../services/api', () => ({
   paymentsApi: {
-    getBookingPlan: jest.fn(), getByBooking: jest.fn(), getByBookingHash: jest.fn(),
+    getFinancialSummary: jest.fn(), getBookingPlan: jest.fn(), getByBooking: jest.fn(), getByBookingHash: jest.fn(),
     getTypes: jest.fn(), convertToUsd: jest.fn(), updateBookingPlan: jest.fn(),
     updateBookingPrice: jest.fn(), getByClient: jest.fn(), getUnlinkedCandidatesByBooking: jest.fn(), update: jest.fn(),
   },
@@ -30,6 +30,7 @@ const renderPage = () => render(<MemoryRouter initialEntries={['/admin/bookings/
 describe('BookingPaymentManagement PPVC-493 layout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (paymentsApi.getFinancialSummary as jest.Mock).mockResolvedValue({ data: { price: 7500, currency: 'PLN', grossReceived: 2250, refunded: 0, netPaid: 2250, balance: 5250, overpayment: 0, paidInFull: false, state: 'partial', sourceState: 'verified_ledger', cachedAmountPaid: 999, calculated: { netPaid: 2250 } } });
     (paymentsApi.getBookingPlan as jest.Mock).mockResolvedValue({ data: null });
     (paymentRequestsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [] });
     (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({ data: [payment] });
@@ -98,19 +99,25 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/admin/payments/new?bookingId=booking-1&clientId=client-1');
   });
 
-  it('marks a mixed-currency booking paid from the complete USD ledger', async () => {
-    const usdPayments = [
-      { ...payment, _id: 'payment-balance', amount: 1245, currency: 'USD', usd_amount: 1245 },
-      { ...payment, _id: 'payment-deposit', amount: 805, currency: 'USD', usd_amount: 805 },
-    ];
-    (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({ data: usdPayments });
-    (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: usdPayments });
+  it('uses the server summary over independently reconstructed USD settlement', async () => {
+    (paymentsApi.getFinancialSummary as jest.Mock).mockResolvedValue({ data: { price: 7500, currency: 'PLN', grossReceived: 8000, refunded: 0, netPaid: 8000, balance: 0, overpayment: 500, paidInFull: true, state: 'overpaid', sourceState: 'verified_ledger' } });
     renderPage();
-    expect(await screen.findByText('✓ Paid in full')).toBeInTheDocument();
-    expect(screen.getByText('$2,050.00')).toBeInTheDocument();
-    expect(screen.getByText('Total cost · USD booking price')).toBeInTheDocument();
+    expect(await screen.findByText('Paid in full')).toBeInTheDocument();
     expect(screen.getByText('Overpaid · client credit')).toBeInTheDocument();
-    expect(screen.getByText('Paid above the USD booking price')).toBeInTheDocument();
+    expect(screen.getByText('PLN 500.00')).toBeInTheDocument();
     expect(screen.queryByText(/Not fully paid/)).not.toBeInTheDocument();
+  });
+  it('exposes read-only historical classification without asserting settlement', async () => {
+    (paymentsApi.getFinancialSummary as jest.Mock).mockResolvedValue({ data: { price: 7500, currency: 'PLN', netPaid: 7500, balance: 0, overpayment: 0, paidInFull: false, sourceState: 'unreconciled_history', cachedAmountPaid: 7500, calculated: { netPaid: 0 }, mismatchReason: 'No linked ledger entries' } });
+    renderPage();
+    expect(await screen.findByText('Reconciliation required')).toBeInTheDocument();
+    expect(screen.getByText('No linked ledger entries')).toBeInTheDocument();
+    expect(screen.queryByText('Paid in full')).not.toBeInTheDocument();
+  });
+  it('does not substitute local settlement when the summary fails', async () => {
+    (paymentsApi.getFinancialSummary as jest.Mock).mockRejectedValue(new Error('offline'));
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Financial summary unavailable');
+    expect(screen.queryByText('Paid in full')).not.toBeInTheDocument();
   });
 });

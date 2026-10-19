@@ -11,7 +11,7 @@ interface BookingConfirmationPDFProps {
   onComplete?: () => void;
 }
 
-export const BOOKING_CONFIRMATION_TEMPLATE_VERSION = '2026-09-04-ecb-balances-v4';
+export const BOOKING_CONFIRMATION_TEMPLATE_VERSION = '2026-10-18-authoritative-ledger-v5';
 
 export const getBookingConfirmationPolicy = (
   bookingType?: string,
@@ -480,6 +480,7 @@ const translations = {
 };
 
 export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }: BookingConfirmationPDFProps) => {
+  const financialSummary = (await paymentsApi.getFinancialSummary(booking._id || booking.id)).data;
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
   const house = await resolveHouseForRetreat(retreat);
@@ -508,8 +509,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
   const paymentRequestLabel = formatPaymentRequestDisplayLabel(paymentRequest);
 
-  const bookingCurrency = (booking.currency || 'USD') as Payment['currency'];
-  const bookingTotal = getBookingTotalAmount(booking);
+  const bookingCurrency = (financialSummary.currency || booking.currency || 'USD') as Payment['currency'];
+  const bookingTotal = financialSummary.price;
   const completedPayments = payments
     .filter((payment) => payment.status === 'completed')
     .sort((a, b) => (getPaymentDate(a)?.getTime() || 0) - (getPaymentDate(b)?.getTime() || 0));
@@ -583,14 +584,14 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   };
 
   const resolveBookingCurrencyAmount = async (payment: Payment, amountUsd: number | null) => {
-    if (payment.currency === bookingCurrency) return toFiniteNumber(payment.amount, 0);
-    if (bookingCurrency === 'USD') return amountUsd;
+    if (payment.currency === bookingCurrency) return payment.paymentType === 'refund' ? -Math.abs(toFiniteNumber(payment.amount, 0)) : Math.max(0, Math.abs(toFiniteNumber(payment.amount, 0)) - Number(payment.refundedAmount || 0));
+
     if (payment.bookingCurrency === bookingCurrency) {
       const amount = toFiniteNumber(payment.bookingCurrencyAmount, 0);
-      return Number.isFinite(amount) && amount > 0 ? amount : null;
+      return Number.isFinite(amount) ? (payment.paymentType === 'refund' ? -1 : 1) * Math.abs(amount) * (payment.amount ? Math.max(Math.abs(payment.amount) - Number(payment.refundedAmount || 0), 0) / Math.abs(payment.amount) : 1) : null;
     }
 
-    return amountUsd === null ? null : convertUsdToCurrencyAmount(amountUsd, bookingCurrency);
+    return null;
   };
 
   const resolvedCompletedPayments = await Promise.all(completedPayments.map(async (payment) => {
@@ -598,7 +599,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     const explicitUsdAmount = Number.isFinite(parsedUsdAmount)
       ? parsedUsdAmount
       : null;
-    const amountUsd = explicitUsdAmount ?? await convertToUsdAmount(payment.amount, payment.currency);
+    const amountUsd = payment.currency === 'USD' ? Number(payment.amount) : explicitUsdAmount;
     const bookingCurrencyAmount = await resolveBookingCurrencyAmount(payment, amountUsd);
     const exchangeDate = parseDate(payment.bookingCurrencyExchangeDate) || getPaymentDate(payment) || generatedConversionDate;
     const exchangeSource = String(payment.bookingCurrencyExchangeSource || 'Recorded exchange value').trim();
@@ -633,17 +634,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const hasMixedPaymentCurrencies = completedPayments.some((payment) => payment.currency !== bookingCurrency);
   const showsSettlementColumn = hasMixedPaymentCurrencies;
 
-  const totalPaid = resolvedCompletedPayments.reduce((sum, resolvedPayment) => {
-    return sum + (resolvedPayment.bookingCurrencyAmount || 0);
-  }, 0);
-  // Payment allocations can contain more precision than the two decimals
-  // shown on the confirmation. Round the ledger before deriving the balance;
-  // otherwise a fully settled booking can print a misleading -0.01 balance.
-  const roundCurrency = (amount: number) => Math.round((Number(amount) + Number.EPSILON) * 100) / 100;
-  const roundedTotalPaid = roundCurrency(totalPaid);
-  const rawBalance = roundCurrency(bookingTotal - roundedTotalPaid);
-  const balance = Math.max(0, rawBalance);
-  const paidInFull = balance <= 0.01;
+  const balance = financialSummary.balance;
+  const paidInFull = financialSummary.paidInFull;
   // Do not subtract settlement USD values captured on different dates. Convert
   // the authoritative remaining booking-currency balance at one current rate.
   const balanceUsd = paidInFull ? 0 : bookingCurrency === 'USD'
@@ -732,7 +724,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const balanceSettlementHtml = balanceUsd !== null ? formatAmount(balanceUsd, 'USD') : '';
   const settlementColumnHeader = bookingCurrency === 'USD' ? t.paidAmount : 'USD';
   const bookingReferenceText = paymentRequestLabel ? `${t.paymentRequest} #${paymentRequestLabel}` : '';
-  const priceBreakdownRows = buildBookingPriceRows(booking).map((row) => {
+  const priceBreakdownRows = buildBookingPriceRows({ ...booking, ...financialSummary.priceAgreement, totalAmount: bookingTotal, pricingSummary: financialSummary.priceAgreement?.pricingSummary }).map((row) => {
     const label = row.kind === 'base' ? (language === 'pl' ? 'Cena podstawowa' : language === 'cz' ? 'Základní cena' : 'Basic booking price') : row.kind === 'total' ? (language === 'pl' ? 'Uzgodniona cena całkowita' : language === 'cz' ? 'Dohodnutá celková cena' : 'Agreed total price') : row.label;
     const sign = row.kind === 'discount' ? '−' : row.kind === 'addition' ? '+' : '';
     return `<tr style="height:19px;${row.kind === 'total' ? 'background:#f0fdf4;font-weight:700;' : ''}"><td style="border:1px solid rgba(31,41,55,.16);padding:1px 8px 5px;line-height:1.15;vertical-align:top;">${escapeHtml(label)}</td><td style="border:1px solid rgba(31,41,55,.16);padding:1px 8px 5px;line-height:1.15;vertical-align:top;text-align:right;color:${row.kind === 'discount' ? '#b91c1c' : row.kind === 'addition' ? '#166534' : '#111827'};">${sign}${formatAmount(Math.abs(row.amount))}</td></tr>`;
@@ -880,6 +872,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right;">${formatAmount(bookingTotal)}</td>
             ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right;">${bookingTotalSettlementHtml}</td>` : ''}
           </tr>
+          <tr><td colspan="3">${language === 'pl' ? 'Wpłaty brutto / netto / zwroty / nadpłata' : language === 'cz' ? 'Přijato / čisté platby / vráceno / přeplatek' : 'Gross / net paid / refunded / overpayment'}</td><td>${formatAmount(financialSummary.grossReceived)} / ${formatAmount(financialSummary.netPaid)} / ${formatAmount(financialSummary.refunded)} / ${formatAmount(financialSummary.overpayment)}</td></tr>
           ${paymentRowsHtml || `
             <tr>
               <td colspan="${showsSettlementColumn ? '5' : '4'}" style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: center; color: #6b7280;">-</td>
@@ -896,7 +889,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       <!-- Footer notes -->
       <div style="margin-top: 18px; font-size: 11px; line-height: 1.4; color: #4b5563;">
         <table style="width:100%;border-collapse:collapse;font-size:11px;line-height:1.35;font-style:italic;"><tbody><tr>
-          <td style="width:50%;padding:0 12px 0 0;vertical-align:top;">${paidInFull ? t.balancePaidNote : t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}</td>
+          <td style="width:50%;padding:0 12px 0 0;vertical-align:top;">${financialSummary.sourceState !== 'verified_ledger' ? escapeHtml(language === 'pl' ? 'Płatności wymagają uzgodnienia.' : language === 'cz' ? 'Platby vyžadují kontrolu.' : 'Payments require reconciliation.') : paidInFull ? t.balancePaidNote : t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}</td>
           <td style="width:50%;padding:0 0 0 12px;vertical-align:top;">${!paidInFull && requiredDeposit ? t.requiredDepositNote(formatAmount(requiredDeposit), requiredDepositUsd ? formatAmount(requiredDepositUsd, 'USD') : undefined) : ''}</td>
         </tr></tbody></table>
 
