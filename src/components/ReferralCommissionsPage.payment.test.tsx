@@ -78,3 +78,15 @@ it('does not show a package filter when no row in the report has a package', () 
  view([first, second]);
  expect(screen.queryByLabelText('Filter by commission package')).toBeNull();
 });
+it('shows each unallocated payment once and excludes blocked bookings from every payout action', () => {
+ const payment = { expenseId: 'legacy', amount: 4500, currency: 'PLN', allocation: 'unallocated', unallocatedAmount: 4500, paidAt: '2026-09-07' };
+ view([{ ...first, paymentReconciliationRequired: true, paymentReconciliation: [payment] }, { ...second, paymentReconciliationRequired: true, paymentReconciliation: [payment] }]);
+ expect(screen.getAllByRole('note')).toHaveLength(1);
+ expect(screen.getByRole('note')).toHaveTextContent('4,500.00');
+ expect(screen.getByRole('note')).toHaveTextContent('Unallocated');
+ expect(screen.getByLabelText('Select commission for booking 1184')).toBeDisabled();
+ expect(screen.getByLabelText('Select commission for booking 1185')).toBeDisabled();
+ expect(screen.queryByRole('button', { name: 'Pay', exact: true })).toBeNull();
+ expect(screen.queryByText('Total owed')).toBeNull();
+ expect(referralsApi.createPayout).not.toHaveBeenCalled();
+});

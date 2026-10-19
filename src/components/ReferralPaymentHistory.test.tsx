@@ -41,7 +41,7 @@ it('shows legacy expenses without fake booking links or unsupported correction a
   (referralsApi.getPayouts as jest.Mock).mockResolvedValue({ data: [{ ...paid, _id: 'legacy', referralId: undefined, retreatId: undefined, vendor: 'Older partner', referralPayment: undefined, referralPayoutItems: [] }] });
   show();
   await screen.findByText('Older partner');
-  expect(screen.getByText('Expense without booking allocations')).toBeVisible();
+  expect(screen.getByText('Legacy expense · booking allocation review needed')).toBeVisible();
   expect(screen.getByText('Retreat not recorded')).toBeVisible();
   expect(screen.queryByRole('button', { name: 'Void incorrect record' })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'View expense' })).toHaveAttribute('href', '/admin/expenses/legacy');
@@ -77,4 +77,12 @@ it('excludes pending and voided amounts from totals and preserves records on ref
   fireEvent.click(screen.getByRole('button', { name: 'Refresh payments' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('History unavailable. Retry.');
   expect(screen.getByText('Original partner')).toBeVisible();
+});
+it('retains planned history but excludes it from actual paid totals and filters', async () => {
+ (referralsApi.getPayouts as jest.Mock).mockResolvedValueOnce({ data: [{ ...paid, expenseKind: 'planned', amount: 4500 }] });
+ show(); await screen.findByText('Original partner');
+ expect(screen.queryByText('Recorded paid · USD')).toBeNull();
+ expect(screen.getByText('Planned expense · not a recorded payment')).toBeVisible();
+ fireEvent.change(screen.getByLabelText('Payment record status'), { target: { value: 'paid' } });
+ expect(screen.queryByText('Original partner')).toBeNull();
 });

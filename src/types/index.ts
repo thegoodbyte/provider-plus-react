@@ -167,7 +167,15 @@ export interface Referral {
   updatedAt?: string;
 }
 
+export interface ReferralPaymentReconciliation {
+  expenseId: string; amount: number; currency: string; paidAt?: string;
+  description?: string; receiptNumber?: string; provenance?: unknown;
+  allocatedAmount?: number; unallocatedAmount?: number; allocation: string;
+}
+
 export interface ReferralReportRow {
+  paymentReconciliationRequired?: boolean;
+  paymentReconciliation?: ReferralPaymentReconciliation[];
   usdEquivalent?: number; usdEquivalentKind?: 'estimate' | 'recorded' | 'equivalent'; usdEquivalentRateDate?: string; usdEquivalentSource?: string; usdEquivalentIssue?: string;
   payoutCurrency?: string; payoutAmount?: number; payoutEstimate?: boolean; payoutConversionIssue?: string; exchangeRate?: number; exchangeRateDate?: string; exchangeRateSource?: string;
   /** Canonical payment reference supplied by the referral report. */
@@ -632,6 +640,7 @@ export interface ExpenseType {
 }
 
 export interface RetreatExpense {
+  paymentReconciliation?: ReferralPaymentReconciliation;
   _id?: string;
   expenseKind?: 'planned' | 'actual';
   retreatId?: string | Retreat;
