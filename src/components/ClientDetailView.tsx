@@ -1,3 +1,4 @@
+import EkgRequirementStatus from './EkgRequirementStatus';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Client, ClientMedical, ClientRequirement, Payment, PaymentRequest, Reminder } from '../types';
@@ -785,6 +786,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
           </div>
         )}
 
+        {activeTab === 'medical' && clientBookings.filter((booking:any)=>!['cancelled','canceled'].includes(booking.status)).map((booking:any)=><EkgRequirementStatus key={booking._id} bookingId={booking._id} bookingLabel={`Booking ${booking.bookingNumber || booking.display_id || booking._id}`} />)}
         {activeTab === 'medical' && (
           <div className="medical-tab">
             {retreats.length > 0 ? (

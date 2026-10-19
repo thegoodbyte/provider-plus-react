@@ -81,7 +81,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [focusedStepId, setFocusedStepId] = useState('');
   const refreshReadiness = () => setRequirementsRefreshKey(current => current + 1);
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
-  const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
+  const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number; unavailable?: number } | null>(null);
   const [activeTab, setActiveTab] = useState<BookingDetailTab>('overview');
   const [retreatBookings, setRetreatBookings] = useState<any[]>([]);
   const [rescheduleOpen, setRescheduleOpen] = useState(false); const [rescheduleRetreats, setRescheduleRetreats] = useState<any[]>([]); const [rescheduling, setRescheduling] = useState(false); const [rescheduleError, setRescheduleError] = useState('');

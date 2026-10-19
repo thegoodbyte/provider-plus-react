@@ -1,3 +1,4 @@
+import { useEkgRequirement } from './EkgRequirementStatus';
 import type { BookingReadinessSource, ResolvedSummaryRequirement } from './bookingNextAction';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
@@ -24,8 +25,9 @@ export const requirementErrorMessage = (cause: any, fallback: string) =>
 export const useBookingRequirements = ({ bookingId, clientId, retreatId, refreshKey, onStatusChange, onReadinessChange }: {
   bookingId: string; clientId?: string; retreatId?: string; refreshKey: number;
   onReadinessChange?: (source: BookingReadinessSource) => void;
-  onStatusChange?: (status: { missing: number; total: number }) => void;
+  onStatusChange?: (status: { missing: number; total: number; unavailable?: number }) => void;
 }) => {
+  const ekg = useEkgRequirement(bookingId, refreshKey);
   const loadVersion = useRef(0);
   useEffect(() => () => { loadVersion.current += 1; }, []);
   const [resolvedRequirements, setResolvedRequirements] = useState<ResolvedSummaryRequirement[]>([]);
@@ -50,7 +52,7 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
     finally { if (version === loadVersion.current) { if (!silent) setLoading(false); setRefreshing(false); } }
   }, [bookingId, clientId, retreatId]);
 
-  useEffect(() => { onReadinessChange?.({ bookingId, loading: loading || refreshing, error, items, requirements: resolvedRequirements }); }, [bookingId, loading, refreshing, error, items, resolvedRequirements, onReadinessChange]);
+  useEffect(() => { onReadinessChange?.({ bookingId, loading: loading || refreshing || ekg.loading, error:error || (!ekg.loading && (!ekg.projection || ekg.projection.state==='unavailable') ? 'EKG status unavailable' : ''), items, requirements: resolvedRequirements.map(r=>/^(entry_)?ekg_received$/.test(r.key||'') ? {...r,state:ekg.projection?.state||'unavailable'} : r) }); }, [bookingId, loading, refreshing, error, items, resolvedRequirements, onReadinessChange, ekg.projection]);
   useEffect(() => { load(); }, [load, refreshKey]);
   const loadDocumentLibrary = useCallback(async () => {
     if (libraryDocumentsLoading || libraryDocumentsLoaded) return;
@@ -61,9 +63,15 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
     } catch (cause: any) { setError(requirementErrorMessage(cause, 'Unable to load the document library.')); }
     finally { setLibraryDocumentsLoading(false); }
   }, [bookingId, libraryDocumentsLoaded, libraryDocumentsLoading]);
-  const rows = useMemo(() => buildBookingRequirementRows(items, artifacts, libraryArtifacts, documents, libraryDocuments, reviews), [items, artifacts, libraryArtifacts, documents, libraryDocuments, reviews]);
-  const missing = rows.filter(row => row.required && !row.satisfied).length; const total = rows.filter(row => row.required).length;
-  useEffect(() => { if (!loading && !error) onStatusChange?.({ missing, total }); }, [error, loading, missing, onStatusChange, total]);
+  const rows = useMemo(() => buildBookingRequirementRows(items, artifacts, libraryArtifacts, documents, libraryDocuments, reviews).map(row => row.key !== 'ekg' ? row : {
+    ...row, required:ekg.projection?.required!==false, satisfied:!!ekg.projection?.satisfied, uploaded:!!ekg.projection?.latestEvidence,
+    reviewed:!!ekg.projection && ['accepted','caution','declined','correction_needed'].includes(ekg.projection.state),
+    canonicalLabel:ekg.loading?'Loading EKG status…':ekg.projection?.label||'Status unavailable', canonicalState:ekg.projection?.state||'unavailable',
+    latestArtifact:ekg.projection?.latestEvidence ? libraryArtifacts.find(a=>a._id===ekg.projection!.latestEvidence!.id) : undefined,
+    latestReview:ekg.projection?.latestReview && ekg.projection.latestEvidence ? (reviews[ekg.projection.latestEvidence.id]||[]).find(r=>r._id===ekg.projection!.latestReview!.id) : undefined,
+  }), [items, artifacts, libraryArtifacts, documents, libraryDocuments, reviews, ekg.projection, ekg.loading]);
+  const missing = rows.filter(row => row.required && !row.satisfied && !(row.key==='ekg' && (row as any).canonicalState==='unavailable')).length; const unavailable=rows.filter(row=>row.key==='ekg' && (row as any).canonicalState==='unavailable').length; const total = rows.filter(row => row.required).length;
+  useEffect(() => { if (!loading && !ekg.loading && !error) onStatusChange?.({ missing, total, ...(unavailable?{unavailable}: {}) }); }, [error, loading, ekg.loading, missing, onStatusChange, total, unavailable]);
 
   const link = useCallback(async (definition: RequirementDefinition, kind: 'artifact' | 'document', recordId: string) => {
     const row = rows.find(candidate => candidate.key === definition.key); const flowItem = row?.relatedItems.find(item => item._id) || row?.relatedItems[0];
@@ -79,10 +87,10 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
       }
       await medicalArtifactsApi.update(recordId, { bookingId, retreatId, clientId } as Partial<MedicalArtifact>);
       if (flowItem?._id) await bookingFlowApi.updateItem(flowItem._id, { status: 'received', completedAt: new Date().toISOString(), metadata: { ...(flowItem.metadata || {}), linkedMedicalArtifactId: recordId, linkedMedicalArtifactIds: [recordId], linkedRequirementLibrary: 'medical_artifacts', linkedRequirementKey: definition.key } });
-      await load(); return true;
+      ekg.reload(); await load(); return true;
     } catch (cause: any) { setError(requirementErrorMessage(cause, 'Unable to link the selected record.')); return false; }
     finally { setLinkingRecordId(''); }
   }, [bookingId, clientId, load, retreatId, rows]);
 
-  return { rows, items, libraryArtifacts, libraryDocuments, libraryDocumentsLoading, loading, error, linkingRecordId, reload: () => load(), loadDocumentLibrary, link };
+  return { rows, items, libraryArtifacts, libraryDocuments, libraryDocumentsLoading, loading, error, linkingRecordId, reload: () => { ekg.reload(); return load(); }, loadDocumentLibrary, link };
 };

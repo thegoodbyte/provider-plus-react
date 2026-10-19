@@ -1,3 +1,4 @@
+import EkgRequirementStatus from './EkgRequirementStatus';
 import ScreeningPdfViewer from './ScreeningPdfViewer';
 import ScreeningCallPanel from './ScreeningCallPanel';
 import FormsInvitation from './FormsInvitation';
@@ -1389,6 +1390,7 @@ const ClientDetailsPage: React.FC = () => {
           </div>
         )}
 
+        {activeTab === 'medical' && bookings.filter((booking:any)=>!['cancelled','canceled'].includes(booking.status)).map((booking:any)=><EkgRequirementStatus key={booking._id} bookingId={booking._id} bookingLabel={`Booking ${booking.bookingNumber || booking.display_id || booking._id}`} />)}
         {activeTab === 'medical' && (
           <div>
             <div className="flex justify-between items-center mb-4">
@@ -1468,19 +1470,10 @@ const ClientDetailsPage: React.FC = () => {
                       return (
                         <>
                           <dl className="space-y-2">
-                            <div className="flex justify-between">
-                              <dt className="text-xs text-gray-600">Status:</dt>
-                              <dd className="text-xs font-medium">
-                                <span className={`px-2 py-1 rounded text-xs ${
-                                  hasEkg ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {hasEkg ? 'Received' : 'Pending'}
-                                </span>
-                              </dd>
-                            </div>
+                            <p className="text-xs text-gray-600">Booking-specific EKG status is shown above. These are stored file records.</p>
                             {latestEkg && (
                               <>
-                                <div><dt className="text-xs text-gray-600">Medical review:</dt><dd><ArtifactReviewStatus artifactId={latestEkg._id} state={artifactReviews} /></dd></div>
+
                                 <div className="flex justify-between">
                                   <dt className="text-xs text-gray-600">Received:</dt>
                                   <dd className="text-xs font-medium">

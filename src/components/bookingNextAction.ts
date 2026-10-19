@@ -36,12 +36,12 @@ export function bookingNextActions(source: BookingReadinessSource, now = new Dat
     if (['cancelled', 'not_applicable'].includes(String(item.status))) continue;
     const requirement = requirements.get(item._id || '') || source.requirements.find(row => row.key === item.key);
     const satisfied = item.status !== 'blocked' && (item.status === 'waived' || (requirement
-      ? ['approved', 'caution'].includes(requirement.state) || (requirement.state === 'received' && !requirement.reviewRequired)
+      ? ['approved', 'accepted', 'waived', 'not_applicable', 'caution'].includes(requirement.state) || (requirement.state === 'received' && !requirement.reviewRequired)
       : item.metadata?.reviewRequired && ['received', 'sent_for_review', 'in_review'].includes(item.status)
         ? false
         : item.category === 'message' || /_(sent|requested)$/.test(item.key) ? isAccomplishedStatus(item.status) : isSatisfiedStatus(item.status)));
     if (satisfied) { completed += 1; continue; }
-    const reviewWaiting = requirement?.state === 'pending_review' || (requirement?.state === 'received' && requirement.reviewRequired) || ['sent_for_review', 'in_review'].includes(item.status);
+    const reviewWaiting = ['pending_review','awaiting_review'].includes(requirement?.state || '') || (requirement?.state === 'received' && requirement.reviewRequired) || ['sent_for_review', 'in_review'].includes(item.status);
     const waiting = reviewWaiting
       || (requirement?.requiredFromClient === true
         && requirement.state === 'missing'
@@ -51,7 +51,7 @@ export function bookingNextActions(source: BookingReadinessSource, now = new Dat
     const reason = item.automationPaused ? item.automationPauseReason || 'Automation paused; review this step.'
       : reviewWaiting ? 'Waiting for review.'
       : requirement?.state === 'expired' ? 'The linked document has expired.'
-      : ['declined', 'needs_resubmission'].includes(requirement?.state || '') || ['rejected', 'needs_resubmission'].includes(item.status) ? item.reviewNotes || 'Changes or a replacement submission are required.'
+      : ['declined', 'needs_resubmission', 'correction_needed'].includes(requirement?.state || '') || ['rejected', 'needs_resubmission'].includes(item.status) ? item.reviewNotes || 'Changes or a replacement submission are required.'
       : item.status === 'blocked' ? item.notes || item.description || 'This step is marked blocked.'
       : item.status === 'scheduled' ? 'Waiting for the scheduled action.'
       : requirement?.state === 'missing' ? 'Required information has not been received.'

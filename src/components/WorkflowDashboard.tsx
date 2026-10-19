@@ -1,3 +1,4 @@
+import { ekgRequirementApi } from '../services/ekgRequirementApi';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -128,13 +129,13 @@ const getMedicalRequirementLabel = (state: BookingMedicalReviewRequirement['stat
     case 'rejected':
       return 'Rejected';
     default:
-      return state;
+      return ({uploaded:'Uploaded',awaiting_review:'Awaiting review',accepted:'Accepted',correction_needed:'Correction needed',declined:'Declined',expired:'Expired',waived:'Waived',not_applicable:'Not applicable'} as Record<string,string>)[state] || state;
   }
 };
 
 const getMedicalRequirementPill = (state: BookingMedicalReviewRequirement['state']): 'ready' | 'attention' | 'blocked' | 'unknown' => {
   if (state === 'unavailable') return 'unknown';
-  if (state === 'approved') return 'ready';
+  if (['approved','accepted','waived','not_applicable','caution'].includes(state)) return 'ready';
   if (state === 'caution' || state === 'pending' || state === 'needs_review') return 'attention';
   return 'blocked';
 };
@@ -173,6 +174,7 @@ const WorkflowDashboard: React.FC = () => {
     }
 
     try {
+      const canonical=await ekgRequirementApi.get(bookingIdValue).catch(()=>null);
       const artifactsResponse = await medicalArtifactsApi.getAll({ bookingId: bookingIdValue }, inlineErrors);
       const artifacts: MedicalArtifact[] = artifactsResponse.data || [];
       const sections: Array<{ type: 'ekg' | 'liver_panel'; label: string }> = [
@@ -181,6 +183,7 @@ const WorkflowDashboard: React.FC = () => {
       ];
 
       return Promise.all(sections.map(async (section) => {
+        if(section.type==='ekg') return {...section,state:canonical?.data?.state||'unavailable',projection:canonical?.data};
         const artifact = artifacts
           .filter((item) => item.artifactType === section.type && item.status !== 'voided')
           .sort((a, b) => artifactDate(b) - artifactDate(a))[0];
@@ -588,8 +591,8 @@ const WorkflowDashboard: React.FC = () => {
                     </div>
                     <div>
                       <div className="workflow-booking-sub">Medical</div>
-                      <div className={`workflow-pill ${row.unavailable.some(label => /Medical|documents/.test(label)) ? 'unknown' : row.medicalRequirements.every((item) => item.state === 'approved') ? 'ready' : row.medicalRequirements.some((item) => item.state === 'missing' || item.state === 'rejected') ? 'blocked' : 'attention'}`}>
-                        {row.unavailable.some(label => /Medical|documents/.test(label)) ? 'Unable to load' : row.medicalRequirements.every((item) => item.state === 'approved') ? 'Approved' : 'Incomplete'}
+                      <div className={`workflow-pill ${row.unavailable.some(label => /Medical|documents/.test(label)) ? 'unknown' : row.medicalRequirements.every((item) => ['approved','accepted','waived','not_applicable','caution'].includes(item.state)) ? 'ready' : row.medicalRequirements.some((item) => item.state === 'missing' || item.state === 'rejected') ? 'blocked' : 'attention'}`}>
+                        {row.unavailable.some(label => /Medical|documents/.test(label)) ? 'Unable to load' : row.medicalRequirements.every((item) => ['approved','accepted','waived','not_applicable','caution'].includes(item.state)) ? 'Approved' : 'Incomplete'}
                       </div>
                     </div>
                     <div>
@@ -704,11 +707,11 @@ const WorkflowDashboard: React.FC = () => {
                   <div className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Medical</h3>
-                      <span>{detail.unavailable.some(label => /Medical|documents/.test(label)) ? 'Unable to load' : detail.medicalRequirements.every((item) => item.state === 'approved') ? 'Ready' : 'Action required'}</span>
+                      <span>{detail.unavailable.some(label => /Medical|documents/.test(label)) ? 'Unable to load' : detail.medicalRequirements.every((item) => ['approved','accepted','waived','not_applicable','caution'].includes(item.state)) ? 'Ready' : 'Action required'}</span>
                     </div>
                     <div className="workflow-detail-grid">
                       {detail.medicalRequirements.map((requirement) => (
-                        <div className="workflow-detail-item workflow-medical-requirement" key={requirement.type}>
+                        <div data-ekg-state={requirement.type==='ekg'?requirement.state:undefined} className="workflow-detail-item workflow-medical-requirement" key={requirement.type}>
                           <div className="workflow-medical-requirement-head">
                             <h4>{requirement.label}</h4>
                             <span className={`workflow-pill ${getMedicalRequirementPill(requirement.state)}`}>

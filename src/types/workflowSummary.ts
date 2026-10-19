@@ -1,9 +1,11 @@
+import type { EkgRequirementProjection, EkgRequirementState } from './ekgRequirement';
 import { MedicalArtifact, MedicalReviewRequest, Reminder, RetreatClient } from '../types';
 
 export interface WorkflowMedicalRequirement {
   type: 'ekg' | 'liver_panel';
   label: string;
-  state: 'missing' | 'needs_review' | 'pending' | 'approved' | 'caution' | 'rejected' | 'unavailable';
+  projection?: EkgRequirementProjection;
+  state: EkgRequirementState | 'missing' | 'needs_review' | 'pending' | 'approved' | 'caution' | 'rejected' | 'unavailable';
   artifact?: MedicalArtifact;
   review?: MedicalReviewRequest;
 }

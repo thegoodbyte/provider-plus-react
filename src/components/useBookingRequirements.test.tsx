@@ -1,3 +1,4 @@
+jest.mock('./EkgRequirementStatus',()=>({useEkgRequirement:()=>({projection:{state:'uploaded',label:'Uploaded',latestEvidence:{id:'right',version:1},required:true,satisfied:false},loading:false,reload:jest.fn()})}));
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { fetchBookingRequirementSources } from './bookingRequirementsLoader';

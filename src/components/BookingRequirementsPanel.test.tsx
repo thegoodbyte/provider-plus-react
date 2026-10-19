@@ -9,7 +9,7 @@ const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({ ...jest.requireActual('react-router-dom'), useNavigate: () => mockNavigate }));
 jest.mock('./useBookingRequirements', () => ({ useBookingRequirements: jest.fn() }));
 const hook = useBookingRequirements as jest.Mock;
-const row = (overrides: any = {}) => ({ ...requirementDefinitions.find(item => item.key === 'ekg'), required: true, uploaded: false, satisfied: false, reviewed: false, relatedItems: [], ...overrides });
+const row = (overrides: any = {}) => ({ ...requirementDefinitions.find(item => item.key === 'ekg'), canonicalLabel:'Missing', required: true, uploaded: false, satisfied: false, reviewed: false, relatedItems: [], ...overrides });
 const state = (overrides: any = {}) => ({ rows: [row()], libraryArtifacts: [], libraryDocuments: [], libraryDocumentsLoading: false, loading: false, error: '', linkingRecordId: '', reload: jest.fn(), loadDocumentLibrary: jest.fn(), link: jest.fn(), ...overrides });
 const view = (initial = '/admin/bookings/1') => render(<MemoryRouter initialEntries={[initial]}><BookingRequirementsPanel bookingId="booking" refreshKey={0} /></MemoryRouter>);
 
@@ -17,7 +17,7 @@ describe('BookingRequirementsPanel', () => {
   beforeEach(() => { jest.clearAllMocks(); hook.mockReturnValue(state()); });
   it('renders state, errors, and refreshes', () => {
     const reload = jest.fn(); hook.mockReturnValue(state({ error: 'offline', reload })); view();
-    expect(screen.getByText('offline')).toBeInTheDocument(); expect(screen.getByText('missing')).toBeInTheDocument(); fireEvent.click(screen.getByText('Refresh')); expect(reload).toHaveBeenCalled();
+    expect(screen.getByText('offline')).toBeInTheDocument(); expect(screen.getAllByText('Missing')[0]).toBeInTheDocument(); fireEvent.click(screen.getByText('Refresh')); expect(reload).toHaveBeenCalled();
   });
   it.each(['admin', 'medical', 'staff', 'user', ''])('opens the exact linked records under the %s role prefix', (role) => {
     const prefix = role ? `/${role}` : '';

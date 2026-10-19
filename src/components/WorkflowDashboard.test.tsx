@@ -1,3 +1,4 @@
+jest.mock('../services/ekgRequirementApi',()=>({ekgRequirementApi:{get:()=>Promise.resolve({data:{state:'accepted',label:'Accepted'}})}}));
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -72,7 +73,7 @@ test.each([
 });
 
 test('medical detail loads only for the selected booking and preserves available review results', async () => {
-  mock(medicalReviewRequestsApi.getByArtifact).mockImplementation(id => id === 'ekg' ? Promise.reject(new Error('offline')) : Promise.resolve({ data: [{ status: 'approved' }] }));
+  mock(medicalReviewRequestsApi.getByArtifact).mockImplementation(id => id === 'liver_panel' ? Promise.reject(new Error('offline')) : Promise.resolve({ data: [{ status: 'approved' }] }));
   view();
   await screen.findByText('4/4 checkpoints complete');
   fireEvent.click(screen.getByRole('button', { name: 'medical' }));
