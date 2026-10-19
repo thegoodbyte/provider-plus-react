@@ -1,3 +1,5 @@
+import { useWorkMode } from '../workModes/WorkModeContext';
+import WorkModePage from '../workModes/WorkModePage';
 import ExternalResourcesPage from './ExternalResourcesPage';
 import IntegrationProviderSettings from './IntegrationProviderSettings';
 import CommunicationsSettingsPage from './CommunicationsSettingsPage';
@@ -178,6 +180,9 @@ const AppleLayout: React.FC = () => {
   });
   const [showSettings, setShowSettings] = useState(false);
   const { logout, user, startMedicalStaffPreview, stopImpersonation } = useAuth();
+  const workMode = useWorkMode();
+  const focusedWorkMode = user?.role === 'admin' && workMode.active;
+  useEffect(() => { if (focusedWorkMode) setAppMode({ mode: 'normal' }); }, [focusedWorkMode]);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -210,6 +215,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'medical-dashboard') return 'medical-dashboard';
     if (route === 'medical-review') return 'medical-dashboard';
     if (route === 'medical-retreats') return 'medical-retreats';
+    if (route === 'work-modes') return 'work-modes';
     if (route === 'medical-artifacts') return 'medical-artifacts';
     if (route === 'medical-tracking') return 'medical-tracking';
     if (route === 'medical-review-requests') return 'medical-review-requests';
@@ -357,7 +363,7 @@ const AppleLayout: React.FC = () => {
   }, [defaultRoute, isMedicalQuickAccessSession, location.pathname, navigate, routePrefix, user?.medicalReviewRequestId]);
 
   useEffect(() => {
-    if (isMedicalQuickAccessSession || appMode.mode === 'normal') return;
+    if (isMedicalQuickAccessSession || focusedWorkMode || location.pathname.startsWith('/admin/work-modes') || appMode.mode === 'normal') return;
     const prefix = `/${routePrefix}`;
     const path = location.pathname;
 
@@ -386,6 +392,7 @@ const AppleLayout: React.FC = () => {
     allowedBookingIds,
     allowedClientIds,
     appMode,
+    focusedWorkMode,
     isMedicalQuickAccessSession,
     location.pathname,
     navigate,
@@ -638,6 +645,7 @@ const AppleLayout: React.FC = () => {
         userRole={user?.role}
         user={user}
         appMode={appMode.mode}
+        focusedWorkMode={focusedWorkMode}
         selectedRetreatLabel={appMode.retreatLabel}
       />
 
@@ -651,16 +659,17 @@ const AppleLayout: React.FC = () => {
             </button>
             <span className="workspace-context">Workspace <span>/</span> <strong>{NAVIGATION[activeItem]?.label || activeItem.replace(/-/g, ' ')}</strong></span>
           </div>
-          <div className="workspace-search"><GlobalSearch routePrefix={routePrefix} onNavigate={navigate} /></div>
+          {!focusedWorkMode && <div className="workspace-search"><GlobalSearch routePrefix={routePrefix} onNavigate={navigate} /></div>}
           <div className="workspace-header-tools">
-            {renderQuickMenu()}
+            {!focusedWorkMode && renderQuickMenu()}
             <details ref={accountRef} className="workspace-account" key={location.pathname}>
               <summary aria-label="Account and tools" title="Account and tools"><span>{(user?.firstName || userEmail || 'A')[0].toUpperCase()}</span><HeaderIcon icon={FiChevronDown} className="h-3 w-3" /></summary>
               <div className="workspace-account-menu" onClick={(event) => { if ((event.target as HTMLElement).closest('button')) accountRef.current?.removeAttribute('open'); }}>
                 <div className="workspace-account-info"><strong>{[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Your account'}</strong><small>{userEmail}</small></div>
+                {user?.role === 'admin' && <button type="button" onClick={() => { setAppMode({ mode: 'normal' }); navigate('/admin/work-modes'); }}>Work modes</button>}
                 <button type="button" onClick={() => setShowSettings(true)}>Currency converter</button>
-                {user?.role === 'admin' && !isImpersonating && <button type="button" onClick={() => navigate('/admin/external-resources')}>External resources and integrations</button>}
-                {user?.role === 'admin' && !isImpersonating && <button type="button" onClick={async () => { await startMedicalStaffPreview(); navigate('/medical/launcher'); }}>Medical View</button>}
+                {user?.role === 'admin' && !isImpersonating && !focusedWorkMode && <button type="button" onClick={() => navigate('/admin/external-resources')}>External resources and integrations</button>}
+                {user?.role === 'admin' && !isImpersonating && !focusedWorkMode && <button type="button" onClick={async () => { await startMedicalStaffPreview(); navigate('/medical/launcher'); }}>Medical View</button>}
                 {isImpersonating && <button type="button" onClick={() => { stopImpersonation(); navigate('/admin/launcher'); }}>{isUserImpersonation ? 'Return to Admin' : 'Exit Medical View'}</button>}
                 {canChangeOwnPassword && <button type="button" onClick={() => navigate('/users/change-password')}>Change Password</button>}
                 <button type="button" onClick={logout}>Sign Out</button>
@@ -668,7 +677,7 @@ const AppleLayout: React.FC = () => {
             </details>
           </div>
         </header>
-        {appMode.mode !== 'normal' && <div className="workspace-mode"><span>{appMode.mode === 'shopping' ? 'Shopping Mode · Receipts & expenses only' : `Retreat Mode · ${appMode.retreatLabel || 'Selected retreat'}`}</span><button type="button" onClick={() => setQuickMenuOpen(true)}>Switch mode</button></div>}
+        {!focusedWorkMode && appMode.mode !== 'normal' && <div className="workspace-mode"><span>{appMode.mode === 'shopping' ? 'Shopping Mode · Receipts & expenses only' : `Retreat Mode · ${appMode.retreatLabel || 'Selected retreat'}`}</span><button type="button" onClick={() => setQuickMenuOpen(true)}>Switch mode</button></div>}
 
         {isImpersonating && (
           <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
@@ -690,6 +699,7 @@ const AppleLayout: React.FC = () => {
           </div>
         )}
 
+        {focusedWorkMode && <div className="wm-mode-banner" aria-label="Active work mode"><strong>Medical work mode</strong><a href={workMode.data?.workspace?.sessionId ? `/admin/work-modes/sessions/${workMode.data.workspace.sessionId}` : '/admin/work-modes'}>Return to work session</a><button onClick={() => navigate('/admin/work-modes')}>Switch mode or session</button><button onClick={() => void workMode.exit().catch(() => {})}>Exit work mode</button>{workMode.error && <span role="alert">{workMode.error}</span>}</div>}
         <StorageOverrideBanner />
         <AiHealthBanner />
 
@@ -715,6 +725,8 @@ const AppleLayout: React.FC = () => {
                     <Routes>
                       <Route index element={<ModuleLauncherPage />} />
                       <Route path="launcher" element={<ModuleLauncherPage />} />
+                      <Route path="work-modes" element={<WorkModePage />} />
+                      <Route path="work-modes/sessions/:sessionId" element={<WorkModePage />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="clients/:clientId" element={<ClientDetailsPage />} />

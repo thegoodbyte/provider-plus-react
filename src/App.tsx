@@ -1,3 +1,4 @@
+import { WorkModeProvider } from './workModes/WorkModeContext';
 import React, { lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import AppleLayout from './components/AppleLayout';
@@ -91,9 +92,9 @@ function App() {
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ErrorBoundary title="Something went wrong" message="An unexpected error occurred. Reload the page to try again; if it keeps happening, contact support.">
           <AuthProvider>
-            <ApiErrorHandler>
+            <WorkModeProvider><ApiErrorHandler>
               <AppContent />
-            </ApiErrorHandler>
+            </ApiErrorHandler></WorkModeProvider>
           </AuthProvider>
         </ErrorBoundary>
       </Router>

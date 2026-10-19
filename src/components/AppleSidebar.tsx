@@ -22,6 +22,7 @@ interface AppleSidebarProps {
   } | null;
   appMode?: 'normal' | 'retreat' | 'shopping';
   selectedRetreatLabel?: string;
+  focusedWorkMode?: boolean;
 }
 
 type MenuItem = {
@@ -192,7 +193,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   userRole,
   user,
   appMode = 'normal',
-  selectedRetreatLabel
+  selectedRetreatLabel,
+  focusedWorkMode = false
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -349,6 +351,10 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   }, [navigationRole]);
 
   const menuSections = useMemo(() => {
+    if (focusedWorkMode && navigationRole === 'admin') return [{ id: 'medical-work-mode', label: 'Medical work mode', Icon: Fi.FiLayers, items: [
+      { id: 'work-modes', label: 'Work sessions', Icon: Fi.FiCheckSquare },
+      ...['medical-artifacts', 'medical-review-requests', 'medical-review-groups'].filter(id => canShowNavigation(id, navigationRole, preferences)).map(id => ({ id, label: NAVIGATION[id]?.label || id, Icon: Fi.FiFileText }))
+    ] }];
     const roleSections = getMenuSectionsForRole();
     if (appMode === 'shopping') {
       return [{
@@ -378,9 +384,10 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         return true;
       })
     })).filter(section => section.items.length);
+    if (navigationRole === 'admin') daily.unshift({ id: 'work-mode-launcher', label: 'Focused work', Icon: Fi.FiLayers, items: [{ id: 'work-modes', label: 'Work modes', Icon: Fi.FiCheckSquare }] });
     if (readiness.length) daily.splice(Math.min(3, daily.length), 0, { id: 'workflow', label: 'Booking Readiness', Icon: Fi.FiLayers, items: readiness.sort((a, b) => Number(b.id === 'workflow') - Number(a.id === 'workflow')) });
     return [...daily, ...(setup.length ? [{ id: 'setup', label: SETTINGS_LABEL, Icon: Fi.FiSettings, items: setup }] : [])];
-  }, [appMode, getMenuSectionsForRole, selectedRetreatLabel, navigationRole, preferences]);
+  }, [focusedWorkMode, appMode, getMenuSectionsForRole, selectedRetreatLabel, navigationRole, preferences]);
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase();
   const visibleMenuSections = useMemo(() => {
