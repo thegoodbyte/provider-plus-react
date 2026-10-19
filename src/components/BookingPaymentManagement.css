@@ -585,3 +585,21 @@
 .payment-history-header { flex-wrap: wrap; }
 .link-existing-payment-button { border: 1px solid #cbd5e1; border-radius: 6px; background: white; color: #1d4ed8; padding: 7px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .link-existing-payment-button:hover { background: #eff6ff; }
+
+/* Financial summary has five amount cards rather than the former fixed three. */
+.authoritative-financial-summary { gap: 18px; }
+.authoritative-financial-summary .booking-balance-metric { grid-column: auto; grid-row: auto; padding: 0; border: 0; }
+.authoritative-financial-summary .booking-balance-metric strong,
+.authoritative-financial-summary .booking-balance-metric strong span { font-size: 22px; line-height: 1.3; letter-spacing: normal; text-transform: none; color: #111827; }
+.authoritative-financial-summary .financial-summary-state,
+.authoritative-financial-summary .financial-summary-reconciliation,
+.authoritative-financial-summary .mobile-record-payment { grid-column: 1 / -1; grid-row: auto; }
+.financial-summary-state { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; }
+.financial-summary-reconciliation { min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+.financial-summary-reconciliation summary { cursor: pointer; }
+@media (max-width: 768px) {
+  .authoritative-financial-summary .booking-balance-metric.total { grid-column: 1 / -1; }
+  .authoritative-financial-summary .booking-balance-metric.outstanding { text-align: left; }
+  .authoritative-financial-summary .booking-balance-metric strong,
+  .authoritative-financial-summary .booking-balance-metric strong span { font-size: 18px; }
+}

@@ -723,14 +723,14 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       </div>
 
       {summaryError && <p role="alert">{summaryError}</p>}
-      {financialSummary && <div className="booking-balance-summary">
-        <div className="booking-balance-metric total"><span>Agreed price</span><strong><CurrencyDisplay amount={financialSummary.price} currency={financialSummary.currency} showUSD={false}/></strong><button type="button" onClick={() => setShowPriceEditor(true)}>Manage booking price</button></div>
+      {financialSummary && <div className="booking-balance-summary authoritative-financial-summary">
+        <div className="booking-balance-metric total"><span>Agreed price</span><strong><CurrencyDisplay amount={financialSummary.price} currency={financialSummary.currency} showUSD={false}/></strong><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Manage booking price</button></div>
         <div className="booking-balance-metric received"><span>Gross receipts</span><strong><CurrencyDisplay amount={financialSummary.grossReceived} currency={financialSummary.currency} showUSD={false}/></strong></div>
         <div className="booking-balance-metric received"><span>Refunded</span><strong><CurrencyDisplay amount={financialSummary.refunded} currency={financialSummary.currency} showUSD={false}/></strong></div>
         <div className="booking-balance-metric received"><span>Net paid</span><strong><CurrencyDisplay amount={totalPaidBookingCurrency} currency={financialSummary.currency} showUSD={false}/></strong></div>
         <div className="booking-balance-metric outstanding"><span>{financialSummary.overpayment > 0 ? 'Overpaid · client credit' : 'Balance outstanding'}</span><strong><CurrencyDisplay amount={financialSummary.overpayment || bookingBalance} currency={financialSummary.currency} showUSD={false}/></strong></div>
-        <div><span>{financialSummary.sourceState === 'verified_ledger' ? isPaidInFull ? 'Paid in full' : 'Not fully paid' : 'Reconciliation required'}</span><strong>{paidPercentage}% paid</strong></div>
-        <details><summary>Ledger reconciliation · read only</summary><p>Source: {financialSummary.sourceState}. Cached: {financialSummary.cachedAmountPaid} {financialSummary.currency}. Ledger: {financialSummary.calculated?.netPaid} {financialSummary.currency}.</p>{financialSummary.mismatchReason && <p>{financialSummary.mismatchReason}</p>}</details>
+        <div className="financial-summary-state"><span>{financialSummary.sourceState === 'verified_ledger' ? isPaidInFull ? 'Paid in full' : 'Not fully paid' : 'Reconciliation required'}</span><strong>{paidPercentage}% paid</strong></div>
+        <details className="financial-summary-reconciliation"><summary>Ledger reconciliation · read only</summary><p>Source: {financialSummary.sourceState}. Cached: {financialSummary.cachedAmountPaid} {financialSummary.currency}. Ledger: {financialSummary.calculated?.netPaid} {financialSummary.currency}.</p>{financialSummary.mismatchReason && <p>{financialSummary.mismatchReason}</p>}</details>
         <button type="button" className="mobile-record-payment" onClick={openPaymentEditor}>Record a payment</button>
       </div>}
 
