@@ -1,0 +1,7 @@
+{
+  "name": "@retreatengine/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "API-owned shared compatibility types and generated OpenAPI; generated snapshot, never edit",
+  "types": "shared/domain.ts"
+}

@@ -1,33 +1,9 @@
-// Mirrors provider-plus-nestjs's src/retreat/event-types.ts. Kept manually in
-// sync -- the two repos have no shared package, so this is the frontend's own
-// copy of the same enum values and capability table (PPVC-760).
+import { EventType, BookingType } from '../generated/contracts/shared/event-types';
+import type { EventTypeConfig } from '../generated/contracts/shared/event-types';
+export { EventType, BookingType };
+export type { EventTypeConfig };
 
-export enum EventType {
-  REGULAR = 'regular',
-  BOOSTER = 'booster',
-  LEARNING_WEEKEND = 'learning_weekend',
-  WORKSHOP = 'workshop',
-}
-
-export enum BookingType {
-  FULL_RETREAT = 'full_retreat',
-  BOOSTER = 'booster',
-  LEARNING_WEEKEND = 'learning_weekend',
-  WORKSHOP = 'workshop',
-}
-
-export interface EventTypeConfig {
-  type: EventType;
-  label: string;
-  codePrefix: string;
-  hasCeremonies: boolean;
-  requiresMedicalScreening: boolean;
-  hasDrugScreening: boolean;
-  hasAccommodation: boolean;
-  defaultCeremonyCount: number;
-  availableTabs: string[];
-}
-
+// UI-specific capability presentation; enum and contract identities come from the API.
 export const EVENT_CONFIGS: Record<EventType, EventTypeConfig> = {
   [EventType.REGULAR]: {
     type: EventType.REGULAR,

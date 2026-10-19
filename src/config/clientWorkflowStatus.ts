@@ -1,29 +1,10 @@
-export const clientWorkflowStatusAliases: Record<string, string> = {
-  potential: 'entered',
-  screening: 'screening_scheduled',
-  approved: 'screened_accepted',
-  rejected: 'screened_declined',
-  booked: 'booked_paid',
-  completed: 'retreat_completed',
-};
-
-export const clientWorkflowStatusValues = [
-  'self_submit',
-  'entered',
-  'screening_scheduled',
-  'screened_accepted',
-  'screened_conditional',
-  'screened_declined',
-  'payment_request_sent',
-  'booked_paid',
-  'retreat_completed',
-  'cancelled',
-  'blacklisted',
-] as const;
+import type { ClientWorkflowStatus } from '../generated/contracts/shared/workflow-status';
+import { clientWorkflowStatusAliases, clientWorkflowStatusValues } from '../generated/contracts/shared/workflow-status';
+export { clientWorkflowStatusAliases, clientWorkflowStatusValues };
 
 export const clientWorkflowStatusLegacyValues = Object.keys(clientWorkflowStatusAliases) as Array<keyof typeof clientWorkflowStatusAliases>;
 
-export type ClientWorkflowStatus = typeof clientWorkflowStatusValues[number];
+export type { ClientWorkflowStatus } from '../generated/contracts/shared/workflow-status';
 
 export const clientWorkflowStatusLabels: Record<ClientWorkflowStatus | keyof typeof clientWorkflowStatusAliases, string> = {
   self_submit: 'Self-submit',

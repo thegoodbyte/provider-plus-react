@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.18.0"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -54,7 +54,10 @@
     "preview": "vite preview --host 0.0.0.0",
     "serve": "node scripts/serve.cjs",
     "test:smoke": "playwright test -c playwright.smoke.config.ts",
-    "test:config": "node scripts/check-vite-config.mjs"
+    "test:config": "node scripts/check-vite-config.mjs",
+    "generate:contracts": "node scripts/contracts/generate.mjs",
+    "check:contracts": "node scripts/contracts/generate.mjs --check",
+    "test:contracts": "node --test scripts/contracts/*.test.mjs"
   },
   "browserslist": {
     "production": [
@@ -73,6 +76,7 @@
     "@babel/preset-env": "^7.28.0",
     "@babel/preset-react": "^7.28.0",
     "@babel/preset-typescript": "^7.28.0",
+    "@hey-api/openapi-ts": "0.99.0",
     "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

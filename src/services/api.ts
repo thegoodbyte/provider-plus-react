@@ -1,4 +1,6 @@
 import { completeReferralReport, ReferralReportPage } from './referralReportPages';
+import { createClient as createContractClient } from '../generated/contracts/sdk/client';
+import { contactBookControllerFindAll, contactBookControllerFindOne, contactBookControllerCreate, contactBookControllerUpdate, contactBookControllerRemove } from '../generated/contracts/sdk/sdk.gen';
 import { ExpenseReceiptItemization } from '../types';
 import type { AllocationBoard } from '../components/RoomAllocationBoard';
 import type { RetreatWorkflowSummary } from '../types/workflowSummary';
@@ -17,6 +19,9 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Generated methods share the existing Axios instance and its auth/error interceptors.
+const contractClient = createContractClient({ axios: api, baseURL: API_BASE_URL, throwOnError: true });
 
 // Add auth token to requests
 api.interceptors.request.use(
@@ -255,20 +260,20 @@ export const contactBookApi = {
     if (filters.role) params.set('role', filters.role);
     if (filters.includeInactive) params.set('includeInactive', 'true');
     const suffix = params.toString() ? `?${params.toString()}` : '';
-    return cachedGet<ContactBookEntry[]>(`contact-book:${suffix || 'all'}`, () => api.get<ContactBookEntry[]>(`/contact-book${suffix}`), 30000);
+    return cachedGet<ContactBookEntry[]>(`contact-book:${suffix || 'all'}`, () => contactBookControllerFindAll({ client: contractClient, throwOnError: true, query: { search: filters.search, role: filters.role, includeInactive: filters.includeInactive ? 'true' : undefined } }), 30000);
   },
-  getOne: (id: string) => cachedGet<ContactBookEntry>(`contact-book:${id}`, () => api.get<ContactBookEntry>(`/contact-book/${id}`)),
+  getOne: (id: string) => cachedGet<ContactBookEntry>(`contact-book:${id}`, () => contactBookControllerFindOne({ client: contractClient, throwOnError: true, path: { id } })),
   create: (data: Omit<ContactBookEntry, '_id'>) => {
     cacheService.clearPattern('contact-book:');
-    return api.post<ContactBookEntry>('/contact-book', data);
+    return contactBookControllerCreate({ client: contractClient, throwOnError: true, body: data });
   },
   update: (id: string, data: Partial<ContactBookEntry>) => {
     cacheService.clearPattern('contact-book:');
-    return api.patch<ContactBookEntry>(`/contact-book/${id}`, data);
+    return contactBookControllerUpdate({ client: contractClient, throwOnError: true, path: { id }, body: data });
   },
   delete: (id: string) => {
     cacheService.clearPattern('contact-book:');
-    return api.delete(`/contact-book/${id}`);
+    return contactBookControllerRemove({ client: contractClient, throwOnError: true, path: { id } });
   },
 };
 
