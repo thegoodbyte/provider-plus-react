@@ -9,6 +9,10 @@ test.skip(
   "Requires isolated PPVC-890 Nest/JWT/Mongo fixture. Never production.",
 );
 test.setTimeout(120000);
+// Drain fixture proxy requests before Playwright closes the page.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});
 test.use({ actionTimeout: 10000 });
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(({ tokens, clientId }) => {
