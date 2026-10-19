@@ -1,3 +1,4 @@
+import { completeReferralReport, ReferralReportPage } from './referralReportPages';
 import { ExpenseReceiptItemization } from '../types';
 import type { AllocationBoard } from '../components/RoomAllocationBoard';
 import type { RetreatWorkflowSummary } from '../types/workflowSummary';
@@ -451,7 +452,7 @@ export const referralsApi = {
   getNotificationSettings: () => api.get<{ assignmentNotificationsEnabled: boolean }>('/referrals/notification-settings', { suppressGlobalError: true } as ReadOptions),
   updateNotificationSettings: (data: { assignmentNotificationsEnabled: boolean }) => api.patch<{ assignmentNotificationsEnabled: boolean }>('/referrals/notification-settings', data, { suppressGlobalError: true } as ReadOptions),
   getAll: (options?: ReadOptions) => api.get<Referral[]>('/referrals', options),
-  getReport: (options?: ReadOptions) => api.get<ReferralReportRow[]>('/referrals/report', options),
+  getReport: (options?: ReadOptions) => completeReferralReport(params => api.get<ReferralReportPage>('/referrals/report/pages', { ...options, params: { ...options?.params, ...params } })),
   getPayouts: () => api.get<RetreatExpense[]>('/referrals/payouts', { suppressGlobalError: true } as ReadOptions),
   voidPayout: (id: string, reason: string) => api.post<RetreatExpense>(`/referrals/payouts/${id}/void`, { reason }, { suppressGlobalError: true } as ReadOptions),
   createPayout: (data: { manualUsdAmount?: number; fxQuoteSource?: string; fxQuotedAt?: string; expectedPayoutAmount?: number; expectedPayoutCurrency?: string; requestId?: string; referralId: string; retreatId: string; bookingIds: string[]; expenseDate?: string; paymentMethod?: string; paymentAccount?: string; reference?: string; notes?: string }) => api.post<RetreatExpense>('/referrals/payouts', data, { suppressGlobalError: true } as ReadOptions),
