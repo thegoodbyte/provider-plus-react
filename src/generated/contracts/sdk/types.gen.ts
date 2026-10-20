@@ -850,6 +850,12 @@ export type StaffReminder = {
     [key: string]: unknown;
 };
 
+export type StartWorkSessionDto = {
+    keys?: Array<string>;
+    mode: 'medical';
+    requestId: string;
+};
+
 export type Task = {
     [key: string]: unknown;
 };
@@ -1096,6 +1102,52 @@ export type UpsertBoosterOfferDto = {
     publicNotes?: string;
     published?: boolean;
     retreatId: string;
+};
+
+export type WorkContextDto = {
+    action: 'enter' | 'exit';
+    mode?: 'medical';
+    sessionId?: string;
+};
+
+export type WorkControlDto = {
+    action: 'step' | 'pause' | 'resume' | 'finish' | 'add';
+    confirmUnfinished?: boolean;
+    includeWaiting?: boolean;
+    keys?: Array<string>;
+    revision: number;
+    step?: 'A' | 'B' | 'C';
+};
+
+export type WorkMedicalActionDto = {
+    action: 'create' | 'attach' | 'sent' | 'reply';
+    advisorId?: string;
+    decision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | 'WONT_DO';
+    delegationReason?: string;
+    followUpRequired?: boolean;
+    key: string;
+    notes?: string;
+    requestId?: string;
+    respondedAt?: string;
+    revision: number;
+    sentAt?: string;
+    sourceVersion: string;
+    wontDoNote?: string;
+    wontDoReason?: 'duplicate' | 'not_relevant' | 'mistake' | 'no_longer_needed' | 'test_request' | 'other';
+};
+
+export type WorkOutcomeDto = {
+    key: string;
+    nextAction: 'none' | 'revisit' | 'open_editor' | 'await_client' | 'await_advisor' | 'contact_staff';
+    note?: string;
+    outcome: 'reviewed' | 'skip' | 'block' | 'reopen';
+    reason: 'no_further_operational_action' | 'handled_in_existing_workflow' | 'later' | 'needs_context' | 'missing_document' | 'needs_staff_help';
+    revision: number;
+    sourceVersion: string;
+};
+
+export type WorkRevisionDto = {
+    revision: number;
 };
 
 export type AppControllerGetHelloData = {
@@ -10197,6 +10249,72 @@ export type MedicalTrackingControllerUploadImageResponses = {
     201: unknown;
 };
 
+export type MissingItemsReminderControllerPreviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/missing-items-reminder/preview';
+};
+
+export type MissingItemsReminderControllerPreviewResponses = {
+    200: unknown;
+};
+
+export type MissingItemsReminderControllerSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/missing-items-reminder/settings';
+};
+
+export type MissingItemsReminderControllerSettingsResponses = {
+    200: unknown;
+};
+
+export type MissingItemsReminderControllerSaveData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/missing-items-reminder/settings';
+};
+
+export type MissingItemsReminderControllerSaveResponses = {
+    200: unknown;
+};
+
+export type MorningDigestControllerPreviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/morning-digest/preview';
+};
+
+export type MorningDigestControllerPreviewResponses = {
+    200: unknown;
+};
+
+export type MorningDigestControllerSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/morning-digest/settings';
+};
+
+export type MorningDigestControllerSettingsResponses = {
+    200: unknown;
+};
+
+export type MorningDigestControllerSaveData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/morning-digest/settings';
+};
+
+export type MorningDigestControllerSaveResponses = {
+    200: unknown;
+};
+
 export type NotesControllerFindAllData = {
     body?: never;
     path?: never;
@@ -13805,3 +13923,126 @@ export type WaitingListControllerUpdateResponses = {
 };
 
 export type WaitingListControllerUpdateResponse = WaitingListControllerUpdateResponses[keyof WaitingListControllerUpdateResponses];
+
+export type WorkModesControllerContextData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/work-modes';
+};
+
+export type WorkModesControllerContextResponses = {
+    200: unknown;
+};
+
+export type WorkModesControllerSetContextData = {
+    body: WorkContextDto;
+    path?: never;
+    query?: never;
+    url: '/work-modes/context';
+};
+
+export type WorkModesControllerSetContextResponses = {
+    201: unknown;
+};
+
+export type WorkModesControllerQueueData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/work-modes/queue';
+};
+
+export type WorkModesControllerQueueResponses = {
+    200: unknown;
+};
+
+export type WorkModesControllerStartData = {
+    body: StartWorkSessionDto;
+    path?: never;
+    query?: never;
+    url: '/work-modes/sessions';
+};
+
+export type WorkModesControllerStartResponses = {
+    201: unknown;
+};
+
+export type WorkModesControllerGetData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/work-modes/sessions/{id}';
+};
+
+export type WorkModesControllerGetResponses = {
+    200: unknown;
+};
+
+export type WorkModesControllerControlData = {
+    body: WorkControlDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/work-modes/sessions/{id}/control';
+};
+
+export type WorkModesControllerControlResponses = {
+    201: unknown;
+};
+
+export type WorkModesControllerMedicalActionData = {
+    body: WorkMedicalActionDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/work-modes/sessions/{id}/medical-actions';
+};
+
+export type WorkModesControllerMedicalActionResponses = {
+    201: unknown;
+};
+
+export type WorkModesControllerMedicalContextData = {
+    body?: never;
+    path: {
+        id: string;
+        key: string;
+    };
+    query?: never;
+    url: '/work-modes/sessions/{id}/medical/{key}';
+};
+
+export type WorkModesControllerMedicalContextResponses = {
+    200: unknown;
+};
+
+export type WorkModesControllerOutcomeData = {
+    body: WorkOutcomeDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/work-modes/sessions/{id}/outcomes';
+};
+
+export type WorkModesControllerOutcomeResponses = {
+    201: unknown;
+};
+
+export type WorkModesControllerReconcileData = {
+    body: WorkRevisionDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/work-modes/sessions/{id}/reconcile';
+};
+
+export type WorkModesControllerReconcileResponses = {
+    201: unknown;
+};

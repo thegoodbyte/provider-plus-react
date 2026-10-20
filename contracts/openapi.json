@@ -2633,6 +2633,32 @@
         "properties": {},
         "type": "object"
       },
+      "StartWorkSessionDto": {
+        "properties": {
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5000,
+            "type": "array"
+          },
+          "mode": {
+            "enum": [
+              "medical"
+            ],
+            "type": "string"
+          },
+          "requestId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "requestId"
+        ],
+        "type": "object"
+      },
       "Task": {
         "properties": {},
         "type": "object"
@@ -3339,6 +3365,230 @@
           "arrivalAt",
           "departureAt",
           "capacity"
+        ],
+        "type": "object"
+      },
+      "WorkContextDto": {
+        "properties": {
+          "action": {
+            "enum": [
+              "enter",
+              "exit"
+            ],
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "medical"
+            ],
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "WorkControlDto": {
+        "properties": {
+          "action": {
+            "enum": [
+              "step",
+              "pause",
+              "resume",
+              "finish",
+              "add"
+            ],
+            "type": "string"
+          },
+          "confirmUnfinished": {
+            "type": "boolean"
+          },
+          "includeWaiting": {
+            "type": "boolean"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5000,
+            "type": "array"
+          },
+          "revision": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "step": {
+            "enum": [
+              "A",
+              "B",
+              "C"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "action"
+        ],
+        "type": "object"
+      },
+      "WorkMedicalActionDto": {
+        "properties": {
+          "action": {
+            "enum": [
+              "create",
+              "attach",
+              "sent",
+              "reply"
+            ],
+            "type": "string"
+          },
+          "advisorId": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "OK",
+              "caution",
+              "more_info_needed",
+              "NOT OK",
+              "WONT_DO"
+            ],
+            "type": "string"
+          },
+          "delegationReason": {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "followUpRequired": {
+            "type": "boolean"
+          },
+          "key": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "notes": {
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "requestId": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "respondedAt": {
+            "maxLength": 40,
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "sentAt": {
+            "maxLength": 40,
+            "type": "string"
+          },
+          "sourceVersion": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "wontDoNote": {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "wontDoReason": {
+            "enum": [
+              "duplicate",
+              "not_relevant",
+              "mistake",
+              "no_longer_needed",
+              "test_request",
+              "other"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "sourceVersion",
+          "action",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "WorkOutcomeDto": {
+        "properties": {
+          "key": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "nextAction": {
+            "enum": [
+              "none",
+              "revisit",
+              "open_editor",
+              "await_client",
+              "await_advisor",
+              "contact_staff"
+            ],
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "reviewed",
+              "skip",
+              "block",
+              "reopen"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "no_further_operational_action",
+              "handled_in_existing_workflow",
+              "later",
+              "needs_context",
+              "missing_document",
+              "needs_staff_help"
+            ],
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "sourceVersion": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "key",
+          "sourceVersion",
+          "outcome",
+          "reason",
+          "nextAction"
+        ],
+        "type": "object"
+      },
+      "WorkRevisionDto": {
+        "properties": {
+          "revision": {
+            "minimum": 0,
+            "type": "number"
+          }
+        },
+        "required": [
+          "revision"
         ],
         "type": "object"
       }
@@ -19882,6 +20132,86 @@
         ]
       }
     },
+    "/missing-items-reminder/preview": {
+      "get": {
+        "operationId": "MissingItemsReminderController_preview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MissingItemsReminder"
+        ]
+      }
+    },
+    "/missing-items-reminder/settings": {
+      "get": {
+        "operationId": "MissingItemsReminderController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MissingItemsReminder"
+        ]
+      },
+      "put": {
+        "operationId": "MissingItemsReminderController_save",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MissingItemsReminder"
+        ]
+      }
+    },
+    "/morning-digest/preview": {
+      "get": {
+        "operationId": "MorningDigestController_preview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MorningDigest"
+        ]
+      }
+    },
+    "/morning-digest/settings": {
+      "get": {
+        "operationId": "MorningDigestController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MorningDigest"
+        ]
+      },
+      "put": {
+        "operationId": "MorningDigestController_save",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MorningDigest"
+        ]
+      }
+    },
     "/notes": {
       "get": {
         "operationId": "NotesController_findAll",
@@ -26408,6 +26738,268 @@
         },
         "tags": [
           "WaitingList"
+        ]
+      }
+    },
+    "/work-modes": {
+      "get": {
+        "operationId": "WorkModesController_context",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/context": {
+      "post": {
+        "operationId": "WorkModesController_setContext",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkContextDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/queue": {
+      "get": {
+        "operationId": "WorkModesController_queue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/sessions": {
+      "post": {
+        "operationId": "WorkModesController_start",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartWorkSessionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/sessions/{id}": {
+      "get": {
+        "operationId": "WorkModesController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/sessions/{id}/control": {
+      "post": {
+        "operationId": "WorkModesController_control",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkControlDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/sessions/{id}/medical-actions": {
+      "post": {
+        "operationId": "WorkModesController_medicalAction",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkMedicalActionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/sessions/{id}/medical/{key}": {
+      "get": {
+        "operationId": "WorkModesController_medicalContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/sessions/{id}/outcomes": {
+      "post": {
+        "operationId": "WorkModesController_outcome",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkOutcomeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
+        ]
+      }
+    },
+    "/work-modes/sessions/{id}/reconcile": {
+      "post": {
+        "operationId": "WorkModesController_reconcile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkRevisionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "WorkModes"
         ]
       }
     }
