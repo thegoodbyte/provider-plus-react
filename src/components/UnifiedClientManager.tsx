@@ -327,6 +327,17 @@ const UnifiedClientManager: React.FC = () => {
     setFilteredClients(filtered);
   }, [clients, filterStatus, searchTerm, sortField, sortDirection, getClientRetreatCode, notes]);
 
+  // Render only a bounded page of rows -- without this, a growing client
+  // list renders every row on every keystroke/sort, which degrades as
+  // clients accumulate across retreat seasons. Reset to the first page
+  // whenever the filtered/sorted set changes underneath it.
+  const CLIENTS_PAGE_SIZE = 100;
+  const [visibleClientsCount, setVisibleClientsCount] = useState(CLIENTS_PAGE_SIZE);
+  useEffect(() => {
+    setVisibleClientsCount(CLIENTS_PAGE_SIZE);
+  }, [filteredClients]);
+  const visibleClients = filteredClients.slice(0, visibleClientsCount);
+
   const handleSave = async () => {
     if (!formData.firstName?.trim() || !formData.lastName?.trim() || !formData.phone?.trim()) {
       showError('First name, last name, and phone are required.');
@@ -684,7 +695,7 @@ const UnifiedClientManager: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredClients.map((client) => (
+              {visibleClients.map((client) => (
                 <tr key={client._id} className="hover:bg-gray-50">
                   <td className="px-3 py-1.5 whitespace-nowrap max-sm:px-2">
                     <div className="text-sm font-semibold text-gray-900">
@@ -799,6 +810,19 @@ const UnifiedClientManager: React.FC = () => {
                 <tr>
                   <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     No clients found
+                  </td>
+                </tr>
+              )}
+              {visibleClientsCount < filteredClients.length && (
+                <tr>
+                  <td colSpan={8} className="px-3 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setVisibleClientsCount((current) => current + CLIENTS_PAGE_SIZE)}
+                      className="text-sm font-medium text-apple-blue hover:underline"
+                    >
+                      Show more ({filteredClients.length - visibleClientsCount} remaining)
+                    </button>
                   </td>
                 </tr>
               )}

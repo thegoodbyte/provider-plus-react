@@ -252,6 +252,20 @@ const BookingsGrid: React.FC = () => {
     return sorted;
   }, [bookings, searchTerm, selectedRetreatId, sortField, sortDirection]);
 
+  // Render only a bounded page of rows -- without this, a growing bookings
+  // table renders every row on every keystroke/sort, which degrades as
+  // bookings accumulate across retreat seasons. Reset to the first page
+  // whenever the filtered/sorted set changes underneath it.
+  const BOOKINGS_PAGE_SIZE = 100;
+  const [visibleBookingsCount, setVisibleBookingsCount] = useState(BOOKINGS_PAGE_SIZE);
+  useEffect(() => {
+    setVisibleBookingsCount(BOOKINGS_PAGE_SIZE);
+  }, [filteredAndSortedBookings]);
+  const visibleBookings = useMemo(
+    () => filteredAndSortedBookings.slice(0, visibleBookingsCount),
+    [filteredAndSortedBookings, visibleBookingsCount]
+  );
+
   const retreatFilterOptions = useMemo(() => {
     return [...retreats].sort((a, b) => getRetreatDisplayCode(a).localeCompare(getRetreatDisplayCode(b)));
   }, [retreats]);
@@ -377,7 +391,7 @@ const BookingsGrid: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAndSortedBookings.map((booking) => (
+              {visibleBookings.map((booking) => (
                 <tr key={booking._id} className="hover:bg-gray-50">
                   <td data-label="Booking" className="px-6 py-4 whitespace-nowrap">
                     <button
@@ -518,6 +532,17 @@ const BookingsGrid: React.FC = () => {
               {searchTerm || selectedRetreatId
                 ? `No bookings found${searchTerm ? ` matching "${searchTerm}"` : ''}${selectedRetreatId ? ` for ${selectedRetreatLabel}` : ''}`
                 : 'No bookings found'}
+            </div>
+          )}
+          {visibleBookingsCount < filteredAndSortedBookings.length && (
+            <div className="border-t border-gray-200 py-3 text-center">
+              <button
+                type="button"
+                onClick={() => setVisibleBookingsCount((current) => current + BOOKINGS_PAGE_SIZE)}
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
+                Show more ({filteredAndSortedBookings.length - visibleBookingsCount} remaining)
+              </button>
             </div>
           )}
         </div>

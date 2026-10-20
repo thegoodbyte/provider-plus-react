@@ -54,3 +54,39 @@ it('successfully saves an unchanged email', async () => {
   expect(await screen.findByRole('status')).toHaveTextContent('Client updated successfully.');
   expect(clientsApi.update).toHaveBeenCalledWith('c1', expect.objectContaining({ email: client.email }), { suppressGlobalError: true });
 });
+
+// Default sort is createdAt descending, so the initial page holds the
+// newest 100 clients (Guest050-Guest149) and withholds the oldest 50
+// (Guest000-Guest049) behind "Show more".
+const manyClients = Array.from({ length: 150 }, (_, index) => ({
+  _id: `client-${index}`,
+  firstName: 'Test',
+  lastName: `Guest${String(index).padStart(3, '0')}`,
+  email: `guest${index}@example.invalid`,
+  phone: '+420777123456',
+  status: 'active',
+  createdAt: new Date(2026, 0, index + 1).toISOString(),
+}));
+const nameCell = (idPattern: RegExp) => (content: string, el: Element | null) =>
+  !!el?.classList.contains('truncate') && idPattern.test(content);
+it('renders only a bounded page of clients and reveals more on demand', async () => {
+  (clientsApi.getAll as jest.Mock).mockResolvedValue({ data: manyClients });
+  render(<MemoryRouter><UnifiedClientManager /></MemoryRouter>);
+  await screen.findByText(nameCell(/Guest149/));
+  expect(screen.getAllByText(nameCell(/Guest\d{3}/))).toHaveLength(100);
+  expect(screen.queryByText(nameCell(/Guest000/))).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Show more \(50 remaining\)/ }));
+  expect(await screen.findByText(nameCell(/Guest000/))).toBeInTheDocument();
+  expect(screen.getAllByText(nameCell(/Guest\d{3}/))).toHaveLength(150);
+  expect(screen.queryByRole('button', { name: /Show more/ })).not.toBeInTheDocument();
+});
+it('resets the visible page when the search filter narrows the list', async () => {
+  (clientsApi.getAll as jest.Mock).mockResolvedValue({ data: manyClients });
+  render(<MemoryRouter><UnifiedClientManager /></MemoryRouter>);
+  await screen.findByText(nameCell(/Guest149/));
+  fireEvent.click(screen.getByRole('button', { name: /Show more/ }));
+  await screen.findByText(nameCell(/Guest000/));
+  fireEvent.change(screen.getByLabelText('Search clients'), { target: { value: 'Guest012' } });
+  expect(await screen.findByText(nameCell(/Guest012/))).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Show more/ })).not.toBeInTheDocument();
+});
