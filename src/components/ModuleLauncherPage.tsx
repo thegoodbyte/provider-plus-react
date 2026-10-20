@@ -257,7 +257,7 @@ const ModuleLauncherPage: React.FC = () => {
 
   useEffect(() => {
     launcherConfigApi.get().then(({ data }) => {
-      const saved = Object.fromEntries((data.assignments || []).map((item) => [item.moduleId, item.ring]));
+      const saved = Object.fromEntries((data.assignments || []).map((item: { moduleId: string; ring: 'inner' | 'outer' | 'hidden' }) => [item.moduleId, item.ring]));
       setAssignmentMap(saved);
     }).catch(() => undefined);
   }, []);

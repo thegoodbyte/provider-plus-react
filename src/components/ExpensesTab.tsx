@@ -130,7 +130,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
       ]);
 
       setExpenses(expensesResponse.data);
-      setExpenseTypes(typesResponse.data.filter(type => type.isActive !== false));
+      setExpenseTypes(typesResponse.data.filter((type: ExpenseType) => type.isActive !== false));
       setSummary(summaryResponse.data);
     } catch (error) {
       console.error('Error fetching expenses data:', error);

@@ -45,7 +45,7 @@ const ExpenseEditorPage: React.FC = () => {
           retreatsApi.getAll(),
           id ? retreatExpensesApi.getOne(id) : Promise.resolve({ data: null }),
         ]);
-        const loadedTypes = (typeResponse.data || []).filter((type) => type.isActive !== false);
+        const loadedTypes = (typeResponse.data || []).filter((type: ExpenseType) => type.isActive !== false);
         const loadedRetreats = retreatResponse.data || [];
         setTypes(loadedTypes);
         setRetreats(loadedRetreats);

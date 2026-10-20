@@ -141,8 +141,12 @@ export const retreatsApi = {
 };
 
 export const launcherConfigApi = {
-  get: () => api.get<{ assignments: Array<{ moduleId: string; ring: 'inner' | 'outer' | 'hidden' }> }>('/launcher-config'),
-  save: (assignments: Array<{ moduleId: string; ring: 'inner' | 'outer' | 'hidden' }>) => api.patch('/launcher-config', { assignments }),
+  // Per-user module layout, rarely edited -- 5 minute cache.
+  get: () => cachedGet<{ assignments: Array<{ moduleId: string; ring: 'inner' | 'outer' | 'hidden' }> }>('launcher-config', () => api.get('/launcher-config'), 300000),
+  save: (assignments: Array<{ moduleId: string; ring: 'inner' | 'outer' | 'hidden' }>) => {
+    cacheService.clearPattern('launcher-config');
+    return api.patch('/launcher-config', { assignments });
+  },
 };
 
 export const roomAllocationApi = {
@@ -456,34 +460,69 @@ export const referralsApi = {
   retryAssignmentNotification: (id: string, clientId: string, eventId: string) => api.post<any[]>(`/referrals/${id}/assignment-notifications/${clientId}/${eventId}/retry`, {}, { suppressGlobalError: true } as ReadOptions),
   getNotificationSettings: () => api.get<ReferralNotificationSettings>('/referrals/notification-settings', { suppressGlobalError: true } as ReadOptions),
   updateNotificationSettings: (data: Partial<ReferralNotificationSettings>) => api.patch<ReferralNotificationSettings>('/referrals/notification-settings', data, { suppressGlobalError: true } as ReadOptions),
-  getAll: (options?: ReadOptions) => api.get<Referral[]>('/referrals', options),
+  getAll: (options?: ReadOptions) => readGet<Referral[]>('referrals:all', '/referrals', options),
   getReport: (options?: ReadOptions) => completeReferralReport(params => api.get<ReferralReportPage>('/referrals/report/pages', { ...options, params: { ...options?.params, ...params } })),
   getPayouts: () => api.get<RetreatExpense[]>('/referrals/payouts', { suppressGlobalError: true } as ReadOptions),
   voidPayout: (id: string, reason: string) => api.post<RetreatExpense>(`/referrals/payouts/${id}/void`, { reason }, { suppressGlobalError: true } as ReadOptions),
   createPayout: (data: { manualUsdAmount?: number; fxQuoteSource?: string; fxQuotedAt?: string; expectedPayoutAmount?: number; expectedPayoutCurrency?: string; requestId?: string; referralId: string; retreatId: string; bookingIds: string[]; expenseDate?: string; paymentMethod?: string; paymentAccount?: string; reference?: string; notes?: string }) => api.post<RetreatExpense>('/referrals/payouts', data, { suppressGlobalError: true } as ReadOptions),
   // The settings form owns save errors; the global overlay would remount it and lose edits.
-  create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data, { suppressGlobalError: true } as ReadOptions),
-  update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data, { suppressGlobalError: true } as ReadOptions),
-  delete: (id: string) => api.delete(`/referrals/${id}`, { suppressGlobalError: true } as ReadOptions),
+  create: (data: Omit<Referral, '_id'>) => {
+    cacheService.clearPattern('referrals:');
+    return api.post<Referral>('/referrals', data, { suppressGlobalError: true } as ReadOptions);
+  },
+  update: (id: string, data: Partial<Referral>) => {
+    cacheService.clearPattern('referrals:');
+    return api.patch<Referral>(`/referrals/${id}`, data, { suppressGlobalError: true } as ReadOptions);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('referrals:');
+    return api.delete(`/referrals/${id}`, { suppressGlobalError: true } as ReadOptions);
+  },
 };
 
 export const expenseTypesApi = {
-  getAll: () => api.get<ExpenseType[]>('/expense-types'),
+  // Reference data (expense categories), rarely edited -- 5 minute cache.
+  getAll: () => cachedGet<ExpenseType[]>('expense-types:all', () => api.get<ExpenseType[]>('/expense-types'), 300000),
   getOne: (id: string) => api.get<ExpenseType>(`/expense-types/${id}`),
-  create: (data: Omit<ExpenseType, '_id'>) => api.post<ExpenseType>('/expense-types', data),
-  update: (id: string, data: Partial<ExpenseType>) => api.patch<ExpenseType>(`/expense-types/${id}`, data),
-  delete: (id: string) => api.delete(`/expense-types/${id}`),
-  activate: (id: string) => api.patch(`/expense-types/${id}/activate`, {}),
-  deactivate: (id: string) => api.patch(`/expense-types/${id}/deactivate`, {}),
-  seed: (dryRun: boolean = false) => api.post(`/expense-types/seed${dryRun ? '?dryRun=true' : ''}`, {}),
+  create: (data: Omit<ExpenseType, '_id'>) => {
+    cacheService.clearPattern('expense-types:');
+    return api.post<ExpenseType>('/expense-types', data);
+  },
+  update: (id: string, data: Partial<ExpenseType>) => {
+    cacheService.clearPattern('expense-types:');
+    return api.patch<ExpenseType>(`/expense-types/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('expense-types:');
+    return api.delete(`/expense-types/${id}`);
+  },
+  activate: (id: string) => {
+    cacheService.clearPattern('expense-types:');
+    return api.patch(`/expense-types/${id}/activate`, {});
+  },
+  deactivate: (id: string) => {
+    cacheService.clearPattern('expense-types:');
+    return api.patch(`/expense-types/${id}/deactivate`, {});
+  },
+  seed: (dryRun: boolean = false) => {
+    cacheService.clearPattern('expense-types:');
+    return api.post(`/expense-types/seed${dryRun ? '?dryRun=true' : ''}`, {});
+  },
 };
 
 export type PaymentRequestTypeSetting = { _id: string; key: string; label: string; active: boolean; sortOrder: number; system: boolean };
 
 export const paymentRequestTypesApi = {
-  getAll: () => api.get<PaymentRequestTypeSetting[]>('/payment-request-types'),
-  create: (data: { key: string; label: string; active?: boolean; sortOrder?: number }) => api.post<PaymentRequestTypeSetting>('/payment-request-types', data),
-  update: (key: string, data: { label?: string; active?: boolean; sortOrder?: number }) => api.patch<PaymentRequestTypeSetting>(`/payment-request-types/${encodeURIComponent(key)}`, data),
+  // Reference data (payment request categories), rarely edited -- 5 minute cache.
+  getAll: () => cachedGet<PaymentRequestTypeSetting[]>('payment-request-types:all', () => api.get<PaymentRequestTypeSetting[]>('/payment-request-types'), 300000),
+  create: (data: { key: string; label: string; active?: boolean; sortOrder?: number }) => {
+    cacheService.clearPattern('payment-request-types:');
+    return api.post<PaymentRequestTypeSetting>('/payment-request-types', data);
+  },
+  update: (key: string, data: { label?: string; active?: boolean; sortOrder?: number }) => {
+    cacheService.clearPattern('payment-request-types:');
+    return api.patch<PaymentRequestTypeSetting>(`/payment-request-types/${encodeURIComponent(key)}`, data);
+  },
 };
 
 export const medicalPayoutsApi = {
@@ -687,10 +726,10 @@ export const bloodPressureReadingsApi = {
 };
 
 export const communicationsApi = {
-  getAssets: () => api.get<EmailAsset[]>('/communications/assets'),
-  uploadAsset: (file: File, data: { name: string; key: string; language: string; assetType?: string }) => { const form = new FormData(); form.append('file', file); form.append('name', data.name); form.append('key', data.key); form.append('language', data.language); form.append('assetType', data.assetType || 'attachment'); return api.post<EmailAsset>('/communications/assets', form, { headers: { 'Content-Type': 'multipart/form-data' } }); },
-  updateAsset: (id: string, data: Partial<EmailAsset>) => api.patch<EmailAsset>(`/communications/assets/${id}`, data),
-  deleteAsset: (id: string) => api.delete(`/communications/assets/${id}`),
+  getAssets: () => cachedGet<EmailAsset[]>('communications:assets', () => api.get<EmailAsset[]>('/communications/assets')),
+  uploadAsset: (file: File, data: { name: string; key: string; language: string; assetType?: string }) => { const form = new FormData(); form.append('file', file); form.append('name', data.name); form.append('key', data.key); form.append('language', data.language); form.append('assetType', data.assetType || 'attachment'); cacheService.clearPattern('communications:assets'); return api.post<EmailAsset>('/communications/assets', form, { headers: { 'Content-Type': 'multipart/form-data' } }); },
+  updateAsset: (id: string, data: Partial<EmailAsset>) => { cacheService.clearPattern('communications:assets'); return api.patch<EmailAsset>(`/communications/assets/${id}`, data); },
+  deleteAsset: (id: string) => { cacheService.clearPattern('communications:assets'); return api.delete(`/communications/assets/${id}`); },
   getSettings: (config: any = {}) => api.get<MailSettings>('/communications/settings', config),
   saveSettings: (data: Partial<MailSettings>) => api.patch<MailSettings>('/communications/settings', data),
   saveMedicalEmailMasterSwitch: (enabled: boolean) => api.patch<MailSettings>('/communications/settings/email-master-switch', { enabled }),
@@ -848,15 +887,20 @@ export const communicationsApi = {
   },
 };
 
+type ContractGateSettings = {
+  enabled: boolean; preContractModules: string[];
+  portalAccessByStatus: Record<string, Record<string, string>>;
+  portalModuleCatalog: Array<{ key: string; label: string; category: string; requiresBooking?: boolean; supportsReadOnly?: boolean }>;
+  portalStatusCatalog: Array<{ key: string; label: string }>;
+  portalAccessModes: string[];
+};
 export const contractGateApi = {
-  getSettings: () => api.get<{
-    enabled: boolean; preContractModules: string[];
-    portalAccessByStatus: Record<string, Record<string, string>>;
-    portalModuleCatalog: Array<{ key: string; label: string; category: string; requiresBooking?: boolean; supportsReadOnly?: boolean }>;
-    portalStatusCatalog: Array<{ key: string; label: string }>;
-    portalAccessModes: string[];
-  }>('/client-contracts/gate-settings'),
-  saveSettings: (data: { enabled: boolean; preContractModules: string[]; portalAccessByStatus?: Record<string, Record<string, string>> }) => api.patch('/client-contracts/gate-settings', data),
+  // Admin-configured settings, rarely edited -- 5 minute cache.
+  getSettings: () => cachedGet<ContractGateSettings>('contract-gate:settings', () => api.get<ContractGateSettings>('/client-contracts/gate-settings'), 300000),
+  saveSettings: (data: { enabled: boolean; preContractModules: string[]; portalAccessByStatus?: Record<string, Record<string, string>> }) => {
+    cacheService.clearPattern('contract-gate:');
+    return api.patch('/client-contracts/gate-settings', data);
+  },
 };
 
 export const screeningClientsApi = {
@@ -1248,9 +1292,11 @@ export interface S3ReadOverrideSettings {
 }
 
 export const storageSettingsApi = {
-  getS3ReadOverride: () => api.get<S3ReadOverrideSettings>('/storage-settings/s3-read-override'),
-  updateS3ReadOverride: (data: { enabled: boolean; bucketOverride?: string; reason?: string; expiresAt?: string }) =>
-    api.patch<S3ReadOverrideSettings>('/storage-settings/s3-read-override', data),
+  getS3ReadOverride: () => cachedGet<S3ReadOverrideSettings>('storage-settings:s3-read-override', () => api.get<S3ReadOverrideSettings>('/storage-settings/s3-read-override')),
+  updateS3ReadOverride: (data: { enabled: boolean; bucketOverride?: string; reason?: string; expiresAt?: string }) => {
+    cacheService.clearPattern('storage-settings:');
+    return api.patch<S3ReadOverrideSettings>('/storage-settings/s3-read-override', data);
+  },
 };
 
 export const auditLogsApi = {
