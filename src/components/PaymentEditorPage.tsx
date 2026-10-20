@@ -1,3 +1,4 @@
+import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -32,7 +33,7 @@ const getPaymentRequestAmount = (paymentRequest?: PaymentRequest | null) => {
     paymentRequest.amountPaid,
   ];
   const amount = candidates.find((value) => Number(value) > 0);
-  return amount ?? '';
+  return amount === undefined ? '' : Math.max(0, Number(amount) - Number(paymentRequest.amountReceived || 0));
 };
 
 const paymentMethodFromRequest = (paymentType?: PaymentRequest['paymentType']): Payment['paymentMethod'] => {
@@ -114,6 +115,7 @@ const PaymentEditorPage: React.FC = () => {
     isFinalPayment: false,
     isRefundable: false,
     paymentType: 'regular_payment' as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment' | 'currency_adjustment',
+    ...emptyRequestConversion,
     bookingCurrencyAmount: '',
     bookingCurrencyExchangeDate: '',
   });
@@ -164,6 +166,10 @@ const PaymentEditorPage: React.FC = () => {
             isFinalPayment: payment.isFinalPayment || false,
             isRefundable: payment.isRefundable || false,
             paymentType: payment.paymentType || 'regular_payment',
+            requestCurrencyAmount: payment.requestCurrencyAmount?.toString() || '',
+            requestCurrencyExchangeMode: payment.requestCurrencyExchangeMode || 'automatic',
+            requestCurrencyExchangeSource: payment.requestCurrencyExchangeSource || '',
+            requestCurrencyExchangeDate: payment.requestCurrencyExchangeDate ? toDateInputValue(payment.requestCurrencyExchangeDate) : '',
             bookingCurrencyAmount: payment.bookingCurrencyAmount?.toString?.() || '',
             bookingCurrencyExchangeDate: payment.bookingCurrencyExchangeDate ? toDateInputValue(payment.bookingCurrencyExchangeDate) : '',
           });
@@ -197,7 +203,7 @@ const PaymentEditorPage: React.FC = () => {
   }, [id, paymentRequestIdFromQuery, bookingIdFromQuery, clientIdFromQuery]);
 
   const handleChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value, ...(['amount', 'currency'].includes(field) ? { requestCurrencyAmount: '', requestCurrencyExchangeSource: '' } : {}) }));
   };
 
   const bookingOptions = useMemo(() => {
@@ -216,7 +222,8 @@ const PaymentEditorPage: React.FC = () => {
     [bookings, formData.bookingId],
   );
   const bookingCurrency = (selectedBooking?.currency || formData.currency) as Payment['currency'];
-  const showBookingCurrencySettlement = Boolean(selectedBooking?.currency && formData.currency !== selectedBooking.currency);
+  const showRequestCurrencySettlement = Boolean(selectedPaymentRequest?.currency && formData.currency !== selectedPaymentRequest.currency);
+  const showBookingCurrencySettlement = Boolean(selectedBooking?.currency && formData.currency !== selectedBooking.currency && (!selectedPaymentRequest || selectedPaymentRequest.currency !== selectedBooking.currency));
 
   useEffect(() => {
     if (!showBookingCurrencySettlement) return;
@@ -296,6 +303,7 @@ const PaymentEditorPage: React.FC = () => {
     setFormData((prev) => ({
       ...prev,
       paymentRequestId,
+      ...emptyRequestConversion,
       clientId,
       retreatId,
       bookingId: service ? '' : requestBookingId || booking?._id || prev.bookingId,
@@ -386,6 +394,7 @@ const PaymentEditorPage: React.FC = () => {
       isDeposit: formData.isDeposit,
       isFinalPayment: formData.isFinalPayment,
       paymentType: formData.paymentType,
+      ...(showRequestCurrencySettlement ? { requestCurrencyAmount: formData.requestCurrencyExchangeMode === 'manual' ? Number(formData.requestCurrencyAmount) : undefined, requestCurrencyExchangeMode: formData.requestCurrencyExchangeMode, requestCurrencyExchangeSource: formData.requestCurrencyExchangeSource, requestCurrencyExchangeDate: formData.requestCurrencyExchangeDate || formData.paymentDate } : {}),
       bookingCurrency: showBookingCurrencySettlement ? bookingCurrency : undefined,
       bookingCurrencyAmount: showBookingCurrencySettlement && formData.bookingCurrencyAmount
         ? parseFloat(formData.bookingCurrencyAmount)
@@ -560,7 +569,8 @@ const PaymentEditorPage: React.FC = () => {
                     Invoice {selectedPaymentRequest.invoiceNumber || `#${selectedPaymentRequest.display_id || 'n/a'}`}
                   </div>
                   <div className="mt-1 grid gap-2 sm:grid-cols-3">
-                    <div>Requested: {getPaymentRequestAmount(selectedPaymentRequest) || '—'} {selectedPaymentRequest.currency}</div>
+                    <div>Requested: {selectedPaymentRequest.requestedAmount || '—'} {selectedPaymentRequest.currency}</div>
+                    {Number(selectedPaymentRequest.amountReceived) > 0 && <div>Outstanding: {getPaymentRequestAmount(selectedPaymentRequest)} {selectedPaymentRequest.currency}</div>}
                     <div>Type: {selectedPaymentRequest.requestType || 'full payment'}</div>
                     <div>Status: {selectedPaymentRequest.status}</div>
                   </div>
@@ -634,7 +644,6 @@ const PaymentEditorPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
               <select
                 aria-label="Currency"
-                disabled={selectedPaymentRequest?.context === 'standalone_service'}
                 value={formData.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -659,6 +668,7 @@ const PaymentEditorPage: React.FC = () => {
               {usdPreviewError && <p className="mt-1 text-xs text-red-600">{usdPreviewError}</p>}
             </div>
 
+            {showRequestCurrencySettlement && <RequestCurrencyConversion amount={formData.amount} currency={formData.currency} target={selectedPaymentRequest!.currency} paymentDate={formData.paymentDate} value={formData} onChange={patch => setFormData(current => ({ ...current, ...patch }))} />}
             {showBookingCurrencySettlement && (
               <div className="md:col-span-2 rounded-md border border-amber-200 bg-amber-50 p-4">
                 <h3 className="text-sm font-semibold text-amber-900">Booking currency settlement</h3>

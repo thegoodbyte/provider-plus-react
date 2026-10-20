@@ -337,6 +337,7 @@ const PaymentsPage: React.FC = () => {
                   </td>
                   <td data-label="Amount" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <CurrencyDisplay amount={payment.amount} currency={payment.currency} />
+                    {payment.requestCurrency && payment.requestCurrency !== payment.currency && payment.requestCurrencyAmount !== undefined && <div className="mt-1 whitespace-normal text-xs text-slate-600"><CurrencyDisplay amount={payment.requestCurrencyAmount} currency={payment.requestCurrency} /> credited to request<div>{payment.requestCurrencyExchangeSource} · {payment.requestCurrencyExchangeDate ? new Date(payment.requestCurrencyExchangeDate).toISOString().slice(0, 10) : ''}</div></div>}
                   </td>
                   <td data-label="USD equivalent" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.usd_amount !== undefined ? <CurrencyDisplay amount={payment.usd_amount} currency="USD" /> : '-'}

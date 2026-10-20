@@ -88,3 +88,7 @@ describe('canonical booking status selectors', () => {
     });
   });
 });
+it('settles recorded request credit in the booking currency rather than a conflicting USD estimate', () => {
+ const result = bookingSettlementSummary([{ status: 'completed', amount: 100, currency: 'EUR', usd_amount: 1000, bookingCurrency: 'PLN', bookingCurrencyAmount: 425, requestCurrency: 'PLN', requestCurrencyAmount: 425 }], 1000, 'PLN', 1000);
+ expect(result).toMatchObject({ received: 425, outstanding: 575, paidInFull: false, basis: 'PLN' });
+});

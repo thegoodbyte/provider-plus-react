@@ -1,3 +1,4 @@
+import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Payment, PaymentRequest } from '../types';
@@ -70,6 +71,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     transactionReference: '',
     notes: '',
     paymentDate: todayDateInputValue(),
+    ...emptyRequestConversion,
     bookingCurrencyAmount: '',
     bookingCurrencyExchangeDate: ''
   });
@@ -255,7 +257,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   }, [newPayment.amount, newPayment.currency]);
 
   const bookingCurrency = (currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN';
-  const isMixedBookingCurrencyPayment = Boolean(newPayment.currency && bookingCurrency && newPayment.currency !== bookingCurrency);
+  const linkedRequest = bookingPaymentRequests.find(request => request._id === newPayment.paymentRequestId);
+  const mixedRequestCurrency = Boolean(linkedRequest && linkedRequest.currency !== newPayment.currency);
+  const isMixedBookingCurrencyPayment = Boolean(newPayment.currency && bookingCurrency && newPayment.currency !== bookingCurrency && (!linkedRequest || linkedRequest.currency !== bookingCurrency));
 
   useEffect(() => {
     if (!isMixedBookingCurrencyPayment) return;
@@ -489,6 +493,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         amount: parseFloat(newPayment.amount),
         currency: newPayment.currency as 'EUR' | 'CZK' | 'PLN' | 'USD',
         usd_amount: usdPreview ?? undefined,
+        ...(mixedRequestCurrency ? { requestCurrencyAmount: newPayment.requestCurrencyExchangeMode === 'manual' ? Number(newPayment.requestCurrencyAmount) : undefined, requestCurrencyExchangeMode: newPayment.requestCurrencyExchangeMode, requestCurrencyExchangeSource: newPayment.requestCurrencyExchangeSource, requestCurrencyExchangeDate: newPayment.requestCurrencyExchangeDate || newPayment.paymentDate } : {}),
         bookingCurrency: isMixedBookingCurrencyPayment ? bookingCurrency : undefined,
         bookingCurrencyAmount: isMixedBookingCurrencyPayment && newPayment.bookingCurrencyAmount
           ? parseFloat(newPayment.bookingCurrencyAmount)
@@ -522,7 +527,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         transactionReference: '',
         notes: '',
         paymentDate: todayDateInputValue(),
-        bookingCurrencyAmount: '',
+        ...emptyRequestConversion,
+    bookingCurrencyAmount: '',
         bookingCurrencyExchangeDate: ''
       });
 
@@ -540,13 +546,14 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   };
 
   const getPaymentRequestAmount = (paymentRequest?: PaymentRequest | null) =>
-    paymentRequest?.requestedAmount || paymentRequest?.amountPaid || paymentRequest?.fullPriceQuote || paymentRequest?.fullPrice || 0;
+    Math.max(0, Number(paymentRequest?.requestedAmount || paymentRequest?.amountPaid || paymentRequest?.fullPriceQuote || paymentRequest?.fullPrice || 0) - Number(paymentRequest?.amountReceived || 0));
 
   const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
     const amount = getPaymentRequestAmount(paymentRequest);
     setNewPayment((current) => ({
       ...current,
       paymentRequestId,
+      ...emptyRequestConversion,
       amount: amount ? String(amount) : current.amount,
       currency: (paymentRequest?.currency || current.currency || currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN',
       description: paymentRequest
@@ -925,7 +932,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                     step="0.01"
                     min="0"
                     value={newPayment.amount}
-                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
+                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value, requestCurrencyAmount: '', requestCurrencyExchangeSource: ''})}
                     required
                     placeholder="0.00"
                   />
@@ -934,7 +941,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                   <label>Currency *</label>
                   <select
                     value={newPayment.currency}
-                    onChange={(e) => setNewPayment({...newPayment, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN'})}
+                    onChange={(e) => setNewPayment({...newPayment, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN', requestCurrencyAmount: '', requestCurrencyExchangeSource: ''})}
                     required
                   >
                     <option value="EUR">EUR</option>
@@ -955,6 +962,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                 </div>
               </div>
 
+              {mixedRequestCurrency && <RequestCurrencyConversion amount={newPayment.amount} currency={newPayment.currency} target={linkedRequest!.currency} paymentDate={newPayment.paymentDate} value={newPayment} onChange={patch => setNewPayment(current => ({ ...current, ...patch }))} />}
               {isMixedBookingCurrencyPayment && (
                 <div className="form-row">
                   <div className="form-group">

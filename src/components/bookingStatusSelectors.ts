@@ -73,7 +73,8 @@ export const bookingSettlementSummary = (payments: Partial<Payment>[], total: nu
   // example a PLN price paid entirely in PLN) must be settled in that currency;
   // otherwise a stale/rounded USD conversion can incorrectly leave them unpaid.
   const hasCrossCurrencyPayment = completed.some(payment => String(payment.currency || '').toUpperCase() !== String(currency || '').toUpperCase());
-  const hasCompleteUsdLedger = hasCrossCurrencyPayment && Number.isFinite(Number(totalUsd)) && Number(totalUsd) > 0 && completed.length > 0
+  const hasRequestCredit = completed.some(payment => payment.requestCurrency === currency && Number(payment.requestCurrencyAmount) > 0);
+  const hasCompleteUsdLedger = hasCrossCurrencyPayment && !hasRequestCredit && Number.isFinite(Number(totalUsd)) && Number(totalUsd) > 0 && completed.length > 0
     && completed.every(payment => payment.currency === 'USD' || Number.isFinite(Number(payment.usd_amount)));
   if (!hasCompleteUsdLedger) return { ...currencySummary, overpaid: 0, basis: currency };
   const received = completed.reduce((sum, payment) => sum + bookingUsdPaymentAmount(payment), 0);

@@ -584,6 +584,7 @@ export const paymentsApi = {
   getRetreatSummary: (retreatId: string) => cachedGet<PaymentSummary>(`payments:summary:${retreatId}`, () => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`)),
   getNextDisplayId: () => api.get<number>('/payments/next-display-id'),
   convertToUsd: (amount: number, currency: string) => api.get<{ amount: number; currency: string; usd_amount: number | null; unavailable?: boolean }>(`/payments/convert-to-usd?amount=${encodeURIComponent(String(amount))}&currency=${encodeURIComponent(currency)}`),
+  conversionQuote: (amount: number, from: string, to: string, date: string) => api.get<{ amount: number; rate: number; rateDate: string; source: string }>(`/payments/conversion-quote?amount=${encodeURIComponent(String(amount))}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${encodeURIComponent(date)}`),
   convert: (amount: number, from: string, to: string) => api.get<{ amount: number; from: string; to: string; provider: string }>(`/payments/convert?amount=${encodeURIComponent(String(amount))}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   create: (data: Omit<Payment, '_id'>) => {
     cacheService.clearPattern('payments:');

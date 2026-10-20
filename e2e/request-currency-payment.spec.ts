@@ -1,0 +1,32 @@
+import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+const fixturePath=process.env.PPVC899_FIXTURE;
+const f:any=fixturePath?JSON.parse(fs.readFileSync(fixturePath,'utf8')):{};
+test.skip(!fixturePath,'Requires disposable PPVC-899 payment fixture');
+test.describe.configure({mode:'serial'});
+for(const width of [1440,390])test(`EUR receipt retains PLN request credit and source at ${width}px`,async({page,request})=>{
+ await request.post(f.url+'/fixture/reset',{data:{context:'retreat',currency:'PLN'}});await request.post(f.url+'/fixture/fx-outage');await page.setViewportSize({width,height:980});
+ await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',role:'admin',email:'admin@example.invalid'}));},f.tokens.admin);
+ const snapshot=async()=>await(await request.get(f.url+'/fixture/snapshot')).json();
+ await page.route('**/*',async route=>{const req=route.request();if(!['xhr','fetch'].includes(req.resourceType()))return route.continue();const url=new URL(req.url());
+  if(url.pathname.startsWith('/payments')){const response=await route.fetch({url:f.url+url.pathname+url.search});return route.fulfill({response});}
+  if(url.pathname.startsWith('/payment-requests/'))return route.fulfill({json:(await snapshot()).requests[0]});
+  if(url.pathname==='/clients')return route.fulfill({json:[{_id:f.client,firstName:'Synthetic',lastName:'Client',display_id:1899,email:'synthetic@example.invalid'}]});
+  if(url.pathname==='/retreats')return route.fulfill({json:[{_id:f.retreat,name:'Synthetic Retreat',code:'SYN899'}]});
+  if(url.pathname.startsWith('/bookings'))return route.fulfill({json:(await snapshot()).bookings});
+  if(url.pathname==='/config-summary')return route.fulfill({json:{}});
+  if(url.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
+  return route.fulfill({json:[]});
+ });
+ await page.goto('/admin/payments/new?paymentRequestId='+f.request);await expect(page.getByLabel('Amount',{exact:true})).toHaveValue('1000');
+ await page.getByLabel('Currency',{exact:true}).selectOption('EUR');await page.getByLabel('Amount',{exact:true}).fill('100');
+ await expect(page.getByRole('alert').filter({hasText:'dated rate is unavailable'})).toBeVisible();
+ await page.getByLabel('Request conversion method').selectOption('manual');await page.getByLabel('PLN credited equivalent').fill('425');await page.getByLabel('Request conversion source').fill('Synthetic Revolut confirmation #899');await page.getByLabel('Request conversion date').fill('2026-10-17');await page.getByLabel('Status',{exact:true}).selectOption('completed');
+ if(await page.getByRole('button',{name:'Dismiss loading message'}).isVisible())await page.getByRole('button',{name:'Dismiss loading message'}).click();
+ await page.getByRole('button',{name:'Add Payment',exact:true}).click();await expect(page).toHaveURL(/\/admin\/payments$/);
+ let s=await snapshot();expect(s.payments).toHaveLength(1);const payment=s.payments[0];expect(payment.amount).toBe(100);expect(payment.currency).toBe('EUR');expect(payment.requestCurrencyAmount).toBe(425);expect(s.requests[0].requestedAmount).toBe(1000);expect(s.requests[0].currency).toBe('PLN');expect(s.requests[0].amountReceived).toBe(425);expect(s.requests[0].status).toBe('pending');expect(s.bookings[0].amountPaid).toBe(425);expect(s.receipts[0].totalAmount).toBe(100);expect(s.receipts[0].currency).toBe('EUR');
+ await expect(page.getByText(/credited to request/)).toBeVisible();await expect(page.getByText(/Synthetic Revolut confirmation #899/)).toBeVisible();
+ await page.goto('/admin/payments/'+payment._id+'/edit');await expect(page.getByLabel('Currency',{exact:true})).toHaveValue('EUR');await expect(page.getByLabel('Amount',{exact:true})).toHaveValue('100');await expect(page.getByLabel('PLN credited equivalent')).toHaveValue('425');await expect(page.getByLabel('Request conversion source')).toHaveValue('Synthetic Revolut confirmation #899');await expect(page.getByLabel('Request conversion date')).toHaveValue('2026-10-17');
+ await page.getByRole('group',{name:'Payment request currency equivalent'}).scrollIntoViewIfNeeded();await page.screenshot({path:`../ppvc-899-validation/currency-${width}.png`,fullPage:true});
+ await page.getByLabel('Amount',{exact:true}).fill('50');await expect(page.getByLabel('PLN credited equivalent')).toHaveValue('');await expect(page.getByLabel('Request conversion source')).toHaveValue('');
+});

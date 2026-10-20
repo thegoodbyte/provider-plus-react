@@ -7,7 +7,7 @@ import { bookingsApi, clientsApi, configSummaryApi, paymentRequestsApi, serviceR
 jest.mock('../services/api', () => ({
   bookingsApi: { getAll: jest.fn() }, clientsApi: { getAll: jest.fn() }, retreatsApi: { getAll: jest.fn() },
   configSummaryApi: { get: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getOneFresh: jest.fn() }, serviceRequestsApi: { get: jest.fn() },
-  paymentsApi: { getOne: jest.fn(), getAll: jest.fn(), getNextDisplayId: jest.fn(), convert: jest.fn(), create: jest.fn(), update: jest.fn() },
+  paymentsApi: { getOne: jest.fn(), getAll: jest.fn(), getNextDisplayId: jest.fn(), conversionQuote: jest.fn(), convert: jest.fn(), create: jest.fn(), update: jest.fn() },
 }));
 jest.mock('./SearchableClientSelect', () => (props: any) => <select aria-label="Client" value={props.selectedClientId} onChange={e => props.onClientSelect(e.target.value)}><option value="">Choose</option><option value="c1">Anna</option></select>);
 jest.mock('./SearchableRetreatSelect', () => () => <div>Retreat selector</div>);
@@ -76,7 +76,24 @@ test('records the outstanding standalone amount without retreat or booking contr
   mock(paymentRequestsApi.getOneFresh).mockResolvedValue({data:request});mock(serviceRequestsApi.get).mockResolvedValue({data:request});
   view('/admin/payments/new?paymentRequestId=s1');
   await waitFor(()=>expect(screen.getByLabelText('Amount')).toHaveValue(15));
-  expect(screen.queryByText('Retreat selector')).not.toBeInTheDocument();expect(screen.queryByLabelText('Booking')).not.toBeInTheDocument();expect(screen.getByLabelText('Currency')).toBeDisabled();
+  expect(screen.queryByText('Retreat selector')).not.toBeInTheDocument();expect(screen.queryByLabelText('Booking')).not.toBeInTheDocument();expect(screen.getByLabelText('Currency')).toBeEnabled();
   fireEvent.click(screen.getByRole('button',{name:'Add Payment'}));await screen.findByText('Payment list');
   expect(paymentsApi.create).toHaveBeenCalledWith(expect.objectContaining({clientId:'c1',paymentRequestId:'s1',amount:15,currency:'EUR',retreatId:undefined,bookingId:undefined,isFinalPayment:false}));
+});
+
+test('records EUR received against a PLN request with a confirmed PLN equivalent and source', async () => {
+ const request: any = { _id: 'q1', clientId: 'c1', retreatId: 'r1', bookingId: 'b1', requestedAmount: 1000, currency: 'PLN', requestType: 'payment', status: 'pending' };
+ mock(bookingsApi.getAll).mockResolvedValue({ data: [{ _id: 'b1', clientId: 'c1', retreatId: 'r1', bookingNumber: 12, currency: 'PLN', totalAmount: 1000 }] });
+ mock(paymentRequestsApi.getOneFresh).mockResolvedValue({ data: request });
+ mock(paymentsApi.conversionQuote).mockResolvedValue({ data: { amount: 430, rate: 4.3, rateDate: '2026-10-16', source: 'ECB reference rate' } });
+ view('/admin/payments/new?paymentRequestId=q1'); await waitFor(() => expect(screen.getByLabelText('Amount')).toHaveValue(1000));
+ fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'EUR' } });
+ fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '100' } });
+ fireEvent.change(screen.getByLabelText('Request conversion method'), { target: { value: 'manual' } });
+ fireEvent.change(screen.getByLabelText('PLN credited equivalent'), { target: { value: '425' } });
+ fireEvent.change(screen.getByLabelText('Request conversion source'), { target: { value: 'Revolut bank confirmation #123' } });
+ fireEvent.change(screen.getByLabelText('Request conversion date'), { target: { value: '2026-10-17' } });
+ fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'completed' } });
+ fireEvent.click(screen.getByRole('button', { name: 'Add Payment' }));
+ await waitFor(() => expect(paymentsApi.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 100, currency: 'EUR', paymentRequestId: 'q1', requestCurrencyAmount: 425, requestCurrencyExchangeMode: 'manual', requestCurrencyExchangeSource: 'Revolut bank confirmation #123', requestCurrencyExchangeDate: '2026-10-17' })));
 });
