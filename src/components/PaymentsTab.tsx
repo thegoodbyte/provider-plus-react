@@ -1,12 +1,13 @@
-import { Edit2, RefreshCw, Trash2 } from 'lucide-react';
-import React, { useState, useEffect, useCallback } from 'react';
+import { Edit2, RefreshCw, Trash2, List as FiList, Grid2X2 as FiGrid } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { paymentsApi } from '../services/api';
-import { Payment, PaymentSummary } from '../types';
+import { paymentsApi, bookingsApi } from '../services/api';
+import { Payment, PaymentSummary, RetreatClient } from '../types';
 import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import { bookingFinancialSummary } from './bookingFinancialSummary';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -38,6 +39,8 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'columns'>('list');
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
@@ -63,13 +66,18 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [paymentsResponse, summaryResponse] = await Promise.all([
+      const [paymentsResponse, summaryResponse, bookingsResponse] = await Promise.all([
         paymentsApi.getByRetreat(retreatId),
-        paymentsApi.getRetreatSummary(retreatId)
+        paymentsApi.getRetreatSummary(retreatId),
+        // Reuses the same booking records (and server-maintained financialSummary, PPVC-613/891)
+        // that power the Clients tab's payment-status badges — the column view below must not
+        // recompute per-client totals/balances independently.
+        bookingsApi.getByRetreatWithDetails(retreatId)
       ]);
 
       setPayments(paymentsResponse.data);
       setSummary(summaryResponse.data);
+      setBookings(bookingsResponse.data);
     } catch (error) {
       console.error('Error fetching payments data:', error);
     } finally {
@@ -209,6 +217,129 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
     return `${amount.toLocaleString()} ${currency}`;
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'failed': return 'bg-red-100 text-red-800';
+      case 'refunded': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentType = (payment: Payment) => {
+    if (payment.isDeposit) return '🏠 Deposit';
+    if (payment.isFinalPayment) return '✅ Final Payment';
+    return '💰 Payment';
+  };
+
+  const getPaymentMethodDisplay = (method: string) => {
+    const methodIcons: Record<string, string> = {
+      bank_transfer: '🏦',
+      card: '💳',
+      cash: '💵',
+      paypal: '🌐',
+      crypto: '₿',
+      stripe: '💳',
+      wise: '🏦',
+      revolut: '🏦',
+      other: '📄'
+    };
+    const icon = methodIcons[method] || '📄';
+    const displayName = method?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || '';
+    return `${icon} ${displayName}`;
+  };
+
+  // One column per client who has a booking on this retreat (PPVC-900). Totals/balances are
+  // sourced from bookingFinancialSummary() — the same reused per-booking financial summary
+  // (PPVC-613/891) used elsewhere in the app — never recomputed from raw payment amounts here.
+  const clientColumns = useMemo(() => {
+    const getEntityId = (value: any) => (value && typeof value === 'object') ? (value._id || value.id) : value;
+
+    type PaymentColumn = {
+      key: string;
+      clientId: string;
+      clientDisplayId?: number;
+      clientName: string;
+      currency: string;
+      totalAgreed: number;
+      netPaid: number;
+      balance: number;
+      overpayment: number;
+      state: string;
+      payments: Payment[];
+    };
+
+    const columnsByClient = new Map<string, PaymentColumn>();
+
+    bookings.forEach((booking: any) => {
+      const clientId = getEntityId(booking.clientId) || '';
+      if (!clientId) return;
+      const clientObj = typeof booking.clientId === 'object' ? booking.clientId : null;
+      const clientName = clientObj
+        ? `${clientObj.firstName || ''} ${clientObj.lastName || ''}`.trim() || 'Unknown Client'
+        : 'Unknown Client';
+      const financial = bookingFinancialSummary(booking);
+
+      const existing = columnsByClient.get(clientId);
+      if (existing && existing.currency === financial.currency) {
+        // Same client has more than one booking on this retreat in the same currency —
+        // sum the already-computed per-booking totals rather than re-deriving them.
+        existing.totalAgreed += financial.price;
+        existing.netPaid += financial.netPaid;
+        existing.balance += financial.balance;
+        existing.overpayment += financial.overpayment;
+      } else if (!existing) {
+        columnsByClient.set(clientId, {
+          key: clientId,
+          clientId,
+          clientDisplayId: clientObj?.display_id,
+          clientName,
+          currency: financial.currency,
+          totalAgreed: financial.price,
+          netPaid: financial.netPaid,
+          balance: financial.balance,
+          overpayment: financial.overpayment,
+          state: financial.state,
+          payments: []
+        });
+      }
+    });
+
+    payments.forEach((payment: any) => {
+      const clientId = getEntityId(payment.clientId) || '';
+      if (!clientId) return;
+      let column = columnsByClient.get(clientId);
+      if (!column) {
+        // A payment exists for this client but no matching booking was found (data edge case) —
+        // still surface it rather than silently dropping the payment from the column view.
+        const clientObj = typeof payment.clientId === 'object' ? payment.clientId : null;
+        column = {
+          key: clientId,
+          clientId,
+          clientDisplayId: clientObj?.display_id,
+          clientName: clientObj
+            ? `${clientObj.firstName || ''} ${clientObj.lastName || ''}`.trim() || 'Unknown Client'
+            : 'Unknown Client',
+          currency: payment.currency,
+          totalAgreed: 0,
+          netPaid: 0,
+          balance: 0,
+          overpayment: 0,
+          state: 'unpaid',
+          payments: []
+        };
+        columnsByClient.set(clientId, column);
+      }
+      column.payments.push(payment);
+    });
+
+    return Array.from(columnsByClient.values()).sort((a, b) => {
+      if (a.clientDisplayId && b.clientDisplayId) return a.clientDisplayId - b.clientDisplayId;
+      return a.clientName.localeCompare(b.clientName);
+    });
+  }, [bookings, payments]);
+
   const formatUsd = (amount?: number | null) => {
     if (amount === null || amount === undefined || !Number.isFinite(amount)) return '';
     return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -275,6 +406,26 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         <button onClick={fetchData} className="refresh-btn">
           🔄 Refresh
         </button>
+        <div className="view-toggle" role="group" aria-label="Payments view">
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`view-toggle-btn ${viewMode === 'list' ? 'is-active' : ''}`}
+            aria-pressed={viewMode === 'list'}
+            title="List view — one row per payment"
+          >
+            <Icon icon={FiList} /> List
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('columns')}
+            className={`view-toggle-btn ${viewMode === 'columns' ? 'is-active' : ''}`}
+            aria-pressed={viewMode === 'columns'}
+            title="Column view — one column per client"
+          >
+            <Icon icon={FiGrid} /> Columns
+          </button>
+        </div>
       </div>
 
       {/* Add/Edit Form */}
@@ -426,7 +577,8 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         </div>
       )}
 
-      {/* Payments Table */}
+      {/* Payments Table (default view) */}
+      {viewMode === 'list' && (
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -471,39 +623,6 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                 const clientDisplayId = client?.display_id ? `#${client.display_id}` : '';
                 const clientId = client?._id || (typeof payment.clientId === 'string' ? payment.clientId : '');
 
-                const getStatusColor = (status: string) => {
-                  switch (status) {
-                    case 'completed': return 'bg-green-100 text-green-800';
-                    case 'pending': return 'bg-yellow-100 text-yellow-800';
-                    case 'failed': return 'bg-red-100 text-red-800';
-                    case 'refunded': return 'bg-gray-100 text-gray-800';
-                    default: return 'bg-gray-100 text-gray-800';
-                  }
-                };
-
-                const getPaymentType = () => {
-                  if (payment.isDeposit) return '🏠 Deposit';
-                  if (payment.isFinalPayment) return '✅ Final Payment';
-                  return '💰 Payment';
-                };
-
-                const getPaymentMethodDisplay = (method: string) => {
-                  const methodIcons = {
-                    bank_transfer: '🏦',
-                    card: '💳',
-                    cash: '💵',
-                    paypal: '🌐',
-                    crypto: '₿',
-                    stripe: '💳',
-                    wise: '🏦',
-                    revolut: '🏦',
-                    other: '📄'
-                  };
-                  const icon = methodIcons[method as keyof typeof methodIcons] || '📄';
-                  const displayName = method?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || '';
-                  return `${icon} ${displayName}`;
-                };
-
                 return (
                   <tr key={payment._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -528,7 +647,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                       {formatCurrency(payment.usd_amount || 0, 'USD')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getPaymentType()}
+                      {getPaymentType(payment)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {getPaymentMethodDisplay(payment.paymentMethod)}
@@ -586,6 +705,86 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
           )}
         </div>
       </div>
+      )}
+
+      {/* Column view: one column per client, for scanning larger retreats at a glance */}
+      {viewMode === 'columns' && (
+        <div className="payments-columns-wrapper">
+          {clientColumns.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No clients with bookings on this retreat yet
+            </div>
+          ) : (
+            <div className="payments-columns">
+              {clientColumns.map((column) => (
+                <div key={column.key} className="payment-column">
+                  <div className="payment-column-header">
+                    <div className="payment-column-client">
+                      {column.clientDisplayId && column.clientId && (
+                        <Link
+                          to={`/admin/clients/${column.clientId}`}
+                          className="payment-column-client-id"
+                          title="Open client profile"
+                        >
+                          #{column.clientDisplayId}
+                        </Link>
+                      )}
+                      <span className="payment-column-client-name">{column.clientName}</span>
+                    </div>
+                    <div className="payment-column-total">
+                      Agreed: {formatCurrency(column.totalAgreed, column.currency)}
+                    </div>
+                  </div>
+
+                  <div className="payment-column-body">
+                    {column.payments.length === 0 ? (
+                      <div className="payment-column-empty">No payments recorded</div>
+                    ) : (
+                      column.payments.map((payment: any) => (
+                        <div key={payment._id} className="payment-column-row">
+                          <div className="payment-column-row-top">
+                            <span className="payment-column-row-amount">
+                              {payment.currency === 'EUR'
+                                ? `€${payment.amount.toLocaleString()}`
+                                : `${payment.amount.toLocaleString()} ${payment.currency}`}
+                            </span>
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payment.status)}`}>
+                              {payment.status}
+                            </span>
+                          </div>
+                          <div className="payment-column-row-meta">{getPaymentType(payment)}</div>
+                          <div className="payment-column-row-meta">{getPaymentMethodDisplay(payment.paymentMethod)}</div>
+                          {payment.description && (
+                            <div className="payment-column-row-description">{payment.description}</div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="payment-column-footer">
+                    <div className="payment-column-footer-row">
+                      <span>Paid</span>
+                      <span>{formatCurrency(column.netPaid, column.currency)}</span>
+                    </div>
+                    <div className="payment-column-footer-row">
+                      <span>{column.overpayment > 0 ? 'Overpaid' : 'Balance'}</span>
+                      <span>
+                        {column.overpayment > 0
+                          ? formatCurrency(column.overpayment, column.currency)
+                          : formatCurrency(column.balance, column.currency)}
+                      </span>
+                    </div>
+                    <span className={`payment-column-state payment-column-state-${column.state}`}>
+                      {column.state}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
