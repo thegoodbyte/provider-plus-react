@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
-import { Autocomplete, TextField } from '@mui/material';
+import { Select } from 'antd';
 
 export const RetreatFilter: React.FC<{ options: string[]; value: string; onChange: (value: string) => void }> = ({ options, value, onChange }) => (
-  <Autocomplete options={options} value={value || null} onChange={(_, next) => onChange(next || '')}
-    size="small" className="w-full min-w-[240px]" renderInput={(params) => <TextField {...params} label="Retreat" placeholder="All retreats" />} />
+  <Select
+    allowClear
+    showSearch
+    virtual={false}
+    size="small"
+    className="w-full min-w-[240px]"
+    aria-label="Retreat"
+    placeholder="All retreats"
+    value={value || undefined}
+    onChange={(next) => onChange(next || '')}
+    optionFilterProp="label"
+    options={options.map((option) => ({ value: option, label: option }))}
+  />
 );
 
 export function useFormSort<T>(values: Record<string, (row: T) => string | number>) {

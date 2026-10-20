@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic, Table, Progress, Select, DatePicker, Space, Divider } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { ceremoniesApi } from '../services/api';
-import moment from 'moment';
 
 interface CeremonyAnalyticsProps {
   retreatId?: string;

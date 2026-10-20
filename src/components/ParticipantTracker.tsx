@@ -3,7 +3,10 @@ import { bookingsApi, ceremoniesApi, fileUploadsApi, medicalArtifactsApi } from 
 import { Ceremony, CeremonyParticipant, FileUpload, MedicalArtifact, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
 import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Plus, Trash2, GripVertical, Save } from 'lucide-react';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+
+dayjs.extend(customParseFormat);
 
 interface ParticipantTrackerProps {
   ceremonyId: string;
@@ -290,7 +293,7 @@ const getPreCeremonyReadinessLabel = (check?: PreCeremonyCheck) => {
 
 const getCheckTimeLabel = (check: PreCeremonyCheck) => {
   const time = check.recordedAt || check.preCeremonyBloodPressure?.recordedAt || check.preCeremonyEkg?.uploadedAt;
-  return time ? moment(time).format('MMM D, HH:mm') : 'No time';
+  return time ? dayjs(time).format('MMM D, HH:mm') : 'No time';
 };
 
 const getFileHashFromUrl = (fileUrl?: string) => {
@@ -544,7 +547,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     setSelectedParticipant(participant);
     setEditingEventId(event?.id || '');
     form.setFieldsValue({
-      time: event?.time ? moment(event.time, 'HH:mm') : defaultTime ? moment(defaultTime, 'HH:mm') : moment(),
+      time: event?.time ? dayjs(event.time, 'HH:mm') : defaultTime ? dayjs(defaultTime, 'HH:mm') : dayjs(),
       eventType: event?.eventType || 'medicine',
       spoonCount: event?.spoonCount || 1,
       spoonAmount: event?.spoonAmount || 'full',
@@ -641,7 +644,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const hasGridChanges = Object.keys(gridEdits).length > 0 || newRows.length > 0;
 
   const addGridRow = () => {
-    setNewRows((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, time: moment().format('HH:mm') }]);
+    setNewRows((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, time: dayjs().format('HH:mm') }]);
   };
 
   const updateNewRowTime = (rowId: string, time: string) => {
@@ -760,7 +763,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     const eventLog = [...(selectedParticipant.eventLog || [])];
     const nextEvent: CeremonyEvent = {
       id: editingEventId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      time: values.time?.format('HH:mm') || moment().format('HH:mm'),
+      time: values.time?.format('HH:mm') || dayjs().format('HH:mm'),
       eventType: values.eventType,
       spoonCount: values.eventType === 'medicine' ? Number(values.spoonCount || 0) : undefined,
       spoonAmount: values.eventType === 'medicine' ? values.spoonAmount : undefined,
@@ -1048,7 +1051,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           <p className="text-sm text-gray-600">
             Ceremony #{ceremony?.ceremonyNumber || '-'}
             {trackerView === 'spoons' ? ' - type a spoon amount (e.g. 1, 0.5, 0.75) into each client cell, add time rows, then Save.' : ''}
-            {ceremony?.date ? ` ${moment(ceremony.date).format('MMMM DD, YYYY')}` : ''}
+            {ceremony?.date ? ` ${dayjs(ceremony.date).format('MMMM DD, YYYY')}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1067,7 +1070,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           )}
           <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
             <Icon icon={Clock3} className="h-4 w-4" />
-            {moment().format('HH:mm')}
+            {dayjs().format('HH:mm')}
           </div>
         </div>
       </div>

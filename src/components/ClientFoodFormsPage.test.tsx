@@ -27,7 +27,7 @@ test('sorts references numerically in both directions and filters by a searched 
   expect(screen.queryByText('Zoe')).toBeNull();
   expect(screen.getByText('Amy')).toBeTruthy();
   fireEvent.focus(screen.getByRole('combobox', { name: 'Retreat' }));
-  fireEvent.click(screen.getByTitle('Clear'));
+  fireEvent.mouseDown(screen.getByRole('img', { name: 'close-circle' }));
   expect(screen.getByText('Zoe')).toBeTruthy();
 });
 

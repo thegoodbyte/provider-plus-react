@@ -1,5 +1,5 @@
 import MedicalPayoutPanel from './MedicalPayoutPanel';
-import { ChevronLeft, ChevronRight, Edit2, Eye, Mail, Plus, Printer, RefreshCw, Trash2, UserPlus, X } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, CreditCard, Edit2, Eye, FlaskConical, Flower2, ListChecks, Mail, PiggyBank, Plus, Printer, RefreshCw, Sparkles, Trash2, TrendingUp, UserPlus, Users, UtensilsCrossed, X } from 'lucide-react';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import RetreatCloseout from './RetreatCloseout';
 import { quoteBookingUsd, retreatExpectedUsd } from './retreatUsdTotals';
@@ -26,17 +26,6 @@ import RetreatReserveListPanel from './RetreatReserveListPanel';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, Checkbox, message } from 'antd';
 import { Client } from '../types';
-import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
-import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded';
-import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
-import RestaurantRoundedIcon from '@mui/icons-material/RestaurantRounded';
-import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
-import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
-import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
-import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
-import SpaRoundedIcon from '@mui/icons-material/SpaRounded';
-import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
-import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded';
 import './ClientsGrid.css';
 import { getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { bookingFinancialSummary } from './bookingFinancialSummary';
@@ -1064,7 +1053,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             className="edit-retreat-btn retreat-icon-action"
             title="Add helper to this retreat"
           >
-            <PeopleAltRoundedIcon className="w-4 h-4" />
+            <Icon icon={Users} className="w-4 h-4" />
             <span>Add helper</span>
           </button>
           <button
@@ -1073,7 +1062,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             className="edit-retreat-btn retreat-icon-action"
             title="Manage cooks and helpers"
           >
-            <PeopleAltRoundedIcon className="w-4 h-4" />
+            <Icon icon={Users} className="w-4 h-4" />
             <span className="retreat-action-label">Helpers</span>
           </button>
           <button
@@ -1082,7 +1071,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             className="edit-retreat-btn retreat-icon-action"
             title="View financial metrics"
           >
-            <InsightsRoundedIcon className="w-4 h-4" />
+            <Icon icon={TrendingUp} className="w-4 h-4" />
             <span className="retreat-action-label">Metrics</span>
           </button>
           <button onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/edit`)} className="edit-retreat-btn retreat-icon-action" title="Edit retreat" aria-label="Edit retreat">
@@ -1194,7 +1183,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'drugScreening'}
           >
-            <BiotechRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={FlaskConical} className="retreat-tab-icon" />
             <span>Drug Screening</span>
           </button>
         )}
@@ -1205,7 +1194,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'clients'}
           >
-            <PeopleAltRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={Users} className="retreat-tab-icon" />
             <span>Clients ({activeClientCount})</span>
           </button>
         )}
@@ -1227,7 +1216,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'holisticView'}
           >
-            <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={ClipboardCheck} className="retreat-tab-icon" />
             <span>Retreat Readiness</span>
           </button>
         )}
@@ -1238,7 +1227,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'tracking'}
           >
-            <FactCheckRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={ListChecks} className="retreat-tab-icon" />
             <span>Medical Grid</span>
           </button>
         )}
@@ -1249,7 +1238,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'foodMatrix'}
           >
-            <RestaurantRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={UtensilsCrossed} className="retreat-tab-icon" />
             <span>Food Matrix</span>
           </button>
         )}
@@ -1260,7 +1249,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'aiSummary'}
           >
-            <AutoAwesomeRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={Sparkles} className="retreat-tab-icon" />
             <span>AI Summary</span>
           </button>
         )}
@@ -1271,7 +1260,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'expenses'}
           >
-            <SavingsRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={PiggyBank} className="retreat-tab-icon" />
             <span>Expenses</span>
           </button>
         )}
@@ -1282,7 +1271,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'payments'}
           >
-            <CreditCardRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={CreditCard} className="retreat-tab-icon" />
             <span>Payments</span>
           </button>
         )}
@@ -1293,7 +1282,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'ceremonies'}
           >
-            <SpaRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={Flower2} className="retreat-tab-icon" />
             <span>Ceremonies</span>
           </button>
         )}
@@ -1304,7 +1293,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'analytics'}
           >
-            <InsightsRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={TrendingUp} className="retreat-tab-icon" />
             <span>Analytics</span>
           </button>
         )}
@@ -1315,16 +1304,16 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             role="tab"
             aria-selected={activeTab === 'tasks'}
           >
-            <TaskAltRoundedIcon className="retreat-tab-icon" />
+            <Icon icon={CheckCircle2} className="retreat-tab-icon" />
             <span>Tasks</span>
           </button>
         )}
         {isTabAvailableForRetreat('integration', retreat) && ['admin','facilitator'].includes(authService.getUser()?.role || '') && (
           <button className={`tab-btn ${activeTab === 'integration' ? 'active' : ''}`} onClick={()=>handleTabChange('integration')} role="tab" aria-selected={activeTab === 'integration'}>
-            <SpaRoundedIcon className="retreat-tab-icon"/><span>Integration</span>
+            <Icon icon={Flower2} className="retreat-tab-icon"/><span>Integration</span>
           </button>
         )}
-        {isTabAvailableForRetreat('closeout', retreat) && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <button className={`tab-btn ${activeTab === 'closeout' ? 'active' : ''}`} onClick={() => handleTabChange('closeout')} role="tab" aria-selected={activeTab === 'closeout'}><TaskAltRoundedIcon className="retreat-tab-icon"/><span>Closeout</span></button>}
+        {isTabAvailableForRetreat('closeout', retreat) && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <button className={`tab-btn ${activeTab === 'closeout' ? 'active' : ''}`} onClick={() => handleTabChange('closeout')} role="tab" aria-selected={activeTab === 'closeout'}><Icon icon={CheckCircle2} className="retreat-tab-icon"/><span>Closeout</span></button>}
       </div>
 
       <div className="retreat-detail-tab-content">

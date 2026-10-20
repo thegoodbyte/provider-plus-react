@@ -11,7 +11,7 @@ import { MedicalArtifact } from '../types';
 import { medicalArtifactsApi } from '../services/api';
 import { Eye as FiEye, Upload as FiUpload, AlertCircle as FiAlertCircle, Plus as FiPlus } from 'lucide-react';
 import { message, Modal, Upload, Select, Input, DatePicker, InputNumber, Tabs, Badge, Collapse, Button, Tag } from 'antd';
-import moment from 'moment';
+import dayjs from 'dayjs';
 
 const { Panel } = Collapse;
 const { TextArea } = Input;
@@ -263,7 +263,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
       status: TestStatus.PENDING,
       version: 1,
       isLatestVersion: true,
-      testDate: moment().format('YYYY-MM-DD'),
+      testDate: dayjs().format('YYYY-MM-DD'),
       retreatId: retreatId || '',
       results: {}
     });
@@ -366,7 +366,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
             )}
           </div>
           <div className="text-sm text-gray-600 mt-1">
-            Test Date: {moment(record.testDate).format('MM/DD/YYYY')}
+            Test Date: {dayjs(record.testDate).format('MM/DD/YYYY')}
           </div>
           <div className="text-xs text-gray-500 mt-1">
             {getRetreatLabel(record.retreatId)}
@@ -647,7 +647,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
             <div>
               <label className="block text-sm font-medium mb-1">Test Date</label>
               <DatePicker
-                value={formData.testDate ? moment(formData.testDate) : null}
+                value={formData.testDate ? dayjs(formData.testDate) : null}
                 onChange={(date) => setFormData({ ...formData, testDate: date?.format('YYYY-MM-DD') })}
                 className="w-full"
               />

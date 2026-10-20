@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import JointPaymentEditorPage from './JointPaymentEditorPage';
 import { bookingsApi, paymentRequestsApi, paymentsApi } from '../services/api';
@@ -54,12 +54,21 @@ test('searches each booking independently and saves selected record IDs', async 
     expect(await screen.findByRole('option', { name: /#1300/ })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: /#1301/ })).not.toBeInTheDocument();
   }
-  fireEvent.keyDown(first, { key: 'ArrowDown' });
-  fireEvent.keyDown(first, { key: 'Enter' });
+  fireEvent.click(screen.getByRole('option', { name: /#1300/ }));
   expect(paymentsApi.createJoint).not.toHaveBeenCalled();
-  expect((first as HTMLInputElement).value).toContain('#1300');
+  // antd shows the committed selection in its own display element, not by
+  // echoing the label back into the search <input>'s value (unlike the MUI
+  // Autocomplete this replaced) -- assert against the select's visible text.
+  await waitFor(() => expect(first.closest('.ant-select')).toHaveTextContent('#1300'));
+  // Selecting an option doesn't close this dropdown by itself in the test
+  // environment -- without closing it, its own (unfiltered) option list
+  // stays in the DOM alongside the next select's, and since every per-row
+  // select shares the same bookings as options, both can list booking-2
+  // simultaneously and make an unscoped accessible-name query ambiguous.
+  // Scope the query to the second select's own listbox to sidestep that.
   search(second, 'novakova');
-  fireEvent.click(await screen.findByRole('option', { name: /#1301/ }));
+  const secondListbox = document.getElementById(second.getAttribute('aria-controls')!)!;
+  fireEvent.click(await within(secondListbox).findByRole('option', { name: /#1301/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Save Joint Payment' }));
   await waitFor(() => expect(paymentsApi.createJoint).toHaveBeenCalledWith(expect.objectContaining({ paymentRequestId: 'request-1', totalAmount: 5700, currency: 'PLN', allocations: [{ bookingId: 'booking-1', amount: 2850 }, { bookingId: 'booking-2', amount: 2850 }] })));
 });

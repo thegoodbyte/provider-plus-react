@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { CeremonyParticipant, Ceremony } from '../types';
 import { ceremoniesApi } from '../services/api';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+
+dayjs.extend(customParseFormat);
 
 interface ClientCeremoniesTabProps {
   clientId: string;
@@ -28,7 +31,7 @@ const ClientCeremoniesTab: React.FC<ClientCeremoniesTabProps> = ({ clientId }) =
   };
 
   const formatTime = (time: string | undefined) => {
-    return time ? moment(time, 'HH:mm').format('HH:mm') : 'N/A';
+    return time ? dayjs(time, 'HH:mm').format('HH:mm') : 'N/A';
   };
 
   const formatOrdinal = (value?: number) => {
@@ -81,7 +84,7 @@ const ClientCeremoniesTab: React.FC<ClientCeremoniesTabProps> = ({ clientId }) =
                   🔮 {formatOrdinal(ceremony?.ceremonyNumber)} Ceremony
                 </h3>
                 <span className="ceremony-date">
-                  {ceremony?.date ? moment(ceremony.date).format('MMM DD, YYYY') : 'Date TBD'}
+                  {ceremony?.date ? dayjs(ceremony.date).format('MMM DD, YYYY') : 'Date TBD'}
                 </span>
               </div>
 

@@ -4,10 +4,13 @@ import { ceremoniesApi } from '../services/api';
 import { Ceremony, Retreat } from '../types';
 import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import ParticipantTracker from './ParticipantTracker';
 import CeremonyReadyChecklist from './CeremonyReadyChecklist';
 import CeremonyMedicalGuidance from './CeremonyMedicalGuidance';
+
+dayjs.extend(customParseFormat);
 
 interface CeremoniesGridProps {
   retreatId?: string;
@@ -73,7 +76,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
 
   const formatDate = (date: string | Date) => {
     if (!date) return '';
-    return moment(date).format('MM/DD/YYYY');
+    return dayjs(date).format('MM/DD/YYYY');
   };
 
   const formatOrdinal = (value?: number) => {
@@ -137,11 +140,11 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
     form.setFieldsValue({
       ...ceremony,
       retreatId: getObjectId(ceremony.retreatId),
-      date: ceremony.date ? moment(ceremony.date) : null,
-      startTime: ceremony.startTime ? moment(ceremony.startTime, 'HH:mm') : null,
-      endTime: ceremony.endTime ? moment(ceremony.endTime, 'HH:mm') : null,
-      realStartTime: ceremony.realStartTime ? moment(ceremony.realStartTime, 'HH:mm') : null,
-      realEndTime: ceremony.realEndTime ? moment(ceremony.realEndTime, 'HH:mm') : null,
+      date: ceremony.date ? dayjs(ceremony.date) : null,
+      startTime: ceremony.startTime ? dayjs(ceremony.startTime, 'HH:mm') : null,
+      endTime: ceremony.endTime ? dayjs(ceremony.endTime, 'HH:mm') : null,
+      realStartTime: ceremony.realStartTime ? dayjs(ceremony.realStartTime, 'HH:mm') : null,
+      realEndTime: ceremony.realEndTime ? dayjs(ceremony.realEndTime, 'HH:mm') : null,
     });
     setModalVisible(true);
   };

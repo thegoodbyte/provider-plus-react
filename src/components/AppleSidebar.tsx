@@ -1,7 +1,7 @@
 import { Activity as FiActivity, AlertTriangle as FiAlertTriangle, BarChart as FiBarChart, Bell as FiBell, Book as FiBook, BookOpen as FiBookOpen, Bookmark as FiBookmark, Briefcase as FiBriefcase, Calendar as FiCalendar, Camera as FiCamera, CheckSquare as FiCheckSquare, ChevronDown as FiChevronDown, ChevronLeft as FiChevronLeft, Clipboard as FiClipboard, Clock as FiClock, Cpu as FiCpu, CreditCard as FiCreditCard, Database as FiDatabase, DollarSign as FiDollarSign, Edit3 as FiEdit3, FileText as FiFileText, Folder as FiFolder, Grid as FiGrid, Heart as FiHeart, Home as FiHome, Inbox as FiInbox, Layers as FiLayers, Link as FiLink, LogOut as FiLogOut, Mail as FiMail, Monitor as FiMonitor, MoreHorizontal as FiMoreHorizontal, Search as FiSearch, Settings as FiSettings, Share2 as FiShare2, Shield as FiShield, ShoppingBag as FiShoppingBag, User as FiUser, Users as FiUsers, X as FiX, Zap as FiZap } from 'lucide-react';
 import { NAVIGATION, SETTINGS_LABEL, canShowNavigation, useNavigationPreferences } from '../navigation/navigation';
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { Tooltip } from '@mui/material';
+import { Tooltip } from 'antd';
 import { api } from '../services/api';
 
 interface AppleSidebarProps {
@@ -621,7 +621,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                         title={section.label}
                         placement="right"
                         arrow
-                        enterDelay={200}
+                        mouseEnterDelay={0.2}
                       >
                         {sectionButton}
                       </Tooltip>

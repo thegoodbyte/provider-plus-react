@@ -1,6 +1,6 @@
 import { ArrowLeft, Plus, Save as SaveIcon, Trash2 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Autocomplete, TextField } from '@mui/material';
+import { Select } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { bookingsApi, paymentRequestsApi, paymentsApi } from '../services/api';
 import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
@@ -113,19 +113,28 @@ const JointPaymentEditorPage: React.FC = () => {
           <label className="text-sm font-medium text-gray-700">Payer name<input value={form.payerName} onChange={(event) => setForm({ ...form, payerName: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Person who sent the money" /></label>
           <label className="text-sm font-medium text-gray-700">Transaction reference<input value={form.transactionId} onChange={(event) => setForm({ ...form, transactionId: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Bank, Revolut, PayPal reference" /></label>
           <div className="md:col-span-2">
-            <Autocomplete
-              options={requests.filter(request => request.status !== 'cancelled')}
-              value={requests.find(request => request._id === form.paymentRequestId) || null}
-              getOptionLabel={requestLabel}
-              isOptionEqualToValue={(option, value) => option._id === value._id}
-              filterOptions={(options, { inputValue }) => options.filter(request => matchesSearch(`${requestLabel(request)} ${request.display_id || ''}`, inputValue))}
-              onChange={(_event, request) => {
-                setForm(current => ({ ...current, paymentRequestId: request?._id || '', totalAmount: request ? String(request.requestedAmount) : current.totalAmount, currency: request?.currency || current.currency }));
+            <Select
+              id="joint-payment-request-select"
+              allowClear
+              showSearch
+              virtual={false}
+              size="small"
+              className="w-full"
+              aria-label="Payment request (optional)"
+              placeholder="Payment request (optional) — type invoice number, client, retreat, or amount"
+              value={form.paymentRequestId || undefined}
+              filterOption={(input, option) => matchesSearch(option?.searchText || '', input)}
+              notFoundContent="No payment requests match your search"
+              options={requests.filter(request => request.status !== 'cancelled').map(request => ({
+                value: request._id,
+                label: requestLabel(request),
+                searchText: `${requestLabel(request)} ${request.display_id || ''}`,
+              }))}
+              onChange={(nextId) => {
+                const request = requests.find(candidate => candidate._id === nextId);
+                setForm(current => ({ ...current, paymentRequestId: nextId || '', totalAmount: request ? String(request.requestedAmount) : current.totalAmount, currency: request?.currency || current.currency }));
                 if (request) divideEvenly(Number(request.requestedAmount));
               }}
-              noOptionsText="No payment requests match your search"
-              size="small"
-              renderInput={params => <TextField {...params} label="Payment request (optional)" placeholder="Type invoice number, client, retreat, or amount" />}
             />
             <span className="mt-1 block text-xs font-normal text-gray-500">This sets the actual amount received—not the combined booking price—and proposes an equal split you can edit.</span>
           </div>
@@ -142,16 +151,21 @@ const JointPaymentEditorPage: React.FC = () => {
         <div className="space-y-4">
           {allocations.map((allocation, index) => {
             return <div key={index} className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-[1.8fr_.7fr_auto]">
-              <Autocomplete
-                options={bookings}
-                value={bookings.find(booking => booking._id === allocation.bookingId) || null}
-                getOptionLabel={bookingLabel}
-                isOptionEqualToValue={(option, value) => option._id === value._id}
-                filterOptions={(options, { inputValue }) => options.filter(booking => matchesSearch(bookingLabel(booking), inputValue))}
-                onChange={(_event, booking) => updateAllocation(index, { bookingId: booking?._id || '' })}
-                noOptionsText="No bookings match your search"
+              <Select
+                id={`joint-payment-booking-select-${index}`}
+                allowClear
+                showSearch
+                virtual={false}
                 size="small"
-                renderInput={params => <TextField {...params} label={`Booking ${index + 1}`} required={!allocation.bookingId} placeholder="Type booking number, client, or retreat" />}
+                className="w-full"
+                status={!allocation.bookingId ? 'warning' : undefined}
+                aria-label={`Booking ${index + 1}`}
+                placeholder={`Booking ${index + 1} — type booking number, client, or retreat`}
+                value={allocation.bookingId || undefined}
+                filterOption={(input, option) => matchesSearch(option?.label as string || '', input)}
+                notFoundContent="No bookings match your search"
+                options={bookings.map(booking => ({ value: booking._id, label: bookingLabel(booking) }))}
+                onChange={(nextId) => updateAllocation(index, { bookingId: nextId || '' })}
               />
               <label className="text-sm font-medium text-gray-700">Allocated amount *<input type="number" min="0.01" step="0.01" required value={allocation.amount} onChange={(event) => updateAllocation(index, { amount: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label>
               <button type="button" disabled={allocations.length <= 2} onClick={() => setAllocations(allocations.filter((_, itemIndex) => itemIndex !== index))} className="mt-6 rounded-md p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30" title="Remove allocation"><Icon icon={Trash2} /></button>
