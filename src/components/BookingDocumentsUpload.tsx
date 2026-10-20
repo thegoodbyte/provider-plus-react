@@ -412,7 +412,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
             </div>
             <div className="booking-document-viewer-body">
               {viewer.file.mimeType?.startsWith('image/') ? (
-                <img src={viewer.viewUrl} alt={viewer.file.fileName || viewer.document.title} />
+                <img src={viewer.viewUrl} alt={viewer.file.fileName || viewer.document.title} loading="lazy" />
               ) : (
                 <iframe src={viewer.viewUrl} title={viewer.file.fileName || viewer.document.title} />
               )}

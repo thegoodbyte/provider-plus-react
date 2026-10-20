@@ -1036,6 +1036,7 @@ const MedicalArtifactsPage: React.FC = () => {
                       src={artifact.files.find((file) => file.thumbnailUrl)?.thumbnailUrl}
                       alt={artifact.title}
                       className="h-[60px] w-[80px] rounded border border-gray-200 object-contain"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="flex h-[60px] w-[80px] items-center justify-center rounded border border-dashed border-gray-200 text-xs text-gray-400">No thumb</div>

@@ -347,6 +347,7 @@ const MedicalTrackingDetail: React.FC = () => {
                   src={documentUrl}
                   alt={`Medical document for ${item.type}`}
                   className="max-w-full max-h-[600px] object-contain mx-auto"
+                  loading="lazy"
                   onError={() => setImageError(true)}
                 />
               ) : (

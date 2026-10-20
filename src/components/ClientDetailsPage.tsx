@@ -936,7 +936,7 @@ const ClientDetailsPage: React.FC = () => {
           <div className="flex items-start gap-4">
             <div className="relative h-[96px] w-[96px] shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 shadow-sm sm:h-[160px] sm:w-[160px]">
               {profilePictureUrl ? (
-                <img src={profilePictureUrl} alt={`${client.firstName} ${client.lastName}`} className="h-full w-full object-cover" />
+                <img src={profilePictureUrl} alt={`${client.firstName} ${client.lastName}`} className="h-full w-full object-cover" loading="lazy" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-gray-400">
                   <Icon icon={User} className="h-10 w-10" />
@@ -1367,6 +1367,7 @@ const ClientDetailsPage: React.FC = () => {
                           src={screeningFileUrl}
                           alt={screeningFileName}
                           className="max-h-[620px] max-w-full object-contain"
+                          loading="lazy"
                         />
                       )}
                       {isScreeningPdf && (

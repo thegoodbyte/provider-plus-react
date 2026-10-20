@@ -450,7 +450,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
         <div className="client-header-profile">
           <div className="client-profile-avatar">
             {profilePictureUrl ? (
-              <img src={profilePictureUrl} alt={`${client.firstName} ${client.lastName}`} />
+              <img src={profilePictureUrl} alt={`${client.firstName} ${client.lastName}`} loading="lazy" />
             ) : (
               <span>{`${client.firstName?.[0] || ''}${client.lastName?.[0] || ''}` || 'Client'}</span>
             )}

@@ -217,7 +217,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
           <div className="profile-picture-editor">
             <div className="profile-picture-preview">
               {profilePictureUrl ? (
-                <img src={profilePictureUrl} alt={`${formData.firstName || ''} ${formData.lastName || ''}`} />
+                <img src={profilePictureUrl} alt={`${formData.firstName || ''} ${formData.lastName || ''}`} loading="lazy" />
               ) : (
                 <span>{`${formData.firstName?.[0] || ''}${formData.lastName?.[0] || ''}` || 'Client'}</span>
               )}

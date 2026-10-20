@@ -624,7 +624,7 @@ const BookingDocumentsPage: React.FC = () => {
                 {viewerLoading && <p className="text-sm text-gray-600">Loading secure preview…</p>}
                 {!viewerLoading && viewerError && <div className="max-w-xl rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{viewerError}</div>}
                 {!viewerLoading && !viewerError && viewerUrl && isPdfFile(viewer.file) && <iframe src={viewerUrl} title={viewer.file.fileName || 'PDF preview'} className="h-full w-full rounded-md border-0 bg-white" />}
-                {!viewerLoading && !viewerError && viewerUrl && isImageFile(viewer.file) && <img src={viewerUrl} alt={viewer.file.fileName || 'Image preview'} className="max-h-full max-w-full object-contain" />}
+                {!viewerLoading && !viewerError && viewerUrl && isImageFile(viewer.file) && <img src={viewerUrl} alt={viewer.file.fileName || 'Image preview'} className="max-h-full max-w-full object-contain" loading="lazy" />}
                 {!viewerLoading && !viewerError && viewerUrl && !isBookingDocumentFilePreviewable(viewer.file) && <div className="rounded-md bg-white p-6 text-center text-gray-700"><FileText className="mx-auto mb-3 h-10 w-10 text-gray-400" /><p>Preview is unavailable for this file type.</p><p className="mt-1 text-sm text-gray-500">Use Download to open the file in its native application.</p></div>}
               </div>
             ) : (

@@ -68,7 +68,7 @@ const FilePreview: React.FC<{ file: FileUpload }> = ({ file }) => {
   if (isImageFile(file)) {
     return (
       <a href={previewUrl} target="_blank" rel="noreferrer" className="block h-20 w-20 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-        <img src={previewUrl} alt={file.originalFileName} className="h-full w-full object-cover" />
+        <img src={previewUrl} alt={file.originalFileName} className="h-full w-full object-cover" loading="lazy" />
       </a>
     );
   }

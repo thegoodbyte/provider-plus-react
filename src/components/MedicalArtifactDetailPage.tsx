@@ -226,6 +226,7 @@ const MedicalArtifactInlinePreview: React.FC<{
             src={fileUrl}
             alt={fileName}
             className="max-h-[620px] max-w-full object-contain"
+            loading="lazy"
           />
         )}
         {!isLoading && !error && fileUrl && isPdf && (

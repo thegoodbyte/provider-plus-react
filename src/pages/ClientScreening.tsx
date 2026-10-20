@@ -2039,6 +2039,7 @@ const ClientScreening: React.FC = () => {
                 src={formData.handwritingImageUrl}
                 alt="Handwriting"
                 className="max-w-md rounded-lg border border-gray-200"
+                loading="lazy"
               />
             </div>
           )}

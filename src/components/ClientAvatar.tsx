@@ -32,7 +32,7 @@ const ClientAvatar: React.FC<ClientAvatarProps> = ({ client, name, size = 'sm', 
 
   return (
     <span className={`inline-flex ${sizeClass} flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600 ${className}`}>
-      {profilePictureUrl ? <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" /> : <span>{initial}</span>}
+      {profilePictureUrl ? <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span>{initial}</span>}
     </span>
   );
 };

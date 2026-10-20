@@ -1024,6 +1024,7 @@ const MedicalTrackingNew: React.FC = () => {
               src={viewingImage}
               alt="Medical item"
               className="max-w-full max-h-96 object-contain"
+              loading="lazy"
             />
           </div>
         </div>

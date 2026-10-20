@@ -417,7 +417,7 @@ const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile;
         {isLoading && <div className="text-xs text-gray-500">Loading preview...</div>}
         {!isLoading && previewError && !url && <div className="text-xs text-red-600">{previewError}</div>}
         {!isLoading && url && isImageFile(previewFile) && (
-          <img src={url} alt={fileName} className="w-full rounded-md bg-white object-contain" />
+          <img src={url} alt={fileName} className="w-full rounded-md bg-white object-contain" loading="lazy" />
         )}
         {!isLoading && url && isPdfFile(previewFile) && (
           <iframe src={url} title={fileName} className="h-[520px] w-full rounded-md bg-white" />
@@ -447,7 +447,7 @@ const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile;
         <div className="p-3 text-xs text-red-600">{previewError}</div>
       )}
       {!isLoading && url && isImageFile(previewFile) && (
-        <img src={url} alt={fileName} className="max-h-[520px] w-full rounded-t-md bg-white object-contain" />
+        <img src={url} alt={fileName} className="max-h-[520px] w-full rounded-t-md bg-white object-contain" loading="lazy" />
       )}
       {!isLoading && url && isPdfFile(previewFile) && (
         <iframe src={url} title={fileName} className="h-[520px] w-full rounded-t-md bg-white" />

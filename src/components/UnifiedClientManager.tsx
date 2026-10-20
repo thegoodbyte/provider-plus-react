@@ -70,7 +70,7 @@ const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client }
   return (
     <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200">
       {profilePictureUrl ? (
-        <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" />
+        <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
       ) : (
         <Icon icon={User} className="h-4 w-4" />
       )}
@@ -854,7 +854,7 @@ const UnifiedClientManager: React.FC = () => {
                   <div className="flex flex-col items-center gap-4">
                     <div className="relative h-36 w-36 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm">
                       {profilePicturePreviewUrl ? (
-                        <img src={profilePicturePreviewUrl} alt="Client profile preview" className="h-full w-full object-cover" />
+                        <img src={profilePicturePreviewUrl} alt="Client profile preview" className="h-full w-full object-cover" loading="lazy" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-slate-400">
                           <Icon icon={User} className="h-12 w-12" />

@@ -65,6 +65,7 @@ const FileBlobViewer: React.FC<FileBlobViewerProps> = ({
             src={fileUrl}
             alt={fileName}
             className="max-w-full max-h-[calc(70vh-2rem)] object-contain"
+            loading="lazy"
           />
         )}
 

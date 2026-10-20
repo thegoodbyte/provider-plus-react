@@ -363,7 +363,7 @@ const ClientEditPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="relative h-24 w-24 overflow-hidden rounded-full border border-gray-200 bg-gray-50">
             {profilePictureUrl ? (
-              <img src={profilePictureUrl} alt={`${formData.firstName || ''} ${formData.lastName || ''}`} className="h-full w-full object-cover" />
+              <img src={profilePictureUrl} alt={`${formData.firstName || ''} ${formData.lastName || ''}`} className="h-full w-full object-cover" loading="lazy" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-gray-400">
                 <Icon icon={User} className="h-10 w-10" />

@@ -252,7 +252,7 @@ const AddClient: React.FC = () => {
             <div className="flex flex-col items-center justify-center gap-3 rounded-apple border border-apple-gray-200 bg-apple-gray-50 p-5">
               <div className="relative h-[160px] w-[160px] overflow-hidden rounded-full border border-apple-gray-200 bg-white shadow-sm sm:h-[200px] sm:w-[200px]">
                 {profilePicturePreviewUrl ? (
-                  <img src={profilePicturePreviewUrl} alt="Client profile preview" className="h-full w-full object-cover" />
+                  <img src={profilePicturePreviewUrl} alt="Client profile preview" className="h-full w-full object-cover" loading="lazy" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-sm font-medium text-apple-gray-400">Profile</div>
                 )}

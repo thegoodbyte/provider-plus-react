@@ -350,6 +350,7 @@ const MedicalAdvisorReview: React.FC = () => {
                     src={imageUrl}
                     alt={`Medical document for ${item.type}`}
                     className="max-w-full h-auto object-contain mx-auto rounded-lg shadow-sm"
+                    loading="lazy"
                     onError={() => setImageError(true)}
                   />
                 ) : (
@@ -395,6 +396,7 @@ const MedicalAdvisorReview: React.FC = () => {
                             src={file.url}
                             alt={fileName}
                             className="max-w-full h-auto object-contain mx-auto"
+                            loading="lazy"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                               const nextElement = e.currentTarget.nextElementSibling as HTMLElement;

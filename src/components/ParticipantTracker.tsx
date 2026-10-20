@@ -1640,7 +1640,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       >
         {previewLoading && <div className="py-10 text-center text-sm text-gray-500">Loading preview...</div>}
         {!previewLoading && previewUrl && isImageFile(previewFileName) && (
-          <img src={previewUrl} alt={previewFileName} className="max-h-[70vh] w-full rounded-md object-contain" />
+          <img src={previewUrl} alt={previewFileName} className="max-h-[70vh] w-full rounded-md object-contain" loading="lazy" />
         )}
         {!previewLoading && previewUrl && isPdfFile(previewFileName) && (
           <iframe src={previewUrl} title={previewFileName} className="h-[70vh] w-full rounded-md border border-gray-200 bg-white" />
