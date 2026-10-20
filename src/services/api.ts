@@ -9,7 +9,7 @@ import { Retreat, EventTypeConfig, House, Client, ContactBookEntry, RetreatClien
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
-import type { Referral, ReferralReportRow } from '../types';
+import type { Referral, ReferralReportRow, ReferralNotificationSettings } from '../types';
 
 
 const api = axios.create({
@@ -454,8 +454,8 @@ export const referralsApi = {
   quotePayout: (data: { referralId: string; retreatId: string; bookingIds: string[]; expenseDate: string }) => api.post<any>('/referrals/payouts/quote', data),
   getAssignmentNotifications: (id: string) => api.get<any[]>(`/referrals/${id}/assignment-notifications`, { suppressGlobalError: true } as ReadOptions),
   retryAssignmentNotification: (id: string, clientId: string, eventId: string) => api.post<any[]>(`/referrals/${id}/assignment-notifications/${clientId}/${eventId}/retry`, {}, { suppressGlobalError: true } as ReadOptions),
-  getNotificationSettings: () => api.get<{ assignmentNotificationsEnabled: boolean }>('/referrals/notification-settings', { suppressGlobalError: true } as ReadOptions),
-  updateNotificationSettings: (data: { assignmentNotificationsEnabled: boolean }) => api.patch<{ assignmentNotificationsEnabled: boolean }>('/referrals/notification-settings', data, { suppressGlobalError: true } as ReadOptions),
+  getNotificationSettings: () => api.get<ReferralNotificationSettings>('/referrals/notification-settings', { suppressGlobalError: true } as ReadOptions),
+  updateNotificationSettings: (data: Partial<ReferralNotificationSettings>) => api.patch<ReferralNotificationSettings>('/referrals/notification-settings', data, { suppressGlobalError: true } as ReadOptions),
   getAll: (options?: ReadOptions) => api.get<Referral[]>('/referrals', options),
   getReport: (options?: ReadOptions) => completeReferralReport(params => api.get<ReferralReportPage>('/referrals/report/pages', { ...options, params: { ...options?.params, ...params } })),
   getPayouts: () => api.get<RetreatExpense[]>('/referrals/payouts', { suppressGlobalError: true } as ReadOptions),

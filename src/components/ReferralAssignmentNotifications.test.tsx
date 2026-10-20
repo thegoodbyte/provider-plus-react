@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ReferralAssignmentNotifications from './ReferralAssignmentNotifications';
 import ReferralNotificationSettingsPage from './ReferralNotificationSettingsPage';
@@ -41,4 +41,31 @@ it('saves opt-in activation and language alongside partner settings', async () =
   await waitFor(()=>expect(referralsApi.update).toHaveBeenCalledWith('r1', {assignmentNotificationsEnabled:true}));
   fireEvent.change(screen.getByLabelText('Notification language for Alchemia'), { target: { value: 'pl' } });
   await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ assignmentNotificationLanguage: 'pl' })));
+});
+// PPVC-827: the four lifecycle kinds beyond assignment, each with its own
+// global switch and per-partner override column, same model as assignment.
+it.each([
+  ['invoice sent', 'invoiceSentNotificationsEnabled'],
+  ['invoice paid', 'invoicePaidNotificationsEnabled'],
+  ['booking issued', 'bookingIssuedNotificationsEnabled'],
+  ['retreat completed', 'retreatCompletedNotificationsEnabled'],
+])('saves the %s per-partner override', async (columnLabel, flag) => {
+  (referralsApi.update as jest.Mock).mockResolvedValue({ data: {} });
+  render(<MemoryRouter><ReferralNotificationSettingsPage partners={[{ _id: 'r1', name: 'Alchemia', referralCode: 'AD' }]} onPartnerSaved={jest.fn().mockResolvedValue(undefined)} /></MemoryRouter>);
+  const checkbox = await screen.findByLabelText(`Notify Alchemia on ${columnLabel}`);
+  fireEvent.click(checkbox);
+  await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', { [flag]: true }));
+});
+it.each([
+  ['Send invoice-sent notification emails', 'invoiceSentNotificationsEnabled'],
+  ['Send invoice-paid notification emails', 'invoicePaidNotificationsEnabled'],
+  ['Send booking-issued notification emails', 'bookingIssuedNotificationsEnabled'],
+  ['Send retreat-completed notification emails', 'retreatCompletedNotificationsEnabled'],
+])('saves the %s global switch', async (globalLabel, flag) => {
+  (referralsApi as any).updateNotificationSettings = jest.fn().mockResolvedValue({ data: { [flag]: true } });
+  render(<MemoryRouter><ReferralNotificationSettingsPage partners={[]} onPartnerSaved={jest.fn().mockResolvedValue(undefined)} /></MemoryRouter>);
+  const labelText = await screen.findByText(globalLabel);
+  const checkbox = within(labelText.closest('label') as HTMLElement).getByRole('checkbox');
+  fireEvent.click(checkbox);
+  await waitFor(() => expect(referralsApi.updateNotificationSettings).toHaveBeenCalledWith({ [flag]: true }));
 });
