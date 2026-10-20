@@ -51,3 +51,15 @@ it('recovers an incomplete server entry after the browser draft is gone',async()
  await waitFor(()=>expect(medicalPayoutsApi.resume).toHaveBeenCalledWith('retreat','server-pending-761'));
  await waitFor(()=>expect(screen.queryByRole('button',{name:'Retry incomplete payment entry'})).not.toBeInTheDocument());
 });
+
+it.each([[], {}, null, { ...initial, policy: null }, { ...initial, history: null }])('keeps malformed summaries inside a recoverable panel error: %p', async value => {
+ (medicalPayoutsApi.summary as jest.Mock).mockResolvedValueOnce({data:value}).mockResolvedValueOnce({data:initial});
+ renderPanel();
+ expect(await screen.findByRole('alert')).toHaveTextContent('Medical fee details are unavailable');
+ expect(screen.queryByText('Paid against fee')).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Retry medical payouts'}));
+ expect(await screen.findByText('Current estimate')).toBeInTheDocument();
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+ expect(medicalPayoutsApi.approve).not.toHaveBeenCalled();
+ expect(medicalPayoutsApi.pay).not.toHaveBeenCalled();
+});

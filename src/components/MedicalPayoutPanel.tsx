@@ -22,6 +22,11 @@ export default function MedicalPayoutPanel({ retreatId, canManage, onPaymentChan
   const [excludeId, setExcludeId] = useState(''), [excludeReason, setExcludeReason] = useState('');
   const sequence = useRef(0);
   const accept = useCallback((next: any) => {
+    // Reject unavailable/malformed responses before committing render state.
+    // The expense workspace must remain usable when this optional panel fails.
+    if (!next || Array.isArray(next) || !next.estimate || !next.policy?.rules || !Array.isArray(next.history)) {
+      throw new Error('Medical fee details are unavailable. Refresh to retry.');
+    }
     setData(next); setRecipient(next.obligation?.recipient?.id || ''); setRules(next.policy.rules);
     const saved = readPending(retreatId);
     if (saved && !(next.pendingEntries || []).some((op: any) => op.requestId === saved.requestId) && next.history.some((row: any) => row.medicalPayoutKey === `medical:${retreatId}:${saved.requestId}`)) {
