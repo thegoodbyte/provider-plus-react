@@ -1180,9 +1180,9 @@
           },
           "contextType": {
             "enum": [
-              "booking",
+              "ceremony",
               "client",
-              "ceremony"
+              "booking"
             ],
             "type": "string"
           },
@@ -1199,23 +1199,23 @@
           },
           "documentStage": {
             "enum": [
-              "other",
               "entry",
               "pre_ceremony",
               "in_ceremony",
               "post_ceremony",
+              "other",
               "additional"
             ],
             "type": "string"
           },
           "documentType": {
             "enum": [
-              "questionnaire",
               "other",
               "additional",
               "EKG",
               "BP",
               "meds",
+              "questionnaire",
               "Liver",
               "Medications"
             ],
@@ -1239,11 +1239,11 @@
           "purpose": {
             "enum": [
               "pre_ceremony",
-              "general",
               "paid_review",
               "booking_requirement",
               "repeat_test",
-              "correction"
+              "correction",
+              "general"
             ],
             "type": "string"
           },
@@ -1265,9 +1265,9 @@
           "reviewFeeCurrency": {
             "enum": [
               "EUR",
+              "USD",
               "CZK",
-              "PLN",
-              "USD"
+              "PLN"
             ],
             "type": "string"
           },
@@ -1278,20 +1278,20 @@
             "enum": [
               "email",
               "manual",
-              "legacy",
               "client_upload",
-              "admin_upload"
+              "admin_upload",
+              "legacy"
             ],
             "type": "string"
           },
           "status": {
             "enum": [
-              "approved",
-              "rejected",
-              "needs_resubmission",
               "stored",
               "missing_file",
               "pending_review",
+              "approved",
+              "rejected",
+              "needs_resubmission",
               "superseded",
               "voided"
             ],
@@ -1357,23 +1357,23 @@
           },
           "documentStage": {
             "enum": [
-              "other",
               "entry",
               "pre_ceremony",
               "in_ceremony",
               "post_ceremony",
+              "other",
               "additional"
             ],
             "type": "string"
           },
           "documentType": {
             "enum": [
-              "questionnaire",
               "other",
               "additional",
               "EKG",
               "BP",
               "meds",
+              "questionnaire",
               "Liver",
               "Medications"
             ],
@@ -1436,9 +1436,9 @@
           },
           "requestType": {
             "enum": [
-              "both",
               "ekg",
               "liver",
+              "both",
               "ekg_review",
               "ceremony_ekg_review",
               "blood_pressure_review",
@@ -2084,8 +2084,8 @@
           },
           "category": {
             "enum": [
-              "documents",
               "medical",
+              "documents",
               "financial",
               "communication",
               "operations"
@@ -2142,18 +2142,18 @@
           },
           "type": {
             "enum": [
-              "booking",
-              "client",
               "retreat",
+              "client",
+              "booking",
               "generic"
             ],
             "type": "string"
           },
           "urgency": {
             "enum": [
+              "high",
               "low",
               "medium",
-              "high",
               "urgent"
             ],
             "type": "string"
@@ -3002,23 +3002,23 @@
           },
           "documentStage": {
             "enum": [
-              "other",
               "entry",
               "pre_ceremony",
               "in_ceremony",
               "post_ceremony",
+              "other",
               "additional"
             ],
             "type": "string"
           },
           "documentType": {
             "enum": [
-              "questionnaire",
               "other",
               "additional",
               "EKG",
               "BP",
               "meds",
+              "questionnaire",
               "Liver",
               "Medications"
             ],
@@ -3084,9 +3084,9 @@
           },
           "requestType": {
             "enum": [
-              "both",
               "ekg",
               "liver",
+              "both",
               "ekg_review",
               "ceremony_ekg_review",
               "blood_pressure_review",
@@ -18086,6 +18086,247 @@
         ]
       }
     },
+    "/medical-payouts/legacy-expenses/{id}/exclude": {
+      "post": {
+        "operationId": "MedicalPayoutsController_exclude",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      }
+    },
+    "/medical-payouts/payments/{id}/void": {
+      "post": {
+        "operationId": "MedicalPayoutsController_void",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      }
+    },
+    "/medical-payouts/recipients": {
+      "get": {
+        "operationId": "MedicalPayoutsController_recipients",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      }
+    },
+    "/medical-payouts/retreat/{id}": {
+      "get": {
+        "operationId": "MedicalPayoutsController_summary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      }
+    },
+    "/medical-payouts/retreat/{id}/approve": {
+      "post": {
+        "operationId": "MedicalPayoutsController_approve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      }
+    },
+    "/medical-payouts/retreat/{id}/payments": {
+      "post": {
+        "operationId": "MedicalPayoutsController_pay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      }
+    },
+    "/medical-payouts/retreat/{id}/retry-entry": {
+      "post": {
+        "operationId": "MedicalPayoutsController_retry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      }
+    },
+    "/medical-payouts/settings": {
+      "get": {
+        "operationId": "MedicalPayoutsController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      },
+      "post": {
+        "operationId": "MedicalPayoutsController_saveSettings",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalPayouts"
+        ]
+      }
+    },
     "/medical-review-automation": {
       "get": {
         "operationId": "MedicalReviewAutomationController_getSettings",
@@ -21063,6 +21304,53 @@
         ]
       }
     },
+    "/payments/conversion-quote": {
+      "get": {
+        "operationId": "PaymentsController_conversionQuote",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "amount",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
     "/payments/convert": {
       "get": {
         "operationId": "PaymentsController_convert",
@@ -22738,16 +23026,6 @@
         "parameters": [],
         "responses": {
           "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "type": "object"
-                  },
-                  "type": "array"
-                }
-              }
-            },
             "description": ""
           }
         },
@@ -22862,6 +23140,20 @@
                 }
               }
             },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Referrals"
+        ]
+      }
+    },
+    "/referrals/report/pages": {
+      "get": {
+        "operationId": "ReferralsController_reportPage",
+        "parameters": [],
+        "responses": {
+          "200": {
             "description": ""
           }
         },

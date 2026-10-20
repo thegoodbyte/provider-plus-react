@@ -393,19 +393,19 @@ export type CreateMedicalArtifactDto = {
     ceremonyNumber?: number;
     clientDisplayId?: number;
     clientId: string;
-    contextType?: 'booking' | 'client' | 'ceremony';
+    contextType?: 'ceremony' | 'client' | 'booking';
     data?: {
         [key: string]: unknown;
     };
     description?: string;
     display_id?: number;
-    documentStage?: 'other' | 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'additional';
-    documentType?: 'questionnaire' | 'other' | 'additional' | 'EKG' | 'BP' | 'meds' | 'Liver' | 'Medications';
+    documentStage?: 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'other' | 'additional';
+    documentType?: 'other' | 'additional' | 'EKG' | 'BP' | 'meds' | 'questionnaire' | 'Liver' | 'Medications';
     files?: Array<MedicalArtifactFileDto>;
     legacyMedicalTrackingId?: string;
     notes?: string;
     originalLanguage?: string;
-    purpose?: 'pre_ceremony' | 'general' | 'paid_review' | 'booking_requirement' | 'repeat_test' | 'correction';
+    purpose?: 'pre_ceremony' | 'paid_review' | 'booking_requirement' | 'repeat_test' | 'correction' | 'general';
     receivedAt?: {
         [key: string]: unknown;
     };
@@ -413,10 +413,10 @@ export type CreateMedicalArtifactDto = {
     replacesArtifactId?: string;
     retreatId?: string;
     reviewFeeAmount?: number;
-    reviewFeeCurrency?: 'EUR' | 'CZK' | 'PLN' | 'USD';
+    reviewFeeCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
     reviewFeePaid?: boolean;
-    source?: 'email' | 'manual' | 'legacy' | 'client_upload' | 'admin_upload';
-    status?: 'approved' | 'rejected' | 'needs_resubmission' | 'stored' | 'missing_file' | 'pending_review' | 'superseded' | 'voided';
+    source?: 'email' | 'manual' | 'client_upload' | 'admin_upload' | 'legacy';
+    status?: 'stored' | 'missing_file' | 'pending_review' | 'approved' | 'rejected' | 'needs_resubmission' | 'superseded' | 'voided';
     tags?: Array<string>;
     textContent?: string;
     title: string;
@@ -434,8 +434,8 @@ export type CreateMedicalReviewRequestDto = {
     clientDisplayId?: number;
     clientId: string;
     display_id?: number;
-    documentStage?: 'other' | 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'additional';
-    documentType?: 'questionnaire' | 'other' | 'additional' | 'EKG' | 'BP' | 'meds' | 'Liver' | 'Medications';
+    documentStage?: 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'other' | 'additional';
+    documentType?: 'other' | 'additional' | 'EKG' | 'BP' | 'meds' | 'questionnaire' | 'Liver' | 'Medications';
     ekgReviewDecision?: 'caution' | 'OK' | 'NOT OK';
     ekgReviewNotes?: string;
     fileReviews?: Array<MedicalReviewFileReviewDto>;
@@ -449,7 +449,7 @@ export type CreateMedicalReviewRequestDto = {
     originalLanguage?: string;
     overallNotes?: string;
     previousReviewRequestId?: string;
-    requestType: 'both' | 'ekg' | 'liver' | 'ekg_review' | 'ceremony_ekg_review' | 'blood_pressure_review' | 'liver_panel_review' | 'medications_review' | 'questionnaire_review' | 'food_review' | 'medical_question' | 'general_clearance';
+    requestType: 'ekg' | 'liver' | 'both' | 'ekg_review' | 'ceremony_ekg_review' | 'blood_pressure_review' | 'liver_panel_review' | 'medications_review' | 'questionnaire_review' | 'food_review' | 'medical_question' | 'general_clearance';
     requestedAt?: {
         [key: string]: unknown;
     };
@@ -632,7 +632,7 @@ export type CreateTaskDto = {
     assignedTo?: string;
     bookingFlowItemId?: string;
     bookingId?: string;
-    category?: 'documents' | 'medical' | 'financial' | 'communication' | 'operations';
+    category?: 'medical' | 'documents' | 'financial' | 'communication' | 'operations';
     clientId?: string;
     description: string;
     dueDate?: string;
@@ -646,8 +646,8 @@ export type CreateTaskDto = {
     sourceType?: string;
     status?: 'pending' | 'completed' | 'cancelled' | 'in_progress';
     tags?: Array<string>;
-    type: 'booking' | 'client' | 'retreat' | 'generic';
-    urgency: 'low' | 'medium' | 'high' | 'urgent';
+    type: 'retreat' | 'client' | 'booking' | 'generic';
+    urgency: 'high' | 'low' | 'medium' | 'urgent';
     visibleToClient?: boolean;
 };
 
@@ -986,8 +986,8 @@ export type UpdateMedicalReviewRequestDto = {
     clientId: string;
     delegationReason?: string;
     display_id?: number;
-    documentStage?: 'other' | 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'additional';
-    documentType?: 'questionnaire' | 'other' | 'additional' | 'EKG' | 'BP' | 'meds' | 'Liver' | 'Medications';
+    documentStage?: 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'other' | 'additional';
+    documentType?: 'other' | 'additional' | 'EKG' | 'BP' | 'meds' | 'questionnaire' | 'Liver' | 'Medications';
     ekgReviewDecision?: 'caution' | 'OK' | 'NOT OK';
     ekgReviewNotes?: string;
     fileReviews?: Array<MedicalReviewFileReviewDto>;
@@ -1002,7 +1002,7 @@ export type UpdateMedicalReviewRequestDto = {
     originalLanguage?: string;
     overallNotes?: string;
     previousReviewRequestId?: string;
-    requestType: 'both' | 'ekg' | 'liver' | 'ekg_review' | 'ceremony_ekg_review' | 'blood_pressure_review' | 'liver_panel_review' | 'medications_review' | 'questionnaire_review' | 'food_review' | 'medical_question' | 'general_clearance';
+    requestType: 'ekg' | 'liver' | 'both' | 'ekg_review' | 'ceremony_ekg_review' | 'blood_pressure_review' | 'liver_panel_review' | 'medications_review' | 'questionnaire_review' | 'food_review' | 'medical_question' | 'general_clearance';
     requestedAt?: {
         [key: string]: unknown;
     };
@@ -9263,6 +9263,153 @@ export type MedicalArtifactsControllerUploadFilesResponses = {
     201: unknown;
 };
 
+export type MedicalPayoutsControllerExcludeData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-payouts/legacy-expenses/{id}/exclude';
+};
+
+export type MedicalPayoutsControllerExcludeResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerExcludeResponse = MedicalPayoutsControllerExcludeResponses[keyof MedicalPayoutsControllerExcludeResponses];
+
+export type MedicalPayoutsControllerVoidData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-payouts/payments/{id}/void';
+};
+
+export type MedicalPayoutsControllerVoidResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerVoidResponse = MedicalPayoutsControllerVoidResponses[keyof MedicalPayoutsControllerVoidResponses];
+
+export type MedicalPayoutsControllerRecipientsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/medical-payouts/recipients';
+};
+
+export type MedicalPayoutsControllerRecipientsResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerRecipientsResponse = MedicalPayoutsControllerRecipientsResponses[keyof MedicalPayoutsControllerRecipientsResponses];
+
+export type MedicalPayoutsControllerSummaryData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-payouts/retreat/{id}';
+};
+
+export type MedicalPayoutsControllerSummaryResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerSummaryResponse = MedicalPayoutsControllerSummaryResponses[keyof MedicalPayoutsControllerSummaryResponses];
+
+export type MedicalPayoutsControllerApproveData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-payouts/retreat/{id}/approve';
+};
+
+export type MedicalPayoutsControllerApproveResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerApproveResponse = MedicalPayoutsControllerApproveResponses[keyof MedicalPayoutsControllerApproveResponses];
+
+export type MedicalPayoutsControllerPayData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-payouts/retreat/{id}/payments';
+};
+
+export type MedicalPayoutsControllerPayResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerPayResponse = MedicalPayoutsControllerPayResponses[keyof MedicalPayoutsControllerPayResponses];
+
+export type MedicalPayoutsControllerRetryData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-payouts/retreat/{id}/retry-entry';
+};
+
+export type MedicalPayoutsControllerRetryResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerRetryResponse = MedicalPayoutsControllerRetryResponses[keyof MedicalPayoutsControllerRetryResponses];
+
+export type MedicalPayoutsControllerSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/medical-payouts/settings';
+};
+
+export type MedicalPayoutsControllerSettingsResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerSettingsResponse = MedicalPayoutsControllerSettingsResponses[keyof MedicalPayoutsControllerSettingsResponses];
+
+export type MedicalPayoutsControllerSaveSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/medical-payouts/settings';
+};
+
+export type MedicalPayoutsControllerSaveSettingsResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalPayoutsControllerSaveSettingsResponse = MedicalPayoutsControllerSaveSettingsResponses[keyof MedicalPayoutsControllerSaveSettingsResponses];
+
 export type MedicalReviewAutomationControllerGetSettingsData = {
     body?: never;
     path?: never;
@@ -10815,6 +10962,22 @@ export type PaymentsControllerFindByRetreatResponses = {
 
 export type PaymentsControllerFindByRetreatResponse = PaymentsControllerFindByRetreatResponses[keyof PaymentsControllerFindByRetreatResponses];
 
+export type PaymentsControllerConversionQuoteData = {
+    body?: never;
+    path?: never;
+    query: {
+        amount: string;
+        from: string;
+        to: string;
+        date: string;
+    };
+    url: '/payments/conversion-quote';
+};
+
+export type PaymentsControllerConversionQuoteResponses = {
+    200: unknown;
+};
+
 export type PaymentsControllerConvertData = {
     body?: never;
     path?: never;
@@ -11802,12 +11965,8 @@ export type ReferralsControllerPayoutsData = {
 };
 
 export type ReferralsControllerPayoutsResponses = {
-    200: Array<{
-        [key: string]: unknown;
-    }>;
+    200: unknown;
 };
-
-export type ReferralsControllerPayoutsResponse = ReferralsControllerPayoutsResponses[keyof ReferralsControllerPayoutsResponses];
 
 export type ReferralsControllerCreatePayoutData = {
     body: CreateReferralPayoutDto;
@@ -11870,6 +12029,17 @@ export type ReferralsControllerReportResponses = {
 };
 
 export type ReferralsControllerReportResponse = ReferralsControllerReportResponses[keyof ReferralsControllerReportResponses];
+
+export type ReferralsControllerReportPageData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/referrals/report/pages';
+};
+
+export type ReferralsControllerReportPageResponses = {
+    200: unknown;
+};
 
 export type ReferralsControllerRemoveData = {
     body?: never;
