@@ -18,10 +18,10 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.route('**/*', async route => {
       const request = route.request(); const url = new URL(request.url());
       if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
-      const json = (value: any, status = 200) => route.fulfill({ status, json: value, headers: { 'Access-Control-Allow-Origin': 'http://localhost:3000', 'Access-Control-Allow-Credentials': 'true' } });
+      const json = (value: any, status = 200) => route.fulfill({ status, json: url.pathname === '/referrals/report/pages' ? { rows: value, nextCursor: null, asOf: '507f1f77bcf86cd799439999' } : value, headers: { 'Access-Control-Allow-Origin': 'http://localhost:3000', 'Access-Control-Allow-Credentials': 'true' } });
       if (url.pathname === '/environment/status') return json({ environment: 'development', production: false, enabledJobs: [] });
       if (url.pathname === '/referrals' && request.method() === 'GET') return json(partners);
-      if (url.pathname === '/referrals/report') return json(report);
+      if (url.pathname === '/referrals/report/pages') return json(report);
       if (url.pathname === '/referrals/payouts') return json([]);
       if (url.pathname.endsWith('/portal-account')) return json(null);
       if (url.pathname === '/referrals' && request.method() === 'POST') {

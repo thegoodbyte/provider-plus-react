@@ -8,9 +8,9 @@ for(const width of [1440,390]) test(`copy canonical reference and selected payou
  const writes:any[]=[];
  await page.route('**/*',async route=>{
   if(!['xhr','fetch'].includes(route.request().resourceType()))return route.continue();
-  const pathname=new URL(route.request().url()).pathname;const json=(value:any)=>route.fulfill({json:value});
+  const pathname=new URL(route.request().url()).pathname;const json=(value:any)=>route.fulfill({json:new URL(route.request().url()).pathname === '/referrals/report/pages' ? {rows:value,nextCursor:null,asOf:'507f1f77bcf86cd799439999'}:value});
   if(pathname==='/referrals')return json([{_id:'r1',name:'Partner',isActive:true}]);
-  if(pathname==='/referrals/report')return json([first,{...first,bookingId:'b2',bookingNumber:1185,clientName:'Anna N',amountOwed:300,refereeId:secondReference},{...first,bookingId:'paid',bookingNumber:999,amountOwed:99000,paid:true,expenseId:'existing'},{...first,bookingId:'other',bookingNumber:1186,retreatId:'t2',retreatCode:'OTHER',amountOwed:500,owedCurrency:'EUR'}]);
+  if(pathname==='/referrals/report/pages')return json([first,{...first,bookingId:'b2',bookingNumber:1185,clientName:'Anna N',amountOwed:300,refereeId:secondReference},{...first,bookingId:'paid',bookingNumber:999,amountOwed:99000,paid:true,expenseId:'existing'},{...first,bookingId:'other',bookingNumber:1186,retreatId:'t2',retreatCode:'OTHER',amountOwed:500,owedCurrency:'EUR'}]);
   if(pathname==='/referrals/payouts'&&route.request().method()==='POST'){writes.push(route.request().postDataJSON());return json({_id:'recorded'});}
   if(pathname==='/environment/status')return json({environment:'development',production:false,enabledJobs:[]});
   return json([]);

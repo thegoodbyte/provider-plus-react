@@ -23,7 +23,7 @@ test.describe('PPVC-491 referral payouts', () => {
       if (url.pathname === '/environment/status') return route.fulfill({ json: { environment: 'development', production: false, enabledJobs: [] } });
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
       if (url.pathname === '/referrals' && request.method() === 'GET') return route.fulfill({ json: [referral] });
-      if (url.pathname === '/referrals/report') return route.fulfill({ json: payout ? report.map(row => ({ ...row, paid: true, expenseId: 'expense-1', paidAt: '2026-08-14' })) : report });
+      if (url.pathname === '/referrals/report/pages') return route.fulfill({ json: { rows: payout ? report.map(row => ({ ...row, paid: true, expenseId: 'expense-1', paidAt: '2026-08-14' })) : report, nextCursor: null, asOf: '507f1f77bcf86cd799439999' } });
       if (url.pathname === '/referrals/payouts' && request.method() === 'POST') {
         payout = request.postDataJSON();
         return route.fulfill({ json: { _id: 'expense-1', status: 'paid' } });

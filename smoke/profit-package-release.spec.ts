@@ -27,7 +27,7 @@ for(const width of [1440,390]) {
   await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.origin===new URL(baseURL!).origin&&!u.pathname.startsWith('/api/'))return route.continue();if(!['GET','HEAD','OPTIONS'].includes(req.method()))writes++;
    const p=u.pathname.replace(/^\/api(?=\/)/,'');let data:any=[];
    if(p==='/referrals')data=[{_id:'p1',name:'Partner One'},{_id:'p2',name:'Partner Two'}];
-   if(p==='/referrals/report'){await new Promise(r=>setTimeout(r,200));data=rows;}
+   if(p==='/referrals/report/pages'){await new Promise(r=>setTimeout(r,200));data={rows,nextCursor:null,asOf:'507f1f77bcf86cd799439999'};}
    if(p.includes('/payments/retreat-summary/'))data={paymentsByMethod:{}};if(p==='/environment/status')data={production:true};if(p==='/config-summary'||p==='/users/navigation-permissions')data={};return route.fulfill({json:data});});
   await page.goto('/admin/referrals/commissions?referralId=p1&packageName=Alpha');const table=page.getByRole('table');
   await expect(page.getByLabel('Filter by commission package')).toHaveValue('Alpha');await expect(table).toContainText('Alice');await expect(table).not.toContainText('Betty');

@@ -3,9 +3,9 @@ for(const width of [1440,390])test('missing commission rule explains first-payme
  await page.setViewportSize({width,height:1000});
  const id='507f1f77bcf86cd799439011';
  const partner={_id:id,name:'Synthetic Partner',referralCode:'SP',isActive:true,commissionMode:'dated_percentage',commissionPackages:[]};
- await page.route('**/*',async route=>{const req=route.request();if(!['xhr','fetch'].includes(req.resourceType()))return route.continue();const path=new URL(req.url()).pathname;const json=(data:any)=>route.fulfill({json:data});
+ await page.route('**/*',async route=>{const req=route.request();if(!['xhr','fetch'].includes(req.resourceType()))return route.continue();const path=new URL(req.url()).pathname;const json=(data:any)=>route.fulfill({json:new URL(route.request().url()).pathname === '/referrals/report/pages' ? {rows:data,nextCursor:null,asOf:'507f1f77bcf86cd799439999'}:data});
  if(path==='/referrals')return json([partner]);
- if(path==='/referrals/report')return json([{bookingId:'b1',bookingNumber:1241,clientId:'c1',clientName:'Synthetic Client',referralId:id,referralName:partner.name,retreatId:'t1',retreatCode:'TEST',amountOwed:0,owedCurrency:'PLN',commissionPercentage:0,commissionIssue:'No commission package covers this booking date.',firstPaymentDate:'2026-03-21T12:00:00Z',registrationDate:'2026-07-10',packageName:'Needs configuration'}]);
+ if(path==='/referrals/report/pages')return json([{bookingId:'b1',bookingNumber:1241,clientId:'c1',clientName:'Synthetic Client',referralId:id,referralName:partner.name,retreatId:'t1',retreatCode:'TEST',amountOwed:0,owedCurrency:'PLN',commissionPercentage:0,commissionIssue:'No commission package covers this booking date.',firstPaymentDate:'2026-03-21T12:00:00Z',registrationDate:'2026-07-10',packageName:'Needs configuration'}]);
  if(path.endsWith('/portal-account'))return json({});
  if(path==='/environment/status')return json({environment:'local',production:false,enabledJobs:[]});return json([]);
  });
