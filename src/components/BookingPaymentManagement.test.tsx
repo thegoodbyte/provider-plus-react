@@ -130,3 +130,25 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
   });
 
 });
+
+describe('PPVC-901 independently loaded payment requests',()=>{
+ beforeEach(()=>{
+  (paymentsApi.getTypes as jest.Mock).mockResolvedValue({data:[]});
+  (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({data:{usd_amount:2500}});
+  (configSummaryApi.get as jest.Mock).mockResolvedValue({data:{}});
+  (paymentsApi.getFinancialSummary as jest.Mock).mockResolvedValue({data:{price:10500,currency:'PLN',netPaid:10500,balance:0,overpayment:0,paidInFull:true}});
+  (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({data:[]});(paymentsApi.getByClient as jest.Mock).mockResolvedValue({data:[]});
+  (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({data:[]});
+ });
+ it('shows request 1392 even if optional payment-plan configuration fails',async()=>{
+  (paymentsApi.getBookingPlan as jest.Mock).mockRejectedValue(Error('Optional plan unavailable'));
+  (paymentRequestsApi.getByBooking as jest.Mock).mockResolvedValue({data:[{_id:'q1392',invoiceNumber:'1392',requestedAmount:10500,currency:'PLN',status:'paid',requestType:'full_payment',paymentId:'p1187'}]});
+  renderPage();expect(await screen.findByText(/Request #1392/)).toBeVisible();expect(screen.queryByText('No payment request yet')).toBeNull();
+ });
+ it('reports an unavailable request list and allows retry instead of claiming none exist',async()=>{
+  (paymentsApi.getBookingPlan as jest.Mock).mockResolvedValue({data:null});
+  (paymentRequestsApi.getByBooking as jest.Mock).mockRejectedValueOnce(Error('Unavailable')).mockResolvedValue({data:[{_id:'q1392',invoiceNumber:'1392',requestedAmount:10500,currency:'PLN',status:'paid'}]});
+  renderPage();expect(await screen.findByText('Payment requests could not be loaded. Retry before creating another request.')).toBeVisible();expect(screen.queryByText('No payment request yet')).toBeNull();
+  fireEvent.click(screen.getByRole('button',{name:'Retry payment requests'}));expect(await screen.findByText(/Request #1392/)).toBeVisible();
+ });
+});

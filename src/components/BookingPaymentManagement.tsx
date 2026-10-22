@@ -99,6 +99,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [paymentTypes, setPaymentTypes] = useState(defaultPaymentTypes);
   const [paymentPlan, setPaymentPlan] = useState<any>(null);
   const [bookingPaymentRequests, setBookingPaymentRequests] = useState<PaymentRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [requestsError, setRequestsError] = useState('');
   const [paymentPlanDueDate, setPaymentPlanDueDate] = useState('');
   const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
   const [showPriceEditor, setShowPriceEditor] = useState(false);
@@ -135,17 +137,19 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   };
 
   const syncPaymentPlan = useCallback(async () => {
+    setPaymentPlanSaving(true); setRequestsLoading(true); setRequestsError('');
     try {
-      setPaymentPlanSaving(true);
-      const [planResponse, requestsResponse] = await Promise.all([
-        paymentsApi.getBookingPlan(bookingId),
-        paymentRequestsApi.getByBooking(bookingId),
+      // The issued requests are independent of optional payment-plan configuration.
+      const [plan, requests] = await Promise.allSettled([
+        paymentsApi.getBookingPlan(bookingId), paymentRequestsApi.getByBooking(bookingId),
       ]);
-      setPaymentPlan(planResponse.data);
-      setBookingPaymentRequests(requestsResponse.data || []);
-      setPaymentPlanDueDate(toDateInputValue(planResponse.data?.dueDate));
-    } catch (error) { console.error('Unable to load booking payment plan:', error); }
-    finally { setPaymentPlanSaving(false); }
+      if (plan.status === 'fulfilled') {
+        setPaymentPlan(plan.value?.data || null);
+        setPaymentPlanDueDate(toDateInputValue(plan.value?.data?.dueDate));
+      } else { setPaymentPlan(null); console.error('Unable to load booking payment plan:', plan.reason); }
+      if (requests.status === 'fulfilled' && Array.isArray(requests.value?.data)) setBookingPaymentRequests(requests.value.data);
+      else { setBookingPaymentRequests([]); setRequestsError('Payment requests could not be loaded. Retry before creating another request.'); }
+    } finally { setPaymentPlanSaving(false); setRequestsLoading(false); }
   }, [bookingId]);
 
   const savePaymentPlan = async (enabled = true) => {
@@ -775,7 +779,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
             <button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button>
           </div>}
         </div>
-        {bookingPaymentRequests.length === 0 ? <div className="payment-requests-empty"><strong>No payment request yet</strong><span>The client has nothing to pay against. Create the balance request to send them a link.</span>{!paymentPlan && !isPaidInFull && <div className="mobile-balance-request"><input aria-label="Final payment due" type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /><button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button></div>}</div> : bookingPaymentRequests.map(request => {
+        {requestsLoading ? <p role="status">Loading payment requests…</p> : requestsError ? <div role="alert"><p>{requestsError}</p><button type="button" onClick={() => void syncPaymentPlan()}>Retry payment requests</button></div> : bookingPaymentRequests.length === 0 ? <div className="payment-requests-empty"><strong>No payment request yet</strong><span>The client has nothing to pay against. Create the balance request to send them a link.</span>{!paymentPlan && !isPaidInFull && <div className="mobile-balance-request"><input aria-label="Final payment due" type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /><button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button></div>}</div> : bookingPaymentRequests.map(request => {
           const linkedPaymentId = typeof request.paymentId === 'object' ? request.paymentId?._id : request.paymentId;
           const requestNumber = request.invoiceNumber || request.display_id || request._id?.slice(-8);
           const canAct = !['paid', 'cancelled'].includes(request.status);
