@@ -69,3 +69,10 @@ it.each([
   fireEvent.click(checkbox);
   await waitFor(() => expect(referralsApi.updateNotificationSettings).toHaveBeenCalledWith({ [flag]: true }));
 });
+
+it.each([['invoice_sent','Invoice sent'],['invoice_paid','Invoice paid'],['booking_issued','Booking issued'],['retreat_completed','Retreat completed']])('identifies %s events in referral history', async (kind,label) => {
+ (referralsApi.getAssignmentNotifications as jest.Mock).mockResolvedValue({data:[{...event,kind}]});
+ render(<ReferralAssignmentNotifications referralId="r1"/>);
+ expect(await screen.findByText(label)).toBeInTheDocument();
+ expect(screen.getByRole('heading',{name:'Referral notification history'})).toBeInTheDocument();
+});
