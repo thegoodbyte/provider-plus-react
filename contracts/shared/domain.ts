@@ -147,11 +147,24 @@ export interface ReferralCommissionPackage {
   rates?: { effectiveFrom: string; ratePercent?: number }[];
 }
 
+export interface ReferralNotificationSettings {
+  assignmentNotificationsEnabled: boolean;
+  invoiceSentNotificationsEnabled: boolean;
+  invoicePaidNotificationsEnabled: boolean;
+  bookingIssuedNotificationsEnabled: boolean;
+  retreatCompletedNotificationsEnabled: boolean;
+}
+
 export interface Referral {
   payoutCurrency?: string;
   commissionMode?: 'dated_percentage' | null;
   assignmentNotificationsEnabled?: boolean;
   assignmentNotificationLanguage?: string;
+  invoiceSentNotificationsEnabled?: boolean;
+  invoicePaidNotificationsEnabled?: boolean;
+  bookingIssuedNotificationsEnabled?: boolean;
+  retreatCompletedNotificationsEnabled?: boolean;
+
   influenceCommissionPercentage?: number | null;
   allowRepeatBookingCredit?: boolean;
 
