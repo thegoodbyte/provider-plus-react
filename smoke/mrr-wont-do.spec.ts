@@ -4,7 +4,7 @@ for(const width of [390,1440])test(`MRR won't-do reason and Other validation sav
  let review:any={_id:id,display_id:1916,status:'pending',requestType:'ekg_review',artifactIds:[],clientId:{_id:'507f1f77bcf86cd799439915',firstName:'Synthetic',lastName:'Review'}};
  await page.setViewportSize({width,height:1000});await page.addInitScript(()=>{localStorage.setItem('token','synthetic-review');localStorage.setItem('user',JSON.stringify({id:'fixture-admin',role:'admin',email:'admin@example.invalid'}));});
  await page.route('**/*',async route=>{const req=route.request();if(!['xhr','fetch'].includes(req.resourceType()))return route.continue();const path=new URL(req.url()).pathname;let data:any=[];
-  if(path.endsWith('/review')&&req.method()==='POST'){const body=req.postDataJSON();writes.push(body);review={...review,...body,status:'wont_do'};data=review;}
+  if(path.endsWith('/review')&&req.method()==='PATCH'){const body=req.postDataJSON();writes.push(body);review={...review,...body,status:'wont_do'};data=review;}
   else if(path==='/medical-review-requests')data=[review];
   else if(path===`/medical-review-requests/${id}`)data=review;
   else if(path.endsWith('/context'))data={artifacts:{all:[]},reviewHistory:[]};
