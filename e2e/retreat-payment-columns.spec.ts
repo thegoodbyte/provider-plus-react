@@ -8,8 +8,8 @@ for(const width of [1440,390])test(`retreat payment columns keep ledger balances
  await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const p=new URL(r.url()).pathname;
   if(r.method()!=='GET')throw Error('Unexpected production mutation '+p);
   if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
-  if(p.includes('/payments/retreat/')&&p.includes('summary'))return route.fulfill({json:{totalPayments:400,totalPaymentsEUR:400,completedPayments:400,completedPaymentsEUR:400,completedPaymentsUSD:400,pendingPayments:0,paymentsByMethod:{},paymentsByStatus:{},depositsPaid:400,finalPaymentsPaid:0}});
-  if(p.startsWith('/payments/retreat/'))return route.fulfill({json:[payment]});
+  if(p.startsWith('/payments/retreat-summary/'))return route.fulfill({json:{totalPayments:400,totalPaymentsEUR:400,completedPayments:400,completedPaymentsEUR:400,completedPaymentsUSD:400,pendingPayments:0,paymentsByMethod:{},paymentsByStatus:{},depositsPaid:400,finalPaymentsPaid:0}});
+  if(p.startsWith('/payments/by-retreat/'))return route.fulfill({json:[payment]});
   if(p.startsWith('/bookings/retreat/'))return route.fulfill({json:bookings});
   if(p==='/retreats/r1')return route.fulfill({json:retreat});
   if(p==='/retreats')return route.fulfill({json:[retreat]});
