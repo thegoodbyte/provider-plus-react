@@ -29,27 +29,39 @@ it('retains capture fields and the retry key after a failed save',async()=>{
   expect(api.create.mock.calls[0][0].captureKey).toBe(api.create.mock.calls[1][0].captureKey);
   expect(api.reconcile).not.toHaveBeenCalled();
 });
-it('never silently assigns a typed request hint or converts without review',async()=>{
-  mount(); fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
-  await screen.findByRole('heading',{name:'Match this receipt'}); expect(screen.getByLabelText('Reconciliation client')).toHaveValue(''); expect(api.reconcile).not.toHaveBeenCalled();
+it('creates a payment from a receipt once a client is picked, with no separate review checkbox',async()=>{
+  mount(); fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
+  await screen.findByText('Payment from SP'); expect(screen.getByLabelText('Reconciliation client')).toHaveValue(''); expect(api.reconcile).not.toHaveBeenCalled();
+  expect(screen.getByRole('button',{name:'Create payment'})).toBeDisabled();
+  expect(screen.queryByLabelText('I reviewed the receipt and selected relationships.')).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Reconciliation client'),{target:{value:'client'}});
-  expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeDisabled();
-  fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
   api.reconcile.mockResolvedValue({data:{...row,status:'converted',paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}}} as any);
-  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeEnabled());
-  fireEvent.click(screen.getByRole('button',{name:'Confirm conversion'}));
+  await waitFor(()=>expect(screen.getByRole('button',{name:'Create payment'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button',{name:'Create payment'}));
   await waitFor(()=>expect(api.reconcile).toHaveBeenCalledWith('receipt',expect.objectContaining({clientId:'client',paymentRequestId:'',confirm:true,action:'convert'})));
-  await screen.findByText('Receipt reconciled. The original received-money total is unchanged.');
+  await screen.findByText('Payment created from this receipt. The original received-money total is unchanged.');
 });
 it('offers explicit linking for a possible existing payment and preserves its relationships',async()=>{
   api.candidates.mockResolvedValue({data:{payments:[{_id:'payment',display_id:1401,clientId:'client',amount:5100,currency:'PLN',paymentDate:'2026-10-16',status:'completed'}],requests:[]}} as any);
-  mount(); fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+  mount(); fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
+  fireEvent.click(await screen.findByRole('button',{name:'Have an existing payment for this already? Link it instead →'}));
+  await screen.findByText('Link to an existing payment');
   fireEvent.click(await screen.findByRole('button',{name:'Select existing payment'}));
   fireEvent.click(screen.getByLabelText(/I checked the original transaction/)); fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
   api.reconcile.mockResolvedValue({data:{...row,status:'converted',paymentId:'payment',payment:{display_id:1401}}} as any);
   await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Confirm link to existing payment'}));
   await waitFor(()=>expect(api.reconcile).toHaveBeenCalledWith('receipt',expect.objectContaining({action:'link',paymentId:'payment',clientId:'client',confirmAccount:true})));
+});
+it('returns to the default payment-from-SP flow when toggling link mode back off',async()=>{
+  api.candidates.mockResolvedValue({data:{payments:[{_id:'payment',display_id:1401,clientId:'client',amount:5100,currency:'PLN',paymentDate:'2026-10-16',status:'completed'}],requests:[]}} as any);
+  mount(); fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
+  fireEvent.click(await screen.findByRole('button',{name:'Have an existing payment for this already? Link it instead →'}));
+  await screen.findByText('Link to an existing payment');
+  fireEvent.click(screen.getByRole('button',{name:'← Use a new payment instead'}));
+  await screen.findByText('Payment from SP');
+  expect(screen.queryByLabelText('I reviewed the receipt and selected relationships.')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button',{name:'Select existing payment'})).not.toBeInTheDocument();
 });
 
 it('uses a grid without inline capture or matching forms, and remembers filters in the URL',async()=>{
@@ -62,6 +74,14 @@ it('uses a grid without inline capture or matching forms, and remembers filters 
  fireEvent.click(screen.getByRole('button',{name:'← Back to list'}));
  await screen.findByRole('table',{name:'Receipts'}); expect(screen.getByLabelText('Filter currency')).toHaveValue('USD'); expect(screen.getByLabelText('Sort receipts')).toHaveValue('amount-asc');
  fireEvent.click(screen.getByRole('button',{name:'Clear filters'})); await waitFor(()=>expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({currency:'',sort:'date-desc',page:1})));
+});
+it('shows the linked payment in the grid once a receipt is converted',async()=>{
+ const linked={...row,status:'converted',paymentId:'payment',payment:{_id:'payment',display_id:1001}};
+ api.list.mockResolvedValue({data:{...snapshot,items:[linked]}} as any); mount();
+ const cell=await screen.findByRole('link',{name:'#1001'}); expect(cell).toHaveAttribute('href','/admin/payments/payment');
+});
+it('shows a dash in the payment column when a receipt has no linked payment yet',async()=>{
+ mount(); await screen.findByRole('table',{name:'Receipts'}); expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1);
 });
 it('filters by account and switches receipt status via the compact status toggle',async()=>{
  mount(); await screen.findByRole('table',{name:'Receipts'});
@@ -91,10 +111,10 @@ it('warns before discarding an edited receipt',async()=>{
 });
 it('allows date correction but keeps matching locked on linked receipts',async()=>{
  api.list.mockResolvedValue({data:{...snapshot,items:[{...row,status:'converted'}]}} as any); mount();
- expect(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'})).toBeEnabled(); expect(screen.getByRole('button',{name:'Match receipt Synthetic Payer'})).toBeDisabled();
+ expect(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'})).toBeEnabled(); expect(screen.getByRole('button',{name:'Payment from SP for receipt Synthetic Payer'})).toBeDisabled();
 });
 it('canceling the matching popup never reconciles',async()=>{
- mount(); fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'})); await screen.findByRole('dialog');
+ mount(); fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'})); await screen.findByRole('dialog');
  fireEvent.click(screen.getByRole('button',{name:'Close'})); await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument()); expect(api.reconcile).not.toHaveBeenCalled();
 });
 it('navigates across page boundaries in the active ordering',async()=>{
@@ -120,7 +140,7 @@ it('hides account/reference inputs and keeps phone plus optional transaction ID 
 it('finds request by client or number and fills its relationships without reconciling automatically',async()=>{
  (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'client',firstName:'Synthetic',lastName:'Client',display_id:101}]});
  (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[{_id:'request',display_id:1243,invoiceNumber:'001243',clientId:'client',bookingId:'booking',currency:'PLN',status:'pending'}]});
- mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
  const search=await screen.findByLabelText('Search payment request number or client');
  fireEvent.change(search,{target:{value:'Synthetic Client'}});
  expect(screen.getByRole('option',{name:/#1243.*Synthetic Client/})).toBeInTheDocument();
@@ -128,28 +148,29 @@ it('finds request by client or number and fills its relationships without reconc
  expect(screen.getByLabelText('Reconciliation client')).toHaveValue('client');
  await waitFor(()=>expect(api.candidates).toHaveBeenCalledWith('receipt',{clientId:'client',paymentRequestId:'request'}));
  expect(api.reconcile).not.toHaveBeenCalled();
- expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeDisabled();
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Create payment'})).toBeEnabled());
 });
-it('keeps lookup errors retryable and blocks confirmation until matching results reload',async()=>{
+it('keeps candidate lookup errors retryable while in link mode, and blocks confirmation until they clear',async()=>{
  api.candidates.mockImplementation((_id, params)=> params?.clientId ? Promise.reject({response:{data:{message:'Lookup failed'}}}) : Promise.resolve({data:{payments:[],requests:[]}} as any));
- mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Have an existing payment for this already? Link it instead →'}));
  fireEvent.change(await screen.findByLabelText('Reconciliation client'),{target:{value:'client'}});
  const retry=await screen.findByRole('button',{name:'Retry matching payments'});
- fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
- expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();
  api.candidates.mockResolvedValue({data:{payments:[],requests:[]}} as any);fireEvent.click(retry);
- await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm conversion'})).toBeEnabled());
+ await waitFor(()=>expect(screen.getByText('No matching payment found.')).toBeInTheDocument());
  expect(api.reconcile).not.toHaveBeenCalled();
 });
 it('can retry a pending reconciliation after closing an unfinished candidate lookup',async()=>{
  api.candidates.mockResolvedValueOnce({data:{payments:[],requests:[]}} as any).mockImplementationOnce(()=>new Promise(()=>{}));
- mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Have an existing payment for this already? Link it instead →'}));
  await screen.findByText('Loading matching payments…');
  fireEvent.keyDown(document,{key:'Escape'});
  await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
- api.detail.mockResolvedValue({data:{...row,reconciliationPending:true,reconciliation:{action:'convert',paymentId:'payment',targets:{clientId:'client'}}}} as any);
+ api.detail.mockResolvedValue({data:{...row,reconciliationPending:true,reconciliation:{action:'link',paymentId:'payment',targets:{clientId:'client'}}}} as any);
  api.candidates.mockResolvedValue({data:{payments:[],requests:[]}} as any);
- fireEvent.click(screen.getByRole('button',{name:'Match receipt Synthetic Payer'}));
+ fireEvent.click(screen.getByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
  fireEvent.click(await screen.findByLabelText('I reviewed the receipt and selected relationships.'));
  await waitFor(()=>expect(screen.getByRole('button',{name:'Retry reconciliation'})).toBeEnabled());
 });
@@ -159,9 +180,9 @@ it('prefills the exact request and unique payment but still requires explicit st
  const request={_id:'request',display_id:1243,clientId:'client',bookingId:'booking',currency:'PLN',status:'pending'};
  api.candidates.mockResolvedValue({data:{payments:[payment],requests:[request],match:{status:'exact_request',requestId:'request',clientId:'client',bookingId:'booking',paymentId:'payment',phoneMatch:true}}} as any);
  (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[request]});(bookingsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'booking',clientId:'client',currency:'PLN'}]});
- mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
  expect(await screen.findByLabelText('Reconciliation client')).toHaveValue('client');expect(screen.getByLabelText('Payment request (optional)')).toHaveValue('request');
- expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();expect(api.reconcile).not.toHaveBeenCalled();expect(screen.getByText(/staff approval is still required/)).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();expect(api.reconcile).not.toHaveBeenCalled();expect(screen.getByText(/Client, booking and request are prefilled/)).toBeInTheDocument();
 });
 it('corrects only the date on a converted receipt and records the reason',async()=>{
  const linked={...row,status:'converted',revision:2,paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}};
@@ -183,7 +204,7 @@ it('distinguishes same-client requests by requested amount/currency, not the ful
   {_id:'request-legacy',display_id:1349,clientId:'client',currency:'CZK',status:'pending',amountPaid:125},
   {_id:'request-missing',display_id:1348,clientId:'client',currency:'USD',status:'pending'},
  ]});
- mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
  const first=await screen.findByRole('option',{name:/#1352.*Requested: 5,100.50 PLN/});expect(first).toBeInTheDocument();
  expect(screen.getByRole('option',{name:/#1351.*Requested: 2,500.75 PLN/})).toBeInTheDocument();expect(screen.getByRole('option',{name:/#1350.*Requested: 0.00 EUR/})).toBeInTheDocument();
  expect(screen.getByRole('option',{name:/#1349.*Requested: 125.00 CZK/})).toBeInTheDocument();expect(screen.getByRole('option',{name:/#1348.*Requested amount unavailable/})).toBeInTheDocument();
