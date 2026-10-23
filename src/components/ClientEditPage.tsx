@@ -82,7 +82,7 @@ const ClientEditPage: React.FC = () => {
     medications?: string;
     allergies?: string;
     specialRequests?: string;
-    language?: 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER'
+    language?: string
   }>({} as any);
   const { toast, showError, dismiss } = useToast();
   const [validationErrors, setValidationErrors] = useState<string[]>([]);

@@ -106,6 +106,7 @@ const AssistantPage = lazy(() => import('./AssistantPage'));
 const HelperCurrentRetreatPage = lazy(() => import('./HelperCurrentRetreatPage'));
 const RetreatFocusModePage = lazy(() => import('./RetreatFocusModePage'));
 const RequirementsGrid = lazy(() => import('./RequirementsGrid'));
+const LanguagesSettings = lazy(() => import('./LanguagesSettings'));
 const ModuleLauncherPage = lazy(() => import('./ModuleLauncherPage'));
 const ReserveListsPage = lazy(() => import('./ReserveListsPage'));
 const Unauthorized = lazy(() => import('./Unauthorized'));
@@ -251,6 +252,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'client-forms') return 'client-forms';
     if (route === 'assistant') return 'assistant';
     if (route === 'requirements') return 'requirements';
+    if (route === 'languages') return 'languages';
     if (route === 'analytics') return 'analytics';
     if (route === 'permissions') return 'permissions';
     if (route === 'users') return 'users';
@@ -826,6 +828,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="referrals/*" element={<ReferralsPage />} />
                       <Route path="requirements" element={<RequirementsGrid />} />
+                      <Route path="languages" element={<LanguagesSettings />} />
                       <Route path="permissions" element={<PermissionsMatrix />} />
                       <Route path="client-medications" element={<ClientMedicationsGrid />} />
                       <Route path="client-medications/create" element={<ClientMedicationForm mode="create" />} />
@@ -1106,6 +1109,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/expenses/:id" element={<ProtectedRoute><ExpenseDetailPage /></ProtectedRoute>} />
                 <Route path="/expenses/:id/edit" element={<ProtectedRoute><ExpenseEditorPage /></ProtectedRoute>} />
                 <Route path="/requirements" element={<ProtectedRoute><RequirementsGrid /></ProtectedRoute>} />
+                <Route path="/languages" element={<ProtectedRoute><LanguagesSettings /></ProtectedRoute>} />
               </Routes>
               </RouteContentBoundary>
             </div>

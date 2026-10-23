@@ -1,17 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ClientLanguageCode } from '../utils/countries';
+import { useActiveLanguages } from '../hooks/useActiveLanguages';
 
-export const LANGUAGE_OPTIONS: Array<{ code: ClientLanguageCode; label: string }> = [
-  { code: 'EN', label: 'English' },
-  { code: 'CZ', label: 'Czech' },
-  { code: 'PL', label: 'Polish' },
-  { code: 'RU', label: 'Russian' },
-  { code: 'OTHER', label: 'Other' },
-];
+// 'other' is a fixed fallback, not a managed language -- it has nothing to
+// add/disable in Settings -> Languages, so it is appended here rather than
+// being a row in the active-languages list itself.
+const OTHER_OPTION = { code: 'other', label: 'Other' };
 
 interface SearchableLanguageSelectorProps {
   value?: string;
-  onChange: (languageCode: ClientLanguageCode) => void;
+  onChange: (languageCode: string) => void;
   label?: string;
   placeholder?: string;
   id?: string;
@@ -24,16 +21,19 @@ const SearchableLanguageSelector: React.FC<SearchableLanguageSelectorProps> = ({
   placeholder = 'Select language',
   id,
 }) => {
+  const { options: activeLanguages } = useActiveLanguages();
+  const options = [...activeLanguages, OTHER_OPTION];
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const selected = LANGUAGE_OPTIONS.find((option) => option.code === value);
+  const normalizedValue = value?.toLowerCase();
+  const selected = options.find((option) => option.code === normalizedValue);
   const query = searchQuery.trim().toLowerCase();
   const filtered = query
-    ? LANGUAGE_OPTIONS.filter((option) => option.label.toLowerCase().includes(query) || option.code.toLowerCase().includes(query))
-    : LANGUAGE_OPTIONS;
+    ? options.filter((option) => option.label.toLowerCase().includes(query) || option.code.toLowerCase().includes(query))
+    : options;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -82,7 +82,7 @@ const SearchableLanguageSelector: React.FC<SearchableLanguageSelectorProps> = ({
                   key={option.code}
                   type="button"
                   onClick={() => { onChange(option.code); setIsOpen(false); setSearchQuery(''); }}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${option.code === value ? 'bg-blue-50 text-blue-700' : ''}`}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${option.code === normalizedValue ? 'bg-blue-50 text-blue-700' : ''}`}
                 >
                   {option.label}
                 </button>

@@ -3,9 +3,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ClientEditPage from './ClientEditPage';
 import ClientEditModal from './ClientEditModal';
-import { clientsApi, referralsApi } from '../services/api';
+import { clientsApi, referralsApi, languagesApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ clientsApi: { getOne: jest.fn(), update: jest.fn() }, referralsApi: { getAll: jest.fn() } }));
+jest.mock('../services/api', () => ({ clientsApi: { getOne: jest.fn(), update: jest.fn() }, referralsApi: { getAll: jest.fn() }, languagesApi: { getActive: jest.fn() } }));
 const client = { _id: '507f1f77bcf86cd799439011', firstName: 'Test', lastName: 'Client', phone: '+48123456789', country: 'PL', language: 'EN', currentMedications: 'Test medication', allergies: 'Test allergy', specialRequests: 'Test request' };
 
 describe.each(['page', 'modal'])('client edit %s medical fields', (variant) => {
@@ -13,6 +13,11 @@ describe.each(['page', 'modal'])('client edit %s medical fields', (variant) => {
     jest.clearAllMocks();
     (clientsApi.getOne as jest.Mock).mockResolvedValue({ data: client });
     (clientsApi.update as jest.Mock).mockResolvedValue({ data: client });
+    (languagesApi.getActive as jest.Mock).mockResolvedValue({ data: [
+      { _id: '1', code: 'en', name: 'English', active: true, sortOrder: 10 },
+      { _id: '2', code: 'cz', name: 'Czech', active: true, sortOrder: 20 },
+      { _id: '3', code: 'pl', name: 'Polish', active: true, sortOrder: 30 },
+    ] });
     (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [] });
   });
   const open = async () => {
@@ -45,6 +50,9 @@ describe.each(['page', 'modal'])('client edit %s medical fields', (variant) => {
   (clientsApi.getOne as jest.Mock).mockResolvedValue({ data: { ...client, display_id: 1201 } });
   (clientsApi.update as jest.Mock).mockResolvedValue({ data: client });
   (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [{ _id: selfId, name: 'Self', isActive: true }] });
+  (languagesApi.getActive as jest.Mock).mockResolvedValue({ data: [
+    { _id: '1', code: 'en', name: 'English', active: true, sortOrder: 10 },
+  ] });
   render(<MemoryRouter initialEntries={['/clients/' + client._id + '/edit']}><Routes>
     <Route path="/clients/:clientId/edit" element={<ClientEditPage />} />
     <Route path="/admin/clients/:clientId" element={<div>Saved client</div>} />
@@ -59,6 +67,9 @@ describe.each(['page', 'modal'])('client edit %s medical fields', (variant) => {
 it.each(['page', 'modal'])('keeps a duplicate-email rejection local in the %s editor', async variant => {
   (clientsApi.getOne as jest.Mock).mockResolvedValue({ data: { ...client, email: 'original@example.invalid' } });
   (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [] });
+  (languagesApi.getActive as jest.Mock).mockResolvedValue({ data: [
+    { _id: '1', code: 'en', name: 'English', active: true, sortOrder: 10 },
+  ] });
   (clientsApi.update as jest.Mock).mockRejectedValue({ response: { status: 400, data: { message: 'Email taken@example.invalid is already registered.' } } });
   render(<MemoryRouter initialEntries={['/clients/' + client._id + '/edit']}>
     {variant === 'modal' ? <ClientEditModal client={{ ...client, email: 'original@example.invalid' } as any} onClose={jest.fn()} onSave={jest.fn()} /> : <Routes><Route path="/clients/:clientId/edit" element={<ClientEditPage />} /></Routes>}

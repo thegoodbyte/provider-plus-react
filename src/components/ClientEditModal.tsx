@@ -16,7 +16,7 @@ interface ClientEditModalProps {
 }
 
 const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSave }) => {
-  const [formData, setFormData] = useState<Client & { yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string; language?: 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER' }>({
+  const [formData, setFormData] = useState<Client & { yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string; language?: string }>({
     ...client
   });
   const { toast, showError, dismiss } = useToast();

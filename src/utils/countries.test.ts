@@ -27,22 +27,22 @@ describe('findCountryByPhoneNumber', () => {
 
 describe('languageForCountryCode', () => {
   it('maps known countries to their client-portal language', () => {
-    expect(languageForCountryCode('PL')).toBe('PL');
-    expect(languageForCountryCode('CZ')).toBe('CZ');
-    expect(languageForCountryCode('RU')).toBe('RU');
-    expect(languageForCountryCode('US')).toBe('EN');
-    expect(languageForCountryCode('GB')).toBe('EN');
+    expect(languageForCountryCode('PL')).toBe('pl');
+    expect(languageForCountryCode('CZ')).toBe('cz');
+    expect(languageForCountryCode('RU')).toBe('ru');
+    expect(languageForCountryCode('US')).toBe('en');
+    expect(languageForCountryCode('GB')).toBe('en');
   });
 
-  it('falls back to OTHER for unmapped or missing countries', () => {
-    expect(languageForCountryCode('DE')).toBe('OTHER');
-    expect(languageForCountryCode(undefined)).toBe('OTHER');
+  it('falls back to "other" for unmapped or missing countries', () => {
+    expect(languageForCountryCode('DE')).toBe('other');
+    expect(languageForCountryCode(undefined)).toBe('other');
   });
 });
 
 describe('detectPhoneLocaleAutofill', () => {
   it('resolves both the country code and language from a recognized phone prefix', () => {
-    expect(detectPhoneLocaleAutofill('+48123456789')).toEqual({ countryCode: 'PL', language: 'PL' });
+    expect(detectPhoneLocaleAutofill('+48123456789')).toEqual({ countryCode: 'PL', language: 'pl' });
   });
 
   it('returns null when the phone number does not match any known country', () => {

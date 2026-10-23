@@ -194,7 +194,7 @@ export type CreateClientContractDto = {
     initials?: {
         [key: string]: string;
     };
-    language?: 'en' | 'cs' | 'pl';
+    language?: string;
     retreat_label?: string;
     signature_data?: string;
     signature_name: string;
@@ -295,7 +295,7 @@ export type CreateClientMedicationDto = {
         [key: string]: unknown;
     }>;
     intake_type?: 'initial' | '30_day';
-    language?: 'en' | 'cs' | 'pl';
+    language?: string;
     lookback_days?: number;
     medstaff_review_notes?: string;
     none_declared_categories?: Array<string>;
@@ -684,6 +684,10 @@ export type HouseBedroomDto = {
     notes?: string;
 };
 
+export type Language = {
+    [key: string]: unknown;
+};
+
 export type LoginDto = {
     email?: string;
     password: string;
@@ -934,7 +938,7 @@ export type UpdateClientMedicationDto = {
         [key: string]: unknown;
     }>;
     intake_type?: 'initial' | '30_day';
-    language?: 'en' | 'cs' | 'pl';
+    language?: string;
     lookback_days?: number;
     medstaff_review_notes?: string;
     none_declared_categories?: Array<string>;
@@ -8948,6 +8952,60 @@ export type JotformControllerIngestQuestionnaireResponses = {
 };
 
 export type JotformControllerIngestQuestionnaireResponse = JotformControllerIngestQuestionnaireResponses[keyof JotformControllerIngestQuestionnaireResponses];
+
+export type LanguagesControllerFindAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/languages';
+};
+
+export type LanguagesControllerFindAllResponses = {
+    200: Array<Language>;
+};
+
+export type LanguagesControllerFindAllResponse = LanguagesControllerFindAllResponses[keyof LanguagesControllerFindAllResponses];
+
+export type LanguagesControllerCreateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/languages';
+};
+
+export type LanguagesControllerCreateResponses = {
+    201: Language;
+};
+
+export type LanguagesControllerCreateResponse = LanguagesControllerCreateResponses[keyof LanguagesControllerCreateResponses];
+
+export type LanguagesControllerFindActiveData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/languages/active';
+};
+
+export type LanguagesControllerFindActiveResponses = {
+    200: Array<Language>;
+};
+
+export type LanguagesControllerFindActiveResponse = LanguagesControllerFindActiveResponses[keyof LanguagesControllerFindActiveResponses];
+
+export type LanguagesControllerUpdateData = {
+    body?: never;
+    path: {
+        code: string;
+    };
+    query?: never;
+    url: '/languages/{code}';
+};
+
+export type LanguagesControllerUpdateResponses = {
+    200: Language;
+};
+
+export type LanguagesControllerUpdateResponse = LanguagesControllerUpdateResponses[keyof LanguagesControllerUpdateResponses];
 
 export type LauncherConfigControllerGetData = {
     body?: never;

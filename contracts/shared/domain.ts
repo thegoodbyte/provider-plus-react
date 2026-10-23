@@ -260,7 +260,9 @@ export interface Client {
   blacklistReason?: string;
   blacklistDate?: Date | string;
   display_id?: number;
-  language?: 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER';
+  // No hardcoded enum: the valid/active set is server-configured (see
+  // LanguagesService) and can change without a contract/type update.
+  language?: string;
   initialContactDate?: Date | string;
   conversionDate?: Date | string;
   firstContactDate?: Date | string;
@@ -1930,7 +1932,7 @@ export interface EmailTemplate {
   bodyHtml?: string;
   category?: string;
   templateKey?: string;
-  language?: 'en' | 'cz' | 'pl' | string;
+  language?: string;
   bookingFlowStepKey?: string;
   bookingFlowStepKeys?: string[];
   bookingFlowStatusOnSend?: 'pending' | 'sent' | 'received' | 'completed' | 'approved' | 'waived' | string;
@@ -1946,7 +1948,7 @@ export interface EmailAsset {
   _id?: string;
   name: string;
   key: string;
-  language: 'en' | 'cz' | 'pl' | string;
+  language: string;
   fileName: string;
   mimeType?: string;
   assetType?: 'attachment' | 'image';

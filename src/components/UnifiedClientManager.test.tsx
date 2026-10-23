@@ -1,22 +1,34 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import UnifiedClientManager from './UnifiedClientManager';
-import { clientsApi, bookingsApi, retreatsApi, referralsApi } from '../services/api';
+import { clientsApi, bookingsApi, retreatsApi, referralsApi, languagesApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
   clientsApi: { getAll: jest.fn(), update: jest.fn(), quickAdd: jest.fn() },
   bookingsApi: { getAll: jest.fn() }, retreatsApi: { getAll: jest.fn() }, referralsApi: { getAll: jest.fn() },
+  languagesApi: { getActive: jest.fn() },
 }));
 const client = { _id: 'c1', firstName: 'Sample', lastName: 'Guest', email: 'original@example.invalid', phone: '+420777123456', status: 'active' };
 beforeEach(() => {
   (clientsApi.getAll as jest.Mock).mockResolvedValue({ data: [client] });
   for (const api of [bookingsApi, retreatsApi, referralsApi]) (api.getAll as jest.Mock).mockResolvedValue({ data: [] });
+  (languagesApi.getActive as jest.Mock).mockResolvedValue({ data: [
+    { _id: '1', code: 'en', name: 'English', active: true, sortOrder: 10 },
+    { _id: '2', code: 'cz', name: 'Czech', active: true, sortOrder: 20 },
+    { _id: '3', code: 'pl', name: 'Polish', active: true, sortOrder: 30 },
+  ] });
 });
 async function openEditor() {
   render(<MemoryRouter><UnifiedClientManager /></MemoryRouter>);
   fireEvent.click(await screen.findByTitle('Edit'));
-  return screen.getByRole('dialog');
+  const dialog = screen.getByRole('dialog');
+  // Lets the language selector's own async load (languagesApi.getActive)
+  // settle inside an act() boundary before the test fires further events --
+  // otherwise its state update lands outside any act() call and React logs
+  // a spurious "not wrapped in act" warning that unrelated tests then catch.
+  await act(async () => { await Promise.resolve(); });
+  return dialog;
 }
 it('shows a styled duplicate toast within the editor, retains edits and allows correction', async () => {
   const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});

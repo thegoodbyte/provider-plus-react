@@ -532,6 +532,26 @@ export const paymentRequestTypesApi = {
   },
 };
 
+export type LanguageOption = { _id: string; code: string; name: string; active: boolean; sortOrder: number };
+
+// The single source of truth for which languages this app accepts --
+// Settings -> Languages is the only place that adds/disables one; every
+// picker elsewhere reads from here instead of hardcoding its own list.
+export const languagesApi = {
+  // Unauthenticated on the API side -- safe to call from any picker,
+  // including public client-facing forms. Reference data, rarely edited.
+  getActive: () => cachedGet<LanguageOption[]>('languages:active', () => api.get<LanguageOption[]>('/languages/active'), 300000),
+  getAll: () => api.get<LanguageOption[]>('/languages'),
+  create: (data: { code: string; name: string; sortOrder?: number }) => {
+    cacheService.clearPattern('languages:');
+    return api.post<LanguageOption>('/languages', data);
+  },
+  update: (code: string, data: { name?: string; active?: boolean; sortOrder?: number }) => {
+    cacheService.clearPattern('languages:');
+    return api.patch<LanguageOption>(`/languages/${encodeURIComponent(code)}`, data);
+  },
+};
+
 export const medicalPayoutsApi = {
   summary: (id: string) => api.get(`/medical-payouts/retreat/${id}`, { params: { _fresh: Date.now() } }),
   recipients: () => api.get<any[]>('/medical-payouts/recipients'),

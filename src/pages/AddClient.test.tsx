@@ -2,12 +2,13 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AddClient from './AddClient';
-import { clientsApi, referralsApi } from '../services/api';
+import { clientsApi, referralsApi, languagesApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 jest.mock('../services/api', () => ({
   clientsApi: { create: jest.fn(), getNextDisplayId: jest.fn(), getAll: jest.fn() },
   referralsApi: { getAll: jest.fn() },
+  languagesApi: { getActive: jest.fn() },
 }));
 
 jest.mock('../context/AuthContext', () => ({
@@ -16,6 +17,7 @@ jest.mock('../context/AuthContext', () => ({
 
 const mockedClientsApi = clientsApi as jest.Mocked<typeof clientsApi>;
 const mockedReferralsApi = referralsApi as jest.Mocked<typeof referralsApi>;
+const mockedLanguagesApi = languagesApi as jest.Mocked<typeof languagesApi>;
 const mockedUseAuth = useAuth as jest.Mock;
 
 const renderPage = () => render(<MemoryRouter><AddClient /></MemoryRouter>);
@@ -26,6 +28,11 @@ describe('AddClient phone -> country/language autofill', () => {
     mockedClientsApi.getAll.mockResolvedValue({ data: [] } as any);
     mockedClientsApi.getNextDisplayId.mockResolvedValue({ data: 1001 } as any);
     mockedReferralsApi.getAll.mockResolvedValue({ data: [] } as any);
+    mockedLanguagesApi.getActive.mockResolvedValue({ data: [
+      { _id: '1', code: 'en', name: 'English', active: true, sortOrder: 10 },
+      { _id: '2', code: 'cz', name: 'Czech', active: true, sortOrder: 20 },
+      { _id: '3', code: 'pl', name: 'Polish', active: true, sortOrder: 30 },
+    ] } as any);
     mockedUseAuth.mockReturnValue({ user: { role: 'admin' } });
   });
 

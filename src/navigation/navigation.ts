@@ -29,6 +29,7 @@ export const NAVIGATION: Record<string, { label: string; description: string; se
   users: { label: 'User Management', description: 'Manage staff accounts and access.', setup: true, aliases: 'Users' },
   permissions: { label: 'Permission Management', description: 'Configure navigation visibility for each role.', setup: true, aliases: 'Permissions' },
   backups: { label: 'Data Backup', description: 'Export and restore database backups.', setup: true },
+  languages: { label: 'Languages', description: 'Add or disable the languages available across client records, forms and notifications.', setup: true },
   'audit-logs': { label: 'Audit Logs', description: 'Review recorded changes and staff actions.' },
   analytics: { label: 'Analytics', description: 'Review booking prices and trends.' },
   tasks: { label: 'General Tasks', description: 'Manage the general task queue.' },

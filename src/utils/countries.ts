@@ -152,21 +152,25 @@ export const findCountryByPhoneNumber = (phone: string): Country | undefined => 
   return candidates.find(country => digits.startsWith(country.phonePrefix));
 };
 
-export type ClientLanguageCode = 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER';
+// The set of recognized language codes is configured in Settings ->
+// Languages (see languagesApi/useActiveLanguages), not hardcoded here --
+// this is just the country-code-to-language-guess heuristic below, which
+// only needs to know the handful of countries it guesses for.
+export type ClientLanguageCode = string;
 
 const COUNTRY_CODE_TO_LANGUAGE: Record<string, ClientLanguageCode> = {
-  CZ: 'CZ',
-  PL: 'PL',
-  RU: 'RU',
-  BY: 'RU',
-  KZ: 'RU',
-  GB: 'EN', US: 'EN', CA: 'EN', AU: 'EN', NZ: 'EN', IE: 'EN',
+  CZ: 'cz',
+  PL: 'pl',
+  RU: 'ru',
+  BY: 'ru',
+  KZ: 'ru',
+  GB: 'en', US: 'en', CA: 'en', AU: 'en', NZ: 'en', IE: 'en',
 };
 
 /** Best-guess client-portal language for a country, used to auto-fill from a phone country code. */
 export const languageForCountryCode = (countryCode?: string): ClientLanguageCode => {
-  if (!countryCode) return 'OTHER';
-  return COUNTRY_CODE_TO_LANGUAGE[countryCode] || 'OTHER';
+  if (!countryCode) return 'other';
+  return COUNTRY_CODE_TO_LANGUAGE[countryCode] || 'other';
 };
 
 /** Country + language to auto-fill when a phone number's calling code is recognized, e.g. "+48..." -> Poland/Polish. */

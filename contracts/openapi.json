@@ -508,11 +508,6 @@
             "type": "object"
           },
           "language": {
-            "enum": [
-              "en",
-              "cs",
-              "pl"
-            ],
             "type": "string"
           },
           "retreat_label": {
@@ -850,11 +845,6 @@
             "type": "string"
           },
           "language": {
-            "enum": [
-              "en",
-              "cs",
-              "pl"
-            ],
             "type": "string"
           },
           "lookback_days": {
@@ -2248,6 +2238,10 @@
         ],
         "type": "object"
       },
+      "Language": {
+        "properties": {},
+        "type": "object"
+      },
       "LoginDto": {
         "properties": {
           "email": {
@@ -2846,11 +2840,6 @@
             "type": "string"
           },
           "language": {
-            "enum": [
-              "en",
-              "cs",
-              "pl"
-            ],
             "type": "string"
           },
           "lookback_days": {
@@ -17591,6 +17580,103 @@
         },
         "tags": [
           "Jotform"
+        ]
+      }
+    },
+    "/languages": {
+      "get": {
+        "operationId": "LanguagesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Language"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Languages"
+        ]
+      },
+      "post": {
+        "operationId": "LanguagesController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Language"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Languages"
+        ]
+      }
+    },
+    "/languages/active": {
+      "get": {
+        "operationId": "LanguagesController_findActive",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Language"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Languages"
+        ]
+      }
+    },
+    "/languages/{code}": {
+      "patch": {
+        "operationId": "LanguagesController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Language"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Languages"
         ]
       }
     },

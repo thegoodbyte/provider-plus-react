@@ -3,13 +3,19 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import ReferralAssignmentNotifications from './ReferralAssignmentNotifications';
 import ReferralNotificationSettingsPage from './ReferralNotificationSettingsPage';
-import { referralsApi } from '../services/api';
+import { referralsApi, languagesApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ referralsApi: { getAssignmentNotifications: jest.fn(), retryAssignmentNotification: jest.fn(), update: jest.fn(), getNotificationSettings: jest.fn() } }));
+jest.mock('../services/api', () => ({ referralsApi: { getAssignmentNotifications: jest.fn(), retryAssignmentNotification: jest.fn(), update: jest.fn(), getNotificationSettings: jest.fn() }, languagesApi: { getActive: jest.fn() } }));
 const event = { id: 'e1', clientId: 'c1', firstName: 'Jane', lastName: 'Guest', status: 'blocked', detail: 'Missing recipient.', createdAt: '2026-10-14T10:00:00Z', attempts: 1 };
 beforeEach(() => {
   (referralsApi.getNotificationSettings as jest.Mock).mockResolvedValue({ data: {assignmentNotificationsEnabled:true} });
   (referralsApi.getAssignmentNotifications as jest.Mock).mockResolvedValue({ data: [event] });
+  (languagesApi.getActive as jest.Mock).mockResolvedValue({ data: [
+    { _id: '1', code: 'en', name: 'English', active: true, sortOrder: 10 },
+    { _id: '2', code: 'cz', name: 'Czech', active: true, sortOrder: 20 },
+    { _id: '3', code: 'pl', name: 'Polish', active: true, sortOrder: 30 },
+    { _id: '4', code: 'ru', name: 'Russian', active: true, sortOrder: 40 },
+  ] });
 });
 it('shows auditable delivery state and retries a safe failure', async () => {
   (referralsApi.retryAssignmentNotification as jest.Mock).mockResolvedValue({ data: [{ ...event, status: 'sent', provider: 'development_capture', detail: 'Delivery accepted.' }] });

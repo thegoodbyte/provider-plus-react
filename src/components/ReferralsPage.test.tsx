@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ReferralsPage from './ReferralsPage';
-import { api, referralsApi } from '../services/api';
+import { api, referralsApi, languagesApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ api: { get: jest.fn().mockResolvedValue({ data: null }), put: jest.fn().mockResolvedValue({ data: {} }) }, referralsApi: { getAssignmentNotifications: jest.fn(), getNotificationSettings: jest.fn(), updateNotificationSettings: jest.fn(), getAll: jest.fn(), getReport: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), createPayout: jest.fn(), getPayouts: jest.fn() } }));
+jest.mock('../services/api', () => ({ api: { get: jest.fn().mockResolvedValue({ data: null }), put: jest.fn().mockResolvedValue({ data: {} }) }, referralsApi: { getAssignmentNotifications: jest.fn(), getNotificationSettings: jest.fn(), updateNotificationSettings: jest.fn(), getAll: jest.fn(), getReport: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), createPayout: jest.fn(), getPayouts: jest.fn() }, languagesApi: { getActive: jest.fn() } }));
 
 const partner = { _id: 'r1', name: 'Ada Partners', referralCode: 'AP', defaultCommissionPercentage: 10, email: 'ada@example.com', isActive: true };
 const row = (overrides: any = {}) => ({ bookingId: 'b1', bookingNumber: 101, clientId: 'c1', clientDisplayId: 501, clientName: 'Eva Novak', clientEmail: 'eva@example.com', referralId: 'r1', referralName: 'Ada Partners', referralCode: 'AP', retreatId: 't1', retreatCode: 'SEP-26', commissionPercentage: 10, amountOwed: 450, owedCurrency: 'EUR', paid: false, ...overrides });
@@ -17,6 +17,12 @@ describe('ReferralsPage payout workflow', () => {
     (referralsApi.getAssignmentNotifications as jest.Mock).mockResolvedValue({ data: [] });
     (referralsApi.getNotificationSettings as jest.Mock).mockResolvedValue({ data: { assignmentNotificationsEnabled: false } });
     (referralsApi.updateNotificationSettings as jest.Mock).mockImplementation((body: any) => Promise.resolve({ data: body }));
+    (languagesApi.getActive as jest.Mock).mockResolvedValue({ data: [
+      { _id: '1', code: 'en', name: 'English', active: true, sortOrder: 10 },
+      { _id: '2', code: 'cz', name: 'Czech', active: true, sortOrder: 20 },
+      { _id: '3', code: 'pl', name: 'Polish', active: true, sortOrder: 30 },
+      { _id: '4', code: 'ru', name: 'Russian', active: true, sortOrder: 40 },
+    ] });
     (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [partner] });
     (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [row(), row({ bookingId: 'b2', bookingNumber: 102, clientName: 'Jan Kowalski', amountOwed: 300 })] });
     (referralsApi.create as jest.Mock).mockResolvedValue({ data: partner });

@@ -1,15 +1,21 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import FoodMatrixGrid from './FoodMatrixGrid';
-import { foodMatrixApi } from '../services/api';
+import { foodMatrixApi, languagesApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
   foodMatrixApi: { get: jest.fn(), getPdf: jest.fn(), emailCook: jest.fn() },
+  languagesApi: { getActive: jest.fn() },
 }));
 
 describe('FoodMatrixGrid', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (languagesApi.getActive as jest.Mock).mockResolvedValue({ data: [
+      { _id: '1', code: 'en', name: 'English', active: true, sortOrder: 10 },
+      { _id: '2', code: 'cz', name: 'Czech', active: true, sortOrder: 20 },
+      { _id: '3', code: 'pl', name: 'Polish', active: true, sortOrder: 30 },
+    ] });
     (foodMatrixApi.get as jest.Mock).mockResolvedValue({
       data: {
         retreatLabel: 'JNO-09-12-26',

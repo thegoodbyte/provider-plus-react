@@ -3,10 +3,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, ChefHat, Download, LayoutGrid, Mail, Table2, Utensils } from 'lucide-react';
 import { foodMatrixApi, FoodMatrixColumn, FoodMatrixData } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import { useActiveLanguages } from '../hooks/useActiveLanguages';
 
 interface FoodMatrixGridProps { retreatId: string; }
 type ViewMode = 'table' | 'cards';
-const LANGUAGE_OPTIONS = [{ value: '', label: 'Original language' }, { value: 'en', label: 'English' }, { value: 'pl', label: 'Polish' }, { value: 'cs', label: 'Czech' }];
 const meaningful = (value: unknown) => { const text = String(value ?? '').trim().toLowerCase(); return Boolean(text && !['none', 'no', '—', 'not applicable', 'brak', 'nie', 'žádné', 'zadne', 'ne'].includes(text)); };
 const hasSafetyFlag = (column: FoodMatrixColumn) => meaningful(column.answers.allergies) || meaningful(column.answers.foodIntolerances);
 const valueFor = (column: FoodMatrixColumn, key: string) => String(column.answers[key] ?? '').trim();
@@ -15,6 +15,11 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
   const [data, setData] = useState<FoodMatrixData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState('');
+  const { options: activeLanguages } = useActiveLanguages();
+  // The matrix PDF translation is LLM-driven (FoodMatrixTranslationService),
+  // not limited to a fixed set of pre-written templates -- any active
+  // language works, plus the "keep as submitted" default.
+  const languageOptions = [{ code: '', label: 'Original language' }, ...activeLanguages];
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [isExporting, setIsExporting] = useState(false);
   const [isEmailing, setIsEmailing] = useState(false);
@@ -60,7 +65,7 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
       <div className="food-matrix-title"><span className="food-matrix-icon"><Utensils size={22} /></span><div><h2>Food Matrix</h2><p>{data.retreatLabel || 'Retreat kitchen overview'} · {data.columns.length} clients</p></div></div>
       <div className="food-matrix-actions">
         <div className="food-view-toggle" role="group" aria-label="Food matrix view"><button className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}><Table2 size={15} /> Table</button><button className={viewMode === 'cards' ? 'active' : ''} onClick={() => setViewMode('cards')}><LayoutGrid size={15} /> Cards</button></div>
-        <select value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="PDF language">{LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+        <select value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="PDF language">{languageOptions.map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}</select>
         <button className="food-action secondary" onClick={handleDownloadPdf} disabled={isExporting || !data.columns.length}><Download size={16} />{isExporting ? 'Generating…' : 'Download PDF'}</button>
         {data.cook?.email && <button className="food-action primary" onClick={handleEmailCook} disabled={isEmailing || !data.columns.length}><Mail size={16} />{isEmailing ? 'Sending…' : 'Email cook'}</button>}
       </div>

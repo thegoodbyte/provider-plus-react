@@ -4,10 +4,7 @@ import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import { Referral, ReferralNotificationSettings } from '../types';
-
-const languages: { value: 'en' | 'cz' | 'pl' | 'ru'; label: string }[] = [
-  { value: 'en', label: 'English' }, { value: 'cz', label: 'Czech' }, { value: 'pl', label: 'Polish' }, { value: 'ru', label: 'Russian' },
-];
+import { useActiveLanguages } from '../hooks/useActiveLanguages';
 
 // PPVC-827: one entry per notification kind -- the global flag key, the
 // per-partner override key on Referral, and the label/description shown for
@@ -72,6 +69,7 @@ export default function ReferralNotificationSettingsPage({ partners, onPartnerSa
   const [savingGlobalFlag, setSavingGlobalFlag] = useState('');
   const [savingPartnerId, setSavingPartnerId] = useState('');
   const { toast, showSuccess, showError, dismiss } = useToast();
+  const { options: languages } = useActiveLanguages();
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +134,7 @@ export default function ReferralNotificationSettingsPage({ partners, onPartnerSa
               <input type="checkbox" aria-label={`Notify ${item.name} on ${kind.columnLabel.toLowerCase()}`} checked={item[kind.partnerFlag] === true} disabled={savingPartnerId === item._id} onChange={event => updatePartner(item, { [kind.partnerFlag]: event.target.checked } as Partial<Referral>)} className="h-5 w-5" />
             </td>)}
             <td className="py-3 pr-3"><select aria-label={`Notification language for ${item.name}`} className="rounded-lg border border-slate-300 bg-white p-2" value={item.assignmentNotificationLanguage || 'en'} disabled={savingPartnerId === item._id} onChange={event => updatePartner(item, { assignmentNotificationLanguage: event.target.value as any })}>
-              {languages.map(language => <option key={language.value} value={language.value}>{language.label}</option>)}
+              {languages.map(language => <option key={language.code} value={language.code}>{language.label}</option>)}
             </select></td>
           </tr>)}</tbody>
         </table></div>}
