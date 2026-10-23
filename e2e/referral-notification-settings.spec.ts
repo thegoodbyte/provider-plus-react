@@ -11,6 +11,7 @@ test('notification settings persist global and partner preferences without sendi
   }
   if(p==='/referrals/partner'&&req.method()==='PATCH'){partner={...partner,...req.postDataJSON()};writes++;return json(partner);}
   if(req.method()!=='GET')throw new Error(`Unexpected write ${req.method()} ${p}`);
+  if(p==='/languages/active')return json([{code:'en',name:'English',active:true},{code:'pl',name:'Polish',active:true}]);
   if(p==='/referrals')return json([partner]);
   if(p==='/environment/status')return json({environment:'local',production:false,enabledJobs:[]});return json([]);
  });
@@ -38,6 +39,7 @@ for (const width of [1440, 390]) test(`lifecycle settings persist independent gl
   if(p==='/referrals/notification-settings') {if(req.method()==='PATCH'){const body=req.postDataJSON();expect(Object.keys(body)).toHaveLength(1);settings={...settings,...body};writes++;}return route.fulfill({json:settings});}
   if(p==='/referrals/partner'&&req.method()==='PATCH'){const body=req.postDataJSON();expect(Object.keys(body)).toHaveLength(1);partner={...partner,...body};writes++;return route.fulfill({json:partner});}
   if(req.method()!=='GET')throw Error(`Unexpected write ${req.method()} ${p}`);
+  if(p==='/languages/active')return route.fulfill({json:[{code:'en',name:'English',active:true},{code:'pl',name:'Polish',active:true}]});
   if(p==='/referrals')return route.fulfill({json:[partner]});
   if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
   return route.fulfill({json:[]});
