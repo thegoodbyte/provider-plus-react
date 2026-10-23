@@ -613,6 +613,7 @@ export const scratchpadApi = {
     return api.patch<ScratchpadReceipt>(`/payment-scratchpad/${id}/date`, data);
   },
   state: (id: string, data: any) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/state`, data),
+  reopen: (id: string, data: { revision: number; reason: string }) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/reopen`, data),
   candidates: (id: string, params?: { clientId?: string; paymentRequestId?: string }) => api.get<{ payments: any[]; requests: any[]; match?: any }>(`/payment-scratchpad/${id}/candidates`, { params }),
   reconcile: (id: string, data: any) => {
     cacheService.clearPattern('payments:');
