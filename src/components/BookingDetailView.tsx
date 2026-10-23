@@ -189,7 +189,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     try { setRescheduleRetreats((await retreatsApi.getAll()).data || []); }
     catch (error: any) { setRescheduleError(apiErrorMessage(error, 'Unable to load retreats.')); }
   };
-  const submitReschedule = async (data: { targetRetreatId: string; reason: string; note: string; sendEmail: boolean; allowEarlierRetreat: boolean }) => {
+  const submitReschedule = async (data: { targetRetreatId: string; reason: string; note: string; sendEmail: boolean; allowEarlierRetreat: boolean; clearPaymentRequest?: boolean }) => {
     setRescheduling(true); setRescheduleError('');
     try {
       const oldRetreat = retreat; const response = await bookingsApi.reschedule(bookingId, data); const moved: any = response.data; setBooking(moved);
@@ -285,7 +285,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         onNextBooking={() => nextBooking?._id && navigate(`${routePrefix}/bookings/${nextBooking._id}`)}
         onTabChange={setActiveTab}
       />
-      {rescheduleOpen && <BookingRescheduleDialog currentRetreatId={retreatId} currentRetreatStartDate={retreat?.startDate} retreats={rescheduleRetreats} isAdmin={user?.role === 'admin'} saving={rescheduling} error={rescheduleError} onClose={()=>setRescheduleOpen(false)} onSubmit={submitReschedule} />}
+      {rescheduleOpen && <BookingRescheduleDialog hasPrimaryPaymentRequest={Boolean(booking.paymentRequestId)} currentRetreatId={retreatId} currentRetreatStartDate={retreat?.startDate} retreats={rescheduleRetreats} isAdmin={user?.role === 'admin'} saving={rescheduling} error={rescheduleError} onClose={()=>setRescheduleOpen(false)} onSubmit={submitReschedule} />}
       {booking.rescheduleHistory?.length > 0 && (()=>{const last=booking.rescheduleHistory[booking.rescheduleHistory.length-1]; return <div className="mx-5 mt-3 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>Rescheduled {booking.rescheduleCount || booking.rescheduleHistory.length}×</strong> · {last.fromRetreatCode || 'Previous retreat'} → {last.toRetreatCode || retreatCode} · {String(last.reason || '').replace(/_/g,' ')}<div className="mt-1 text-xs text-amber-800">{last.note} · {new Date(last.rescheduledAt).toLocaleString()} · {last.rescheduledBy}</div></div>;})()}
 
       <div className="detail-content" ref={pdfRef}>

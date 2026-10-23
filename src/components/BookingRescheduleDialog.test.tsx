@@ -51,3 +51,11 @@ describe('BookingRescheduleDialog', () => {
     expect(screen.queryByRole('option', { name: /EARLIER/ })).not.toBeInTheDocument();
   });
 });
+
+it('clears only the primary request when explicitly selected during rescheduling', async () => {
+ const submit = jest.fn().mockResolvedValue(undefined);
+ render(<BookingRescheduleDialog currentRetreatId="current" hasPrimaryPaymentRequest retreats={[{ _id: 'next', code: 'NEXT', startDate: '2099-02-01', endDate: '2099-02-07' } as any]} saving={false} onClose={jest.fn()} onSubmit={submit} />);
+ const clear = screen.getByRole('checkbox', { name: /Clear the primary payment request link/ }); expect(clear).not.toBeChecked(); fireEvent.click(clear);
+ fireEvent.change(screen.getByRole('combobox', { name: /Move to retreat/ }), { target: { value: 'next' } }); fireEvent.change(screen.getByRole('textbox', { name: /Internal note/ }), { target: { value: 'New dates requested' } }); fireEvent.click(screen.getByText('Confirm reschedule'));
+ await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ clearPaymentRequest: true, sendEmail: false })));
+});

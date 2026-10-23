@@ -16,15 +16,16 @@ const availablePlaces = (retreat: any) => {
 };
 
 type Props = {
-  currentRetreatId: string; currentRetreatStartDate?: string; retreats: Retreat[]; isAdmin?: boolean; saving: boolean; error?: string; onClose: () => void;
-  onSubmit: (data: { targetRetreatId: string; reason: string; note: string; sendEmail: boolean; allowEarlierRetreat: boolean }) => Promise<void>;
+  hasPrimaryPaymentRequest?: boolean; currentRetreatId: string; currentRetreatStartDate?: string; retreats: Retreat[]; isAdmin?: boolean; saving: boolean; error?: string; onClose: () => void;
+  onSubmit: (data: { targetRetreatId: string; reason: string; note: string; sendEmail: boolean; allowEarlierRetreat: boolean; clearPaymentRequest?: boolean }) => Promise<void>;
 };
 
-export default function BookingRescheduleDialog({ currentRetreatId, currentRetreatStartDate, retreats, isAdmin = false, saving, error, onClose, onSubmit }: Props) {
+export default function BookingRescheduleDialog({ hasPrimaryPaymentRequest = false, currentRetreatId, currentRetreatStartDate, retreats, isAdmin = false, saving, error, onClose, onSubmit }: Props) {
   const [targetRetreatId, setTargetRetreatId] = useState('');
   const [reason, setReason] = useState('client_requested');
   const [note, setNote] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
+  const [clearPaymentRequest, setClearPaymentRequest] = useState(false);
   const [allowEarlierRetreat, setAllowEarlierRetreat] = useState(false);
   const sourceStart = new Date(currentRetreatStartDate || (retreats.find((retreat: any) => id(retreat) === currentRetreatId) as any)?.startDate || 0).getTime();
   const options = useMemo(() => retreats
@@ -37,7 +38,7 @@ export default function BookingRescheduleDialog({ currentRetreatId, currentRetre
   useEffect(() => { if (targetRetreatId && !selected) setTargetRetreatId(''); }, [selected, targetRetreatId]);
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="reschedule-title">
-    <form className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); void onSubmit({ targetRetreatId, reason, note, sendEmail, allowEarlierRetreat: isAdmin && allowEarlierRetreat }); }}>
+    <form className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); void onSubmit({ targetRetreatId, reason, note, sendEmail, allowEarlierRetreat: isAdmin && allowEarlierRetreat, clearPaymentRequest: hasPrimaryPaymentRequest && clearPaymentRequest }); }}>
       <h2 id="reschedule-title" className="text-xl font-semibold">Reschedule booking</h2>
       <p className="mt-1 text-sm text-gray-600">Completed payments, documents, medical reviews and steps remain. Retreat-relative deadlines will be recalculated.</p>
       {error && <div role="alert" className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{error}</div>}
@@ -55,6 +56,7 @@ export default function BookingRescheduleDialog({ currentRetreatId, currentRetre
       {selectedIsFull && <div role="alert" className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">Warning: this retreat is full. Confirming will add the client above the retreat’s configured capacity.</div>}
       <label className="mt-4 block text-sm font-semibold">Reason<select value={reason} onChange={(event) => setReason(event.target.value)} className="mt-2 w-full rounded border border-gray-300 p-3">{reasons.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <label className="mt-4 block text-sm font-semibold">Internal note<textarea required minLength={2} rows={3} value={note} onChange={(event) => setNote(event.target.value)} className="mt-2 w-full rounded border border-gray-300 p-3" placeholder="Why is this booking being moved?" /></label>
+      {hasPrimaryPaymentRequest && <label className="mt-4 flex items-start gap-3 rounded border border-gray-200 p-3 text-sm"><input type="checkbox" checked={clearPaymentRequest} onChange={(event) => setClearPaymentRequest(event.target.checked)} /><span><strong>Clear the primary payment request link</strong><br /><span className="text-gray-500">Keep issued requests, payments and receipts in the financial history. You can link a new request after moving.</span></span></label>}
       <label className="mt-4 flex items-start gap-3 rounded border border-gray-200 p-3 text-sm"><input type="checkbox" checked={sendEmail} onChange={(event) => setSendEmail(event.target.checked)} /><span><strong>Send reschedule email after moving</strong><br /><span className="text-gray-500">Off by default. Enable only with permission to email this client.</span></span></label>
       <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={onClose} disabled={saving} className="rounded border border-gray-300 px-4 py-2">Cancel</button><button type="submit" disabled={saving || !targetRetreatId || note.trim().length < 2} className="rounded bg-gray-950 px-5 py-2 font-semibold text-white disabled:opacity-50">{saving ? 'Rescheduling…' : 'Confirm reschedule'}</button></div>
     </form>

@@ -783,6 +783,7 @@ export type Requirement = {
 
 export type RescheduleBookingDto = {
     allowEarlierRetreat?: boolean;
+    clearPaymentRequest?: boolean;
     note: string;
     reason: 'client_requested' | 'illness' | 'missing_artifacts' | 'medical_delay' | 'travel_problem' | 'administrative_change' | 'other';
     sendEmail?: boolean;
@@ -866,7 +867,10 @@ export type TranslateRetreatMessageDto = {
 };
 
 export type UpdateBookingDto = {
-    [key: string]: unknown;
+    /**
+     * Primary collection request. Null clears only the primary link; issued requests and payments remain.
+     */
+    paymentRequestId?: string | null;
 };
 
 export type UpdateBookingFlowItemDto = {

@@ -298,9 +298,11 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       setSelectedRequest(undefined);
       return;
     }
+    let active = true;
     paymentRequestsApi.getOne(formData.paymentRequestId)
-      .then(response => setSelectedRequest(response.data))
-      .catch(() => setSelectedRequest(undefined));
+      .then(response => { if (active) setSelectedRequest(response.data); })
+      .catch(() => { if (active) setSelectedRequest(undefined); });
+    return () => { active = false; };
   }, [formData.paymentRequestId]);
 
   const resolveId = (value: any) => {
@@ -314,6 +316,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
     const retreatDefaults = retreatBookingDateTimes(retreats.find((retreat) => retreat._id === paymentRetreatId));
     setSelectedRequest(paymentRequest);
     setFormData((prev) => {
+      if (mode === 'edit') return { ...prev, paymentRequestId };
       const selectedClientId = prev.clientId || (paymentRequest?.clientId ? resolveId(paymentRequest.clientId) : '');
       return {
         ...prev,
@@ -396,7 +399,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
         clientId: formData.clientId,
         retreatId: formData.retreatId,
-        paymentRequestId: formData.paymentRequestId || undefined,
+        paymentRequestId: formData.paymentRequestId || (mode === 'edit' ? null : undefined),
         totalAmount: Number(formData.totalAmount || 0),
         currency: formData.currency,
         status: formData.status,
@@ -711,11 +714,11 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             placeholder="Search invoice, client, or retreat"
           />
           <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-            <span>Optional. Multi-person requests remain searchable; only client-assigned price lines are copied.</span>
+            <span>Optional primary collection request. Clearing this link preserves issued requests, payments and receipts. Existing booking prices and retreat dates are kept.</span>
             {selectedPaymentRequest && (
               <button
                 type="button"
-                onClick={() => setFormData((prev) => ({ ...prev, paymentRequestId: '' }))}
+                onClick={() => { setSelectedRequest(undefined); setFormData((prev) => ({ ...prev, paymentRequestId: '' })); }}
                 className="text-blue-600 hover:text-blue-700"
               >
                 Clear selection

@@ -2459,6 +2459,9 @@
           "allowEarlierRetreat": {
             "type": "boolean"
           },
+          "clearPaymentRequest": {
+            "type": "boolean"
+          },
           "note": {
             "minLength": 2,
             "type": "string"
@@ -2681,7 +2684,13 @@
         "type": "object"
       },
       "UpdateBookingDto": {
-        "properties": {},
+        "properties": {
+          "paymentRequestId": {
+            "description": "Primary collection request. Null clears only the primary link; issued requests and payments remain.",
+            "nullable": true,
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "UpdateBookingFlowItemDto": {
