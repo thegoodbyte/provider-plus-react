@@ -18,6 +18,7 @@ import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 
 type BookingFormData = {
+  paymentPlanEnabled?: boolean;
   referralAttribution: 'inherit' | 'self' | 'direct' | 'self_identified' | 'declined' | 'unknown' | 'influenced';
   referralPartnerId: string;
   referralEvidence: string;
@@ -82,7 +83,7 @@ interface BookingEditorFormProps {
   initialRetreats?: Retreat[];
   initialBookingData?: Partial<BookingFormData>;
   onCancel: () => void;
-  onSaved: () => void;
+  onSaved: (booking?: any) => void;
   submitLabel?: string;
   showBackButton?: boolean;
 }
@@ -395,6 +396,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       const bookingNumberValue = formData.bookingNumber.trim();
       const bookingNumber = bookingNumberValue ? Number(bookingNumberValue) : undefined;
       const payload = {
+        ...(formData.paymentPlanEnabled === false ? { paymentPlanEnabled: false } : {}),
         ...(authService.getUser()?.role === 'admin' ? { referralAttribution: formData.referralAttribution, referralPartnerId: ['direct', 'influenced'].includes(formData.referralAttribution) ? formData.referralPartnerId : null, referralEvidence: formData.referralEvidence } : {}),
 
         clientId: formData.clientId,
@@ -464,7 +466,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           await bookingsApi.update(bookingId, payload as any);
         }
       } else {
-        await bookingsApi.create(payload as any);
+        const created = await bookingsApi.create(payload as any);
+        onSaved(created.data);
+        return;
       }
 
       onSaved();

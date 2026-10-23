@@ -22333,6 +22333,36 @@
         ]
       }
     },
+    "/payments/receipts/{id}/allocations": {
+      "post": {
+        "operationId": "PaymentsController_splitReceipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
     "/payments/receipts/{id}/pdf": {
       "get": {
         "operationId": "PaymentsController_downloadReceiptPdf",

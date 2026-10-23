@@ -193,6 +193,7 @@ const PaymentRequestsGrid: React.FC = () => {
     return paymentRequests.filter((request) => {
       const paid = request.status === 'paid';
       const hasBooking = Boolean(typeof request.bookingId === 'string' ? request.bookingId.trim() : request.bookingId?._id || request.bookingId?.id)
+        || Boolean((request as any).participantBookings?.length)
         || (request.lineItems || []).some((item: any) => Boolean(typeof item.bookingId === 'string' ? item.bookingId.trim() : item.bookingId?._id || item.bookingId?.id));
       if (paymentFilter === 'paid' && !paid) return false;
       if (paymentFilter === 'unpaid' && !['pending', 'sent', 'overdue'].includes(request.status || 'pending')) return false;

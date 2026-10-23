@@ -12,6 +12,7 @@ export default function RequestBookingAction({ request, compact = false }: { req
   const first = location.pathname.split('/').filter(Boolean)[0];
   const prefix = ['admin', 'medical', 'staff', 'user'].includes(first) ? `/${first}` : '';
   if ((request as any).context === 'standalone_service') return null;
+  if ((request as any).participantBookings?.length) return <p className="text-sm text-gray-600">This request is allocated across participant bookings. Use the booking links to open them.</p>;
   const bookingId = id(request.bookingId);
   if (bookingId) return <Link className="inline-flex rounded border border-blue-300 px-4 py-2 font-semibold text-blue-700" to={`${prefix}/bookings/${encodeURIComponent(bookingId)}`}>Open booking</Link>;
   const clients = new Set((request.lineItems || []).map(item => id(item.clientId)).filter(Boolean));

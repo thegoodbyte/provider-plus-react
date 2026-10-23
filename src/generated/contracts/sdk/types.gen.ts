@@ -11464,6 +11464,23 @@ export type PaymentsControllerUpdateReceiptResponses = {
 
 export type PaymentsControllerUpdateReceiptResponse = PaymentsControllerUpdateReceiptResponses[keyof PaymentsControllerUpdateReceiptResponses];
 
+export type PaymentsControllerSplitReceiptData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payments/receipts/{id}/allocations';
+};
+
+export type PaymentsControllerSplitReceiptResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PaymentsControllerSplitReceiptResponse = PaymentsControllerSplitReceiptResponses[keyof PaymentsControllerSplitReceiptResponses];
+
 export type PaymentsControllerDownloadReceiptPdfData = {
     body?: never;
     path: {

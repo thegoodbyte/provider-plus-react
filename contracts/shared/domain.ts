@@ -767,6 +767,9 @@ export interface Payment {
 }
 
 export interface PaymentReceipt {
+  allocationRevision?: number;
+  splitProgress?: { state: 'pending' | 'completed'; operationKey: string; sourcePaymentId: string; expectedRevision: number; allocations: { bookingId: string; amount: number }[] };
+
   pdfMetadata?: Record<string, { generatedAt: string; sha256: string; fileName: string }>;
   pdfGenerationFailed?: boolean;
   deliveryHistory?: Array<{ channel: string; status: string; at: string; to: string; actor?: string; allocationId: string }>;
@@ -1824,6 +1827,7 @@ export interface PaymentRequestLineItem {
 }
 
 export interface PaymentRequest {
+  participantBookings?: { clientId: string; bookingId: string | { _id: string; bookingNumber?: number }; amount: number; currency: string }[];
   context?: 'retreat' | 'standalone_service' | 'event';
   amountReceived?: number;
   amountOutstanding?: number;

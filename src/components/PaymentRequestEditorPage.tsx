@@ -404,6 +404,7 @@ const PaymentRequestEditorPage: React.FC = () => {
                     <div className="text-xs font-semibold uppercase text-violet-700">Actual joint payment received</div>
                     <div className="font-semibold text-gray-900">{formatAmount(receipt.totalAmount, receipt.currency)} · {receipt.allocationCount || receipt.allocations?.length || 0} allocation(s)</div>
                   </div>
+{((receipt as any).splitProgress?.state === 'pending' || receipt.allocationCount === 1 && !receipt.allocations?.[0]?.bookingId) && <button type="button" className="rounded border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-800" onClick={() => navigate(`/admin/payments/joint/new?receiptId=${receipt._id}`)}>{(receipt as any).splitProgress?.state === 'pending' ? 'Resume receipt split' : 'Split existing receipt'}</button>}
                   <div className="text-sm text-gray-700">{receipt.payerName || receipt.transactionReference || `Receipt ${receipt._id?.slice(-8)}`}</div>
                 </div>
                 <div className="divide-y divide-violet-100 bg-white">

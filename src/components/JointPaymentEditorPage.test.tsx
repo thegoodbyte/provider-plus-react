@@ -2,9 +2,9 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import JointPaymentEditorPage from './JointPaymentEditorPage';
-import { bookingsApi, paymentRequestsApi, paymentsApi } from '../services/api';
+import { bookingsApi, clientsApi, paymentRequestsApi, paymentsApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAll: jest.fn() }, paymentsApi: { createJoint: jest.fn() } }));
+jest.mock('../services/api', () => ({ bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAll: jest.fn() }, clientsApi: { getBookingOptions: jest.fn() }, paymentsApi: { createJoint: jest.fn(), getReceipt: jest.fn(), splitExistingReceipt: jest.fn() } }));
 const bookings = [
   { _id: 'booking-1', bookingNumber: 1300, clientId: { firstName: 'Łukasz', lastName: 'Nowak' }, retreatId: { retreatCode: 'JNO-11', name: 'November' }, status: 'confirmed' },
   { _id: 'booking-2', bookingNumber: 1301, clientId: { firstName: 'Anna', lastName: 'Nováková' }, retreatId: { retreatCode: 'JNO-12', name: 'December' }, status: 'confirmed' },
@@ -15,6 +15,7 @@ const requests = [
   { _id: 'request-cancelled', invoiceNumber: 'CANCELLED-9999', requestedAmount: 10, currency: 'EUR', status: 'cancelled' },
 ];
 beforeEach(() => {
+  jest.clearAllMocks(); sessionStorage.clear();
   (bookingsApi.getAll as jest.Mock).mockResolvedValue({ data: bookings });
   (paymentRequestsApi.getAll as jest.Mock).mockResolvedValue({ data: requests });
   (paymentsApi.createJoint as jest.Mock).mockResolvedValue({ data: {} });
@@ -83,5 +84,38 @@ test('shows no-match feedback and does not accept arbitrary booking text as a se
   expect(await screen.findByText('No bookings match your search')).toBeInTheDocument();
   fireEvent.submit(screen.getByRole('button', { name: 'Save Joint Payment' }).closest('form')!);
   expect(await screen.findByText('Select at least two bookings and enter a positive amount for each allocation.')).toBeInTheDocument();
+  expect(paymentsApi.createJoint).not.toHaveBeenCalled();
+});
+
+const existingReceipt = { _id:'receipt-1', display_id:1142, totalAmount:7600, currency:'PLN', allocationCount:1, status:'received', receivedDate:'2026-10-19T00:00:00Z', paymentMethod:'bank_transfer', allocations:[{_id:'payment-1202',status:'completed',amount:7600,paymentRequestId:'request-1397'}] };
+const openExisting = async (progress?: any) => {
+  (bookingsApi.getAll as jest.Mock).mockResolvedValue({data:bookings.slice(0,2).map(b=>({...b,currency:'PLN',totalAmount:9500,retreatId:{_id:'retreat-1',name:'Same retreat'},clientId:{_id:b._id==='booking-1'?'client-1333':'client-1334',firstName:b._id==='booking-1'?'Participant One':'Participant Two'}}))});
+  (clientsApi.getBookingOptions as jest.Mock).mockResolvedValue({data:[{_id:'client-1333',display_id:1333,firstName:'Participant',lastName:'One'}]});
+  (paymentRequestsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'request-1397',display_id:1397,currency:'PLN',requestedAmount:7600,fullPrice:19000,retreatId:'retreat-1'}]});
+  (paymentsApi.getReceipt as jest.Mock).mockResolvedValue({data:{...existingReceipt,...(progress?{splitProgress:progress}:{})}});
+  (paymentsApi.splitExistingReceipt as jest.Mock).mockResolvedValue({data:{receiptId:'receipt-1'}});
+  render(<MemoryRouter initialEntries={['/admin/payments/joint/new?receiptId=receipt-1']}><JointPaymentEditorPage/></MemoryRouter>);
+  await screen.findByRole('button',{name:progress?'Resume receipt split':'Confirm receipt split'});
+};
+const chooseBooking = async (index: number, number: string) => {
+  const box=screen.getByRole('combobox',{name:`Booking ${index}`});search(box,number);
+  const list=document.getElementById(box.getAttribute('aria-controls')!)!;
+  fireEvent.click(await within(list).findByRole('option',{name:new RegExp('#'+number)}));
+};
+test('existing mode locks receipt facts and sends only allocations after explicit confirmation', async()=>{
+  await openExisting();
+  expect(screen.getByLabelText(/Total received/)).toBeDisabled();expect(screen.getByLabelText(/Payment date/)).toBeDisabled();
+  expect(screen.getByLabelText(/Total received/)).toHaveValue(7600);screen.getAllByLabelText(/Allocated amount/).forEach(input=>expect(input).toHaveValue(3800));
+  expect(screen.getByRole('button',{name:'Confirm receipt split'})).toBeDisabled();
+  await chooseBooking(1,'1300');await chooseBooking(2,'1301');expect(paymentsApi.splitExistingReceipt).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Confirm receipt split'}));
+  await waitFor(()=>expect(paymentsApi.splitExistingReceipt).toHaveBeenCalledWith('receipt-1',expect.objectContaining({confirm:true,sourcePaymentId:'payment-1202',expectedRevision:0,allocations:[{bookingId:'booking-1',amount:3800},{bookingId:'booking-2',amount:3800}]})));
+  expect(paymentsApi.createJoint).not.toHaveBeenCalled();
+});
+test('pending split restores its immutable plan and operation key for recovery',async()=>{
+  await openExisting({state:'pending',operationKey:'pending-confirmation-key',sourcePaymentId:'payment-1202',expectedRevision:0,allocations:[{bookingId:'booking-1',amount:3800},{bookingId:'booking-2',amount:3800}]});
+  expect(screen.getByRole('combobox',{name:'Booking 1'})).toBeDisabled();expect(screen.getByRole('button',{name:'Divide equally'})).toBeDisabled();
+  fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Resume receipt split'}));
+  await waitFor(()=>expect(paymentsApi.splitExistingReceipt).toHaveBeenCalledWith('receipt-1',expect.objectContaining({operationKey:'pending-confirmation-key'})));
   expect(paymentsApi.createJoint).not.toHaveBeenCalled();
 });

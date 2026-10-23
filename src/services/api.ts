@@ -671,6 +671,12 @@ export const paymentsApi = {
     cacheService.clearPattern('bookings:'); // Clear bookings cache too as payments affect booking status
     return api.post<Payment>('/payments', data);
   },
+  splitExistingReceipt: (id: string, data: any) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
+    cacheService.clearPattern('bookings:');
+    return api.post(`/payments/receipts/${encodeURIComponent(id)}/allocations`, data);
+  },
   createJoint: (data: any) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('payment-requests:');

@@ -23,6 +23,7 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
   const createPrefill = React.useMemo(() => {
     const params = new URLSearchParams(location.search);
     return {
+      ...(params.get('paymentPlanEnabled') === 'false' ? { paymentPlanEnabled: false } : {}),
       clientId: params.get('clientId') || undefined,
       retreatId: params.get('retreatId') || undefined,
       paymentRequestId: params.get('paymentRequestId') || undefined,
@@ -64,7 +65,17 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
           bookingId={bookingId}
           initialBookingData={createPrefill}
           onCancel={() => navigate(-1)}
-          onSaved={() => navigate(routePrefix ? `${routePrefix}/bookings` : '/bookings')}
+          onSaved={(booking) => {
+            const returnTo = new URLSearchParams(location.search).get('returnTo');
+            if (mode === 'create' && returnTo && returnTo.startsWith(`${routePrefix}/payments/joint/new?`)) {
+              const target = new URL(returnTo,window.location.origin);
+              if (target.pathname === `${routePrefix}/payments/joint/new` && booking?._id) {
+                target.searchParams.set('createdBookingId',booking._id);
+                navigate(target.pathname + target.search); return;
+              }
+            }
+            navigate(routePrefix ? `${routePrefix}/bookings` : '/bookings');
+          }}
         />
       </div>
     </div>

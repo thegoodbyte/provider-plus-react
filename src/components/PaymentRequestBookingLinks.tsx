@@ -6,7 +6,7 @@ export const clientBookingsPath = (clientId: string) => `/admin/clients/${encode
 
 export default function PaymentRequestBookingLinks({ request }: { request: any }) {
   const bookings = new Map<string, any>();
-  for (const value of [request.bookingId, ...(request.lineItems || []).map((item: any) => item.bookingId)]) {
+  for (const value of [request.bookingId, ...(request.lineItems || []).map((item: any) => item.bookingId), ...(request.participantBookings || []).map((item: any) => item.bookingId)]) {
     if (id(value) && (!bookings.has(id(value)) || value?.bookingNumber)) bookings.set(id(value), value);
   }
   const clientId = id(request.clientId);
