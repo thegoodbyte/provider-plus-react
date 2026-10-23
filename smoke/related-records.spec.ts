@@ -18,6 +18,7 @@ test.beforeEach(async ({ page, baseURL }) => {
     if (path === `/bookings/${booking._id}`) data = booking;
     if (path === `/payments/${payment._id}`) data = payment;
     if (path === `/payment-requests/${requestRecord._id}`) data = requestRecord;
+    if (path === `/payment-requests/${requestRecord._id}/settlement`) data = {requestId:requestRecord._id,requestedAmount:100,currency:'EUR',amountReceived:100,amountOutstanding:0,amountOverpaid:0,settlementStatus:'settled',payments:[payment]};
     if (path === '/environment/status') data = { production: true };
     if (path === '/users/navigation-permissions' || path === '/config-summary') data = {};
     if (path === '/submission-notifications/unread-count') data = { count: 0 };

@@ -12,6 +12,7 @@ test.beforeEach(async ({ page, baseURL, request }) => {
     if (path.startsWith('/invoice-visits/')) return route.fulfill({ response: await route.fetch({ url: fixture + path + url.search, headers: { ...route.request().headers(), authorization: 'Bearer local-invoice-visits' } }) });
     let data: any = [];
     if (path === `/payment-requests/${id}`) data = { _id:id,display_id:1783,invoiceNumber:'INV-1783',currency:'EUR',requestedAmount:100,status:'pending',requestType:'payment',lineItems:[] };
+    if (path === `/payment-requests/${id}/settlement`) data = {requestId:id,requestedAmount:100,currency:'EUR',amountReceived:0,amountOutstanding:100,amountOverpaid:0,settlementStatus:'unpaid',payments:[]};
     if (path === '/environment/status') data = { production:true };
     if (path === '/users/navigation-permissions' || path === '/config-summary') data = {};
     if (path === '/submission-notifications/unread-count') data = {count:0};
