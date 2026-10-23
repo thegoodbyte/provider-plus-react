@@ -3,9 +3,9 @@ import fs from 'node:fs';
 const fixturePath=process.env.SCRATCHPAD_FIXTURE_PATH;
 const f:any=fixturePath?JSON.parse(fs.readFileSync(fixturePath,'utf8')):{};
 test.skip(!fixturePath,'Requires disposable scratchpad API fixture.');
-test('reopening a receipt whose linked payment was removed returns it to Unassigned',async({page,request})=>{
+for(const width of [1440,390])test(`reopening a receipt whose linked payment was removed returns it to Unassigned at ${width}px`,async({page,request})=>{
  await request.post(f.url+'/fixture/reset');
- await page.setViewportSize({width:1440,height:980});
+ await page.setViewportSize({width,height:980});
  await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',role:'admin',email:'scratchpad@example.invalid'}));},f.token);
  await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const url=new URL(r.url());
   if(url.pathname.startsWith('/payment-scratchpad'))return route.fulfill({response:await route.fetch({url:f.url+url.pathname+url.search})});

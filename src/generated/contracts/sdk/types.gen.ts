@@ -11042,6 +11042,23 @@ export type ScratchpadControllerReconcileResponses = {
 
 export type ScratchpadControllerReconcileResponse = ScratchpadControllerReconcileResponses[keyof ScratchpadControllerReconcileResponses];
 
+export type ScratchpadControllerReopenData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-scratchpad/{id}/reopen';
+};
+
+export type ScratchpadControllerReopenResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type ScratchpadControllerReopenResponse = ScratchpadControllerReopenResponses[keyof ScratchpadControllerReopenResponses];
+
 export type ScratchpadControllerStateData = {
     body?: never;
     path: {

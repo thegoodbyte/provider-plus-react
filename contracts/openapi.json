@@ -21532,6 +21532,36 @@
         ]
       }
     },
+    "/payment-scratchpad/{id}/reopen": {
+      "post": {
+        "operationId": "ScratchpadController_reopen",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Scratchpad"
+        ]
+      }
+    },
     "/payment-scratchpad/{id}/state": {
       "post": {
         "operationId": "ScratchpadController_state",
