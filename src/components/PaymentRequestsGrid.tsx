@@ -309,7 +309,7 @@ const PaymentRequestsGrid: React.FC = () => {
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-3"><Link className="px-4 py-2 rounded-md bg-teal-700 text-white" to="/admin/payment-requests/services/new">New standalone service request</Link><Link className="px-4 py-2 rounded-md border border-gray-300" to="/admin/payment-requests/services/settings">Service & policy settings</Link></div>
+      <div className="mb-4 flex flex-wrap gap-3"><Link className="px-4 py-2 rounded-md border border-blue-600 text-blue-700" to="/admin/payment-requests/booking-review">Booking link review</Link><Link className="px-4 py-2 rounded-md bg-teal-700 text-white" to="/admin/payment-requests/services/new">New standalone service request</Link><Link className="px-4 py-2 rounded-md border border-gray-300" to="/admin/payment-requests/services/settings">Service & policy settings</Link></div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium">Payment status
           <select aria-label="Payment status" value={paymentFilter} onChange={event => setPaymentFilter(event.target.value)} className="ml-2 rounded-md border border-gray-300 px-3 py-2">
@@ -320,6 +320,7 @@ const PaymentRequestsGrid: React.FC = () => {
           </select>
         </label>
         <span className="text-sm text-gray-600" role="status">{filteredRequests.length} of {paymentRequests.length} requests</span>
+        {paymentFilter === 'paid-unbooked' && <p className="text-sm text-gray-600">This filter checks saved request links. Use <Link className="text-blue-700 underline" to="/admin/payment-requests/booking-review">Booking link review</Link> to find existing bookings and repair missing links.</p>}
         {(paymentFilter !== 'all' || searchTerm) && <button type="button" onClick={() => { setPaymentFilter('all'); setSearchTerm(''); }} className="text-sm text-blue-700 underline">Clear filters</button>}
       </div>
       <div className="mb-4 relative max-w-xl">

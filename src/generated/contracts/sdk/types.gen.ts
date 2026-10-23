@@ -10538,6 +10538,23 @@ export type PaymentRequestsControllerCreateResponses = {
 
 export type PaymentRequestsControllerCreateResponse = PaymentRequestsControllerCreateResponses[keyof PaymentRequestsControllerCreateResponses];
 
+export type PaymentRequestsControllerBookingLinkReviewData = {
+    body?: never;
+    path?: never;
+    query?: {
+        requestId?: string;
+    };
+    url: '/payment-requests/booking-link-review';
+};
+
+export type PaymentRequestsControllerBookingLinkReviewResponses = {
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type PaymentRequestsControllerBookingLinkReviewResponse = PaymentRequestsControllerBookingLinkReviewResponses[keyof PaymentRequestsControllerBookingLinkReviewResponses];
+
 export type PaymentRequestsControllerGetNextDisplayIdData = {
     body?: never;
     path?: never;
@@ -10778,6 +10795,23 @@ export type PaymentRequestsControllerLinkResponses = {
 };
 
 export type PaymentRequestsControllerLinkResponse = PaymentRequestsControllerLinkResponses[keyof PaymentRequestsControllerLinkResponses];
+
+export type PaymentRequestsControllerLinkBookingData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-requests/{id}/link-booking';
+};
+
+export type PaymentRequestsControllerLinkBookingResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PaymentRequestsControllerLinkBookingResponse = PaymentRequestsControllerLinkBookingResponses[keyof PaymentRequestsControllerLinkBookingResponses];
 
 export type PaymentRequestsControllerMarkAsOverdueData = {
     body?: never;

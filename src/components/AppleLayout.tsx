@@ -93,6 +93,7 @@ const PaymentScratchpadPage = lazy(() => import('./PaymentScratchpadPage'));
 const PaymentEditorPage = lazy(() => import('./PaymentEditorPage'));
 const JointPaymentEditorPage = lazy(() => import('./JointPaymentEditorPage'));
 const PaymentReceiptsPage = lazy(() => import('./PaymentReceiptsPage'));
+const RequestBookingReviewPage = lazy(() => import('./RequestBookingReviewPage'));
 const PaymentRequestsGrid = lazy(() => import('./PaymentRequestsGrid'));
 const PaymentRequestEditorPage = lazy(() => import('./PaymentRequestEditorPage'));
 const RevolutPaymentLinksPage = lazy(() => import('./RevolutPaymentLinksPage'));
@@ -809,7 +810,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="expenses/new" element={<ExpenseEditorPage />} />
                       <Route path="expenses/:id" element={<ExpenseDetailPage />} />
                       <Route path="expenses/:id/edit" element={<ExpenseEditorPage />} />
-                      <Route path="payment-requests" element={<PaymentRequestsGrid />} />
+                      <Route path="payment-requests/booking-review" element={<RequestBookingReviewPage />} />
+                        <Route path="payment-requests" element={<PaymentRequestsGrid />} />
                       <Route path="payment-requests/types" element={<PaymentRequestTypesSettings />} />
                       <Route path="payment-requests/services/new" element={<ProtectedRoute requiredRole={['admin']}><ServicePaymentRequestPage /></ProtectedRoute>} />
                       <Route path="payment-requests/services/settings" element={<ProtectedRoute requiredRole={['admin']}><ServiceBillingSettingsPage /></ProtectedRoute>} />

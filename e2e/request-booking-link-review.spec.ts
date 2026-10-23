@@ -1,0 +1,42 @@
+import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+const fixturePath=process.env.SCRATCHPAD_FIXTURE_PATH;
+const f:any=fixturePath?JSON.parse(fs.readFileSync(fixturePath,'utf8')):{};
+test.skip(!fixturePath,'Requires disposable real API/Mongo fixture.');
+for(const width of [1440,390])test(`discover and explicitly link existing booking at ${width}px`,async({page,request})=>{
+ await request.post(f.url+'/fixture/reset');
+ const snapshot=async()=>(await request.get(f.url+'/fixture/snapshot')).json();
+ const before=await snapshot();await page.setViewportSize({width,height:980});
+ await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',role:'admin',email:'scratchpad@example.invalid'}));},f.token);
+ const mutations:string[]=[];
+ await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const u=new URL(r.url());
+  if(u.pathname.startsWith('/payment-requests')){if(r.method()!=='GET')mutations.push(r.method()+' '+u.pathname);return route.fulfill({response:await route.fetch({url:f.url+u.pathname+u.search})});}
+  if(u.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
+  if(u.pathname.includes('config-summary'))return route.fulfill({json:{}});return route.fulfill({json:[]});
+ });
+ await page.goto('/admin/payment-requests/booking-review?requestId='+f.request909Id);
+ await expect(page.getByRole('heading',{name:'Booking link review',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Request #1392',exact:true})).toHaveAttribute('href','/admin/payment-requests/'+f.request909Id);
+ await expect(page.getByRole('link',{name:'Booking #1911',exact:true})).toHaveAttribute('href','/admin/bookings/'+f.booking909Id);
+ await expect(page.getByText('Same client and retreat — staff review required',{exact:true})).toBeVisible();
+ await Promise.all([page.waitForResponse(response=>response.url().includes('/payment-requests/booking-link-review')&&!new URL(response.url()).searchParams.has('requestId')),page.getByRole('link',{name:'Review all requests',exact:true}).click()]);
+ await expect(page.getByRole('status',{name:'Loading booking link review…'})).toHaveCount(0);
+ await page.getByRole('textbox',{name:'Search booking link review'}).fill('1392');
+ await expect(page.getByRole('link',{name:'Request #1392',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Link request #1392 to booking #1911',exact:true}).scrollIntoViewIfNeeded();
+ await page.screenshot({path:`../ppvc-909-validation/review-${width}.png`,fullPage:true});
+ await page.goto('/admin/payment-requests/booking-review?requestId='+f.request909Id);
+ expect(await snapshot()).toEqual(before);expect(mutations).toEqual([]);
+ await page.getByRole('button',{name:'Link request #1392 to booking #1911',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Confirm existing booking link'}),confirm=dialog.getByRole('button',{name:'Confirm booking link'});
+ await expect(confirm).toBeDisabled();expect(await snapshot()).toEqual(before);
+ await dialog.getByRole('checkbox').check();await confirm.click();
+ await expect(page.getByText('No requests need booking link review.',{exact:true})).toBeVisible();
+ const after=await snapshot(),linkedRequest=after.requests.find((r:any)=>r._id===f.request909Id),booking=after.bookings.find((b:any)=>b._id===f.booking909Id);
+ expect(linkedRequest.bookingId).toBe(f.booking909Id);expect(booking.paymentRequestHistory).toContain(f.request909Id);
+ expect(after.bookings).toHaveLength(before.bookings.length);expect(after.payments).toHaveLength(before.payments.length);expect(after.receipts).toHaveLength(before.receipts.length);
+ for(const payment of before.payments){const changed=after.payments.find((p:any)=>p._id===payment._id);for(const field of ['amount','currency','paymentDate','bookingCurrencyAmount','requestCurrencyAmount','usd_amount','status','receiptId'])expect(changed[field]).toEqual(payment[field]);if(payment.paymentRequestId===f.request909Id)expect(changed.bookingId).toBe(f.booking909Id);}
+ expect(mutations).toEqual(['POST /payment-requests/'+f.request909Id+'/link-booking']);
+ await page.reload();await expect(page.getByText('No requests need booking link review.',{exact:true})).toBeVisible();
+ await page.screenshot({path:`../ppvc-909-validation/linked-${width}.png`,fullPage:true});
+});

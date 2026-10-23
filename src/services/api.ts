@@ -679,6 +679,12 @@ export const paymentsApi = {
 };
 
 export const paymentRequestsApi = {
+  getBookingLinkReview: (requestId?: string) => api.get<any[]>('/payment-requests/booking-link-review', { params: { requestId } }),
+  linkBooking: (id: string, bookingId: string) => {
+    cacheService.clearPattern('payment-requests:');
+    cacheService.clearPattern('payments:');
+    return api.post(`/payment-requests/${id}/link-booking`, { bookingId, confirm: true });
+  },
   getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payment-requests')),
   getAllFresh: (options?: ReadOptions) => api.get<PaymentRequest[]>('/payment-requests', options),
   getOne: (id: string) => cachedGet<PaymentRequest>(`payment-requests:${id}`, () => api.get<PaymentRequest>(`/payment-requests/${id}`)),
