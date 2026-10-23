@@ -10903,6 +10903,23 @@ export type ScratchpadControllerCandidatesResponses = {
     200: unknown;
 };
 
+export type ScratchpadControllerCorrectDateData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-scratchpad/{id}/date';
+};
+
+export type ScratchpadControllerCorrectDateResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ScratchpadControllerCorrectDateResponse = ScratchpadControllerCorrectDateResponses[keyof ScratchpadControllerCorrectDateResponses];
+
 export type ScratchpadControllerReconcileData = {
     body?: never;
     path: {

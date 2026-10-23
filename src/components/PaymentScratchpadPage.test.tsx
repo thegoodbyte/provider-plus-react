@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PaymentScratchpadPage from './PaymentScratchpadPage';
 import { scratchpadApi, clientsApi, bookingsApi, paymentRequestsApi } from '../services/api';
-jest.mock('../services/api', () => ({ scratchpadApi: { list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn() } }));
+jest.mock('../services/api', () => ({ scratchpadApi: { list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn() } }));
 jest.mock('./SearchableClientSelect', () => ({ __esModule: true, default: (p: any) => <select aria-label={p.ariaLabel} value={p.value} onChange={e=>p.onChange(e.target.value)}><option value="">Choose</option><option value="client">Synthetic client</option></select> }));
 jest.mock('./Tasks/SearchableSelect', () => ({ SearchableSelect: (p: any) => <select id={p.id} value={p.value} onChange={e=>p.onChange(e.target.value)}>{p.options.map((o:any)=><option key={o.id} value={o.id}>{o.label}</option>)}</select> }));
 const api = scratchpadApi as jest.Mocked<typeof scratchpadApi>;
@@ -89,9 +89,9 @@ it('warns before discarding an edited receipt',async()=>{
  fireEvent.change(await screen.findByLabelText('Amount received'),{target:{value:'23.00'}}); fireEvent.click(screen.getByRole('button',{name:'Cancel'}));
  expect(confirm).toHaveBeenCalledWith('Discard unsaved receipt changes?'); expect(screen.getByLabelText('Amount received')).toHaveValue('23.00'); confirm.mockRestore();
 });
-it('locks edit and matching actions on linked receipts',async()=>{
+it('allows date correction but keeps matching locked on linked receipts',async()=>{
  api.list.mockResolvedValue({data:{...snapshot,items:[{...row,status:'converted'}]}} as any); mount();
- expect(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'})).toBeDisabled(); expect(screen.getByRole('button',{name:'Match receipt Synthetic Payer'})).toBeDisabled();
+ expect(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'})).toBeEnabled(); expect(screen.getByRole('button',{name:'Match receipt Synthetic Payer'})).toBeDisabled();
 });
 it('canceling the matching popup never reconciles',async()=>{
  mount(); fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'})); await screen.findByRole('dialog');
@@ -152,4 +152,24 @@ it('can retry a pending reconciliation after closing an unfinished candidate loo
  fireEvent.click(screen.getByRole('button',{name:'Match receipt Synthetic Payer'}));
  fireEvent.click(await screen.findByLabelText('I reviewed the receipt and selected relationships.'));
  await waitFor(()=>expect(screen.getByRole('button',{name:'Retry reconciliation'})).toBeEnabled());
+});
+
+it('prefills the exact request and unique payment but still requires explicit staff approval',async()=>{
+ const payment={_id:'payment',display_id:1001,amount:5100,currency:'PLN',paymentRequestId:'request',clientId:'client',bookingId:'booking'};
+ const request={_id:'request',display_id:1243,clientId:'client',bookingId:'booking',currency:'PLN',status:'pending'};
+ api.candidates.mockResolvedValue({data:{payments:[payment],requests:[request],match:{status:'exact_request',requestId:'request',clientId:'client',bookingId:'booking',paymentId:'payment',phoneMatch:true}}} as any);
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[request]});(bookingsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'booking',clientId:'client',currency:'PLN'}]});
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ expect(await screen.findByLabelText('Reconciliation client')).toHaveValue('client');expect(screen.getByLabelText('Payment request (optional)')).toHaveValue('request');
+ expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();expect(api.reconcile).not.toHaveBeenCalled();expect(screen.getByText(/staff approval is still required/)).toBeInTheDocument();
+});
+it('corrects only the date on a converted receipt and records the reason',async()=>{
+ const linked={...row,status:'converted',revision:2,paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}};
+ api.list.mockResolvedValue({data:{...snapshot,items:[linked]}} as any);api.detail.mockResolvedValue({data:linked} as any);
+ api.correctDate.mockResolvedValue({data:{...linked,receivedDate:'2026-10-17',revision:4}} as any);
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
+ const input=await screen.findByLabelText('Correct received date');expect(screen.queryByLabelText('Amount received')).not.toBeInTheDocument();
+ fireEvent.change(input,{target:{value:'2026-10-17'}});fireEvent.change(screen.getByLabelText('Reason for date correction'),{target:{value:'Bank statement date'}});fireEvent.click(screen.getByRole('button',{name:'Save date correction'}));
+ await waitFor(()=>expect(api.correctDate).toHaveBeenCalledWith('receipt',{revision:2,receivedDate:'2026-10-17',reason:'Bank statement date'}));expect(api.edit).not.toHaveBeenCalled();expect(api.reconcile).not.toHaveBeenCalled();
+ expect(await screen.findByText(/Received date corrected on the scratchpad/)).toBeInTheDocument();
 });
