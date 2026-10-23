@@ -2098,6 +2098,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           <span>Clear</span>
                         </button>
                       </div>
+                      {reviewDecision === 'WONT_DO' && (
+                        <div className="mt-3 rounded-lg border border-gray-300 bg-gray-50 p-3">
+                          <label htmlFor="mobile-wont-do-reason" className="block text-sm font-semibold text-gray-900">Why won’t we do this?</label>
+                          <select id="mobile-wont-do-reason" value={wontDoReason} onChange={(e) => setWontDoReason(e.target.value as any)} className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+                            <option value="">Select a reason</option><option value="duplicate">Duplicate request</option><option value="not_relevant">Not relevant</option><option value="mistake">Created by mistake</option><option value="no_longer_needed">No longer needed</option><option value="test_request">Test/demo request</option><option value="other">Other (explain below)</option>
+                          </select>
+                          {wontDoReason === 'other' && <textarea value={wontDoNote} onChange={(e) => setWontDoNote(e.target.value)} rows={2} className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Explain why this will not be done" />}
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleSaveReview()}
@@ -2180,7 +2189,20 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="mrr-canvas-thumbnails">{linkedArtifacts.flatMap((artifact) => (artifact.files || []).map((file, index) => <button key={`${artifact._id}-${index}`} type="button" className="mrr-canvas-thumb" onClick={() => document.getElementById(`mrr-artifact-${artifact._id}-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>PG {index + 1}</button>))}</div>
                 </div>
                 <div ref={reviewDecisionSectionRef} className="mrr-canvas-actions">
-                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <><textarea id="desktop-medical-staff-notes" value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder={reviewDecision === 'caution' ? 'Explain the caution and recommended follow-up (required)' : 'Add your review notes here...'} /><div className="mrr-decision-buttons">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => { setReviewDecision(option); if (option === 'OK') setMedicalStaffNotes('OK'); else if (option === 'caution') { setMedicalStaffNotes(''); window.setTimeout(() => document.getElementById('desktop-medical-staff-notes')?.focus(), 0); } }} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div><button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || (reviewDecision !== 'WONT_DO' && medicalStaffNotes.trim().length < 2) || (reviewDecision === 'WONT_DO' && !wontDoReason)} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button></>}
+                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <>
+                    <textarea id="desktop-medical-staff-notes" value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder={reviewDecision === 'caution' ? 'Explain the caution and recommended follow-up (required)' : 'Add your review notes here...'} />
+                    <div className="mrr-decision-buttons">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => { setReviewDecision(option); if (option === 'OK') setMedicalStaffNotes('OK'); else if (option === 'caution') { setMedicalStaffNotes(''); window.setTimeout(() => document.getElementById('desktop-medical-staff-notes')?.focus(), 0); } }} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div>
+                    {reviewDecision === 'WONT_DO' && (
+                      <div className="mt-3 rounded-lg border border-gray-300 bg-gray-50 p-3">
+                        <label htmlFor="desktop-canvas-wont-do-reason" className="block text-sm font-semibold text-gray-900">Why won’t we do this?</label>
+                        <select id="desktop-canvas-wont-do-reason" value={wontDoReason} onChange={(e) => setWontDoReason(e.target.value as any)} className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+                          <option value="">Select a reason</option><option value="duplicate">Duplicate request</option><option value="not_relevant">Not relevant</option><option value="mistake">Created by mistake</option><option value="no_longer_needed">No longer needed</option><option value="test_request">Test/demo request</option><option value="other">Other (explain below)</option>
+                        </select>
+                        {wontDoReason === 'other' && <textarea value={wontDoNote} onChange={(e) => setWontDoNote(e.target.value)} rows={2} className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Explain why this will not be done" />}
+                      </div>
+                    )}
+                    <button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || (reviewDecision !== 'WONT_DO' && medicalStaffNotes.trim().length < 2) || (reviewDecision === 'WONT_DO' && !wontDoReason)} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button>
+                  </>}
                 </div>
                 {aiAssessmentPanel}
                 {clientVisibleAdminNotePanel}
