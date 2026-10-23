@@ -1,0 +1,22 @@
+import {test,expect} from '@playwright/test';
+for(const width of [1440,390])test(`performance release: lazy clients/bookings routes and progressive rows at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:1000});const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ const clients=Array.from({length:150},(_,i)=>({_id:'client-'+i,display_id:1000+i,firstName:'Synthetic'+String(i).padStart(3,'0'),lastName:'Guest',email:`fixture${i}@example.invalid`,status:'active',workflowStatus:'entered'}));
+ const bookings=clients.map((client,i)=>({_id:'booking-'+i,bookingNumber:1000+i,status:'confirmed',createdAt:'2026-01-01T00:00:00Z',clientId:client}));
+ await page.route('**/*',async route=>{const req=route.request();if(!['xhr','fetch'].includes(req.resourceType()))return route.continue();const p=new URL(req.url()).pathname;
+  if(req.method()!=='GET')throw Error('Unexpected mutation '+p);
+  if(p==='/clients')return route.fulfill({json:clients});
+  if(p==='/bookings')return route.fulfill({json:bookings});
+  if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
+  return route.fulfill({json:[]});
+ });
+ await page.goto('/admin/clients');
+ const edit=page.locator('tbody button[title="Edit"]');await expect(edit).toHaveCount(100);
+ await page.getByRole('button',{name:'Show more (50 remaining)',exact:true}).click();await expect(edit).toHaveCount(150);
+ await page.getByRole('textbox',{name:'Search clients',exact:true}).fill('Synthetic149');await expect(edit).toHaveCount(1);
+ await page.getByRole('textbox',{name:'Search clients',exact:true}).fill('');await expect(edit).toHaveCount(100);
+ await page.goto('/admin/bookings');await expect(page.getByText('#1149',{exact:true})).toBeVisible();await expect(page.getByText('#1000',{exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Show more (50 remaining)',exact:true}).click();await expect(page.getByText('#1000',{exact:true})).toBeVisible();
+ await page.reload();await expect(page.getByText('#1149',{exact:true})).toBeVisible();await expect(page.getByText('#1000',{exact:true})).toHaveCount(0);
+ expect(errors).toEqual([]);await page.screenshot({path:`../performance-grid-${width}.png`,fullPage:true});
+});

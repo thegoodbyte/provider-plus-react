@@ -69,3 +69,13 @@ it('caches launcherConfigApi.get and clears it after save', async () => {
   await launcherConfigApi.get();
   expect(get).toHaveBeenCalledTimes(2);
 });
+
+it('does not let an old partner read refill the cache after an edit invalidates it', async () => {
+ let finish!:(value:any)=>void;
+ jest.spyOn(api,'get').mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve}) as any).mockResolvedValueOnce({data:[{_id:'r1',name:'Edited'}]} as any);
+ jest.spyOn(api,'patch').mockResolvedValue({data:{}} as any);
+ const pending=referralsApi.getAll();await referralsApi.update('r1',{name:'Edited'});
+ expect((await referralsApi.getAll()).data[0].name).toBe('Edited');
+ finish({data:[{_id:'r1',name:'Old'}]});await pending;
+ expect((await referralsApi.getAll()).data[0].name).toBe('Edited');
+});

@@ -78,10 +78,12 @@ const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: numbe
   }
   const pending = cacheService.getPending<any>(key);
   if (pending) return pending;
-  return cacheService.setPending(key, fetcher().then((response) => {
-    cacheService.set(key, response.data, ttl);
+  const request = fetcher().then((response) => {
+    // A mutation can invalidate this request while it is still in flight.
+    if (cacheService.getPending(key) === request) cacheService.set(key, response.data, ttl);
     return response;
-  }));
+  });
+  return cacheService.setPending(key, request);
 };
 
 const invalidateBookingRequirements = () => {

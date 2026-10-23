@@ -5398,6 +5398,8 @@ export type ClientsControllerFindAllData = {
     query?: {
         search?: string;
         workflowStatus?: string;
+        page?: string;
+        limit?: string;
     };
     url: '/clients';
 };

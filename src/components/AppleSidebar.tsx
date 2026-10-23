@@ -351,9 +351,9 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   }, [navigationRole]);
 
   const menuSections = useMemo(() => {
-    if (focusedWorkMode && navigationRole === 'admin') return [{ id: 'medical-work-mode', label: 'Medical work mode', Icon: Fi.FiLayers, items: [
-      { id: 'work-modes', label: 'Work sessions', Icon: Fi.FiCheckSquare },
-      ...['medical-artifacts', 'medical-review-requests'].filter(id => canShowNavigation(id, navigationRole, preferences)).map(id => ({ id, label: NAVIGATION[id]?.label || id, Icon: Fi.FiFileText }))
+    if (focusedWorkMode && navigationRole === 'admin') return [{ id: 'medical-work-mode', label: 'Medical work mode', Icon: FiLayers, items: [
+      { id: 'work-modes', label: 'Work sessions', Icon: FiCheckSquare },
+      ...['medical-artifacts', 'medical-review-requests'].filter(id => canShowNavigation(id, navigationRole, preferences)).map(id => ({ id, label: NAVIGATION[id]?.label || id, Icon: FiFileText }))
     ] }];
     const roleSections = getMenuSectionsForRole();
     if (appMode === 'shopping') {

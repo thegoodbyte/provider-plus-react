@@ -1,9 +1,5 @@
 import { useWorkMode } from '../workModes/WorkModeContext';
 import WorkModePage from '../workModes/WorkModePage';
-import ExternalResourcesPage from './ExternalResourcesPage';
-import IntegrationProviderSettings from './IntegrationProviderSettings';
-import CommunicationsSettingsPage from './CommunicationsSettingsPage';
-import IntegrationLibrary from './IntegrationLibrary';
 import { BookOpen, Calendar, ChevronDown, CreditCard, Grid, Menu as MenuIcon, ShoppingBag, Users, X } from 'lucide-react';
 import EnvironmentBanner from './EnvironmentBanner';
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
