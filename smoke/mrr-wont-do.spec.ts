@@ -16,6 +16,6 @@ for(const width of [390,1440])test(`MRR won't-do reason and Other validation sav
  await panel.getByRole('button',{name:"Won't do",exact:true}).click();const save=panel.getByRole('button',{name:'Save review',exact:true});await expect(save).toBeDisabled();
  const reason=panel.getByLabel('Why won’t we do this?');await reason.selectOption('other');await save.click();expect(writes).toHaveLength(0);await expect(page.getByText('Explain the Other reason before saving.',{exact:true}).first()).toBeVisible();
  await panel.getByPlaceholder('Explain why this will not be done').fill('Duplicate submission confirmed by staff.');await save.click();await expect.poll(()=>writes.length).toBe(1);expect(writes[0]).toMatchObject({reviewDecision:'WONT_DO',wontDoReason:'other',wontDoNote:'Duplicate submission confirmed by staff.'});
- await page.reload();await expect(page.getByText(/Won.t do/).first()).toBeVisible();expect(review.wontDoNote).toBe('Duplicate submission confirmed by staff.');expect(writes).toHaveLength(1);
+ await page.reload();await expect(panel.getByLabel('Why won’t we do this?')).toHaveValue('other');await expect(panel.getByPlaceholder('Explain why this will not be done')).toHaveValue('Duplicate submission confirmed by staff.');expect(review.wontDoNote).toBe('Duplicate submission confirmed by staff.');expect(writes).toHaveLength(1);
  await page.screenshot({path:`../mrr-wont-do-${width}.png`,fullPage:true});
 });
