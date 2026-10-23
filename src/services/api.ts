@@ -372,6 +372,7 @@ export const bookingsApi = {
   create: async (data: Omit<RetreatClient, '_id'>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     const response = await api.post<RetreatClient>('/bookings', data);
     void refreshCanonicalBookingConfirmation(String(response.data._id));
     return response;
@@ -379,6 +380,7 @@ export const bookingsApi = {
   update: async (id: string, data: Partial<RetreatClient>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     const response = await api.patch<RetreatClient>(`/bookings/${id}`, data);
     void refreshCanonicalBookingConfirmation(id);
     return response;
@@ -386,10 +388,12 @@ export const bookingsApi = {
   cancel: (id: string, data: { cancellationDate: string; cancellationReason: string; cancellationNotes?: string; cancellationDepositTreatment: 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited'; cancellationRefundAmount?: number }) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     return api.patch<RetreatClient>(`/bookings/${id}/cancel`, data);
   },
   reschedule: (id: string, data: { targetRetreatId: string; reason: string; note: string; sendEmail?: boolean; allowEarlierRetreat?: boolean }) => {
     cacheService.clearPattern('bookings:'); cacheService.clearPattern('booking-flow:'); cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     return api.patch<RetreatClient>(`/bookings/${id}/reschedule`, data);
   },
   recordConfirmationHistory: (id: string, data: {
@@ -441,6 +445,7 @@ export const bookingsApi = {
   }) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     return api.patch<RetreatClient>(`/bookings/${id}/cancel`, data);
   },
   delete: (id: string) => {
@@ -581,13 +586,15 @@ export const scratchpadApi = {
   create: (data: any) => api.post<ScratchpadReceipt & { possibleDuplicates?: any[]; alreadyRecorded?: boolean }>('/payment-scratchpad', data),
   edit: (id: string, data: any) => api.patch<ScratchpadReceipt>(`/payment-scratchpad/${id}`, data),
   correctDate: (id: string, data: { revision: number; receivedDate: string; reason: string }) => {
-    cacheService.clearPattern('payments:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');
     return api.patch<ScratchpadReceipt>(`/payment-scratchpad/${id}/date`, data);
   },
   state: (id: string, data: any) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/state`, data),
   candidates: (id: string, params?: { clientId?: string; paymentRequestId?: string }) => api.get<{ payments: any[]; requests: any[]; match?: any }>(`/payment-scratchpad/${id}/candidates`, { params }),
   reconcile: (id: string, data: any) => {
-    cacheService.clearPattern('payments:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');
     invalidateBookingRequirements();
     return api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/reconcile`, data);
   },
@@ -603,6 +610,7 @@ export const paymentsApi = {
   updateBookingPlan: (bookingId: string, data: { enabled?: boolean; dueDate?: string }) => api.patch(`/payments/plan-settings/booking/${bookingId}`, data),
   updateBookingPrice: (bookingId: string, data: { basePrice: number; currency: string; reason: string; adjustments: Array<{ id?: string; type: 'discount' | 'addon' | 'surcharge' | 'adjustment'; label: string; amount: number; calculation?: 'fixed' | 'percentage'; percentage?: number; note?: string }> }) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
     const totalAmount = Math.max(0, data.basePrice + data.adjustments.reduce(
       (sum, item) => sum + (item.type === 'discount' ? -1 : 1) * Math.abs(item.amount),
@@ -623,6 +631,7 @@ export const paymentsApi = {
   getUnlinkedCandidatesByBooking: (bookingId: string) => api.get<Payment[]>(`/payments/unlinked-candidates/by-booking/${bookingId}`),
   autoLinkByBooking: (bookingId: string) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
     return api.post<{ linked: number; skipped: number; reason?: string }>(`/payments/auto-link/by-booking/${bookingId}`);
   },
@@ -635,11 +644,13 @@ export const paymentsApi = {
   convert: (amount: number, from: string, to: string) => api.get<{ amount: number; from: string; to: string; provider: string }>(`/payments/convert?amount=${encodeURIComponent(String(amount))}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   create: (data: Omit<Payment, '_id'>) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:'); // Clear bookings cache too as payments affect booking status
     return api.post<Payment>('/payments', data);
   },
   createJoint: (data: any) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
     return api.post<{ allocationGroupId: string; receiptId?: string; totalAmount: number; currency: string; payments: Payment[] }>('/payments/joint', data);
   },
@@ -653,36 +664,43 @@ export const paymentsApi = {
   sendReceipt: (id: string, data: { allocationId: string; to?: string; attachPdf?: boolean; attachBookingConfirmation?: boolean }) => api.post(`/payments/receipts/${id}/send`, data),
   update: (id: string, data: Partial<Payment>) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
     return api.put<Payment>(`/payments/${id}`, data);
   },
   useEntireReceipt: (id: string) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
     return api.post<Payment>(`/payments/${id}/use-entire-receipt`);
   },
   delete: (id: string) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
     return api.delete(`/payments/${id}`);
   },
   refund: (id: string, refundData: { amount: number; reason: string }) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
     return api.patch<Payment>(`/payments/${id}/refund`, refundData);
   },
   processRefund: (id: string, refundAmount: number) => {
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
     return api.put<Payment>(`/payments/${id}/refund`, { refundAmount });
   },
 };
 
 export const paymentRequestsApi = {
+  getSettlement: (id: string) => api.get<any>(`/payment-requests/${id}/settlement`),
   getBookingLinkReview: (requestId?: string) => api.get<any[]>('/payment-requests/booking-link-review', { params: { requestId } }),
   linkBooking: (id: string, bookingId: string) => {
     cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     return api.post(`/payment-requests/${id}/link-booking`, { bookingId, confirm: true });
   },
   getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payment-requests')),
@@ -717,6 +735,7 @@ export const paymentRequestsApi = {
   markAsPaid: (id: string, paymentId: string) => {
     cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:');
     return api.put<PaymentRequest>(`/payment-requests/${id}/mark-paid`, { paymentId });
   },
   markAsOverdue: (id: string) => {

@@ -1,8 +1,13 @@
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { paymentRequestsApi } from '../services/api';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { PaymentRequest } from '../types';
 const id = (value: any): string => String(value?._id || value || '');
 
-export default function RequestBookingAction({ request }: { request: Partial<PaymentRequest> }) {
+export default function RequestBookingAction({ request, compact = false }: { request: Partial<PaymentRequest>; compact?: boolean }) {
+  const navigate = useNavigate();
+  const [busy,setBusy] = useState(false), [error,setError] = useState(''), [existing,setExisting] = useState<any[]>([]);
   const location = useLocation();
   const first = location.pathname.split('/').filter(Boolean)[0];
   const prefix = ['admin', 'medical', 'staff', 'user'].includes(first) ? `/${first}` : '';
@@ -17,5 +22,21 @@ export default function RequestBookingAction({ request }: { request: Partial<Pay
   if (request.bookingType) query.set('bookingType', request.bookingType);
   if (request.ceremonyId) query.set('ceremonyId', id(request.ceremonyId));
   if (request.ceremonyNumber) query.set('ceremonyNumber', String(request.ceremonyNumber));
-  return <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4"><p className="mb-3 text-sm text-blue-900">Ready to book? Review the booking details, then save to connect this request and its existing payments. Opening the form does not create a booking.</p><Link className="inline-flex rounded bg-blue-700 px-4 py-2 font-semibold text-white" to={`${prefix}/bookings/new?${query}`}>Create booking</Link></div>;
+  const check = async (event: React.MouseEvent) => {
+    event.preventDefault(); if (busy) return; setBusy(true); setError('');
+    try {
+      const fresh = (await paymentRequestsApi.getOneFresh(id(request._id))).data;
+      if (fresh.bookingId) { navigate(`${prefix}/bookings/${encodeURIComponent(id(fresh.bookingId))}`); return; }
+      if (fresh.status === 'cancelled' || fresh.requestType === 'additional' || fresh.context && fresh.context !== 'retreat' || id(fresh.clientId) !== id(request.clientId) || id(fresh.retreatId) !== id(request.retreatId)) throw new Error('Request changed. Refresh and review its client and retreat.');
+      const review = (await paymentRequestsApi.getBookingLinkReview(id(request._id))).data;
+      const candidates = (review || []).find((row: any) => id(row.request._id) === id(request._id))?.candidates || [];
+      const active = candidates.filter((booking: any) => !['cancelled','canceled'].includes(booking.status) || booking.evidence === 'Existing booking/payment reference');
+      if (active.length) { setExisting(active); return; }
+      query.set('totalAmount',String(fresh.fullPriceQuote ?? fresh.fullPrice));
+      query.set('currency',String(fresh.currency));
+      navigate(`${prefix}/bookings/new?${query}`);
+    } catch (e) { setError(apiErrorMessage(e,'Unable to check existing bookings. Refresh and try again.')); }
+    finally { setBusy(false); }
+  };
+  return <div className={compact ? 'mt-2 text-sm' : "mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4"}><p className={compact ? 'sr-only' : "mb-3 text-sm text-blue-900"}>Ready to book? Review the booking details, then save to connect this request and its existing payments. Opening the form does not create a booking.</p><Link className="inline-flex rounded bg-blue-700 px-4 py-2 font-semibold text-white" to={`${prefix}/bookings/new?${query}`} onClick={check} aria-disabled={busy}>{busy ? 'Checking bookings…' : 'Create booking'}</Link>{error && <p role="alert" className="mt-2 text-red-800">{error}</p>}{existing.length > 0 && <div className="mt-3"><p>A booking already exists for this client and retreat. Review it before creating another.</p>{existing.map(booking => <Link key={booking._id} className="mr-3 text-blue-700 underline" to={`${prefix}/bookings/${booking._id}`}>Booking #{booking.bookingNumber || booking._id}</Link>)}<Link className="text-blue-700 underline" to={`${prefix}/payment-requests/booking-review?requestId=${id(request._id)}`}>Review and link existing booking</Link></div>}</div>;
 }

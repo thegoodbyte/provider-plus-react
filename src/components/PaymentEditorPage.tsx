@@ -314,11 +314,11 @@ const PaymentEditorPage: React.FC = () => {
       isDeposit: requestPaymentType === 'deposit_non_refundable' || requestPaymentType === 'deposit_refundable',
       isFinalPayment: !service && (requestPaymentType === 'balance_payment' || paymentRequest.requestType === 'full_payment'),
       status: paymentRequest.status === 'paid' ? 'completed' : prev.status === 'pending' ? 'completed' : prev.status,
-      paymentDate: paymentRequest.paidDate ? toDateInputValue(paymentRequest.paidDate) : prev.paymentDate,
+      paymentDate: prev.paymentDate,
       description: `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim(),
       notes: prev.notes || paymentRequest.note || paymentRequest.notes || '',
       bookingCurrencyAmount: prev.bookingCurrencyAmount,
-      bookingCurrencyExchangeDate: prev.bookingCurrencyExchangeDate || (paymentRequest.paidDate ? toDateInputValue(paymentRequest.paidDate) : ''),
+      bookingCurrencyExchangeDate: prev.bookingCurrencyExchangeDate,
     }));
   };
 
@@ -570,7 +570,7 @@ const PaymentEditorPage: React.FC = () => {
                   </div>
                   <div className="mt-1 grid gap-2 sm:grid-cols-3">
                     <div>Requested: {selectedPaymentRequest.requestedAmount || '—'} {selectedPaymentRequest.currency}</div>
-                    {Number(selectedPaymentRequest.amountReceived) > 0 && <div>Outstanding: {getPaymentRequestAmount(selectedPaymentRequest)} {selectedPaymentRequest.currency}</div>}
+                    {Number(selectedPaymentRequest.amountReceived) > 0 && <div>Remaining on request: {getPaymentRequestAmount(selectedPaymentRequest)} {selectedPaymentRequest.currency}</div>}<p className="mt-2 text-sm">Record the amount actually received and its own received date. Separate transfers can be recorded against the same request; the invoice amount stays unchanged.</p>
                     <div>Type: {selectedPaymentRequest.requestType || 'full payment'}</div>
                     <div>Status: {selectedPaymentRequest.status}</div>
                   </div>
@@ -746,6 +746,7 @@ const PaymentEditorPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Date *</label>
               <input
                 type="date"
+                aria-label="Payment date"
                 min="2020-01-01"
                 max="2035-12-31"
                 value={formData.paymentDate}

@@ -10864,6 +10864,19 @@ export type PaymentRequestsControllerSendReminderResponses = {
 
 export type PaymentRequestsControllerSendReminderResponse = PaymentRequestsControllerSendReminderResponses[keyof PaymentRequestsControllerSendReminderResponses];
 
+export type PaymentRequestsControllerSettlementData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-requests/{id}/settlement';
+};
+
+export type PaymentRequestsControllerSettlementResponses = {
+    200: unknown;
+};
+
 export type ScratchpadControllerListData = {
     body?: never;
     path?: never;

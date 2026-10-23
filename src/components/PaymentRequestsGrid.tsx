@@ -1,3 +1,4 @@
+import RequestBookingAction from './RequestBookingAction';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
 import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, Plus, Search as SearchIcon, Send as SendIcon, Settings, Slash, Trash2 } from 'lucide-react';
 import { NAVIGATION } from '../navigation/navigation';
@@ -395,7 +396,7 @@ const PaymentRequestsGrid: React.FC = () => {
                       </div>
                     </td>
                     <td data-label="Retreat" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
-                    <td data-label="Booking" className="px-4 py-4"><PaymentRequestBookingLinks request={request} /></td>
+                    <td data-label="Booking" className="px-4 py-4"><PaymentRequestBookingLinks request={request} />{request.status === 'paid' && !request.bookingId && <RequestBookingAction request={request} compact />}</td>
                     <td data-label="Requested on" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {formatCalendarDate(request.paymentDate)}
                     </td>

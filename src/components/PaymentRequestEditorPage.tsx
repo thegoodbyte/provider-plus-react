@@ -1,3 +1,4 @@
+import PaymentRequestSettlement from './PaymentRequestSettlement';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
 import RequestBookingAction from './RequestBookingAction';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
@@ -216,15 +217,9 @@ const PaymentRequestEditorPage: React.FC = () => {
             Back
           </button>
           <div className="flex gap-2">
+            {paymentRequest.status !== 'cancelled' && <button type="button" onClick={() => navigate(`/admin/payments/new?paymentRequestId=${id}`, { state: { returnTo: `/admin/payment-requests/${id}` } })} className="rounded-md bg-green-600 px-4 py-2 text-white">Record payment</button>}
             {!linkedPaymentId && paymentRequest.status !== 'paid' && paymentRequest.status !== 'cancelled' && (
               <>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/admin/payments/new?paymentRequestId=${id}`, { state: { returnTo: '/admin/payment-requests' } })}
-                  className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
-                >
-                  Add Payment
-                </button>
                 <button
                   type="button"
                   onClick={() => setShowCancelModal(true)}
@@ -278,6 +273,7 @@ const PaymentRequestEditorPage: React.FC = () => {
           )}
 
           <RequestBookingAction request={paymentRequest} />
+          <PaymentRequestSettlement requestId={id} />
 
           {identityReview?.change?.status === 'pending' && <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-5">
             <div className="text-sm font-semibold uppercase tracking-wide text-amber-800">Identity change pending review</div>

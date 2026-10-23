@@ -21249,6 +21249,29 @@
         ]
       }
     },
+    "/payment-requests/{id}/settlement": {
+      "get": {
+        "operationId": "PaymentRequestsController_settlement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PaymentRequests"
+        ]
+      }
+    },
     "/payment-scratchpad": {
       "get": {
         "operationId": "ScratchpadController_list",
