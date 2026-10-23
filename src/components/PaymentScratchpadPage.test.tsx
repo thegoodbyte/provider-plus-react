@@ -123,7 +123,7 @@ it('finds request by client or number and fills its relationships without reconc
  mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
  const search=await screen.findByLabelText('Search payment request number or client');
  fireEvent.change(search,{target:{value:'Synthetic Client'}});
- expect(screen.getByRole('option',{name:/#1243 · Synthetic Client/})).toBeInTheDocument();
+ expect(screen.getByRole('option',{name:/#1243.*Synthetic Client/})).toBeInTheDocument();
  fireEvent.change(screen.getByLabelText('Payment request (optional)'),{target:{value:'request'}});
  expect(screen.getByLabelText('Reconciliation client')).toHaveValue('client');
  await waitFor(()=>expect(api.candidates).toHaveBeenCalledWith('receipt',{clientId:'client',paymentRequestId:'request'}));
@@ -172,4 +172,20 @@ it('corrects only the date on a converted receipt and records the reason',async(
  fireEvent.change(input,{target:{value:'2026-10-17'}});fireEvent.change(screen.getByLabelText('Reason for date correction'),{target:{value:'Bank statement date'}});fireEvent.click(screen.getByRole('button',{name:'Save date correction'}));
  await waitFor(()=>expect(api.correctDate).toHaveBeenCalledWith('receipt',{revision:2,receivedDate:'2026-10-17',reason:'Bank statement date'}));expect(api.edit).not.toHaveBeenCalled();expect(api.reconcile).not.toHaveBeenCalled();
  expect(await screen.findByText(/Received date corrected on the scratchpad/)).toBeInTheDocument();
+});
+
+it('distinguishes same-client requests by requested amount/currency, not the full booking quote',async()=>{
+ (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'client',firstName:'Synthetic',lastName:'Payer'}]});
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[
+  {_id:'request-a',display_id:1352,clientId:'client',currency:'PLN',status:'pending',requestedAmount:5100.5,fullPrice:20000},
+  {_id:'request-b',display_id:1351,clientId:'client',currency:'PLN',status:'pending',requestedAmount:2500.75,fullPrice:20000},
+  {_id:'request-c',display_id:1350,clientId:'client',currency:'EUR',status:'pending',requestedAmount:0,amountPaid:999},
+  {_id:'request-legacy',display_id:1349,clientId:'client',currency:'CZK',status:'pending',amountPaid:125},
+  {_id:'request-missing',display_id:1348,clientId:'client',currency:'USD',status:'pending'},
+ ]});
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Match receipt Synthetic Payer'}));
+ const first=await screen.findByRole('option',{name:/#1352.*Requested: 5,100.50 PLN/});expect(first).toBeInTheDocument();
+ expect(screen.getByRole('option',{name:/#1351.*Requested: 2,500.75 PLN/})).toBeInTheDocument();expect(screen.getByRole('option',{name:/#1350.*Requested: 0.00 EUR/})).toBeInTheDocument();
+ expect(screen.getByRole('option',{name:/#1349.*Requested: 125.00 CZK/})).toBeInTheDocument();expect(screen.getByRole('option',{name:/#1348.*Requested amount unavailable/})).toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Payment request (optional)'),{target:{value:'request-a'}});expect(screen.getByLabelText('Payment request (optional)')).toHaveDisplayValue(/Requested: 5,100.50 PLN/);expect(api.reconcile).not.toHaveBeenCalled();
 });

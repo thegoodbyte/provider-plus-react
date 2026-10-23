@@ -1,0 +1,22 @@
+import { test, expect } from '@playwright/test';
+for(const width of [1440,390])test(`scratchpad request amount distinguishes choices at ${width}px`,async({page})=>{
+ const id='000000000000000000000001',client='000000000000000000000002';
+ const row={_id:id,revision:0,receivedDate:'2026-10-23',amount:'5100.50',amountMinor:510050,currency:'PLN',provider:'csob',account:'Synthetic bank',payer:'Synthetic Payer',status:'unassigned',history:[]};
+ const requests=[{_id:'request-a',display_id:1352,invoiceNumber:'1352',clientId:client,currency:'PLN',status:'pending',requestedAmount:5100.5,fullPrice:20000},{_id:'request-b',display_id:1351,invoiceNumber:'1351',clientId:client,currency:'PLN',status:'pending',requestedAmount:2500.75,fullPrice:20000}];
+ const mutations:string[]=[];await page.setViewportSize({width,height:980});
+ await page.addInitScript(()=>{localStorage.setItem('token','synthetic-ui-token');localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',role:'admin',email:'synthetic@example.invalid'}));});
+ await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const u=new URL(r.url());if(['POST','PATCH','PUT','DELETE'].includes(r.method())&&/payment|booking/.test(u.pathname))mutations.push(r.method()+' '+u.pathname);
+  if(u.pathname.endsWith('/candidates'))return route.fulfill({json:{payments:[],requests:[]}});
+  if(u.pathname==='/payment-scratchpad/'+id)return route.fulfill({json:row});
+  if(u.pathname==='/payment-scratchpad')return route.fulfill({json:{items:[row],total:1,page:1,limit:25,refreshedAt:'2026-10-23T12:00:00Z',totals:[{currency:'PLN',status:'unassigned',count:1,amount:'5100.50'}]}});
+  if(u.pathname==='/clients')return route.fulfill({json:[{_id:client,firstName:'Synthetic',lastName:'Payer',display_id:1292}]});
+  if(u.pathname==='/payment-requests')return route.fulfill({json:requests});
+  if(u.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
+  if(u.pathname.includes('config-summary'))return route.fulfill({json:{}});return route.fulfill({json:[]});
+ });
+ await page.goto('/admin/payments/scratchpad/'+id);await page.getByRole('button',{name:'Match receipt',exact:true}).click();const dialog=page.getByRole('dialog');const picker=dialog.getByLabel('Payment request (optional)');
+ await expect(picker.getByRole('option',{name:/#1352.*Requested: 5,100.50 PLN/})).toHaveCount(1);await expect(picker.getByRole('option',{name:/#1351.*Requested: 2,500.75 PLN/})).toHaveCount(1);
+ await dialog.getByPlaceholder('Search payment request number or client').fill('Synthetic');await picker.selectOption('request-a');await expect(picker).toHaveValue('request-a');await expect(picker).toHaveJSProperty('selectedIndex',1);await expect(picker.locator('option:checked')).toContainText('Requested: 5,100.50 PLN');
+ await picker.selectOption('request-b');await expect(picker.locator('option:checked')).toContainText('Requested: 2,500.75 PLN');await expect(dialog.getByRole('checkbox',{name:'I reviewed the receipt and selected relationships.'})).not.toBeChecked();await expect(dialog.getByRole('button',{name:'Confirm conversion',exact:true})).toBeDisabled();expect(mutations).toEqual([]);
+ await picker.scrollIntoViewIfNeeded();await page.screenshot({path:`../ppvc-906-validation/amount-${width}.png`,fullPage:true});
+});

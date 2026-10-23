@@ -231,7 +231,11 @@ export default function PaymentScratchpadPage() {
   const requestOptions = requests.filter(r => r.status !== 'cancelled' && (!target.clientId || resolveId(r.clientId) === target.clientId)).map(r => {
     const client = clients.find(c => c._id === resolveId(r.clientId));
     const clientName = client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : '';
-    return { id: r._id, label: `#${r.display_id || r.invoiceNumber} · ${clientName || 'Client name unavailable'} · ${r.currency} · ${r.status}`, sublabel: [r.invoiceNumber, client?.display_id ? `Client #${client.display_id}` : ''].filter(Boolean).join(' · ') };
+    const rawAmount = r.requestedAmount ?? r.amountPaid;
+    const requested = rawAmount !== undefined && rawAmount !== null && String(rawAmount).trim() !== '' && Number.isFinite(Number(rawAmount))
+      ? `Requested: ${Number(rawAmount).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${r.currency}`
+      : `Requested amount unavailable · ${r.currency}`;
+    return { id: r._id, label: `#${r.display_id || r.invoiceNumber} · ${requested} · ${clientName || 'Client name unavailable'} · ${r.status}`, sublabel: [r.invoiceNumber, client?.display_id ? `Client #${client.display_id}` : ''].filter(Boolean).join(' · ') };
   });
   const bookingOptions = bookings.filter(b => !target.clientId || resolveId(b.clientId) === target.clientId).map(b => ({ id: b._id, label: `Booking #${b.bookingNumber || b.display_id} · ${b.currency} · ${b.status}`, sublabel: b.retreatId?.retreatCode || b.retreatId?.name || '' }));
   const close = () => navigateTo(base);
