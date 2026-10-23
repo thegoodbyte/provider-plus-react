@@ -6,6 +6,7 @@ for(const width of [1440,390]){
   await page.setViewportSize({width,height:1000});let cancelled=false;let writes=0;
   await page.route('**/*',async route=>{if(!['xhr','fetch'].includes(route.request().resourceType()))return route.continue();const url=new URL(route.request().url());const json=(data:any)=>route.fulfill({json:data});
    if(url.pathname==='/payment-requests/req-1/cancel'){expect(route.request().postDataJSON()).toMatchObject({reason:'Client did not pay'});cancelled=true;writes++;return json({...request,status:'cancelled',cancellationReason:'Client did not pay',cancelledAt:'2026-10-14',cancelledBy:'staff@example.test'});}
+   if(url.pathname==='/payment-requests/req-1/settlement')return json({requestId:request._id,requestedAmount:450,currency:'EUR',amountReceived:0,amountOutstanding:450,amountOverpaid:0,settlementStatus:'unpaid',payments:[]});
    if(url.pathname==='/payment-requests/req-1')return json(request);
    if(url.pathname==='/environment/status')return json({environment:'local',production:false,enabledJobs:[]});return json([]);
   });

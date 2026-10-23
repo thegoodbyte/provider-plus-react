@@ -8,6 +8,7 @@ for (const width of [1440,390]) test(`request to client bookings to prefilled fo
  await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const u=new URL(r.url());
   if(['POST','PATCH','PUT','DELETE'].includes(r.method())&&/payment|booking/.test(u.pathname))writes.push(r.method()+' '+u.pathname);
   if(u.pathname==='/payment-requests')return route.fulfill({json:u.search?[]:[linked,unlinked]});
+  if(u.pathname==='/payment-requests/linked-907/settlement')return route.fulfill({json:{requestId:linked._id,requestedAmount:100,currency:'PLN',amountReceived:100,amountOutstanding:0,amountOverpaid:0,settlementStatus:'settled',payments:[{_id:'payment-907',display_id:1907,amount:100,currency:'PLN',status:'completed',paymentDate:'2026-10-23'}]}});
   if(u.pathname==='/payment-requests/linked-907')return route.fulfill({json:linked});
   if(u.pathname==='/clients/client-907')return route.fulfill({json:client});
   if(u.pathname==='/clients/booking-options')return route.fulfill({json:[client]});
