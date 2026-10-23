@@ -1,0 +1,33 @@
+import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+const fixturePath=process.env.SCRATCHPAD_FIXTURE_PATH;
+const f:any=fixturePath?JSON.parse(fs.readFileSync(fixturePath,'utf8')):{};
+test.skip(!fixturePath,'Requires disposable scratchpad API fixture.');
+for(const width of [1440,390])test(`read-only booking review at ${width}px`,async({page,request})=>{
+ await request.post(f.url+'/fixture/reset');
+ const snapshot=async()=>(await request.get(f.url+'/fixture/snapshot')).json();
+ const before=await snapshot();
+ await page.setViewportSize({width,height:980});
+ await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',role:'admin',email:'scratchpad@example.invalid'}));},f.token);
+ await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const url=new URL(r.url());
+  if(url.pathname.startsWith('/payment-scratchpad')){expect(r.method()).toBe('GET');return route.fulfill({response:await route.fetch({url:f.url+url.pathname+url.search})});}
+  if(url.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
+  if(url.pathname.includes('config-summary'))return route.fulfill({json:{}});return route.fulfill({json:[]});
+ });
+ await page.goto('/admin/payments/scratchpad');await page.getByRole('button',{name:'Booking review',exact:true}).click();
+ await expect(page.getByText('Review booking creation',{exact:true})).toBeVisible();
+ await expect(page.getByText('Review existing booking',{exact:true})).toBeVisible();
+ await expect(page.getByText('Check payment purpose',{exact:true})).toBeVisible();
+ const candidate=page.getByRole('row').filter({hasText:'Booking candidate 907'});
+ await expect(candidate.getByRole('link',{name:'Review request'})).toHaveAttribute('href','/admin/payment-requests/'+f.reviewRequestId);
+ await expect(candidate).toContainText('1907');await expect(candidate).not.toContainText('wrong-capture-hint');
+ await expect(page.getByRole('row').filter({hasText:'Purpose candidate 907'})).toContainText('No linked request');
+ await expect(page.getByRole('link',{name:/Booking #1400/})).toHaveAttribute('href','/admin/bookings/'+f.bookingId);
+ const search=page.getByRole('textbox',{name:'Search payer, phone, transaction or request number'});
+ await search.fill('Booking candidate 907');await expect(page.getByText('Review existing booking',{exact:true})).toHaveCount(0);
+ await search.fill('');await expect(page.getByText('Review existing booking',{exact:true})).toBeVisible();
+ await page.reload();await expect(page.getByText('Review booking creation',{exact:true})).toBeVisible();
+ expect(await snapshot()).toEqual(before);
+ await page.getByText('Review booking creation',{exact:true}).scrollIntoViewIfNeeded();
+ await page.screenshot({path:`../ppvc-907-validation/review-${width}.png`,fullPage:true});
+});

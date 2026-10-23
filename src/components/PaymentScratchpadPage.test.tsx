@@ -189,3 +189,13 @@ it('distinguishes same-client requests by requested amount/currency, not the ful
  expect(screen.getByRole('option',{name:/#1349.*Requested: 125.00 CZK/})).toBeInTheDocument();expect(screen.getByRole('option',{name:/#1348.*Requested amount unavailable/})).toBeInTheDocument();
  fireEvent.change(screen.getByLabelText('Payment request (optional)'),{target:{value:'request-a'}});expect(screen.getByLabelText('Payment request (optional)')).toHaveDisplayValue(/Requested: 5,100.50 PLN/);expect(api.reconcile).not.toHaveBeenCalled();
 });
+it('finds booking-review cases with actual request and existing-booking links without creating records',async()=>{
+ const needed={...row,status:'converted',bookingReview:{kind:'booking_needed',label:'Review booking creation',message:'Confirm the retreat booking.',client:{_id:'client',firstName:'Synthetic',lastName:'Client'},request:{_id:'request-live',invoiceNumber:'1907'},bookings:[]}};
+ const existing={...row,_id:'existing-row',status:'converted',bookingReview:{kind:'existing_booking',label:'Review existing booking',message:'Check the existing booking first.',client:{_id:'client'},request:null,bookings:[{_id:'booking-live',bookingNumber:1908,status:'confirmed'}]}};
+ api.list.mockImplementation(async params=>({data:params.status==='booking-review'?{...snapshot,items:[needed,existing],total:2}:snapshot} as any));
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Booking review',exact:true}));
+ await waitFor(()=>expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({status:'booking-review',page:1})));
+ expect(await screen.findByRole('link',{name:'Review request',exact:true})).toHaveAttribute('href','/admin/payment-requests/request-live');
+ expect(screen.getByRole('link',{name:'Booking #1908 · confirmed'})).toHaveAttribute('href','/admin/bookings/booking-live');expect(screen.getByText('#1907')).toBeInTheDocument();expect(screen.getByText('Review booking creation')).toBeInTheDocument();
+ expect(api.reconcile).not.toHaveBeenCalled();expect(api.create).not.toHaveBeenCalled();expect(bookingsApi.getAll).not.toHaveBeenCalled();
+});

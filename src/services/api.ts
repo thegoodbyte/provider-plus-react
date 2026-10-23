@@ -567,6 +567,7 @@ export interface ScratchpadReceipt {
   currency: string; provider: string; account: string; payer?: string; phone?: string; externalId?: string;
   reference?: string; requestNumber?: string; notes?: string; status: 'unassigned' | 'converted' | 'excluded';
   paymentId?: string; payment?: any; paymentMissing?: boolean; reconciliationPending?: boolean;
+  bookingReview?: { kind: string; label: string; message: string; client?: any; request?: any; bookings: any[] };
   dateCorrection?: any; dateCorrectionError?: string;
   reconciliationError?: string; reconciliation?: any; history?: Array<{ action: string; actor: string; at: string; before?: any; after?: any }>;
 }
