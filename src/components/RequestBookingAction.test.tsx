@@ -1,0 +1,9 @@
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import RequestBookingAction from './RequestBookingAction';
+const request:any={_id:'req',clientId:{_id:'client'},retreatId:{_id:'retreat'},fullPrice:1000,requestedAmount:400,currency:'PLN',status:'paid',requestType:'deposit',bookingType:'booster',ceremonyId:{_id:'ceremony'},ceremonyNumber:2};
+const open=(patch:any={})=>render(<MemoryRouter initialEntries={['/admin/payment-requests/req']}><RequestBookingAction request={{...request,...patch}} /></MemoryRouter>);
+it('opens a review form with the full agreed price and booster context, without claiming payment as booking money',()=>{open();const url=new URL(screen.getByRole('link',{name:'Create booking'}).getAttribute('href')!,'https://local.invalid');expect(url.pathname).toBe('/admin/bookings/new');expect(Object.fromEntries(url.searchParams)).toEqual({paymentRequestId:'req',clientId:'client',retreatId:'retreat',totalAmount:'1000',currency:'PLN',bookingType:'booster',ceremonyId:'ceremony',ceremonyNumber:'2'});expect(url.searchParams.has('amountPaid')).toBe(false);});
+it('opens the existing booking instead of inviting a duplicate',()=>{open({bookingId:{_id:'booking'}});expect(screen.getByRole('link',{name:'Open booking'})).toHaveAttribute('href','/admin/bookings/booking');expect(screen.queryByRole('link',{name:'Create booking'})).not.toBeInTheDocument();});
+it.each([{status:'cancelled'},{context:'standalone_service'},{requestType:'additional'},{fullPrice:0}])('does not offer booking creation for %j',patch=>{open(patch);expect(screen.queryByRole('link',{name:'Create booking'})).not.toBeInTheDocument();});
+it('does not copy an entire multi-person quote onto one participant booking',()=>{open({lineItems:[{clientId:'one'},{clientId:'two'}]});expect(screen.queryByRole('link',{name:'Create booking'})).not.toBeInTheDocument();expect(screen.getByText(/multiple participants/)).toBeInTheDocument();});

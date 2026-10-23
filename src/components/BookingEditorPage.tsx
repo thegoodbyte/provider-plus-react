@@ -1,3 +1,4 @@
+import { BookingType } from '../constants/eventTypes';
 import React from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -25,6 +26,9 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
       clientId: params.get('clientId') || undefined,
       retreatId: params.get('retreatId') || undefined,
       paymentRequestId: params.get('paymentRequestId') || undefined,
+      ...(Object.values(BookingType).includes(params.get('bookingType') as BookingType) ? { bookingType: params.get('bookingType') as BookingType } : {}),
+      ...(params.get('ceremonyId') ? { ceremonyId: params.get('ceremonyId')! } : {}),
+      ...(toFiniteNumber(params.get('ceremonyNumber')) !== undefined ? { ceremonyNumber: String(toFiniteNumber(params.get('ceremonyNumber'))) } : {}),
       totalAmount: toFiniteNumber(params.get('totalAmount')),
       amountPaid: toFiniteNumber(params.get('amountPaid')),
       currency: (params.get('currency') as 'EUR' | 'USD' | 'CZK' | 'PLN' | null) || undefined,

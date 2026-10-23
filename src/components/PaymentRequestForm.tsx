@@ -589,7 +589,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 }}
                 className="w-full"
               />
-              <p className="mt-1 text-xs text-gray-500">Search by booking number, client, or retreat. Linking changes the ledger association only; amounts stay unchanged.</p>
+              <p className="mt-1 text-xs text-gray-500">Booking is optional: issue the request and record payment first, then create a booking when the client confirms. Attach the existing request or payment to connect them. Editing this link keeps recorded payments unchanged.</p>
             </div>
 
             <div>

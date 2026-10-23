@@ -395,7 +395,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       } as Partial<Payment>);
       setSelectedExistingPaymentId('');
       setShowLinkExisting(false);
-      await fetchPayments();
+      await Promise.all([fetchPayments(), syncPaymentPlan()]);
       if (onPaymentUpdate) {
         onPaymentUpdate();
       }
@@ -415,7 +415,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setLinkExistingError('');
       const response = await paymentsApi.autoLinkByBooking(bookingId);
       const { linked, reason } = response.data || {};
-      await fetchPayments();
+      await Promise.all([fetchPayments(), syncPaymentPlan()]);
       if (showLinkExisting) {
         await loadExistingPayments();
       }
@@ -772,7 +772,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
       <section className="booking-payment-requests">
         <div className="payment-requests-heading">
-          <div><h4>Payment requests</h4><p>Requests issued for this booking, including the final balance.</p></div>
+          <div><h4>Payment requests</h4><p>Requests linked to this booking, including payments received before booking.</p></div>
           <button type="button" className="new-payment-request-link" onClick={() => navigate(`${routePrefix}/payment-requests/new?bookingId=${encodeURIComponent(bookingId)}&clientId=${encodeURIComponent(clientId)}&retreatId=${encodeURIComponent(retreatId)}&currency=${encodeURIComponent(bookingCurrency)}&fullPrice=${encodeURIComponent(totalAmount)}`)}>New request</button>
           {!paymentPlan && !isPaidInFull && <div className="payment-request-create">
             <label>Final payment due<input type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /></label>

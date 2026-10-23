@@ -1,4 +1,5 @@
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
+import RequestBookingAction from './RequestBookingAction';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
 import InvoiceVisitHistory from './InvoiceVisitHistory';
 import React, { useEffect, useState } from 'react';
@@ -275,6 +276,8 @@ const PaymentRequestEditorPage: React.FC = () => {
               </p>
             </div>
           )}
+
+          <RequestBookingAction request={paymentRequest} />
 
           {identityReview?.change?.status === 'pending' && <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-5">
             <div className="text-sm font-semibold uppercase tracking-wide text-amber-800">Identity change pending review</div>

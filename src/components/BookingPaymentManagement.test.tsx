@@ -47,6 +47,7 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     (paymentsApi.getUnlinkedCandidatesByBooking as jest.Mock).mockResolvedValue({ data: [unlinked] });
     (paymentsApi.update as jest.Mock).mockImplementation(async () => {
       (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [{ ...unlinked, bookingId: 'booking-1', retreatId: 'retreat-1' }] });
+      (paymentRequestsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [{ _id: 'request-903', invoiceNumber: '903', requestedAmount: 2250, currency: 'PLN', status: 'paid', paymentId: payment }] });
       return { data: unlinked };
     });
     render(<MemoryRouter><BookingPaymentManagement bookingId="booking-1" clientId="client-1" retreatId="retreat-1" totalAmount={7500} currency="PLN" /></MemoryRouter>);
@@ -58,6 +59,8 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Link Payment' }));
     await waitFor(() => expect(paymentsApi.update).toHaveBeenCalledWith('payment-1', expect.objectContaining({ bookingId: 'booking-1', clientId: 'client-1', retreatId: 'retreat-1' })));
     expect(await screen.findByRole('button', { name: /view payment/i })).toBeInTheDocument();
+    expect(await screen.findByText(/Request #903/)).toBeInTheDocument();
+    expect(paymentRequestsApi.getByBooking).toHaveBeenCalledTimes(2);
   });
 
   it('saves an itemized booking price and asks the parent to refresh the canonical booking', async () => {
