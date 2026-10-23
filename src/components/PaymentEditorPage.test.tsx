@@ -97,3 +97,10 @@ test('records EUR received against a PLN request with a confirmed PLN equivalent
  fireEvent.click(screen.getByRole('button', { name: 'Add Payment' }));
  await waitFor(() => expect(paymentsApi.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 100, currency: 'EUR', paymentRequestId: 'q1', requestCurrencyAmount: 425, requestCurrencyExchangeMode: 'manual', requestCurrencyExchangeSource: 'Revolut bank confirmation #123', requestCurrencyExchangeDate: '2026-10-17' })));
 });
+
+
+test('links a payment back to its source scratchpad receipt', async () => {
+ mock(paymentsApi.getOne).mockResolvedValue({ data: { _id: 'p1', display_id: 1002, clientId: 'c1', amount: 150, currency: 'EUR', status: 'completed', paymentMethod: 'cash', paymentDate: '2026-09-16', sourceScratchpadId: 'sp1' } });
+ view('/admin/payments/p1/edit');
+ expect(await screen.findByRole('link', { name: 'Source scratchpad receipt' })).toHaveAttribute('href', '/admin/payments/scratchpad/sp1');
+});

@@ -59,12 +59,12 @@ for (const device of ['desktop','mobile']) test.describe(`Scratchpad ${device}`,
     await expect(page.getByRole('table')).toBeVisible();
     await page.getByLabel('Receipt status').selectOption('unassigned');
     await page.getByRole('link',{name:`View receipt ${marker}`,exact:true}).click();
-    await page.getByRole('button',{name:'Match receipt',exact:true}).click();
-    await expect(page.getByRole('heading',{name:'Match this receipt'})).toBeVisible();
+    await page.getByRole('button',{name:'Payment from SP',exact:true}).click();
+    await expect(page.getByRole('dialog',{name:'Payment from SP'})).toBeVisible();
     await page.getByLabel('Payment request (optional)',{exact:true}).selectOption(fixture.requestId);
     await expect(page.getByLabel('Reconciliation client')).toHaveValue('#1501 Synthetic Payer');
-    await page.getByLabel('I reviewed the receipt and selected relationships.').check();
-    await page.getByRole('button',{name:'Confirm conversion',exact:true}).click();
+    await expect(page.getByLabel('I reviewed the receipt and selected relationships.')).toHaveCount(0);
+    await page.getByRole('button',{name:'Create payment',exact:true}).click();
     await expect(page.getByRole('table')).toBeVisible();
     await page.getByLabel('Receipt status').selectOption('converted');
     await page.getByRole('link',{name:`View receipt ${marker}`,exact:true}).click();

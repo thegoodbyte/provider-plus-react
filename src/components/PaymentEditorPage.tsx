@@ -2,7 +2,7 @@ import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurr
 import { ArrowLeft, Save as SaveIcon } from 'lucide-react';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { bookingsApi, clientsApi, configSummaryApi, serviceRequestsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -94,7 +94,7 @@ const PaymentEditorPage: React.FC = () => {
   const [bookingCurrencyLoading, setBookingCurrencyLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loadedPayment, setLoadedPayment] = useState<Payment | null>(null);
+  const [loadedPayment, setLoadedPayment] = useState<(Payment & { sourceScratchpadId?: string | { _id: string } }) | null>(null);
   const [reassigningReceipt, setReassigningReceipt] = useState(false);
   const [clientOnly, setClientOnly] = useState(Boolean(clientIdFromQuery && !bookingIdFromQuery && !paymentRequestIdFromQuery));
   const [formData, setFormData] = useState({
@@ -473,6 +473,7 @@ const PaymentEditorPage: React.FC = () => {
             </p>
           </div>
         </div>
+        {loadedPayment?.sourceScratchpadId && <Link className="rounded border px-4 py-2 text-blue-700" to={`/admin/payments/scratchpad/${resolveId(loadedPayment.sourceScratchpadId)}`}>Source scratchpad receipt</Link>}
         {isView && loadedPayment?.receiptId && <button type="button" className="rounded border px-4 py-2 text-blue-700" onClick={() => navigate(`/admin/payments/receipts?receiptId=${typeof loadedPayment.receiptId === 'string' ? loadedPayment.receiptId : loadedPayment.receiptId?._id}`)}>Payment receipt and delivery history</button>}
         {isView && id && (
           <button
