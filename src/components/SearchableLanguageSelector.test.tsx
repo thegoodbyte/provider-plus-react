@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SearchableLanguageSelector from './SearchableLanguageSelector';
 import { languagesApi } from '../services/api';
 
@@ -36,4 +36,29 @@ describe('SearchableLanguageSelector', () => {
     fireEvent.click(screen.getByRole('button'));
     expect(await screen.findByRole('button', { name: 'Other' })).toBeInTheDocument();
   });
+});
+
+it('displays legacy Czech aliases and retains disabled saved values', async () => {
+  const view = render(<SearchableLanguageSelector value="cs-CZ" onChange={jest.fn()} />);
+  expect(await screen.findByText('Czech')).toBeInTheDocument();
+  view.rerender(<SearchableLanguageSelector value="de" onChange={jest.fn()} />);
+  expect(screen.getByText('DE · current')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button'));
+  expect(screen.queryByRole('button', { name: 'German' })).not.toBeInTheDocument();
+});
+it('refreshes mounted selectors after settings changes', async () => {
+  render(<SearchableLanguageSelector onChange={jest.fn()} />);
+  await waitFor(() => expect(languagesApi.getActive).toHaveBeenCalled());
+  (languagesApi.getActive as jest.Mock).mockResolvedValue({ data: [{ code: 'de', name: 'German' }] });
+  fireEvent(window, new Event('languages-updated'));
+  fireEvent.click(screen.getByRole('button'));
+  expect(await screen.findByRole('button', { name: 'German' })).toBeInTheDocument();
+});
+it('shows an actionable retry if language loading fails', async () => {
+  (languagesApi.getActive as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+  render(<SearchableLanguageSelector onChange={jest.fn()} />);
+  fireEvent.click(screen.getByRole('button'));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not load languages');
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByRole('button', { name: 'Polish' })).toBeInTheDocument();
 });

@@ -47,7 +47,7 @@ const LanguagesSettings: React.FC = () => {
 
   return <div className="payment-types-settings">
     <h3>Languages</h3>
-    <p>Controls which languages appear everywhere a client/document language can be chosen -- client records, questionnaires, contracts, referral partner notifications. Codes are permanent; disable a language instead of deleting it. "Other" is always available as a fallback and is not listed here.</p>
+    <p>Manage language choices for client records and referral notifications. Codes are permanent; disable a language instead of deleting it. Existing records keep their language. Adding a language does not create translations: document and email content still depends on available templates. "Other" remains a client fallback.</p>
     {error && <div className="error-message">{error}</div>}
     {loading ? <p>Loading languages…</p> : <div className="payment-type-list">
       {languages.map((item, index) => (

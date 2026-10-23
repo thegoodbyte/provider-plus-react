@@ -21,15 +21,17 @@ const SearchableLanguageSelector: React.FC<SearchableLanguageSelectorProps> = ({
   placeholder = 'Select language',
   id,
 }) => {
-  const { options: activeLanguages } = useActiveLanguages();
+  const { options: activeLanguages, error, reload } = useActiveLanguages();
   const options = [...activeLanguages, OTHER_OPTION];
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const normalizedValue = value?.toLowerCase();
-  const selected = options.find((option) => option.code === normalizedValue);
+  const baseValue = value?.trim().toLowerCase().split(/[-_]/)[0];
+  const normalizedValue = baseValue === 'cs' ? 'cz' : baseValue;
+  const selected = options.find((option) => option.code === normalizedValue)
+    || (normalizedValue ? { code: normalizedValue, label: `${normalizedValue.toUpperCase()} · current` } : undefined);
   const query = searchQuery.trim().toLowerCase();
   const filtered = query
     ? options.filter((option) => option.label.toLowerCase().includes(query) || option.code.toLowerCase().includes(query))
@@ -76,6 +78,7 @@ const SearchableLanguageSelector: React.FC<SearchableLanguageSelectorProps> = ({
             />
           </div>
           <div className="max-h-48 overflow-y-auto">
+            {error && <div role="alert" className="px-3 py-2 text-sm">Could not load languages. <button type="button" onClick={reload}>Retry</button></div>}
             {filtered.length > 0 ? (
               filtered.map((option) => (
                 <button

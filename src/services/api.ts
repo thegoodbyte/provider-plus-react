@@ -538,17 +538,19 @@ export type LanguageOption = { _id: string; code: string; name: string; active: 
 // Settings -> Languages is the only place that adds/disables one; every
 // picker elsewhere reads from here instead of hardcoding its own list.
 export const languagesApi = {
-  // Unauthenticated on the API side -- safe to call from any picker,
-  // including public client-facing forms. Reference data, rarely edited.
   getActive: () => cachedGet<LanguageOption[]>('languages:active', () => api.get<LanguageOption[]>('/languages/active'), 300000),
   getAll: () => api.get<LanguageOption[]>('/languages'),
-  create: (data: { code: string; name: string; sortOrder?: number }) => {
+  create: async (data: { code: string; name: string; sortOrder?: number }) => {
+    const response = await api.post<LanguageOption>('/languages', data);
     cacheService.clearPattern('languages:');
-    return api.post<LanguageOption>('/languages', data);
+    window.dispatchEvent(new Event('languages-updated'));
+    return response;
   },
-  update: (code: string, data: { name?: string; active?: boolean; sortOrder?: number }) => {
+  update: async (code: string, data: { name?: string; active?: boolean; sortOrder?: number }) => {
+    const response = await api.patch<LanguageOption>(`/languages/${encodeURIComponent(code)}`, data);
     cacheService.clearPattern('languages:');
-    return api.patch<LanguageOption>(`/languages/${encodeURIComponent(code)}`, data);
+    window.dispatchEvent(new Event('languages-updated'));
+    return response;
   },
 };
 
