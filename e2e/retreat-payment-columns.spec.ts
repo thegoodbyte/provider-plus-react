@@ -26,6 +26,7 @@ for(const width of [1440,390])test(`retreat payment columns keep ledger balances
  await expect(column.getByText('850 PLN',{exact:true})).toBeVisible();
  await expect(column.getByText('Synthetic deposit',{exact:true})).toBeVisible();
  await expect(column.getByRole('link',{name:'#1900'})).toHaveAttribute('href','/admin/clients/c1');
+ await column.scrollIntoViewIfNeeded();await expect(column).toBeInViewport();
  await page.screenshot({path:`../payment-columns-${width}.png`,fullPage:true});
  await page.getByRole('button',{name:'List',exact:true}).click();await expect(page.getByText('Transaction ID',{exact:true})).toBeVisible();expect(errors).toEqual([]);
 });
