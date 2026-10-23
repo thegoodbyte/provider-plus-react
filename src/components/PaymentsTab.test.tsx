@@ -97,3 +97,19 @@ it('PPVC-900: switching back to List restores the flat table', async () => {
   fireEvent.click(screen.getByRole('button', { name: /List/ }));
   expect(await screen.findByText('Transaction ID')).toBeInTheDocument();
 });
+
+it('keeps different booking currencies visible in one client column and recomputes the combined state', async () => {
+  (bookingsApi.getByRetreatWithDetails as jest.Mock).mockResolvedValue({ data: [
+    bookings[0], { ...bookings[0], _id: 'b3', totalAmount: 200, amountPaid: 300 },
+    { ...bookings[0], _id: 'b4', currency: 'PLN', totalAmount: 850, amountPaid: 0 },
+  ] });
+  renderTab(); await screen.findByText('Transaction ID');
+  fireEvent.click(screen.getByRole('button', { name: /Columns/ }));
+  const column = screen.getByText('Eva Novak').closest('.payment-column') as HTMLElement;
+  expect(within(column).getByText('Agreed: 1,200 EUR')).toBeInTheDocument();
+  expect(within(column).getByText('Agreed: 850 PLN')).toBeInTheDocument();
+  expect(within(column).getByText('400 EUR')).toBeInTheDocument();
+  expect(within(column).getByText('100 EUR')).toBeInTheDocument();
+  expect(within(column).getByText('850 PLN')).toBeInTheDocument();
+  expect(within(column).getByText('partial')).toBeInTheDocument();
+});

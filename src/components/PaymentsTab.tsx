@@ -261,12 +261,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
       clientId: string;
       clientDisplayId?: number;
       clientName: string;
-      currency: string;
-      totalAgreed: number;
-      netPaid: number;
-      balance: number;
-      overpayment: number;
-      state: string;
+      totals: Record<string, { currency: string; totalAgreed: number; netPaid: number; balance: number; overpayment: number; state: string }>;
       payments: Payment[];
     };
 
@@ -281,29 +276,25 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         : 'Unknown Client';
       const financial = bookingFinancialSummary(booking);
 
-      const existing = columnsByClient.get(clientId);
-      if (existing && existing.currency === financial.currency) {
-        // Same client has more than one booking on this retreat in the same currency —
-        // sum the already-computed per-booking totals rather than re-deriving them.
-        existing.totalAgreed += financial.price;
-        existing.netPaid += financial.netPaid;
-        existing.balance += financial.balance;
-        existing.overpayment += financial.overpayment;
-      } else if (!existing) {
-        columnsByClient.set(clientId, {
-          key: clientId,
-          clientId,
-          clientDisplayId: clientObj?.display_id,
-          clientName,
-          currency: financial.currency,
-          totalAgreed: financial.price,
-          netPaid: financial.netPaid,
-          balance: financial.balance,
-          overpayment: financial.overpayment,
-          state: financial.state,
-          payments: []
-        });
+      let column = columnsByClient.get(clientId);
+      if (!column) {
+        column = { key: clientId, clientId, clientDisplayId: clientObj?.display_id, clientName, totals: {}, payments: [] };
+        columnsByClient.set(clientId, column);
       }
+      const total = column.totals[financial.currency] ||= {
+        currency: financial.currency, totalAgreed: 0, netPaid: 0, balance: 0, overpayment: 0, state: 'unpaid'
+      };
+      // Keep each agreement currency separate. An overpayment on one booking
+      // must not silently settle another booking's outstanding balance.
+      total.totalAgreed += financial.price;
+      total.netPaid += financial.netPaid;
+      total.balance += financial.balance;
+      total.overpayment += financial.overpayment;
+      total.state = total.state === 'unreconciled' || financial.state === 'unreconciled'
+        ? 'unreconciled' : total.balance > 0.005
+          ? total.netPaid > 0 ? 'partial' : 'unpaid'
+          : total.overpayment > 0.005 ? 'overpaid' : 'paid';
+
     });
 
     payments.forEach((payment: any) => {
@@ -321,12 +312,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
           clientName: clientObj
             ? `${clientObj.firstName || ''} ${clientObj.lastName || ''}`.trim() || 'Unknown Client'
             : 'Unknown Client',
-          currency: payment.currency,
-          totalAgreed: 0,
-          netPaid: 0,
-          balance: 0,
-          overpayment: 0,
-          state: 'unpaid',
+          totals: {},
           payments: []
         };
         columnsByClient.set(clientId, column);
@@ -732,7 +718,8 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                       <span className="payment-column-client-name">{column.clientName}</span>
                     </div>
                     <div className="payment-column-total">
-                      Agreed: {formatCurrency(column.totalAgreed, column.currency)}
+                      {Object.values(column.totals).map(total => <div key={total.currency}>Agreed: {formatCurrency(total.totalAgreed, total.currency)}</div>)}
+                      {Object.keys(column.totals).length === 0 && 'No booking agreement found'}
                     </div>
                   </div>
 
@@ -763,21 +750,16 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                   </div>
 
                   <div className="payment-column-footer">
-                    <div className="payment-column-footer-row">
-                      <span>Paid</span>
-                      <span>{formatCurrency(column.netPaid, column.currency)}</span>
-                    </div>
-                    <div className="payment-column-footer-row">
-                      <span>{column.overpayment > 0 ? 'Overpaid' : 'Balance'}</span>
-                      <span>
-                        {column.overpayment > 0
-                          ? formatCurrency(column.overpayment, column.currency)
-                          : formatCurrency(column.balance, column.currency)}
-                      </span>
-                    </div>
-                    <span className={`payment-column-state payment-column-state-${column.state}`}>
-                      {column.state}
-                    </span>
+                    {Object.values(column.totals).map(total => (
+                      <div key={total.currency}>
+                        <div className="payment-column-footer-row"><span>Paid</span><span>{formatCurrency(total.netPaid, total.currency)}</span></div>
+                        <div className="payment-column-footer-row"><span>Balance</span><span>{formatCurrency(total.balance, total.currency)}</span></div>
+                        {total.overpayment > 0 && <div className="payment-column-footer-row"><span>Overpaid</span><span>{formatCurrency(total.overpayment, total.currency)}</span></div>}
+                        <span className={`payment-column-state payment-column-state-${total.state}`}>{total.state}</span>
+                      </div>
+                    ))}
+                    {Object.keys(column.totals).length === 0 && <span>Booking balance unavailable</span>}
+
                   </div>
                 </div>
               ))}
