@@ -220,3 +220,23 @@ it('finds booking-review cases with actual request and existing-booking links wi
  expect(screen.getByRole('link',{name:'Booking #1908 · confirmed'})).toHaveAttribute('href','/admin/bookings/booking-live');expect(screen.getByText('#1907')).toBeInTheDocument();expect(screen.getByText('Review booking creation')).toBeInTheDocument();
  expect(api.reconcile).not.toHaveBeenCalled();expect(api.create).not.toHaveBeenCalled();expect(bookingsApi.getAll).not.toHaveBeenCalled();
 });
+
+it('shows scratchpad, payment and booking numbers with explicit navigation links',async()=>{
+  api.list.mockResolvedValue({data:{...snapshot,items:[{...row,display_id:919,status:'converted',payment:{_id:'pay-919',display_id:1202,bookingId:'book-919',booking:{_id:'book-919',bookingNumber:1333}}}]}} as any);
+  mount();
+  expect(await screen.findByRole('link',{name:'SP-919'})).toHaveAttribute('href','/admin/payments/scratchpad/receipt');
+  expect(screen.getByRole('link',{name:'#1202'})).toHaveAttribute('href','/admin/payments/pay-919');
+  expect(screen.getByRole('link',{name:'#1333'})).toHaveAttribute('href','/admin/bookings/book-919');
+  expect(api.reconcile).not.toHaveBeenCalled();
+});
+it('offers booking linking for a payment with no booking, without claiming a booking exists',async()=>{
+  api.list.mockResolvedValue({data:{...snapshot,items:[{...row,display_id:920,status:'converted',payment:{_id:'unbooked-payment',display_id:1203}}]}} as any);
+  mount();expect(await screen.findByRole('link',{name:'Link booking'})).toHaveAttribute('href','/admin/payments/unbooked-payment');
+  expect(api.reconcile).not.toHaveBeenCalled();
+});
+it('opens the existing-payment review flow directly from the grid',async()=>{
+  mount();fireEvent.click(await screen.findByRole('button',{name:'Link payment',exact:true}));
+  expect(await screen.findByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();
+  expect(screen.getByLabelText('I reviewed the receipt and selected relationships.')).toBeInTheDocument();
+  expect(api.reconcile).not.toHaveBeenCalled();
+});

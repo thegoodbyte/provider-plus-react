@@ -718,6 +718,8 @@ export interface ExpenseSummary {
 }
 
 export interface Payment {
+  sourceScratchpadId?: string | { _id: string; display_id?: number };
+
   _id?: string;
   receiptId?: string | PaymentReceipt;
   display_id?: number;

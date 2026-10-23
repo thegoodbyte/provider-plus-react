@@ -102,5 +102,11 @@ test('records EUR received against a PLN request with a confirmed PLN equivalent
 test('links a payment back to its source scratchpad receipt', async () => {
  mock(paymentsApi.getOne).mockResolvedValue({ data: { _id: 'p1', display_id: 1002, clientId: 'c1', amount: 150, currency: 'EUR', status: 'completed', paymentMethod: 'cash', paymentDate: '2026-09-16', sourceScratchpadId: 'sp1' } });
  view('/admin/payments/p1/edit');
- expect(await screen.findByRole('link', { name: 'Source scratchpad receipt' })).toHaveAttribute('href', '/admin/payments/scratchpad/sp1');
+ expect(await screen.findByRole('link', { name: 'Source scratchpad receipt sp1' })).toHaveAttribute('href', '/admin/payments/scratchpad/sp1');
+});
+
+test('shows the stable source scratchpad number on the payment record', async () => {
+ mock(paymentsApi.getOne).mockResolvedValue({ data: { _id:'p1',display_id:1002,clientId:'c1',amount:150,currency:'EUR',status:'completed',paymentMethod:'cash',paymentDate:'2026-09-16',sourceScratchpadId:{_id:'sp1',display_id:919} } });
+ view('/admin/payments/p1/edit');
+ expect(await screen.findByRole('link',{name:'Source scratchpad receipt SP-919'})).toHaveAttribute('href','/admin/payments/scratchpad/sp1');
 });

@@ -1,0 +1,33 @@
+import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
+const fixturePath=process.env.SCRATCHPAD_FIXTURE_PATH;
+const f=fixturePath?JSON.parse(fs.readFileSync(fixturePath,'utf8')):{};
+test.skip(!fixturePath,'Requires disposable scratchpad Mongo/API fixture');
+test.describe.configure({mode:'serial'});
+for(const width of [1440,390])test(`scratchpad/payment/booking ID navigation and reviewed linking at ${width}px`,async({page,request})=>{
+ await request.post(f.url+'/fixture/reset');const headers={Authorization:'Bearer '+f.token};
+ const capture=await request.post(f.url+'/payment-scratchpad',{headers,data:{captureKey:randomUUID(),receivedDate:'2026-10-16',amount:'5100.00',currency:'PLN',provider:'csob',account:'ČSOB PLN account',payer:'PPVC919 trace',requestNumber:'001243',reference:'PPVC919 trace'}});
+ expect(capture.status()).toBe(201);const row=await capture.json();expect(row.display_id).toBeGreaterThan(0);
+ const snapshot=async()=>await(await request.get(f.url+'/fixture/snapshot')).json();const before=await snapshot();
+ await page.setViewportSize({width,height:980});await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'staff',role:'admin',email:'scratchpad@example.invalid'}));},f.token);
+ await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const u=new URL(r.url());
+  if(u.pathname.startsWith('/payment-scratchpad')||u.pathname.startsWith('/payments/')||['/clients','/bookings','/payment-requests'].includes(u.pathname)){const response=await route.fetch({url:f.url+u.pathname+u.search});return route.fulfill({response});}
+  if(u.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});if(u.pathname.includes('config-summary'))return route.fulfill({json:{}});return route.fulfill({json:[]});
+ });
+ await page.goto('/admin/payments/scratchpad?status=all&search=SP-'+row.display_id);
+ const table=page.getByRole('table',{name:'Receipts',exact:true});await expect(table.getByRole('link',{name:'SP-'+row.display_id,exact:true})).toBeVisible();
+ await table.getByRole('button',{name:'Link payment',exact:true}).click();await expect(page.getByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();
+ expect(await snapshot()).toEqual(before);
+ await page.getByRole('checkbox',{name:'I reviewed the receipt and selected relationships.'}).check();
+ const account=page.getByRole('checkbox',{name:/account/i});if(await account.count())await account.check();
+ await page.getByRole('button',{name:'Confirm link to existing payment'}).click();await expect(table.getByRole('link',{name:'#1904',exact:true})).toBeVisible();
+ await expect(table.getByRole('link',{name:'#1400',exact:true})).toHaveAttribute('href','/admin/bookings/'+f.bookingId);
+ const after=await snapshot();expect(after.payments).toHaveLength(before.payments.length);expect(after.receipts).toHaveLength(before.receipts.length);expect(after.bookings).toEqual(before.bookings);
+ await table.getByRole('link',{name:'#1904',exact:true}).click();
+ await expect(page.getByRole('link',{name:'Source scratchpad receipt SP-'+row.display_id,exact:true})).toHaveAttribute('href','/admin/payments/scratchpad/'+row._id);
+ await page.getByRole('link',{name:'Source scratchpad receipt SP-'+row.display_id,exact:true}).click();
+ await expect(page.getByText('Scratchpad ID: SP-'+row.display_id,{exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'View booking #1400',exact:true})).toHaveAttribute('href','/admin/bookings/'+f.bookingId);
+ await page.screenshot({path:`../ppvc-919-validation/links-${width}.png`,fullPage:true});
+ expect((await snapshot()).payments).toEqual(after.payments);
+});
