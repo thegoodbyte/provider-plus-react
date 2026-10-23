@@ -124,7 +124,7 @@ const mapArtifactsToRecords = (artifacts: MedicalArtifact[]): MedicalRecord[] =>
     ceremonyId: artifact.ceremonyId,
     recordType: artifactToRecordType(artifact),
     testType: artifactToTestType(artifact),
-    testDate: artifact.data?.testDate || artifact.receivedAt || artifact.createdAt || new Date(),
+    testDate: artifact.data?.testDate || '',
     uploadDate: artifact.receivedAt || artifact.createdAt || new Date(),
     version: artifact.version || 1,
     status: artifactStatusToTestStatus(artifact.status),
@@ -366,7 +366,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
             )}
           </div>
           <div className="text-sm text-gray-600 mt-1">
-            Test Date: {dayjs(record.testDate).format('MM/DD/YYYY')}
+            Test Date: {record.testDate ? dayjs(record.testDate).format('MM/DD/YYYY') : 'Not recorded'}
           </div>
           <div className="text-xs text-gray-500 mt-1">
             {getRetreatLabel(record.retreatId)}

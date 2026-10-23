@@ -46,3 +46,8 @@ it("rejects a late result belonging to a previously selected booking", async () 
     expect(screen.queryByText("Accepted")).not.toBeInTheDocument(),
   );
 });
+
+it('keeps caution visible separately from a missing test date',async()=>{
+ (ekgRequirementApi.get as jest.Mock).mockResolvedValue({data:{state:'validity_unknown',label:'Test date needs confirmation',validity:'unknown',satisfied:false,latestReview:{result:'caution'}}});
+ render(<EkgRequirementStatus bookingId="b"/>);await screen.findByText('Test date needs confirmation');expect(screen.getByText(/Medical review: Accepted — caution/)).toBeInTheDocument();
+});

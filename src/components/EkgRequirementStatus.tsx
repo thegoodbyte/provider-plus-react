@@ -53,6 +53,7 @@ export default function EkgRequirementStatus({
       >
         {loading ? "Loading EKG status…" : p?.label || "Status unavailable"}
       </p>
+      {p?.latestReview && p.state === "validity_unknown" && <p>Medical review: {p.latestReview.result === "caution" ? "Accepted — caution" : p.latestReview.result === "accepted" ? "Accepted" : p.latestReview.result}. Confirm the test date before treating this requirement as satisfied.</p>}
       {p?.dueDate && <p>Due: {new Date(p.dueDate).toLocaleDateString()}</p>}
       {p?.latestEvidence && (
         <p>

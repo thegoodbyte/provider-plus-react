@@ -129,7 +129,7 @@ const getMedicalRequirementLabel = (state: BookingMedicalReviewRequirement['stat
     case 'rejected':
       return 'Rejected';
     default:
-      return ({uploaded:'Uploaded',awaiting_review:'Awaiting review',accepted:'Accepted',correction_needed:'Correction needed',declined:'Declined',expired:'Expired',waived:'Waived',not_applicable:'Not applicable'} as Record<string,string>)[state] || state;
+      return ({uploaded:'Uploaded',awaiting_review:'Awaiting review',accepted:'Accepted',correction_needed:'Correction needed',declined:'Declined',expired:'Expired',validity_unknown:'Test date needs confirmation',waived:'Waived',not_applicable:'Not applicable'} as Record<string,string>)[state] || state;
   }
 };
 
