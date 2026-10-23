@@ -454,8 +454,8 @@ const PaymentEditorPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 min-w-0">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex w-full items-center gap-4 min-w-0 sm:w-auto">
           <button
             type="button"
             onClick={() => navigate(returnTo || defaultReturnPath)}
