@@ -1,3 +1,4 @@
+import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
 import InvoiceVisitHistory from './InvoiceVisitHistory';
 import React, { useEffect, useState } from 'react';
@@ -246,6 +247,7 @@ const PaymentRequestEditorPage: React.FC = () => {
           <div className="mb-6">
             <div className="text-sm font-semibold uppercase tracking-wide text-gray-500">Payment Request</div>
             <h1 className="mt-1 text-3xl font-semibold text-gray-900">Invoice {invoiceNumber}</h1>
+            <div className="mt-3"><PaymentRequestBookingLinks request={paymentRequest} /></div>
           </div>
 
           {paymentRequest.status === 'cancelled' && (

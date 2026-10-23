@@ -80,3 +80,16 @@ it('allows cancelling an invoice (storno) from the grid actions', async () => {
   await screen.findByText('Invoice cancelled (storno).');
   expect(paymentRequestsApi.cancel).toHaveBeenCalledWith('req-1', 'Client did not pay');
 });
+
+ it('shows confirmed single/joint booking numbers and client booking shortcuts', async () => {
+  (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [
+    { _id: 'one', invoiceNumber: 'SINGLE', clientId: 'client-1', bookingId: { _id: 'book-1', bookingNumber: 1907 } },
+    { _id: 'joint', invoiceNumber: 'JOINT', lineItems: [{ bookingId: { _id: 'book-2', bookingNumber: 1908 } }, { bookingId: { _id: 'book-3', bookingNumber: 1909 } }, { bookingId: { _id: 'book-2', bookingNumber: 1908 } }] },
+    { _id: 'none', invoiceNumber: 'UNLINKED', clientId: 'client-2' },
+  ] });mount();
+  expect(await screen.findByRole('link', { name: 'Booking #1907' })).toHaveAttribute('href', '/admin/bookings/book-1');
+  expect(screen.getAllByRole('link', { name: 'Booking #1908' })).toHaveLength(1);
+  expect(screen.getByRole('link', { name: 'Booking #1909' })).toHaveAttribute('href', '/admin/bookings/book-3');
+  expect(screen.getByText('No booking linked')).toBeInTheDocument();
+  expect(screen.getAllByRole('link', { name: 'Client bookings' }).map(link => link.getAttribute('href'))).toEqual(expect.arrayContaining(['/admin/clients/client-1?tab=bookings', '/admin/clients/client-2?tab=bookings']));
+ });

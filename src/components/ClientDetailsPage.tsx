@@ -119,6 +119,7 @@ const ClientDetailsPage: React.FC = () => {
   const [medicalInfo, setMedicalInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'overview');
+  useEffect(() => { setActiveTab(new URLSearchParams(location.search).get('tab') || 'overview'); }, [clientId, location.search]);
   const [error, setError] = useState<string | null>(null);
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
@@ -1664,7 +1665,7 @@ const ClientDetailsPage: React.FC = () => {
 
         {activeTab === 'bookings' && (
           <div>
-            <h2 className="text-lg font-semibold mb-4">Client Bookings</h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Client Bookings</h2><button type="button" className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700" onClick={() => navigate(`/admin/bookings/new?clientId=${encodeURIComponent(clientId || '')}`)}>Add Booking</button></div>
             {bookings.length > 0 ? (
               <div className="space-y-4">
                 {bookings.map((booking: any) => {

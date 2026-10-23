@@ -185,3 +185,11 @@ describe('PaymentRequestEditorPage', () => {
     expect(screen.queryByRole('button', { name: 'Cancel Invoice (Storno)' })).not.toBeInTheDocument();
   });
 });
+
+it('shows the confirmed booking and client bookings link on request details', async () => {
+ (api.get as jest.Mock).mockResolvedValue({data:{items:[],total:0}});
+ (paymentRequestsApi.getOne as jest.Mock).mockResolvedValue({ data: { _id:'req-907', invoiceNumber:'1907', clientId:client1, bookingId:{_id:'booking-907',bookingNumber:1907}, status:'paid', currency:'PLN' } });
+ render(<MemoryRouter initialEntries={['/admin/payment-requests/req-907']}><Routes><Route path="/admin/payment-requests/:id" element={<PaymentRequestEditorPage />} /></Routes></MemoryRouter>);
+ expect((await screen.findAllByRole('link',{name:'Booking #1907'}))[0]).toHaveAttribute('href','/admin/bookings/booking-907');
+ expect(screen.getByRole('link',{name:'Client bookings'})).toHaveAttribute('href','/admin/clients/client-1?tab=bookings');
+});

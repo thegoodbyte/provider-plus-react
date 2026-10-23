@@ -1,3 +1,4 @@
+import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
 import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, Plus, Search as SearchIcon, Send as SendIcon, Settings, Slash, Trash2 } from 'lucide-react';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -343,6 +344,7 @@ const PaymentRequestsGrid: React.FC = () => {
                 <th className="px-4 py-3 text-left">{renderSortableHeader('invoice', 'Invoice #')}</th>
                 <th className="w-44 px-3 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('retreat', 'Retreat')}</th>
+                <th className="px-4 py-3 text-left">Booking</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Request Date')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('paidDate', 'Paid Date')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('requested', 'Requested amount')}</th>
@@ -392,6 +394,7 @@ const PaymentRequestsGrid: React.FC = () => {
                       </div>
                     </td>
                     <td data-label="Retreat" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
+                    <td data-label="Booking" className="px-4 py-4"><PaymentRequestBookingLinks request={request} /></td>
                     <td data-label="Requested on" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {formatCalendarDate(request.paymentDate)}
                     </td>

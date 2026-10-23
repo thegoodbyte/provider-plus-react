@@ -12,3 +12,10 @@ The view uses the actual payment/request relationship, not a captured request-nu
 The overview totals retain their existing meaning: logged receipts across the current ordinary filters, independent of the selected status view. They are not the booking-review subtotal or bank balance.
 
 Validation: full API/frontend unit suites, both production builds, API contract check, real Mongo/Nest integration (refund exclusions, pagination, resolution and read-only snapshots), and Chromium desktop/mobile tests using disposable synthetic records. No production data was used or changed.
+
+## Follow-up: payment request links and client-prefilled creation
+
+- Payment requests list now has a Booking column. Both the list and request details show confirmed booking numbers as links; joint-request line items show each distinct linked booking. Unlinked requests explicitly say **No booking linked**. Raw legacy IDs use **View linked booking** rather than inventing a number.
+- Select **Client bookings** on a payment request or scratchpad Booking review row to open that client's **Bookings** tab.
+- Select **Add Booking** on the client Bookings tab. The existing booking form loads with that client preselected (including their current client record in the picker). Choose the retreat and, where applicable, the payment request, review the details, then save explicitly.
+- The client ID stays in the URL so a browser reload preserves the preselection. No personal information is copied into the URL. Opening these pages never creates a booking or attaches payments.
