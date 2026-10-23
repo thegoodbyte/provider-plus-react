@@ -133,7 +133,8 @@ export default function ReferralNotificationSettingsPage({ partners, onPartnerSa
             {NOTIFICATION_KINDS.map(kind => <td key={kind.partnerFlag} className="py-3 pr-3">
               <input type="checkbox" aria-label={`Notify ${item.name} on ${kind.columnLabel.toLowerCase()}`} checked={item[kind.partnerFlag] === true} disabled={savingPartnerId === item._id} onChange={event => updatePartner(item, { [kind.partnerFlag]: event.target.checked } as Partial<Referral>)} className="h-5 w-5" />
             </td>)}
-            <td className="py-3 pr-3"><select aria-label={`Notification language for ${item.name}`} className="rounded-lg border border-slate-300 bg-white p-2" value={item.assignmentNotificationLanguage || 'en'} disabled={savingPartnerId === item._id} onChange={event => updatePartner(item, { assignmentNotificationLanguage: event.target.value as any })}>
+            <td className="py-3 pr-3"><select aria-label={`Notification language for ${item.name}`} className="rounded-lg border border-slate-300 bg-white p-2" value={(item.assignmentNotificationLanguage || 'en').toLowerCase().replace(/^cs$/, 'cz')} disabled={savingPartnerId === item._id} onChange={event => updatePartner(item, { assignmentNotificationLanguage: event.target.value as any })}>
+              {!languages.some(language => language.code === (item.assignmentNotificationLanguage || 'en').toLowerCase().replace(/^cs$/, 'cz')) && <option value={(item.assignmentNotificationLanguage || 'en').toLowerCase().replace(/^cs$/, 'cz')}>{(item.assignmentNotificationLanguage || 'en').toUpperCase()} · current</option>}
               {languages.map(language => <option key={language.code} value={language.code}>{language.label}</option>)}
             </select></td>
           </tr>)}</tbody>
