@@ -83,6 +83,7 @@ interface BookingEditorFormProps {
   initialRetreats?: Retreat[];
   initialBookingData?: Partial<BookingFormData>;
   lockedClientId?: string;
+  deferPaymentLinking?: boolean;
   onCancel: () => void;
   onSaved: (booking?: any) => void;
   submitLabel?: string;
@@ -166,6 +167,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   initialRetreats,
   initialBookingData,
   lockedClientId,
+  deferPaymentLinking,
   onCancel,
   onSaved,
   submitLabel,
@@ -315,6 +317,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   };
 
   const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
+    if (deferPaymentLinking) return;
     const paymentRetreatId = paymentRequest?.retreatId ? resolveId(paymentRequest.retreatId) : '';
     const retreatDefaults = retreatBookingDateTimes(retreats.find((retreat) => retreat._id === paymentRetreatId));
     setSelectedRequest(paymentRequest);
@@ -405,7 +408,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
         clientId: formData.clientId,
         retreatId: formData.retreatId,
-        paymentRequestId: formData.paymentRequestId || (mode === 'edit' ? null : undefined),
+        paymentRequestId: deferPaymentLinking ? undefined : formData.paymentRequestId || (mode === 'edit' ? null : undefined),
         totalAmount: Number(formData.totalAmount || 0),
         currency: formData.currency,
         status: formData.status,
@@ -714,7 +717,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           </div>
         </div>
 
-        <div>
+        {!deferPaymentLinking && <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Payment request</label>
           <SearchablePaymentRequestSelect
             selectedPaymentRequestId={formData.paymentRequestId}
@@ -747,7 +750,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               ))}
             </div>
           ) : null}
-        </div>
+        </div>}
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>

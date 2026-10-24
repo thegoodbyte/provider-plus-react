@@ -21,7 +21,7 @@ for(const width of [1440,390])for(const flow of ['edit-create','add-existing'])t
  let targetBooking:string;
  if(flow==='edit-create'){
   await expect(page.getByText('No bookings for this client yet.')).toBeVisible();await expect(page.getByRole('spinbutton',{name:'Amount',exact:true})).toHaveValue('3800');
-  await page.getByRole('button',{name:'Create booking for this client',exact:true}).click();let dialog=page.getByRole('dialog');await expect(dialog.getByLabel('Booking client')).toHaveText('Synthetic Client');
+  await page.getByRole('button',{name:'Create booking for this client',exact:true}).click();let dialog=page.getByRole('dialog');await expect(dialog.getByLabel('Booking client')).toHaveText('Synthetic Client');await expect(dialog.getByText('Payment request',{exact:true})).toHaveCount(0);
   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();expect(await snapshot()).toEqual(before);
   await page.getByRole('button',{name:'Create booking for this client',exact:true}).click();dialog=page.getByRole('dialog');
   await dialog.getByPlaceholder('Search and select a retreat...').fill('Synthetic');await dialog.getByText('Synthetic Retreat (SYN902)',{exact:true}).click();

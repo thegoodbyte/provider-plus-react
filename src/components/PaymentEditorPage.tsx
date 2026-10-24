@@ -876,7 +876,7 @@ const PaymentEditorPage: React.FC = () => {
         </form>
         {isExisting && loadedPayment && <RelatedRecords records={recordRelations(loadedPayment)} />}
         <Modal title="Create booking for this client" open={Boolean(newBookingContext)} footer={null} width={900} destroyOnHidden maskClosable={false} onCancel={() => setNewBookingContext(null)}>
-          {newBookingContext && <BookingEditorForm mode="create" initialBookingData={newBookingContext} lockedClientId={newBookingContext.clientId} onCancel={() => setNewBookingContext(null)} onSaved={bookingCreated} submitLabel="Create and select booking" />}
+          {newBookingContext && <BookingEditorForm mode="create" initialBookingData={newBookingContext} lockedClientId={newBookingContext.clientId} deferPaymentLinking onCancel={() => setNewBookingContext(null)} onSaved={bookingCreated} submitLabel="Create and select booking" />}
         </Modal>
       </div>
     </div>
