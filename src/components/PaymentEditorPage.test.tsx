@@ -9,6 +9,7 @@ jest.mock('../services/api', () => ({
   configSummaryApi: { get: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getOneFresh: jest.fn() }, serviceRequestsApi: { get: jest.fn() },
   paymentsApi: { getOne: jest.fn(), getAll: jest.fn(), getNextDisplayId: jest.fn(), conversionQuote: jest.fn(), convert: jest.fn(), create: jest.fn(), update: jest.fn() },
 }));
+jest.mock('./BookingEditorForm',()=> (props: any)=><div><span>Booking prefill: {props.initialBookingData.clientId} / {String(props.initialBookingData.paymentPlanEnabled)}</span><button type="button" onClick={()=>props.onSaved({_id:'new-booking',clientId:props.initialBookingData.clientId,retreatId:'r1',bookingNumber:920,totalAmount:9000,currency:'PLN'})}>Create synthetic booking</button><button type="button" onClick={props.onCancel}>Cancel synthetic booking</button></div>);
 jest.mock('./SearchableClientSelect', () => (props: any) => <select aria-label="Client" value={props.selectedClientId} onChange={e => props.onClientSelect(e.target.value)}><option value="">Choose</option><option value="c1">Anna</option></select>);
 jest.mock('./SearchableRetreatSelect', () => () => <div>Retreat selector</div>);
 jest.mock('./SearchablePaymentRequestSelect', () => () => <div>Request selector</div>);
@@ -109,4 +110,32 @@ test('shows the stable source scratchpad number on the payment record', async ()
  mock(paymentsApi.getOne).mockResolvedValue({ data: { _id:'p1',display_id:1002,clientId:'c1',amount:150,currency:'EUR',status:'completed',paymentMethod:'cash',paymentDate:'2026-09-16',sourceScratchpadId:{_id:'sp1',display_id:919} } });
  view('/admin/payments/p1/edit');
  expect(await screen.findByRole('link',{name:'Source scratchpad receipt SP-919'})).toHaveAttribute('href','/admin/payments/scratchpad/sp1');
+});
+
+
+test('shows a client-filtered booking picker even for a new client-only payment',async()=>{
+ mock(bookingsApi.getAll).mockResolvedValue({data:[{_id:'b1',clientId:'c1',bookingNumber:12,retreatId:'r1',currency:'PLN',totalAmount:9000},{_id:'other',clientId:'c2',bookingNumber:99},{_id:'unknown',bookingNumber:88}]});
+ view();await screen.findByLabelText('Amount');
+ expect(screen.getByLabelText('Booking')).toBeInTheDocument();
+ expect(screen.getByRole('option',{name:'12'})).toBeInTheDocument();expect(screen.queryByRole('option',{name:'99'})).not.toBeInTheDocument();expect(screen.queryByRole('option',{name:'88'})).not.toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'150'}});fireEvent.change(screen.getByLabelText('Booking'),{target:{value:'b1'}});
+ expect(screen.getByLabelText('Amount')).toHaveValue(150);expect(screen.getByLabelText('Currency')).toHaveValue('EUR');
+ expect(screen.getByRole('checkbox',{name:'Client payment (no booking yet)'})).not.toBeChecked();
+});
+test('inline booking creation selects the saved booking without submitting or losing the payment draft',async()=>{
+ view();await screen.findByLabelText('Amount');
+ fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'3800'}});fireEvent.change(screen.getByLabelText('Currency'),{target:{value:'PLN'}});fireEvent.change(screen.getByLabelText('Purpose *'),{target:{value:'Deposit original receipt'}});
+ fireEvent.click(screen.getByRole('button',{name:'Create booking for this client'}));
+ expect(await screen.findByText('Booking prefill: c1 / false')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Create synthetic booking'}));
+ await screen.findByText(/Booking #920 created and selected/);
+ expect(screen.getByLabelText('Booking')).toHaveValue('new-booking');expect(screen.getByLabelText('Amount')).toHaveValue(3800);expect(screen.getByLabelText('Currency')).toHaveValue('PLN');
+ expect(paymentsApi.create).not.toHaveBeenCalled();expect(paymentsApi.update).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Add Payment'}));
+ await waitFor(()=>expect(paymentsApi.create).toHaveBeenCalledWith(expect.objectContaining({clientId:'c1',bookingId:'new-booking',retreatId:'r1',amount:3800,currency:'PLN',description:'Deposit original receipt'})));
+});
+test('cancelling inline booking creation leaves the original payment draft unchanged',async()=>{
+ view();await screen.findByLabelText('Amount');fireEvent.change(screen.getByLabelText('Amount'),{target:{value:'155'}});
+ fireEvent.click(screen.getByRole('button',{name:'Create booking for this client'}));await screen.findByText('Booking prefill: c1 / false');fireEvent.click(screen.getByRole('button',{name:'Cancel synthetic booking'}));
+ expect(screen.getByLabelText('Amount')).toHaveValue(155);expect(screen.getByLabelText('Booking')).toHaveValue('');expect(paymentsApi.create).not.toHaveBeenCalled();
 });

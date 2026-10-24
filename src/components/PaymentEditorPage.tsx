@@ -1,3 +1,5 @@
+import { Modal } from 'antd';
+import BookingEditorForm from './BookingEditorForm';
 import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
 import { ArrowLeft, Save as SaveIcon } from 'lucide-react';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
@@ -96,6 +98,8 @@ const PaymentEditorPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [loadedPayment, setLoadedPayment] = useState<(Payment & { sourceScratchpadId?: string | { _id: string; display_id?: number } }) | null>(null);
   const [reassigningReceipt, setReassigningReceipt] = useState(false);
+  const [newBookingContext, setNewBookingContext] = useState<any>(null);
+  const [bookingNotice, setBookingNotice] = useState('');
   const [clientOnly, setClientOnly] = useState(Boolean(clientIdFromQuery && !bookingIdFromQuery && !paymentRequestIdFromQuery));
   const [formData, setFormData] = useState({
     display_id: '',
@@ -207,15 +211,26 @@ const PaymentEditorPage: React.FC = () => {
   };
 
   const bookingOptions = useMemo(() => {
-    // Search must cover every booking. The selected client/retreat can be stale
-    // or only partially populated; selecting a booking is what establishes the
-    // authoritative client and retreat relationship for this payment.
-    if (!isExisting) return bookings;
-    return bookings.filter((booking) => {
-      const clientId = resolveId(booking.clientId);
-      return !formData.clientId || !clientId || clientId === formData.clientId;
-    });
-  }, [bookings, formData.clientId, isExisting]);
+    if (!formData.clientId) return [];
+    return bookings.filter(booking => resolveId(booking.clientId) === formData.clientId);
+  }, [bookings, formData.clientId]);
+
+  const openBookingCreation = () => {
+    if (!formData.clientId) { setFormError('Select a client before creating a booking.'); return; }
+    setNewBookingContext({ clientId: formData.clientId, retreatId: formData.retreatId || undefined, currency: formData.currency, totalAmount: Number(selectedPaymentRequest?.fullPriceQuote ?? selectedPaymentRequest?.fullPrice) || 0, paymentPlanEnabled: false });
+  };
+  const bookingCreated = (booking: any) => {
+    if (!booking?._id || resolveId(booking.clientId) !== formData.clientId) {
+      setFormError('The booking was saved but could not be selected. Refresh the booking list and review its client before linking.');
+      setNewBookingContext(null); return;
+    }
+    setBookings(current => [...current.filter(item => item._id !== booking._id),booking]);
+    setFormData(current => ({ ...current, bookingId: booking._id, retreatId: resolveId(booking.retreatId) }));
+    setClientOnly(false);
+    setBookingNotice(`Booking #${booking.bookingNumber || booking._id} created and selected. Save the payment to confirm its booking link.`);
+    setFormError('');
+    setNewBookingContext(null);
+  };
 
   const selectedBooking = useMemo(
     () => bookings.find((booking) => booking._id === formData.bookingId),
@@ -328,13 +343,16 @@ const PaymentEditorPage: React.FC = () => {
 
   const handleBookingSelect = (bookingId: string) => {
     const booking = bookings.find((item) => item._id === bookingId);
+    if (bookingId && (!booking || resolveId(booking.clientId) !== formData.clientId)) { setFormError('Choose a booking belonging to the selected client.'); return; }
+    if (bookingId) setClientOnly(false);
+    setBookingNotice('');
     setFormData((prev) => ({
       ...prev,
       bookingId,
       clientId: resolveId(booking?.clientId) || prev.clientId,
       retreatId: resolveId(booking?.retreatId) || prev.retreatId,
-      currency: isExisting ? prev.currency : (booking?.currency as typeof prev.currency) || prev.currency,
-      amount: prev.amount || (booking?.totalAmount ? String(booking.totalAmount) : prev.amount),
+      currency: prev.amount ? prev.currency : (booking?.currency as typeof prev.currency) || prev.currency,
+      amount: prev.amount,
     }));
   };
 
@@ -601,12 +619,12 @@ const PaymentEditorPage: React.FC = () => {
               />
             </div>}
 
-            {!clientOnly && <div className="md:col-span-2">
+            {selectedPaymentRequest?.context !== 'standalone_service' && <div className="md:col-span-2">
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
                 <label className="block text-sm font-medium text-gray-700">Link directly to booking {!formData.paymentRequestId && '*'}</label>
                 <span className="text-xs text-gray-500">A payment request is optional; choose the exact booking here.</span>
               </div>
-              <SearchableBookingSelect
+              {formData.clientId ? <SearchableBookingSelect
                 bookings={bookingOptions}
                 clients={clients}
                 retreats={retreats}
@@ -614,7 +632,13 @@ const PaymentEditorPage: React.FC = () => {
                 onBookingSelect={handleBookingSelect}
                 placeholder="Search booking number, client, or retreat"
                 emptyLabel={formData.paymentRequestId ? 'Booking not created yet' : 'Select the exact booking'}
-              />
+              /> : <p className="text-sm text-gray-600">Select a client to see their bookings.</p>}
+              {!isView && formData.clientId && !isSplitReceipt && <div className="mt-3 flex flex-wrap items-center gap-3">
+                {!bookingOptions.length && <p className="text-sm text-gray-600">No bookings for this client yet.</p>}
+                <button type="button" onClick={openBookingCreation} className="rounded-md border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700">Create booking for this client</button>
+                <p className="text-xs text-gray-500">Your payment draft stays open. Review the booking price separately from the received payment amount.</p>
+              </div>}
+              {bookingNotice && <p role="status" className="mt-3 rounded border border-green-200 bg-green-50 p-3 text-sm">{bookingNotice}</p>}
               {selectedBooking && (
                 <p className="mt-1 text-xs text-gray-500">
                   Payment will count toward booking #{selectedBooking.bookingNumber || selectedBooking._id?.slice(-6)}
@@ -851,6 +875,9 @@ const PaymentEditorPage: React.FC = () => {
           </div>
         </form>
         {isExisting && loadedPayment && <RelatedRecords records={recordRelations(loadedPayment)} />}
+        <Modal title="Create booking for this client" open={Boolean(newBookingContext)} footer={null} width={900} destroyOnHidden maskClosable={false} onCancel={() => setNewBookingContext(null)}>
+          {newBookingContext && <BookingEditorForm mode="create" initialBookingData={newBookingContext} lockedClientId={newBookingContext.clientId} onCancel={() => setNewBookingContext(null)} onSaved={bookingCreated} submitLabel="Create and select booking" />}
+        </Modal>
       </div>
     </div>
   );

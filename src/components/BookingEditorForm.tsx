@@ -82,6 +82,7 @@ interface BookingEditorFormProps {
   initialBooking?: RetreatClient | null;
   initialRetreats?: Retreat[];
   initialBookingData?: Partial<BookingFormData>;
+  lockedClientId?: string;
   onCancel: () => void;
   onSaved: (booking?: any) => void;
   submitLabel?: string;
@@ -164,6 +165,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   initialBooking,
   initialRetreats,
   initialBookingData,
+  lockedClientId,
   onCancel,
   onSaved,
   submitLabel,
@@ -345,6 +347,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   };
 
   const handleClientSelect = (clientId: string) => {
+    if (lockedClientId && clientId !== lockedClientId) return;
     setFormData((prev) => ({
       ...prev,
       clientId,
@@ -395,6 +398,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       setSaving(true);
       const bookingNumberValue = formData.bookingNumber.trim();
       const bookingNumber = bookingNumberValue ? Number(bookingNumberValue) : undefined;
+      if (lockedClientId && formData.clientId !== lockedClientId) throw new Error('The booking client changed. Reopen the booking form.');
       const payload = {
         ...(formData.paymentPlanEnabled === false ? { paymentPlanEnabled: false } : {}),
         ...(authService.getUser()?.role === 'admin' ? { referralAttribution: formData.referralAttribution, referralPartnerId: ['direct', 'influenced'].includes(formData.referralAttribution) ? formData.referralPartnerId : null, referralEvidence: formData.referralEvidence } : {}),
@@ -672,12 +676,12 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Client</label>
-            <SearchableClientSelect
+            {lockedClientId ? <p className="rounded border bg-gray-50 px-3 py-2" aria-label="Booking client">{(() => { const client = clients.find(item => item._id === lockedClientId); return client ? `${client.firstName} ${client.lastName || ''}`.trim() : lockedClientId; })()}</p> : <SearchableClientSelect
               clients={clients}
               selectedClientId={formData.clientId}
               onClientSelect={handleClientSelect}
               placeholder="Search and select a client..."
-            />
+            />}
           </div>
 
           <div>
