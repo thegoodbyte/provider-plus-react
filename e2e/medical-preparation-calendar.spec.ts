@@ -44,6 +44,8 @@ for (const width of [1440, 390]) test(`dated instructions and approval at ${widt
   await expect(page.getByRole('region', { name: 'Preparation calendar' })).toContainText('Supplements');
   await page.getByLabel('Calendar month').fill('2026-10');
   await expect(page.getByRole('region', { name: 'Preparation calendar' })).toContainText('Alcohol');
+  await page.getByRole('button', { name: '2026-10-17: Alcohol', exact: true }).click();
+  await expect(page.getByText('Remain sober per the medical advisor.', { exact: true })).toBeVisible();
   await page.getByRole('region', { name: 'Preparation calendar' }).screenshot({ path: `../ppvc-922-validation/calendar-${width}.png` });
   await request.post(f.url + '/fixture/reschedule', { data: { startDate: '2026-12-17' } });
   const after = await (await request.get(f.url + '/fixture/snapshot')).json();
