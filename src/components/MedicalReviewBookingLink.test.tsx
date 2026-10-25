@@ -36,6 +36,17 @@ beforeEach(() => {
       }),
   );
 });
+it.each([null, [], {}, { bookings: [], documents: [null] }])(
+  "keeps the MRR usable and confirmation disabled when preview data is malformed: %p",
+  async (data) => {
+    (medicalReviewRequestsApi.previewBookingLink as jest.Mock).mockResolvedValue({ data });
+    render(<MemoryRouter><MedicalReviewBookingLink requestId="review" prefix="/admin" onLinked={jest.fn()} /></MemoryRouter>);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Could not preview/);
+    fireEvent.click(screen.getByRole("button", { name: "Link to booking" }));
+    expect(screen.getByRole("button", { name: "Confirm booking link" })).toBeDisabled();
+    expect(medicalReviewRequestsApi.linkBooking).not.toHaveBeenCalled();
+  },
+);
 it("previews the affected documents and requires explicit booking confirmation", async () => {
   const refreshed = jest.fn().mockResolvedValue(undefined);
   (medicalReviewRequestsApi.linkBooking as jest.Mock).mockResolvedValue({

@@ -54,11 +54,23 @@ export default function MedicalReviewBookingLink({
         bookingId || undefined,
       );
       if (current !== generation.current) return;
+      if (
+        !response.data ||
+        !Array.isArray(response.data.bookings) ||
+        !Array.isArray(response.data.documents) ||
+        [...response.data.bookings, ...response.data.documents].some(
+          (item) => !item || typeof item.id !== "string",
+        )
+      ) {
+        throw new Error("Could not preview the booking link. Refresh and retry.");
+      }
       setData(response.data);
       if (response.data.pending) setSelected(response.data.bookingId);
     } catch (err) {
-      if (current === generation.current)
+      if (current === generation.current) {
+        setData(null);
         setError(apiErrorMessage(err, "Could not preview the booking link."));
+      }
     } finally {
       if (current === generation.current) setLoading(false);
     }
