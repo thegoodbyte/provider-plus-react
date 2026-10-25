@@ -30,12 +30,15 @@ for (const width of [1440, 390, 320]) {
       if (url.pathname === '/assistant/tasks-for-today') return json({ retreats: [], tasks: mrr.followUpRequired ? [{ severity: 'high', category: 'review', clientName: 'Dana Babicova', bookingLink: `/admin/medical-review-requests/${mrr._id}`, reviewLink: `/admin/medical-review-requests/${mrr._id}`, message: 'MRR #7931 flagged for follow-up', retreatId: '' }] : [] });
       return json([]);
     });
-    const output = path.resolve(__dirname, '../../../ppvc-793-791-768-validation');
+    const output = path.resolve(__dirname, '../../follow-up-header-screenshots');
     fs.mkdirSync(output, { recursive: true });
     await page.goto(`/admin/medical-review-requests/${mrr._id}`);
-    const identity = width >= 640 ? page.getByText('ID: 1201', { exact: true }) : page.getByRole('heading').filter({ hasText: 'ID 1201' });
+    const identity = page.getByRole('region', { name: 'Review identity' });
     await expect(identity).toBeVisible();
-    await expect(page.getByText(`ID: ${client._id}`, { exact: true })).toHaveCount(0);
+    await expect(identity).toContainText('Client ID: 1201');
+    await expect(identity).toContainText('Dana Babicova');
+    await expect(identity).not.toContainText(client._id);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('MRR #7931');
     await page.screenshot({ path: path.join(output, `mrr-${width}.png`) });
     const flag = page.getByRole('button', { name: 'Flag for follow-up: MRR #7931' });
     failFlag = true;
