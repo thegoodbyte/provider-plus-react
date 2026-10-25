@@ -23,7 +23,7 @@ it.each(['admin', 'medical_advisor'])('renders saved translated messages at the 
   const route = role === 'admin' ? '/admin/medical-review-requests' : '/medical/review-requests';
   render(<MemoryRouter initialEntries={[`${route}/mrr-1325`]}><Routes><Route path={`${route}/:id`} element={<MedicalReviewRequestsPage />} /></Routes></MemoryRouter>);
   expect(await screen.findByText('Proszę przesłać nowe zdjęcie.')).toBeInTheDocument();
-  expect(screen.getByText('ID: 1201')).toBeInTheDocument();
+  expect(screen.getByText('Client ID: 1201')).toBeInTheDocument();
   expect(screen.queryByText('ID: client-1')).not.toBeInTheDocument();
   const history = screen.getByRole('region', { name: 'Client message history' });
   expect(history.closest('.mrr-desktop-legacy')).toBeNull();
@@ -50,4 +50,21 @@ it('saves detailed WhatsApp results without the server-managed delivery field', 
   fireEvent.click(screen.getByRole('button', { name: 'Save WhatsApp status' }));
   await waitFor(() => expect(medicalReviewRequestsApi.update).toHaveBeenCalledWith('mrr', expect.objectContaining({ whatsappStatus: 'responded', whatsappDecision: 'OK', status: 'approved' })));
   expect((medicalReviewRequestsApi.update as jest.Mock).mock.calls.at(-1)[1]).not.toHaveProperty('advisorDeliveryStatus');
+});
+
+it('shows readable MRR identity using context when clientId is unpopulated', async () => {
+  const request: any = { _id: '6ab051d2ae5432b71f7a364', display_id: 1413, requestType: 'medications_review', documentType: 'Medications', documentStage: 'entry', status: 'pending', clientId: '6ab051d2ae5432b71f7a365', artifactIds: [] };
+  (useAuth as jest.Mock).mockReturnValue({ user: { role: 'admin', email: 'staff@example.invalid' } });
+  (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({ data: [request] });
+  (medicalReviewRequestsApi.getContext as jest.Mock).mockResolvedValue({ data: { client: { _id: request.clientId, firstName: 'Ewa', lastName: 'Franus', display_id: 1265 }, artifacts: { all: [] } } });
+  (medicalReviewRequestsApi.getAccessLinks as jest.Mock).mockResolvedValue({ data: [] });
+  (medicalReviewRequestsApi.getClientMessages as jest.Mock).mockResolvedValue({ data: { messages: [] } });
+  (usersApi.findAll as jest.Mock).mockResolvedValue({ data: [] });
+  render(<MemoryRouter initialEntries={['/admin/medical-review-requests/' + request._id]}><Routes><Route path="/admin/medical-review-requests/:id" element={<MedicalReviewRequestsPage />} /></Routes></MemoryRouter>);
+  expect(await screen.findByRole('heading', { name: 'Medical Review MRR #1413' })).toBeInTheDocument();
+  const identity = screen.getByRole('region', { name: 'Review identity' });
+  expect(identity).toHaveTextContent('Ewa Franus');
+  expect(identity).toHaveTextContent('Client ID: 1265');
+  expect(identity).toHaveTextContent('Medications');
+  expect(identity).not.toHaveTextContent(request.clientId);
 });

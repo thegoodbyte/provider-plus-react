@@ -321,3 +321,16 @@ export const getMedicalReviewClientDisplayId = (request?: MedicalReviewRequest |
   }
   return undefined;
 };
+
+/** A bare clientId is a link target, never a client name. Prefer full context data. */
+export const getMedicalReviewClientName = (request?: MedicalReviewRequest | null, contextClient?: any): string => {
+  const populated = request && typeof request.clientId === 'object' ? request.clientId : undefined;
+  const clientId = typeof request?.clientId === 'string' ? request.clientId : populated?._id;
+  const contextMatches = !clientId || !contextClient?._id || String(contextClient._id) === String(clientId);
+  for (const client of [contextMatches ? contextClient : undefined, populated]) {
+    if (!client) continue;
+    const name = [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ').trim();
+    if (name) return name;
+  }
+  return 'Client name unavailable';
+};

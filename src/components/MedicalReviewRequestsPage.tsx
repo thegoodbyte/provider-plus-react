@@ -13,6 +13,7 @@ import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types
 import { AlertTriangle, Ban, ChevronDown, CircleHelp, FileText, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   getMedicalReviewClientDisplayId,
+  getMedicalReviewClientName,
   composeWhatsappReviewNotes,
   extractWhatsappNotes,
   findReviewerTranslation,
@@ -1657,13 +1658,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       ? [reviewContext.client.screeningData]
       : [];
   const selectedClientDisplayId = getMedicalReviewClientDisplayId(selected, reviewContext?.client);
-  const selectedClientName = selected
-    ? typeof selected.clientId === 'string'
-      ? selected.clientId
-      : selected.clientId?.firstName
-        ? `${selected.clientId.firstName} ${selected.clientId.lastName || ''}`.trim()
-        : 'Unknown client'
-    : '';
+  const selectedClientName = getMedicalReviewClientName(selected, reviewContext?.client);
   const selectedClientAge = (() => {
     const dob = reviewContext?.client?.dateOfBirth || reviewContext?.client?.birthDate || reviewContext?.client?.screeningData?.dateOfBirth;
     if (!dob) return '';
@@ -1759,14 +1754,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
         </div>
       )}
       {navigationControls('mb-3 sm:hidden')}
-      <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
-        <div>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-4 sm:mb-6">
+        <div className="min-w-0 w-full lg:flex-1">
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
             {isDetailView && selected ? (
-              <>
-                <span className="sm:hidden">{profileHref ? <a href={profileHref} className="text-blue-700 underline" onClick={(event) => event.stopPropagation()}>{selectedClientName}</a> : selectedClientName}{selectedClientDisplayId ? ` · ID ${selectedClientDisplayId}` : ''}{selectedClientAge ? ` · ${selectedClientAge} yo` : ''}{selectedClientGender ? ` · ${selectedClientGender}` : ''}</span>
-                <span className="hidden sm:inline">Medical Review</span>
-              </>
+              <>Medical Review <span className="block text-2xl font-bold text-blue-800 sm:text-3xl">{selected.display_id ? `MRR #${selected.display_id}` : 'MRR number not assigned'}</span></>
           ) : 'Medical Review Requests'}
           </h1>
               {isDetailView && selected ? (
@@ -1775,11 +1767,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     setSelected(current => current ? { ...current, ...changes } : current);
                     setRequests(current => current.map(item => item._id === selected._id ? { ...item, ...changes } : item));
                   }} />
-                  <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">
-                    {profileHref ? <a href={profileHref} className="text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900">{selectedClientName}</a> : selectedClientName}
-                    {selectedClientDisplayId && <span className="ml-2 text-xs font-normal text-gray-500">ID: {selectedClientDisplayId}</span>}
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-600"><MedicalDocumentTypeIcon type={selected.requestType} fallbackType={selected.documentType} />{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
+                  <section aria-label="Review identity" className="my-4 space-y-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                    <div className="break-words text-2xl font-bold leading-snug text-gray-950 sm:text-3xl">
+                      {profileHref ? <a href={profileHref} className="text-blue-800 underline decoration-blue-200 underline-offset-4 hover:text-blue-950">{selectedClientName}</a> : selectedClientName}
+                    </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-lg font-bold text-gray-900 sm:text-xl">
+                      <span>{selectedClientDisplayId ? `Client ID: ${selectedClientDisplayId}` : 'Client ID unavailable'}</span>
+                      <span className="flex min-w-0 items-center gap-2"><MedicalDocumentTypeIcon type={selected.requestType} fallbackType={selected.documentType} />{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</span>
+                    </div>
+                    {(selectedClientAge || selectedClientGender) && <p className="text-sm font-medium text-gray-600">{[selectedClientAge ? `${selectedClientAge} yo` : '', selectedClientGender].filter(Boolean).join(' · ')}</p>}
+                  </section>
                   {retreatStartDate && <div className="mt-1 text-xs font-medium text-gray-500">Retreat starts {retreatStartDate}</div>}
                   <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
                     <button type="button" className="mrr-related-mobile-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen} aria-controls="mrr-related-records">
