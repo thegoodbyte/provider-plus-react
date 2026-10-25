@@ -26,7 +26,7 @@ for(const width of [1440,390])for(const flow of ['edit-create','add-existing'])t
   await page.getByRole('button',{name:'Create booking for this client',exact:true}).click();dialog=page.getByRole('dialog');
   await dialog.getByPlaceholder('Search and select a retreat...').fill('Synthetic');await dialog.getByText('Synthetic Retreat (SYN902)',{exact:true}).click();
   const price=dialog.getByText('Agreed price for this booking',{exact:true}).locator('..').locator('input');await price.fill('9500');
-  await page.screenshot({path:`../ppvc-920-validation/booking-${width}.png`,fullPage:true});
+  await page.screenshot({path:`../payment-booking-${width}.png`,fullPage:true});
   await dialog.getByRole('button',{name:'Create and select booking',exact:true}).click();await expect(dialog).toBeHidden();await expect(page.getByText(/created and selected. Save the payment/)).toBeVisible();
   const afterBooking=await snapshot();expect(afterBooking.payments).toEqual(before.payments);expect(afterBooking.receipts).toEqual(before.receipts);targetBooking=afterBooking.bookings.find((b:any)=>b.clientId===f.client)._id;
   await page.getByRole('button',{name:'Update Payment',exact:true}).click();await expect(page).toHaveURL(/\/admin\/payments$/);
