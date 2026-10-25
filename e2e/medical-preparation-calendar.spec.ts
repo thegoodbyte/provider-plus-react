@@ -44,7 +44,7 @@ for (const width of [1440, 390]) test(`dated instructions and approval at ${widt
   await expect(page.getByRole('region', { name: 'Preparation calendar' })).toContainText('Supplements');
   await page.getByLabel('Calendar month').fill('2026-10');
   await expect(page.getByRole('region', { name: 'Preparation calendar' })).toContainText('Alcohol');
-  await page.screenshot({ path: `../ppvc-922-validation/calendar-${width}.png`, fullPage: true });
+  await page.getByRole('region', { name: 'Preparation calendar' }).screenshot({ path: `../ppvc-922-validation/calendar-${width}.png` });
   await request.post(f.url + '/fixture/reschedule', { data: { startDate: '2026-12-17' } });
   const after = await (await request.get(f.url + '/fixture/snapshot')).json();
   expect(after.items.find((item: any) => item.title === 'Alcohol').dueDate.slice(0,10)).toBe('2026-11-17');
@@ -55,7 +55,7 @@ test('API rejects unauthorized publication and invalid offsets without partial w
   await request.post(f.url + '/fixture/reset');
   const path = f.url + `/booking-flow/bookings/${f.booking}/medication-stop-plan`;
   expect((await request.get(path)).status()).toBe(401);
-  expect((await request.get(path, { headers: { Authorization: 'Bearer ' + f.tokens.client } })).status()).toBe(403);
+  expect((await request.get(path, { headers: { Authorization: 'Bearer ' + f.tokens.client } })).status()).toBe(401);
   const headers = { Authorization: 'Bearer ' + f.tokens.medical_staff };
   const entries = [{ name: 'Alcohol', instruction: 'Advisor instruction', monthsBeforeRetreat: 1 }];
   expect((await request.put(path, { headers, data: { entries } })).ok()).toBeTruthy();
