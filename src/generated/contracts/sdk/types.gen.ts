@@ -393,7 +393,7 @@ export type CreateMedicalArtifactDto = {
     ceremonyNumber?: number;
     clientDisplayId?: number;
     clientId: string;
-    contextType?: 'ceremony' | 'client' | 'booking';
+    contextType?: 'ceremony' | 'booking' | 'client';
     data?: {
         [key: string]: unknown;
     };
@@ -416,7 +416,7 @@ export type CreateMedicalArtifactDto = {
     reviewFeeCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
     reviewFeePaid?: boolean;
     source?: 'email' | 'manual' | 'client_upload' | 'admin_upload' | 'legacy';
-    status?: 'stored' | 'missing_file' | 'pending_review' | 'approved' | 'rejected' | 'needs_resubmission' | 'superseded' | 'voided';
+    status?: 'rejected' | 'voided' | 'superseded' | 'stored' | 'missing_file' | 'pending_review' | 'approved' | 'needs_resubmission';
     tags?: Array<string>;
     textContent?: string;
     title: string;
@@ -644,9 +644,9 @@ export type CreateTaskDto = {
     sourceId?: string;
     sourceRoute?: string;
     sourceType?: string;
-    status?: 'pending' | 'completed' | 'cancelled' | 'in_progress';
+    status?: 'cancelled' | 'pending' | 'completed' | 'in_progress';
     tags?: Array<string>;
-    type: 'retreat' | 'client' | 'booking' | 'generic';
+    type: 'booking' | 'retreat' | 'client' | 'generic';
     urgency: 'high' | 'low' | 'medium' | 'urgent';
     visibleToClient?: boolean;
 };
@@ -686,6 +686,11 @@ export type HouseBedroomDto = {
 
 export type Language = {
     [key: string]: unknown;
+};
+
+export type LinkMedicalReviewBookingDto = {
+    bookingId: string;
+    previewToken: string;
 };
 
 export type LoginDto = {
@@ -9982,6 +9987,42 @@ export type MedicalReviewRequestsControllerDownloadArtifactData = {
 export type MedicalReviewRequestsControllerDownloadArtifactResponses = {
     200: unknown;
 };
+
+export type MedicalReviewRequestsControllerPreviewBookingLinkData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: {
+        bookingId?: string;
+    };
+    url: '/medical-review-requests/{id}/booking-link';
+};
+
+export type MedicalReviewRequestsControllerPreviewBookingLinkResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalReviewRequestsControllerPreviewBookingLinkResponse = MedicalReviewRequestsControllerPreviewBookingLinkResponses[keyof MedicalReviewRequestsControllerPreviewBookingLinkResponses];
+
+export type MedicalReviewRequestsControllerLinkBookingData = {
+    body: LinkMedicalReviewBookingDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-review-requests/{id}/booking-link';
+};
+
+export type MedicalReviewRequestsControllerLinkBookingResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalReviewRequestsControllerLinkBookingResponse = MedicalReviewRequestsControllerLinkBookingResponses[keyof MedicalReviewRequestsControllerLinkBookingResponses];
 
 export type MedicalReviewRequestsControllerGetClientMessagesData = {
     body?: never;

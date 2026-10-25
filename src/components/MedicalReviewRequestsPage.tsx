@@ -1,3 +1,4 @@
+import MedicalReviewBookingLink from './MedicalReviewBookingLink';
 import WhatsappDownloadNames, { WhatsappDownloadNameData } from './WhatsappDownloadNames';
 import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
 import MedicalReviewFileDownload, { MedicalReviewDownloadContext } from './MedicalReviewFileDownload';
@@ -1766,6 +1767,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </h1>
               {isDetailView && selected ? (
                 <div className="mt-1">
+                  {['admin', 'medical_staff'].includes(user?.role || '') && <MedicalReviewBookingLink key={selected._id} requestId={selected._id!} prefix={isMedicalRoute ? '/medical' : '/admin'} onLinked={async () => {
+                    const [fresh, context] = await Promise.all([medicalReviewRequestsApi.getOne(selected._id!), medicalReviewRequestsApi.getContext(selected._id!)]);
+                    setSelected(fresh.data); setReviewContext(context.data); setRequests(current => current.map(item => item._id === selected._id ? fresh.data : item));
+                    setRelatedArtifacts(context.data?.artifacts?.all || []);
+                  }} />}
                   <MedicalReviewFollowUpButton request={selected} onSaved={changes => {
                     setSelected(current => current ? { ...current, ...changes } : current);
                     setRequests(current => current.map(item => item._id === selected._id ? { ...item, ...changes } : item));

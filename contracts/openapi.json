@@ -1171,8 +1171,8 @@
           "contextType": {
             "enum": [
               "ceremony",
-              "client",
-              "booking"
+              "booking",
+              "client"
             ],
             "type": "string"
           },
@@ -1276,14 +1276,14 @@
           },
           "status": {
             "enum": [
+              "rejected",
+              "voided",
+              "superseded",
               "stored",
               "missing_file",
               "pending_review",
               "approved",
-              "rejected",
-              "needs_resubmission",
-              "superseded",
-              "voided"
+              "needs_resubmission"
             ],
             "type": "string"
           },
@@ -2117,9 +2117,9 @@
           },
           "status": {
             "enum": [
+              "cancelled",
               "pending",
               "completed",
-              "cancelled",
               "in_progress"
             ],
             "type": "string"
@@ -2132,9 +2132,9 @@
           },
           "type": {
             "enum": [
+              "booking",
               "retreat",
               "client",
-              "booking",
               "generic"
             ],
             "type": "string"
@@ -2240,6 +2240,22 @@
       },
       "Language": {
         "properties": {},
+        "type": "object"
+      },
+      "LinkMedicalReviewBookingDto": {
+        "properties": {
+          "bookingId": {
+            "type": "string"
+          },
+          "previewToken": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bookingId",
+          "previewToken"
+        ],
         "type": "object"
       },
       "LoginDto": {
@@ -19567,6 +19583,82 @@
         ],
         "responses": {
           "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalReviewRequests"
+        ]
+      }
+    },
+    "/medical-review-requests/{id}/booking-link": {
+      "get": {
+        "operationId": "MedicalReviewRequestsController_previewBookingLink",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bookingId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalReviewRequests"
+        ]
+      },
+      "post": {
+        "operationId": "MedicalReviewRequestsController_linkBooking",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkMedicalReviewBookingDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
             "description": ""
           }
         },

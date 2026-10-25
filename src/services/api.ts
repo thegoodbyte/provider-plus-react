@@ -1450,6 +1450,12 @@ export const usersApi = {
 };
 
 export const medicalReviewRequestsApi = {
+  previewBookingLink: (id: string, bookingId?: string) => api.get<any>(`/medical-review-requests/${encodeURIComponent(id)}/booking-link`, { params: bookingId ? { bookingId } : {} }),
+  linkBooking: async (id: string, bookingId: string, previewToken: string) => {
+    try { return await api.post<any>(`/medical-review-requests/${encodeURIComponent(id)}/booking-link`, { bookingId, previewToken }); }
+    finally { for (const prefix of ['medical-review-requests:', 'medical-artifacts:', 'bookings:', 'booking-flow:']) cacheService.clearPattern(prefix); }
+  },
+
   setFollowUp: (id: string, followUpRequired: boolean) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<Partial<MedicalReviewRequest>>(`/medical-review-requests/${encodeURIComponent(id)}/follow-up`, { followUpRequired }, { suppressGlobalError: true } as any);
