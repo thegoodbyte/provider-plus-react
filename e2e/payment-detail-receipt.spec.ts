@@ -3,6 +3,8 @@ import fs from 'node:fs';
 const fixturePath = process.env.PPVC927_FIXTURE;
 const f = fixturePath ? JSON.parse(fs.readFileSync(fixturePath, 'utf8')) : {};
 test.skip(!fixturePath, 'Requires the API synthetic payment detail/receipt fixture');
+// These scenarios reset the same disposable API/database fixture.
+test.describe.configure({ mode: 'serial' });
 for (const width of [1440, 390]) for (const failFirst of [false, true]) test(`payment details and ${failFirst ? 'failed-send retry' : 'receipt delivery'} at ${width}px`, async ({ page, request }) => {
  await request.post(f.url + '/fixture/reset');
  const snapshot = async () => (await request.get(f.url + '/fixture/state')).json(); const before = await snapshot();
