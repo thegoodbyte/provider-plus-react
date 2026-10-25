@@ -1,3 +1,4 @@
+import WhatsappDownloadNames, { WhatsappDownloadNameData } from './WhatsappDownloadNames';
 import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
 import MedicalReviewFileDownload, { MedicalReviewDownloadContext } from './MedicalReviewFileDownload';
 import MedicalReviewClientMessages from './MedicalReviewClientMessages';
@@ -222,6 +223,7 @@ type FileReviewDraft = {
   notes?: string;
 };
 type ReviewContext = {
+  whatsappDownloadNames?: WhatsappDownloadNameData;
   client?: any;
   bookings?: any[];
   screenings?: any[];
@@ -626,6 +628,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         }
       }
       setSelected(selectedItem);
+      setReviewContext(null);
       setGeneratedAccessUrl('');
       setGeneratedMedicalSummary(null);
 
@@ -1993,6 +1996,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <p className="mb-2 text-sm text-gray-600">Record a review handled via WhatsApp.</p>
                   {validationError && <p role="alert" className="mb-2 text-sm text-red-700">{validationError}</p>}
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-900"><input type="checkbox" checked={reviewChannel === 'whatsapp'} onChange={(event) => setReviewChannel(event.target.checked ? 'whatsapp' : 'internal')} /> Handle this review via WhatsApp</label>
+                  {reviewChannel === 'whatsapp' && <WhatsappDownloadNames key={selected._id} names={reviewContext?.whatsappDownloadNames} />}
                   {reviewChannel === 'whatsapp' && <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <label className="text-sm">Medical advisor<select value={whatsappAdvisorUserId} onChange={(event) => setWhatsappAdvisorUserId(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select advisor</option>{medicalAdvisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}</option>)}</select></label>
                     <label className="text-sm">Date sent<input type="date" value={whatsappSentAt} onChange={(event) => setWhatsappSentAt(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label>
