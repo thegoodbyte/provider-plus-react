@@ -1937,7 +1937,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         </div>
       )}
 
-      <div className={isDetailView ? 'grid gap-6' : 'grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]'}>
+      <div className={isDetailView ? 'grid min-w-0 grid-cols-1 gap-6' : 'grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]'}>
         {!isDetailView && (
           <div className="rounded-lg border border-gray-200 bg-white">
             <div className="border-b border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900">Queue</div>
@@ -1980,7 +1980,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </div>
         )}
 
-        <div className={isDetailView ? 'bg-white sm:rounded-lg sm:border sm:border-gray-200 sm:p-4' : 'rounded-lg border border-gray-200 bg-white p-4'}>
+        <div className={isDetailView ? 'min-w-0 bg-white sm:rounded-lg sm:border sm:border-gray-200 sm:p-4' : 'rounded-lg border border-gray-200 bg-white p-4'}>
           {!selected ? (
             <div className="p-4 text-sm text-gray-500">Select a request to review it.</div>
           ) : (
