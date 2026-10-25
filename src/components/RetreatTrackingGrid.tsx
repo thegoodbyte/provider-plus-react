@@ -61,6 +61,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   const location = useLocation();
   const routePrefix = getLocationPrefix(location.pathname);
   const [gridData, setGridData] = useState<RetreatMedicalGridData | null>(null);
+  const [preparationItems, setPreparationItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [historyView, setHistoryView] = useState<{ cell: RetreatMedicalCell; clientName: string; stage: string } | null>(null);
@@ -101,6 +102,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
         .find((value) => value && typeof value === 'object') as Retreat | undefined;
 
       setRetreat(retreatFromBookings || null);
+      setPreparationItems(bookingFlowItemsResponse.data || []);
       setGridData(
         buildRetreatMedicalGridData(
           bookings,
@@ -226,6 +228,15 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
     );
   };
 
+  const renderPreparationCalendar = (client: any) => {
+    const items = preparationItems.filter(item => String(item.bookingId?._id || item.bookingId) === client.bookingId && item.metadata?.medicationStopPlan && item.status !== 'cancelled');
+    const editable = items.filter(item => ['draft', 'approved'].includes(item.metadata?.planLifecycle));
+    const candidates = editable.length ? editable : items.filter(item => !item.metadata?.planLifecycle || item.metadata.planLifecycle === 'published');
+    const version = Math.max(0, ...candidates.map(item => Number(item.metadata?.planVersion || 0)));
+    const current = candidates.filter(item => Number(item.metadata?.planVersion || 0) === version);
+    return client.bookingId && <div className="mt-2 text-xs"><Link to={`/${routePrefix}/bookings/${client.bookingId}/medication-stop-plan`} className="font-semibold underline">Medical Preparation Calendar</Link><p>{current.length ? `${current[0].metadata?.planLifecycle || 'published'} · ${current.length} item(s)` : 'No preparation decision'}</p>{current.slice(0, 3).map(item => <p key={item._id}>{item.dueDate?.slice(0,10)} · {item.title}</p>)}</div>;
+  };
+
   const renderClientHeader = (client: any, index: number) => {
     const displayId = client.clientDisplayId ? `#${client.clientDisplayId}` : '';
     const initials = getClientInitials(client.clientName);
@@ -240,6 +251,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
             <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-name">
               {client.clientName}
             </Link>
+            {renderPreparationCalendar(client)}
             {displayId ? (
               <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-id">
                 Client {displayId}
@@ -382,6 +394,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-name">
                   {client.clientName}
                 </Link>
+                {renderPreparationCalendar(client)}
                 {/* PPVC-713: never show a raw ID hash as a stand-in for the client number. */}
                 {client.clientDisplayId && <span className="medical-client-id">Client #{client.clientDisplayId}</span>}
               </div>

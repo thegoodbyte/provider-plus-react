@@ -203,8 +203,8 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
 
     <section className={`booking-medical-stop-plan ${allClear ? 'is-clear' : ''}`}>
       <div className="booking-medical-stop-plan-heading">
-        <div><h3>Medication stop plan</h3><p>{allClear ? allClear.description : plan.length ? 'Review the preparation dates and medication instructions below.' : 'No preparation decision recorded yet.'}</p></div>
-        <button className="booking-medical-button is-primary" type="button" onClick={() => navigate(`${prefix}/bookings/${bookingId}/medication-stop-plan`)}>{plan.length ? 'Edit medication plan' : 'Set plan'}</button>
+        <div><h3>Medical Preparation Calendar</h3><p>{allClear ? allClear.description : plan.length ? 'Review the preparation dates and medication instructions below.' : 'No preparation decision recorded yet.'}</p></div>
+        <button className="booking-medical-button is-primary" type="button" onClick={() => navigate(`${prefix}/bookings/${bookingId}/medication-stop-plan`)}>{plan.length ? 'Open preparation calendar' : 'Set preparation calendar'}</button>
       </div>
       {allClear ? <div className="booking-medical-all-clear">✓ All good — nothing to prepare</div> : plan.length ? <div className="booking-medical-plan-grid">{plan.map(item => {
         const due = item.dueDate ? new Date(item.dueDate) : null;

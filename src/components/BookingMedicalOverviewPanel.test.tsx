@@ -44,7 +44,7 @@ describe('BookingMedicalOverviewPanel', () => {
     load.mockResolvedValue(result({ medicationPlan: [{ _id: 'p', description: 'No changes', metadata: { medicationStopPlanAllClear: true } }] }));
     view();
     expect(await screen.findByText(/All good/)).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Edit medication plan'));
+    fireEvent.click(screen.getByText('Open preparation calendar'));
     expect(mockNavigate).toHaveBeenCalledWith('/admin/bookings/b/medication-stop-plan');
   });
 

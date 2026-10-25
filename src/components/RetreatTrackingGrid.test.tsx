@@ -44,6 +44,20 @@ describe('RetreatTrackingGrid MRR actions', () => {
     expect(screen.queryByText('Booking #1248')).not.toBeInTheDocument();
   });
 
+  it('shows only the latest editable preparation plan for the correct booking in desktop and mobile grids', async () => {
+    (bookingFlowApi.getItems as jest.Mock).mockResolvedValue({ data: [
+      { _id: 'old', bookingId: 'booking-1', title: 'Old instruction', status: 'pending', dueDate: '2026-10-01', metadata: { medicationStopPlan: true, planLifecycle: 'published', planVersion: 1 } },
+      { _id: 'draft', bookingId: 'booking-1', title: 'Alcohol', status: 'pending', dueDate: '2026-10-17', metadata: { medicationStopPlan: true, planLifecycle: 'draft', planVersion: 2 } },
+      { _id: 'other', bookingId: 'booking-2', title: 'Other client instruction', status: 'pending', metadata: { medicationStopPlan: true } },
+    ] });
+    render(<MemoryRouter initialEntries={['/admin/retreats/retreat-1']}><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
+    const links = await screen.findAllByRole('link', { name: 'Medical Preparation Calendar' });
+    expect(links).toHaveLength(2);
+    links.forEach(link => expect(link).toHaveAttribute('href', '/admin/bookings/booking-1/medication-stop-plan'));
+    expect(screen.getAllByText('2026-10-17 · Alcohol')).toHaveLength(2);
+    expect(screen.queryByText(/Old instruction|Other client instruction/)).not.toBeInTheDocument();
+  });
+
   it('opens and exits the medical grid full-screen view', async () => {
     const { container } = render(<MemoryRouter initialEntries={['/admin/retreats/retreat-1']}><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
     await screen.findByRole('button', { name: 'Full screen' });

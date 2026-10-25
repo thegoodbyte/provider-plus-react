@@ -1732,6 +1732,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const storedReturnPath = sessionStorage.getItem('medicalReviewReturnPath');
   const returnToPath = [stateReturnPath, storedReturnPath].find((path) => typeof path === 'string' && path.includes('/medical/review-groups/')) || '';
   const reviewListPath = returnToPath || (isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests');
+  const preparationBookings = Array.from(new Set([getId((selected as any)?.bookingId), ...linkedArtifacts.map(artifact => getId(artifact.bookingId))].filter(Boolean))) as string[];
   const reviewNav = (request?: MedicalReviewRequest) => request?._id && navigate(`${reviewListPath}/${request._id}`);
   const navigationControls = (className = '') => isDetailView && selected ? (
     <div className={`mrr-review-navigation ${className}`}>
@@ -1846,6 +1847,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
             New Request
           </button>
         )}
+        {isDetailView && selected && ['admin', 'medical_staff'].includes(user?.role || '') && preparationBookings.map(bookingId => <button key={bookingId} type="button" onClick={() => { const artifact = linkedArtifacts.find(item => getId(item.bookingId) === bookingId); const params = new URLSearchParams({ medicalReviewRequestId: selected._id || '', artifactId: artifact?._id || '' }); navigate(`${isMedicalRoute ? '/medical' : '/admin'}/bookings/${bookingId}/medication-stop-plan?${params}`); }} className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white">Add to Medical Preparation Calendar{preparationBookings.length > 1 ? ` · booking ${bookingId}` : ''}</button>)}
         {isDetailView && selected && user?.role === 'admin' && (
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${selected._id}/edit`)} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Edit request</button>
