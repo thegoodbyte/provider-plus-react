@@ -34,7 +34,7 @@ for (const width of [1440, 390]) for (const failFirst of [false, true]) test(`pa
  const after = await snapshot(); expect(after.captures).toHaveLength(1); expect(after.captures[0].to).toBe('a@example.invalid'); expect(after.captures[0].attachments.some((a: any) => a.mimeType === 'application/pdf')).toBeTruthy();
  expect(after.payments).toEqual(before.payments); expect(after.bookings).toEqual(before.bookings);
  const bounds = await panel.boundingBox(); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
- await details.screenshot({ path: `../ppvc-927-validation/details-${width}.png` });
- await panel.screenshot({ path: `../ppvc-927-validation/receipt-${width}.png` });
+ await details.screenshot({ path: `../payment-receipt-screenshots/details-${width}.png` });
+ await panel.screenshot({ path: `../payment-receipt-screenshots/receipt-${width}.png` });
  await page.reload(); await expect(page.getByRole('region', { name: 'Payment receipt', exact: true })).toContainText('Emailed to client · 1 successful email(s)');
 });
