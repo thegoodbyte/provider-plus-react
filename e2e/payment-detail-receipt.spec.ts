@@ -1,0 +1,40 @@
+import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+const fixturePath = process.env.PPVC927_FIXTURE;
+const f = fixturePath ? JSON.parse(fs.readFileSync(fixturePath, 'utf8')) : {};
+test.skip(!fixturePath, 'Requires the API synthetic payment detail/receipt fixture');
+for (const width of [1440, 390]) for (const failFirst of [false, true]) test(`payment details and ${failFirst ? 'failed-send retry' : 'receipt delivery'} at ${width}px`, async ({ page, request }) => {
+ await request.post(f.url + '/fixture/reset');
+ const snapshot = async () => (await request.get(f.url + '/fixture/state')).json(); const before = await snapshot();
+ await page.setViewportSize({ width, height: 1080 });
+ await page.addInitScript(token => { localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify({ id: 'staff', role: 'admin', email: 'staff@example.invalid' })); }, f.tokens.admin);
+ await page.route('**/*', async route => {
+  const req = route.request(); if (!['xhr', 'fetch'].includes(req.resourceType())) return route.continue(); const url = new URL(req.url());
+  if (url.pathname.startsWith('/payments')) return route.fulfill({ response: await route.fetch({ url: f.url + url.pathname + url.search }) });
+  if (url.pathname.startsWith('/config') || url.pathname.includes('config-summary')) return route.fulfill({ json: {} });
+  if (url.pathname === '/environment/status') return route.fulfill({ json: { environment: 'local', production: false, enabledJobs: [] } });
+  return route.fulfill({ json: [] });
+ });
+ await page.goto('/admin/payments/' + f.paymentId);
+ const details = page.getByRole('region', { name: 'Payment details', exact: true });
+ await expect(details).toContainText('Synthetic Client A'); await expect(details).toContainText('Synthetic deposit');
+ await expect(details.locator('input,select,textarea')).toHaveCount(0);
+ const panel = page.getByRole('region', { name: 'Payment receipt', exact: true });
+ await expect(panel).toContainText('Not emailed to this client yet'); await expect(panel).not.toContainText('b@example.invalid');
+ await panel.getByRole('button', { name: 'Preview PDF', exact: true }).click(); await expect(panel.getByTitle('Receipt PDF preview')).toBeVisible();
+ await expect(panel.getByRole('button', { name: 'Regenerate PDF', exact: true })).toBeEnabled();
+ await panel.getByRole('button', { name: 'Regenerate PDF', exact: true }).click(); await expect(panel.getByText('PDF regenerated. The preview now shows the new version.')).toBeVisible();
+ expect((await snapshot()).captures).toHaveLength(0);
+ await panel.getByRole('button', { name: 'Email receipt to client', exact: true }).click();
+ const confirm = panel.getByRole('region', { name: 'Confirm receipt email' }); await expect(confirm).toContainText('a@example.invalid');
+ expect((await snapshot()).captures).toHaveLength(0);
+ if (failFirst) { await request.post(f.url + '/fixture/fail-send'); await confirm.getByRole('button', { name: 'Send receipt email', exact: true }).click(); await expect(panel.getByRole('alert')).toContainText('Synthetic provider outage'); await expect(panel).toContainText('Not emailed to this client yet'); }
+ await confirm.getByRole('button', { name: 'Send receipt email', exact: true }).click();
+ await expect(panel).toContainText('Emailed to client · 1 successful email(s)');
+ const after = await snapshot(); expect(after.captures).toHaveLength(1); expect(after.captures[0].to).toBe('a@example.invalid'); expect(after.captures[0].attachments.some((a: any) => a.mimeType === 'application/pdf')).toBeTruthy();
+ expect(after.payments).toEqual(before.payments); expect(after.bookings).toEqual(before.bookings);
+ const bounds = await panel.boundingBox(); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
+ await details.screenshot({ path: `../ppvc-927-validation/details-${width}.png` });
+ await panel.screenshot({ path: `../ppvc-927-validation/receipt-${width}.png` });
+ await page.reload(); await expect(page.getByRole('region', { name: 'Payment receipt', exact: true })).toContainText('Emailed to client · 1 successful email(s)');
+});

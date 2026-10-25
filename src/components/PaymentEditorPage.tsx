@@ -1,3 +1,5 @@
+import PaymentDetailSummary from './PaymentDetailSummary';
+import PaymentReceiptPanel from './PaymentReceiptPanel';
 import { Modal } from 'antd';
 import BookingEditorForm from './BookingEditorForm';
 import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
@@ -241,7 +243,7 @@ const PaymentEditorPage: React.FC = () => {
   const showBookingCurrencySettlement = Boolean(selectedBooking?.currency && formData.currency !== selectedBooking.currency && (!selectedPaymentRequest || selectedPaymentRequest.currency !== selectedBooking.currency));
 
   useEffect(() => {
-    if (!showBookingCurrencySettlement) return;
+    if (isView || !showBookingCurrencySettlement) return;
     const amount = Number(formData.amount);
     if (!Number.isFinite(amount) || amount <= 0) return;
     let active = true;
@@ -255,9 +257,10 @@ const PaymentEditorPage: React.FC = () => {
       } finally { if (active) setBookingCurrencyLoading(false); }
     }, 350);
     return () => { active = false; window.clearTimeout(timeout); };
-  }, [formData.amount, formData.currency, bookingCurrency, showBookingCurrencySettlement]);
+  }, [formData.amount, formData.currency, bookingCurrency, showBookingCurrencySettlement, isView]);
 
   useEffect(() => {
+    if (isView) return;
     const amount = Number(formData.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setUsdPreview(null);
@@ -287,7 +290,7 @@ const PaymentEditorPage: React.FC = () => {
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [formData.amount, formData.currency]);
+  }, [formData.amount, formData.currency, isView]);
 
   const findBookingForPaymentRequest = (paymentRequestId: string, bookingList = bookings) => {
     return bookingList.find((booking) => resolveId(booking.paymentRequestId) === paymentRequestId);
@@ -470,6 +473,8 @@ const PaymentEditorPage: React.FC = () => {
     return <LoadingSpinner message={isExisting ? 'Loading payment...' : 'Loading form...'} />;
   }
 
+  if (isView && !loadedPayment) return <div role="alert" className="p-6 text-red-700">{formError || 'Payment details could not be loaded.'}</div>;
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -505,7 +510,7 @@ const PaymentEditorPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {isView && loadedPayment ? <><PaymentDetailSummary payment={loadedPayment} client={typeof loadedPayment.clientId === 'object' ? loadedPayment.clientId : clients.find(client => client._id === formData.clientId)} booking={typeof loadedPayment.bookingId === 'object' ? loadedPayment.bookingId : bookings.find(booking => booking._id === formData.bookingId)} retreat={typeof loadedPayment.retreatId === 'object' ? loadedPayment.retreatId : retreats.find(retreat => retreat._id === formData.retreatId)} request={selectedPaymentRequest} /><PaymentReceiptPanel key={loadedPayment._id} payment={loadedPayment}/></> : <form onSubmit={handleSubmit} className="space-y-6">
           {formError && (
             <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
               {formError}
@@ -873,7 +878,7 @@ const PaymentEditorPage: React.FC = () => {
               </button>
             )}
           </div>
-        </form>
+        </form>}
         {isExisting && loadedPayment && <RelatedRecords records={recordRelations(loadedPayment)} />}
         <Modal title="Create booking for this client" open={Boolean(newBookingContext)} footer={null} width={900} destroyOnHidden maskClosable={false} onCancel={() => setNewBookingContext(null)}>
           {newBookingContext && <BookingEditorForm mode="create" initialBookingData={newBookingContext} lockedClientId={newBookingContext.clientId} deferPaymentLinking onCancel={() => setNewBookingContext(null)} onSaved={bookingCreated} submitLabel="Create and select booking" />}

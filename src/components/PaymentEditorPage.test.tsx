@@ -139,3 +139,12 @@ test('cancelling inline booking creation leaves the original payment draft uncha
  fireEvent.click(screen.getByRole('button',{name:'Create booking for this client'}));await screen.findByText('Booking prefill: c1 / false');fireEvent.click(screen.getByRole('button',{name:'Cancel synthetic booking'}));
  expect(screen.getByLabelText('Amount')).toHaveValue(155);expect(screen.getByLabelText('Booking')).toHaveValue('');expect(paymentsApi.create).not.toHaveBeenCalled();
 });
+
+test('payment view uses readable details instead of disabled edit fields', async () => {
+ mock(paymentsApi.getOne).mockResolvedValue({data:{_id:'payment-view',display_id:1927,clientId:{_id:'c1',firstName:'Anna',lastName:'Example'},amount:150,currency:'EUR',status:'completed',paymentMethod:'bank_transfer',description:'A real purpose',paymentDate:'2026-10-25'}});
+ render(<MemoryRouter initialEntries={['/admin/payments/payment-view']}><Routes><Route path="/admin/payments/:id" element={<PaymentEditorPage/>}/></Routes></MemoryRouter>);
+ expect(await screen.findByRole('region',{name:'Payment details'})).toHaveTextContent('Anna Example');
+ expect(screen.getByRole('region',{name:'Payment details'})).toHaveTextContent('A real purpose');
+ expect(screen.queryByRole('textbox')).not.toBeInTheDocument();expect(screen.queryByRole('combobox')).not.toBeInTheDocument();expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+ expect(screen.getByText(/historical payment has no linked receipt/)).toBeInTheDocument();
+});
