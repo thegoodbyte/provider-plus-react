@@ -26,5 +26,5 @@ for (const width of [1440, 390]) for (const scenario of ['unpopulated', 'populat
   await expect(heading).not.toContainText(requestHash);
   if (scenario !== 'missing') await expect(identity.getByRole('link')).toHaveAttribute('href', '/admin/medical/' + clientHash);
   const bounds = await identity.boundingBox(); expect(bounds).toBeTruthy(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
-  await heading.locator('..').screenshot({ path: `../ppvc-923-validation/${scenario}-${width}.png` });
+  await heading.locator('..').screenshot({ path: `../mrr-identity-screenshots/${scenario}-${width}.png` });
 });
