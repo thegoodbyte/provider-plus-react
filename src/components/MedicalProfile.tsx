@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, Calendar, Heart, FileText, AlertCircle, Download, CheckCircle, XCircle } from 'lucide-react';
 import { API_BASE_URL } from '../config/api.config';
-import { medicalArtifactsApi } from '../services/api';
-import { MedicalArtifact } from '../types';
+import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { MedicalArtifact, MedicalReviewRequest } from '../types';
+import { resolveMedicalProfile, medicalProfileStatusLabel, objectId, ProfileDocument } from './medicalProfileData';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import './MedicalProfile.css';
 
 interface MedicalData {
+  legacyRetreatId?: string;
+  ekgSource?: ProfileDocument;
+  liverPanelSource?: ProfileDocument;
   liverPanelStatus?: string;
   liverPanelReceivedDate?: string;
   liverPanelFilePath?: string;
@@ -50,6 +54,11 @@ interface Retreat {
 const MedicalProfile: React.FC = () => {
   const { clientId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const routePrefix = location.pathname.startsWith('/admin') ? '/admin' : '/medical';
+  const loadVersion = useRef(0);
+  const [sourceWarnings, setSourceWarnings] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState('');
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [client, setClient] = useState<Client | null>(null);
   const [medicalData, setMedicalData] = useState<MedicalData | null>(null);
@@ -59,8 +68,6 @@ const MedicalProfile: React.FC = () => {
   const [reviewDecision, setReviewDecision] = useState<'approved' | 'declined' | 'needs_more_info' | ''>('');
   const [activeRetreatId, setActiveRetreatId] = useState<string | null>(null);
 
-  // Debug: Log when component mounts and what clientId is received
-  console.log('[MedicalProfile] Component mounted with clientId:', clientId);
 
   // Separate state for EKG and Liver Panel reviews
   const [ekgReviewNotes, setEkgReviewNotes] = useState('');
@@ -68,163 +75,78 @@ const MedicalProfile: React.FC = () => {
   const [liverPanelReviewNotes, setLiverPanelReviewNotes] = useState('');
   const [liverPanelReviewDecision, setLiverPanelReviewDecision] = useState<'approved' | 'declined' | 'needs_more_info' | ''>('');
 
+  const legacyReviewContext = Boolean(activeRetreatId && activeRetreatId === medicalData?.legacyRetreatId);
+
   const getDocumentUrl = (filePath?: string) => {
     if (!filePath) return '';
     if (/^https?:\/\//i.test(filePath)) return filePath;
     return `${API_BASE_URL}${filePath}`;
   };
 
-  const getArtifactFilePath = (artifact?: MedicalArtifact | null) => {
-    return artifact?.files?.[0]?.filePath || artifact?.files?.[0]?.s3Key || '';
-  };
-
-  const getArtifactFileName = (artifact?: MedicalArtifact | null) => {
-    return artifact?.files?.[0]?.fileName || artifact?.title || '';
-  };
-
-  const getArtifactDateString = (value?: string | Date | null) => {
-    if (!value) return undefined;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
-  };
-
-  const getLatestArtifactByType = (artifacts: MedicalArtifact[], predicate: (artifact: MedicalArtifact) => boolean) => {
-    return [...artifacts]
-      .filter(predicate)
-      .sort((a, b) => new Date((b.receivedAt || b.createdAt || 0) as string).getTime() - new Date((a.receivedAt || a.createdAt || 0) as string).getTime())[0];
-  };
-
   useEffect(() => {
-    // Skip if clientId looks like a route name instead of an ID
-    if (clientId && !clientId.includes('-') && clientId.length === 24) {
-      fetchClientData();
-    } else {
-      setLoading(false);
-    }
+    setClient(null); setMedicalData(null); setRetreats([]); setActiveRetreatId(null); setSourceWarnings([]); setLoadError('');
+    if (clientId && /^[a-f0-9]{24}$/i.test(clientId)) void fetchClientData();
+    else setLoading(false);
+    return () => { loadVersion.current += 1; };
   }, [clientId]);
 
   const fetchClientData = async () => {
+    if (!clientId) return;
+    const version = ++loadVersion.current;
+    const current = () => loadVersion.current === version;
+    setLoading(true); setLoadError('');
     try {
-      setLoading(true);
       const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : null;
-      const isMedicalAdvisor = user?.role === 'medical_advisor';
-
-      // Fetch client basic info - use medical advisor endpoint if applicable
-      const clientUrl = isMedicalAdvisor
-        ? `${API_BASE_URL}/medical-advisor/client/${clientId}`
-        : `${API_BASE_URL}/clients/${clientId}`;
-
-      const clientResponse = await fetch(clientUrl, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (clientResponse.ok) {
-        const clientData = await clientResponse.json();
-        setClient({
-          _id: clientData._id,
-          clientNumber: clientData.clientNumber || clientData.display_id || '#0000',
-          firstName: clientData.firstName || clientData.fname || 'Unknown',
-          lastName: clientData.lastName || clientData.lname || '',
-          dateOfBirth: clientData.dateOfBirth
-        });
-      }
-
-      const [medicalResponse, artifactsResponse] = await Promise.all([
-        fetch(`${API_BASE_URL}/client-medical/client/${clientId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }),
-        medicalArtifactsApi.getAll({ clientId }).catch(() => ({ data: [] as MedicalArtifact[] })),
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const clientUrl = user?.role === 'medical_advisor' ? `${API_BASE_URL}/medical-advisor/client/${clientId}` : `${API_BASE_URL}/clients/${clientId}`;
+      const response = await fetch(clientUrl, { headers });
+      if (!response.ok) throw new Error(response.status === 404 ? 'Client not found' : 'Client information could not be loaded.');
+      const data = await response.json();
+      if (data._id && data._id !== clientId) throw new Error('Client information did not match this profile.');
+      if (!current()) return;
+      setClient({ _id: data._id, clientNumber: data.clientNumber || data.display_id || '#0000', firstName: data.firstName || data.fname || 'Unknown', lastName: data.lastName || data.lname || '', dateOfBirth: data.dateOfBirth });
+      const array = (value: unknown): any[] => { if (!Array.isArray(value)) throw new Error('Invalid collection response'); return value; };
+      const legacy = async () => {
+        const result = await fetch(`${API_BASE_URL}/client-medical/client/${clientId}`, { headers });
+        if (result.status === 404) return [];
+        if (!result.ok) throw new Error('Legacy records unavailable');
+        return array(await result.json());
+      };
+      const [records, artifacts, reviews] = await Promise.allSettled([
+        legacy(),
+        medicalArtifactsApi.getAll({ clientId }, { suppressGlobalError: true }).then(result => array(result.data)),
+        medicalReviewRequestsApi.getAll({ clientId }, { suppressGlobalError: true }).then(result => array(result.data)),
       ]);
-
-      if (medicalResponse.ok) {
-        const medicalRecords = await medicalResponse.json();
-        const artifacts = (artifactsResponse.data || []) as MedicalArtifact[];
-
-        const latestEkgArtifact = getLatestArtifactByType(artifacts, (artifact) =>
-          artifact.artifactType === 'ekg' || artifact.artifactType === 'ceremony_ekg' || artifact.documentType === 'EKG',
-        );
-        const latestLiverArtifact = getLatestArtifactByType(artifacts, (artifact) =>
-          artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver',
-        );
-
-        // Get the most recent medical record or combine them
-        if (medicalRecords.length > 0) {
-          const latestRecord = medicalRecords[0]; // Get most recent
-          setMedicalData({
-            liverPanelStatus: latestRecord.liverPanelStatus || (latestLiverArtifact ? 'received' : 'pending'),
-            liverPanelReceivedDate: latestRecord.liverPanelReceivedDate || getArtifactDateString(latestLiverArtifact?.receivedAt),
-            liverPanelFilePath: latestRecord.liverPanelFilePath || getArtifactFilePath(latestLiverArtifact),
-            liverPanelFileName: latestRecord.liverPanelFileName || getArtifactFileName(latestLiverArtifact),
-            liverPanelAdvisorNotes: latestRecord.liverPanelAdvisorNotes || latestLiverArtifact?.notes || latestLiverArtifact?.description,
-
-            ekgStatus: latestRecord.ekgStatus || (latestEkgArtifact ? 'received' : 'pending'),
-            ekgReceivedDate: latestRecord.ekgReceivedDate || getArtifactDateString(latestEkgArtifact?.receivedAt),
-            ekgFilePath: latestRecord.ekgFilePath || getArtifactFilePath(latestEkgArtifact),
-            ekgFileName: latestRecord.ekgFileName || getArtifactFileName(latestEkgArtifact),
-            ekgAdvisorNotes: latestRecord.ekgAdvisorNotes || latestEkgArtifact?.notes || latestEkgArtifact?.description,
-
-            finalMedicalClearance: latestRecord.finalMedicalClearance,
-            medicalClearanceDate: latestRecord.medicalClearanceDate,
-            medicalClearanceNotes: latestRecord.medicalClearanceNotes,
-
-            medicalHistory: latestRecord.medicalHistory,
-            medications: latestRecord.medications || [],
-            allergies: latestRecord.allergies || []
-          });
-
-          // Get retreat info from the records
-          const retreatsData = [
-            ...medicalRecords.map((record: any) => record.retreatId),
-            ...artifacts.map((artifact) => artifact.retreatId),
-          ].filter((retreat: any): retreat is Retreat => Boolean(retreat && typeof retreat === 'object' && retreat._id));
-          setRetreats(retreatsData);
-          if (retreatsData.length > 0) {
-            setActiveRetreatId(retreatsData[0]._id);
-          }
-        }
-      } else {
-        const artifacts = (artifactsResponse.data || []) as MedicalArtifact[];
-        const latestEkgArtifact = getLatestArtifactByType(artifacts, (artifact) =>
-          artifact.artifactType === 'ekg' || artifact.artifactType === 'ceremony_ekg' || artifact.documentType === 'EKG',
-        );
-        const latestLiverArtifact = getLatestArtifactByType(artifacts, (artifact) =>
-          artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver',
-        );
-        if (latestEkgArtifact || latestLiverArtifact) {
-          setMedicalData({
-            ekgStatus: latestEkgArtifact ? 'received' : 'pending',
-            ekgReceivedDate: getArtifactDateString(latestEkgArtifact?.receivedAt),
-            ekgFilePath: getArtifactFilePath(latestEkgArtifact),
-            ekgFileName: getArtifactFileName(latestEkgArtifact),
-            ekgAdvisorNotes: latestEkgArtifact?.notes || latestEkgArtifact?.description,
-            liverPanelStatus: latestLiverArtifact ? 'received' : 'pending',
-            liverPanelReceivedDate: getArtifactDateString(latestLiverArtifact?.receivedAt),
-            liverPanelFilePath: getArtifactFilePath(latestLiverArtifact),
-            liverPanelFileName: getArtifactFileName(latestLiverArtifact),
-            liverPanelAdvisorNotes: latestLiverArtifact?.notes || latestLiverArtifact?.description,
-            medications: [],
-            allergies: [],
-            medicalHistory: '',
-          });
-        }
-      }
-
+      if (!current()) return;
+      setSourceWarnings([
+        ...(records.status === 'rejected' ? ['Legacy medical records could not be loaded.'] : []),
+        ...(artifacts.status === 'rejected' ? ['Medical documents could not be loaded. Document availability may be incomplete.'] : []),
+        ...(reviews.status === 'rejected' ? ['Medical review status could not be loaded.'] : []),
+      ]);
+      const model = resolveMedicalProfile({ clientId,
+        legacyRecords: records.status === 'fulfilled' ? records.value : [],
+        artifacts: (artifacts.status === 'fulfilled' ? artifacts.value : []) as MedicalArtifact[],
+        reviews: (reviews.status === 'fulfilled' ? reviews.value : []) as MedicalReviewRequest[],
+        legacyAvailable: records.status === 'fulfilled', artifactsAvailable: artifacts.status === 'fulfilled',
+      });
+      setMedicalData({ ...model.legacy, legacyRetreatId: objectId(model.legacy.retreatId),
+        ekgStatus: model.ekg.status, ekgReceivedDate: model.ekg.receivedAt, ekgFileName: model.ekg.fileName, ekgFilePath: model.ekg.filePath, ekgAdvisorNotes: model.ekg.notes, ekgSource: model.ekg,
+        liverPanelStatus: model.liver.status, liverPanelReceivedDate: model.liver.receivedAt, liverPanelFileName: model.liver.fileName, liverPanelFilePath: model.liver.filePath, liverPanelAdvisorNotes: model.liver.notes, liverPanelSource: model.liver,
+      });
+      setRetreats(model.retreats);
+      setActiveRetreatId(value => value && model.retreats.some(retreat => retreat._id === value) ? value : objectId(model.legacy.retreatId) || model.retreats[0]?._id || null);
     } catch (error) {
-      console.error('Error fetching client data:', error);
-    } finally {
-      setLoading(false);
-    }
+      if (current()) { setClient(null); setLoadError(error instanceof Error ? error.message : 'Client information could not be loaded.'); }
+    } finally { if (current()) setLoading(false); }
   };
 
+  const documentUrl = (source?: ProfileDocument) => source?.artifact?._id && source.fileIndex !== undefined
+    ? `${routePrefix}/medical-artifacts/${source.artifact._id}/files/${source.fileIndex}`
+    : source?.filePath ? getDocumentUrl(source.filePath) : '';
+
   const handleEkgReviewSubmit = async () => {
+    if (!legacyReviewContext || !medicalData?.ekgSource?.legacyReview) return;
     if (!ekgReviewDecision || !ekgReviewNotes.trim()) {
       showError('Please select a decision and provide review notes.');
       return;
@@ -264,6 +186,7 @@ const MedicalProfile: React.FC = () => {
   };
 
   const handleLiverPanelReviewSubmit = async () => {
+    if (!legacyReviewContext || !medicalData?.liverPanelSource?.legacyReview) return;
     if (!liverPanelReviewDecision || !liverPanelReviewNotes.trim()) {
       showError('Please select a decision and provide review notes.');
       return;
@@ -303,6 +226,7 @@ const MedicalProfile: React.FC = () => {
   };
 
   const handleReviewSubmit = async () => {
+    if (!legacyReviewContext) return;
     if (!reviewDecision || !reviewNotes.trim()) {
       showError('Please select a decision and provide review notes.');
       return;
@@ -384,7 +308,7 @@ const MedicalProfile: React.FC = () => {
   if (!client) {
     return (
       <div className="medical-profile">
-        <div className="error">Client not found</div>
+        <div role="alert" className="error">{loadError || 'Client not found'}</div>
       </div>
     );
   }
@@ -435,23 +359,25 @@ const MedicalProfile: React.FC = () => {
           </div>
         )}
 
+        {sourceWarnings.length > 0 && <p role="alert" className="medical-source-warning">{sourceWarnings.join(' ')}</p>}
+
         <div className="medical-documents">
           <h2>Medical Documents</h2>
 
           <div className="document-grid">
-            <div className="document-card">
+            <section aria-label="Liver Panel" className="document-card">
               <div className="document-header">
                 <FileText size={24} />
                 <h3>Liver Panel</h3>
                 <span className={`status-badge ${getStatusColor(medicalData?.liverPanelStatus)}`}>
-                  {medicalData?.liverPanelStatus || 'Pending'}
+                  {medicalProfileStatusLabel(medicalData?.liverPanelStatus)}
                 </span>
               </div>
 
-              {medicalData?.liverPanelReceivedDate ? (
+              {medicalData?.liverPanelSource?.present ? (
                 <div className="document-content">
                   <p className="upload-date">
-                    Received: {formatDate(medicalData.liverPanelReceivedDate)}
+                    {medicalData.liverPanelReceivedDate ? `Received: ${formatDate(medicalData.liverPanelReceivedDate)}` : 'Received date not recorded'}
                   </p>
                   {medicalData.liverPanelFileName && (
                     <p className="file-name">{medicalData.liverPanelFileName}</p>
@@ -462,9 +388,11 @@ const MedicalProfile: React.FC = () => {
                       <p>{medicalData.liverPanelAdvisorNotes}</p>
                     </div>
                   )}
-                  {medicalData.liverPanelFilePath && (
+                  {medicalData.liverPanelSource?.review?._id && <p><a className="medical-review-link" href={`${routePrefix}/medical-review-requests/${medicalData.liverPanelSource.review._id}`}>MRR #{medicalData.liverPanelSource.review.display_id || '—'}</a></p>}
+                  {!documentUrl(medicalData.liverPanelSource) && <p>No accessible file is available for this document.</p>}
+                  {documentUrl(medicalData.liverPanelSource) && (
                     <a
-                      href={getDocumentUrl(medicalData.liverPanelFilePath)}
+                      href={documentUrl(medicalData.liverPanelSource)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="view-document-btn"
@@ -476,24 +404,24 @@ const MedicalProfile: React.FC = () => {
                 </div>
               ) : (
                 <div className="document-empty">
-                  <p>No liver panel uploaded yet</p>
+                  <p>{medicalData?.liverPanelStatus === 'unavailable' ? 'Document availability could not be confirmed.' : 'No liver panel uploaded yet'}</p>
                 </div>
               )}
-            </div>
+            </section>
 
-            <div className="document-card">
+            <section aria-label="EKG Report" className="document-card">
               <div className="document-header">
                 <Heart size={24} />
                 <h3>EKG Report</h3>
                 <span className={`status-badge ${getStatusColor(medicalData?.ekgStatus)}`}>
-                  {medicalData?.ekgStatus || 'Pending'}
+                  {medicalProfileStatusLabel(medicalData?.ekgStatus)}
                 </span>
               </div>
 
-              {medicalData?.ekgReceivedDate ? (
+              {medicalData?.ekgSource?.present ? (
                 <div className="document-content">
                   <p className="upload-date">
-                    Received: {formatDate(medicalData.ekgReceivedDate)}
+                    {medicalData.ekgReceivedDate ? `Received: ${formatDate(medicalData.ekgReceivedDate)}` : 'Received date not recorded'}
                   </p>
                   {medicalData.ekgFileName && (
                     <p className="file-name">{medicalData.ekgFileName}</p>
@@ -504,9 +432,11 @@ const MedicalProfile: React.FC = () => {
                       <p>{medicalData.ekgAdvisorNotes}</p>
                     </div>
                   )}
-                  {medicalData.ekgFilePath && (
+                  {medicalData.ekgSource?.review?._id && <p><a className="medical-review-link" href={`${routePrefix}/medical-review-requests/${medicalData.ekgSource.review._id}`}>MRR #{medicalData.ekgSource.review.display_id || '—'}</a></p>}
+                  {!documentUrl(medicalData.ekgSource) && <p>No accessible file is available for this document.</p>}
+                  {documentUrl(medicalData.ekgSource) && (
                     <a
-                      href={getDocumentUrl(medicalData.ekgFilePath)}
+                      href={documentUrl(medicalData.ekgSource)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="view-document-btn"
@@ -518,10 +448,10 @@ const MedicalProfile: React.FC = () => {
                 </div>
               ) : (
                 <div className="document-empty">
-                  <p>No EKG uploaded yet</p>
+                  <p>{medicalData?.ekgStatus === 'unavailable' ? 'Document availability could not be confirmed.' : 'No EKG uploaded yet'}</p>
                 </div>
               )}
-            </div>
+            </section>
           </div>
         </div>
 
@@ -591,7 +521,7 @@ const MedicalProfile: React.FC = () => {
         )}
 
         {/* Separate EKG Review Section */}
-        {medicalData?.ekgReceivedDate && medicalData?.ekgStatus === 'received' && (
+        {legacyReviewContext && medicalData?.ekgSource?.legacyReview && medicalData?.ekgStatus === 'received' && (
           <div className="review-section">
             <h2>EKG Review</h2>
 
@@ -600,7 +530,7 @@ const MedicalProfile: React.FC = () => {
               <span>Review EKG Results</span>
               {medicalData.ekgFileName && (
                 <a
-                  href={getDocumentUrl(medicalData.ekgFilePath)}
+                  href={documentUrl(medicalData.ekgSource)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-document-btn"
@@ -672,7 +602,7 @@ const MedicalProfile: React.FC = () => {
         )}
 
         {/* Separate Liver Panel Review Section */}
-        {medicalData?.liverPanelReceivedDate && medicalData?.liverPanelStatus === 'received' && (
+        {legacyReviewContext && medicalData?.liverPanelSource?.legacyReview && medicalData?.liverPanelStatus === 'received' && (
           <div className="review-section">
             <h2>Liver Panel Review</h2>
 
@@ -681,7 +611,7 @@ const MedicalProfile: React.FC = () => {
               <span>Review Liver Panel Results</span>
               {medicalData.liverPanelFileName && (
                 <a
-                  href={getDocumentUrl(medicalData.liverPanelFilePath)}
+                  href={documentUrl(medicalData.liverPanelSource)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-document-btn"
@@ -753,7 +683,7 @@ const MedicalProfile: React.FC = () => {
         )}
 
         {/* Final Medical Clearance Section */}
-        {(!medicalData?.finalMedicalClearance && medicalData?.ekgStatus === 'approved' && medicalData?.liverPanelStatus === 'approved') && (
+        {(legacyReviewContext && medicalData?.ekgSource?.legacyReview && medicalData?.liverPanelSource?.legacyReview && !medicalData?.finalMedicalClearance && medicalData?.ekgStatus === 'approved' && medicalData?.liverPanelStatus === 'approved') && (
           <div className="review-section">
             <h2>Final Medical Clearance</h2>
 

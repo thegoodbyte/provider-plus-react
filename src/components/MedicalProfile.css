@@ -512,3 +512,7 @@
     max-width: none;
   }
 }
+.medical-profile .document-card { min-width: 0; }
+.medical-profile .file-name, .medical-profile .advisor-notes { overflow-wrap: anywhere; }
+.medical-source-warning { padding: 12px; border: 1px solid #f59e0b; border-radius: 8px; color: #78350f; background: #fffbeb; }
+.medical-review-link { color: #1d4ed8; text-decoration: underline; font-weight: 600; }
