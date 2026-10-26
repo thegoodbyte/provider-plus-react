@@ -904,7 +904,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const bookingStatusLabel = (status: string) => ({ pending: 'Conditional', confirmed: 'Confirmed', 'checked-in': 'Checked in', 'checked-out': 'Completed', cancelled: 'Cancelled' }[status] || status);
   const paymentStatusLabel = (client: RetreatClientData) => {
     const summary = bookingFinancialSummary(client);
-    if (summary.state === 'unreconciled' || summary.sourceState === 'legacy_cached') return 'Reconciliation required';
+    // PPVC-933: `legacy_cached` only means this booking hasn't gotten the
+    // newer server-computed ledger summary yet -- balance/overpayment are
+    // still real, computed numbers on that path (see bookingFinancialSummary.ts).
+    // Only the ledger's own `unreconciled` flag means the numbers can't be trusted.
+    if (summary.state === 'unreconciled') return 'Reconciliation required';
     if (isCancelledBookingStatus(client.status)) {
       if (client.cancellationDepositTreatment === 'none') return 'No payment';
       if (client.cancellationDepositTreatment === 'retained') return 'Deposit retained';
