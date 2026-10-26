@@ -1,0 +1,44 @@
+.scratchpad-page { background: #f3f8f4; border-radius: 18px; color: #173b2c; }
+.scratchpad-page .scratchpad-heading { color: #102e20; font-size: clamp(1.5rem, 2.5vw, 2rem); font-weight: 750; letter-spacing: -.025em; }
+.scratchpad-page .scratchpad-description { color: #556b5e; font-size: 1rem; max-width: none; }
+.scratchpad-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: white; border: 1px solid #d4e4d8; color: #506558; padding: 12px 15px; border-radius: 11px; white-space: nowrap; font-size: .875rem; }
+.scratchpad-refresh:disabled { opacity: .65; }
+.scratchpad-fresh-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ba667; }
+.scratchpad-fresh-dot.is-stale { background: #b7791f; }
+.scratchpad-overview { border: 1px solid #d4e7d9; border-radius: 20px; background: white; overflow: hidden; }
+.scratchpad-filter-top { display: flex; align-items: center; gap: 12px; padding: 15px; }
+.scratchpad-search { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px; padding: 12px 15px; background: #f0f7f1; color: #668171; border: 1px solid #dfeae2; border-radius: 12px; }
+.scratchpad-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #193e2b; font-size: .95rem; }
+.scratchpad-search:focus-within { outline: 2px solid #26724a; outline-offset: 2px; }
+.scratchpad-search kbd { border: 1px solid #cdded1; border-radius: 5px; padding: 0 6px; }
+.scratchpad-date-presets { display: flex; border-radius: 13px; background: #e8f4eb; padding: 4px; }
+.scratchpad-date-presets button { padding: 10px 14px; white-space: nowrap; color: #536e5d; font-size: .875rem; font-weight: 650; border-radius: 10px; }
+.scratchpad-date-presets button[aria-pressed=true] { background: white; color: #0b3d25; box-shadow: 0 1px 3px #153b2520; }
+.scratchpad-filter-bottom { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 15px; border-top: 1px solid #e2ece5; }
+.scratchpad-filter-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #d5e4d8; border-radius: 24px; padding: 8px 13px; color: #617e6b; font-size: .9rem; }
+.scratchpad-filter-chip select { min-width: 0; width: auto; max-width: 125px; font-weight: 650; color: #244e37; background: transparent; }
+.scratchpad-account { border-style: dashed; }
+.scratchpad-account input { background: transparent; width: 110px; min-width: 0; color: #244e37; font-weight: 550; }
+.scratchpad-sort { margin-left: auto; display: flex; align-items: center; gap: 8px; color: #244e37; font-size: .875rem; }
+.scratchpad-sort select { max-width: 230px; background: transparent; font-weight: 650; }
+.scratchpad-clear { color: #456d54; font-size: .8rem; text-decoration: underline; }
+.scratchpad-custom-dates { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 0 15px 15px; color: #456d54; }
+.scratchpad-custom-dates label { display: grid; gap: 4px; font-size: .8rem; }
+.scratchpad-custom-dates input { border: 1px solid #d5e4d8; padding: 8px; border-radius: 8px; color: #244e37; background: white; }
+.scratchpad-totals-strip { display: flex; background: #ecf9ef; border-top: 1px solid #d6eadb; }
+.scratchpad-totals-strip.is-stale { opacity: .6; }
+.scratchpad-totals { flex: 1; width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
+.scratchpad-totals td { width: 25%; padding: 14px 18px; border-right: 1px solid #dceee0; vertical-align: top; }
+.scratchpad-totals tr + tr td { border-top: 1px solid #dceee0; }
+.scratchpad-total-title { display: block; color: #4d7660; text-transform: uppercase; font-size: .75rem; letter-spacing: .055em; font-weight: 650; margin-bottom: 6px; }
+.scratchpad-total-value { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; color: #54715e; font-size: .8rem; }
+.scratchpad-total-value strong { font-size: 1.4rem; letter-spacing: -.025em; color: #183e2a; overflow-wrap: anywhere; }
+.scratchpad-total-count { margin-left: auto; border-radius: 20px; padding: 0 8px; background: white; font-size: .8rem; }
+.scratchpad-totals-help { align-self: center; width: 195px; flex-shrink: 0; padding: 12px 18px; color: #577861; font-size: .875rem; }
+.scratchpad-totals-help summary { list-style: none; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.scratchpad-totals-help p { margin-top: 10px; font-size: .8rem; }
+.scratchpad-loading, .scratchpad-load-error { padding: 10px 15px; font-size: .875rem; }
+.scratchpad-load-error { color: #991b1b; background: #fff1f2; }
+@media (max-width: 1150px) { .scratchpad-filter-top { flex-wrap: wrap; } .scratchpad-search { flex-basis: 100%; } .scratchpad-totals-help { width: 160px; } }
+@media (max-width: 760px) { .scratchpad-totals-strip { flex-direction: column; } .scratchpad-totals-help { width: 100%; } .scratchpad-totals td { padding: 10px 8px; } .scratchpad-total-value strong { font-size: 1.1rem; } .scratchpad-total-title { font-size: .65rem; } .scratchpad-sort { margin-left: 0; } }
+@media (max-width: 480px) { .scratchpad-filter-top { padding: 10px; } .scratchpad-date-presets { width: 100%; } .scratchpad-date-presets button { flex: 1; padding: 9px 5px; font-size: .75rem; } .scratchpad-search { padding: 10px; } .scratchpad-search input { font-size: .85rem; } .scratchpad-search kbd { display: none; } .scratchpad-filter-bottom { padding: 12px 10px; } .scratchpad-filter-chip { padding: 7px 10px; font-size: .8rem; } .scratchpad-totals tbody { display: block; } .scratchpad-totals tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); } .scratchpad-totals td { width: auto; padding: 12px; border-bottom: 1px solid #dceee0; } }
