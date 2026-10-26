@@ -9,7 +9,7 @@ const fs=require('node:fs'),path=require('node:path');
  http.get('/fixture/download/:key',async(req,res)=>{
   const upload=f.effects.uploads.find(x=>x.key===req.params.key);
   if(!upload)return res.status(404).send('Synthetic file unavailable');
-  res.setHeader('Content-Type','application/zip');res.setHeader('Content-Disposition','attachment; filename="'+String(req.query.name).replace(/["\r\n]/g,'')+'"');res.send(upload.buffer);
+  res.setHeader('Content-Type','application/zip');res.setHeader('Content-Disposition',"attachment; filename*=UTF-8''"+encodeURIComponent(String(req.query.name)));res.send(upload.buffer);
  });
  http.get('/fixture/snapshot',async(_req,res)=>res.json({reviews:await f.models.MedicalReviewRequest.find().sort({_id:1}).lean(),artifacts:await f.models.MedicalArtifact.find().sort({_id:1}).lean()}));
  await f.app.listen(Number(process.env.TEST_FIXTURE_PORT||0),'127.0.0.1');base='http://127.0.0.1:'+f.app.getHttpServer().address().port;
