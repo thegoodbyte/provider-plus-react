@@ -47,6 +47,6 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  await page.reload();
  const linked=await(await request.get(f.url+'/payment-scratchpad/'+data.ids.receipts[0],{headers:{Authorization:'Bearer '+f.tokens.admin}})).json();
  expect(linked.status).toBe('converted');expect(linked.payment._id).toBe(data.ids.payments[0]);expect(linked.payment.booking.bookingNumber).toBe(9410);
- const after=await(await request.get(f.url+'/fixture/search-snapshot')).json();expect(after.payments.length).toBe(before.payments.length);expect(after.emails).toEqual([]);expect(after.legacy).toEqual([]);
+ const after=await(await request.get(f.url+'/fixture/search-snapshot')).json();expect(after.payments.length).toBe(before.payments.length);expect(after.emails).toEqual([]);expect(after.legacy).toEqual([]);expect(after.bookings).toEqual(before.bookings);
  for(const payment of after.payments){const original=before.payments.find((p:any)=>p._id===payment._id);expect(payment.amount).toBe(original.amount);if(payment._id!==data.ids.payments[0])expect(payment).toEqual(original);}
 });
