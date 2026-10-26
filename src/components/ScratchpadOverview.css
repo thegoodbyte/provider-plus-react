@@ -42,3 +42,6 @@
 @media (max-width: 1150px) { .scratchpad-filter-top { flex-wrap: wrap; } .scratchpad-search { flex-basis: 100%; } .scratchpad-totals-help { width: 160px; } }
 @media (max-width: 760px) { .scratchpad-totals-strip { flex-direction: column; } .scratchpad-totals-help { width: 100%; } .scratchpad-totals td { padding: 10px 8px; } .scratchpad-total-value strong { font-size: 1.1rem; } .scratchpad-total-title { font-size: .65rem; } .scratchpad-sort { margin-left: 0; } }
 @media (max-width: 480px) { .scratchpad-filter-top { padding: 10px; } .scratchpad-date-presets { width: 100%; } .scratchpad-date-presets button { flex: 1; padding: 9px 5px; font-size: .75rem; } .scratchpad-search { padding: 10px; } .scratchpad-search input { font-size: .85rem; } .scratchpad-search kbd { display: none; } .scratchpad-filter-bottom { padding: 12px 10px; } .scratchpad-filter-chip { padding: 7px 10px; font-size: .8rem; } .scratchpad-totals tbody { display: block; } .scratchpad-totals tr { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); } .scratchpad-totals td { width: auto; padding: 12px; border-bottom: 1px solid #dceee0; } }
+
+.scratchpad-page .scratchpad-page-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; }
+@media (max-width: 760px) { .scratchpad-page .scratchpad-page-header { grid-template-columns: minmax(0,1fr); } }
