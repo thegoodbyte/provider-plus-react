@@ -11068,8 +11068,12 @@ export type ScratchpadControllerCandidatesData = {
 };
 
 export type ScratchpadControllerCandidatesResponses = {
-    200: unknown;
+    200: {
+        [key: string]: unknown;
+    };
 };
+
+export type ScratchpadControllerCandidatesResponse = ScratchpadControllerCandidatesResponses[keyof ScratchpadControllerCandidatesResponses];
 
 export type ScratchpadControllerCorrectDateData = {
     body?: never;

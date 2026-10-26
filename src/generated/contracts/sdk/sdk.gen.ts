@@ -3285,7 +3285,11 @@ export const scratchpadControllerEdit = <ThrowOnError extends boolean = false>(o
     ...options
 });
 
-export const scratchpadControllerCandidates = <ThrowOnError extends boolean = false>(options: Options<ScratchpadControllerCandidatesData, ThrowOnError>): RequestResult<ScratchpadControllerCandidatesResponses, unknown, ThrowOnError> => (options.client ?? client).get<ScratchpadControllerCandidatesResponses, unknown, ThrowOnError>({ url: '/payment-scratchpad/{id}/candidates', ...options });
+export const scratchpadControllerCandidates = <ThrowOnError extends boolean = false>(options: Options<ScratchpadControllerCandidatesData, ThrowOnError>): RequestResult<ScratchpadControllerCandidatesResponses, unknown, ThrowOnError> => (options.client ?? client).get<ScratchpadControllerCandidatesResponses, unknown, ThrowOnError>({
+    responseType: 'json',
+    url: '/payment-scratchpad/{id}/candidates',
+    ...options
+});
 
 export const scratchpadControllerCorrectDate = <ThrowOnError extends boolean = false>(options: Options<ScratchpadControllerCorrectDateData, ThrowOnError>): RequestResult<ScratchpadControllerCorrectDateResponses, unknown, ThrowOnError> => (options.client ?? client).patch<ScratchpadControllerCorrectDateResponses, unknown, ThrowOnError>({
     responseType: 'json',
