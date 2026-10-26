@@ -1,5 +1,5 @@
 import React from "react";
-import { Mail, MailCheck, MailWarning } from "lucide-react";
+import { Circle, MailCheck } from "lucide-react";
 export default function ScratchpadReceiptEmailStatus({
   summary,
 }: {
@@ -21,16 +21,15 @@ export default function ScratchpadReceiptEmailStatus({
           : status === "failed"
             ? "Receipt email failed — no successful send recorded"
             : "Receipt email status unavailable";
-  const Icon =
-    status === "sent" ? MailCheck : status === "failed" ? MailWarning : Mail;
+  const Icon = status === "sent" ? MailCheck : Circle;
   return (
     <span
       role="img"
       aria-label={text}
       title={text}
-      className={`inline-flex shrink-0 align-middle ${status === "sent" ? "text-emerald-700" : status === "pending" ? "text-amber-700" : status === "failed" ? "text-red-700" : "text-slate-400"}`}
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center align-middle ${status === "sent" ? "text-emerald-700" : status === "pending" ? "text-amber-700" : status === "failed" ? "text-red-700" : "text-slate-400"}`}
     >
-      <Icon size={16} aria-hidden="true" />
+      <Icon size={status === "sent" ? 16 : 6} fill={status === "sent" ? "none" : "currentColor"} strokeWidth={status === "sent" ? 2 : 0} aria-hidden="true" />
     </span>
   );
 }

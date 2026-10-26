@@ -4,6 +4,7 @@ import fs from "node:fs";
 test.describe.configure({ mode: "serial" });
 const fixturePath = process.env.SCRATCHPAD_EMAIL_FIXTURE;
 const f = fixturePath ? JSON.parse(fs.readFileSync(fixturePath, "utf8")) : {};
+test.describe.configure({ mode: "serial" });
 test.skip(
   !fixturePath,
   "Requires the disposable real Mongo/Nest scratchpad email fixture",
@@ -70,6 +71,12 @@ for (const width of [1440, 390])
         name: "No receipt email recorded for this payment",
       }),
     ).toBeVisible();
+    await expect(row(0).locator('.lucide-mail-check')).toHaveCount(1);
+    for (const index of [1, 2, 3, 4, 5, 6]) {
+      await expect(row(index).locator('.lucide-mail, .lucide-mail-check, .lucide-mail-warning')).toHaveCount(0);
+      await expect(row(index).locator('.lucide-circle')).toHaveCount(1);
+    }
+    await page.screenshot({ path: `${process.env.SCRATCHPAD_EMAIL_ARTIFACT_DIR || "test-results/scratchpad-email"}/status-table-${width}.png` });
     const link = row(0).getByRole("link", { name: "#1938", exact: true });
     await expect(link).toHaveAttribute(
       "href",
@@ -101,6 +108,8 @@ for (const width of [1440, 390])
     await expect(
       row(2).getByRole("img", { name: /Receipt email sent/ }),
     ).toBeVisible();
+    await expect(row(2).locator('.lucide-mail-check')).toHaveCount(1);
+    await expect(row(2).locator('.lucide-circle')).toHaveCount(0);
     expect(writes).toBe(0);
     expect(
       await (await request.get(f.url + "/fixture/snapshot")).json(),
