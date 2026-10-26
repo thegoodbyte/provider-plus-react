@@ -1,3 +1,4 @@
+import MrrWhatsappDownloadButton from './MrrWhatsappDownloadButton';
 import MedicalReviewBookingLink from './MedicalReviewBookingLink';
 import WhatsappDownloadNames, { WhatsappDownloadNameData } from './WhatsappDownloadNames';
 import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
@@ -1853,6 +1854,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
             New Request
           </button>
         )}
+        {isDetailView && selected?._id && <MrrWhatsappDownloadButton requestId={selected._id} requestNumber={selected.display_id} onError={showError} />}
         {isDetailView && selected && ['admin', 'medical_staff'].includes(user?.role || '') && preparationBookings.map(bookingId => <button key={bookingId} type="button" onClick={() => { const artifact = linkedArtifacts.find(item => getId(item.bookingId) === bookingId); const params = new URLSearchParams({ medicalReviewRequestId: selected._id || '', artifactId: artifact?._id || '' }); navigate(`${isMedicalRoute ? '/medical' : '/admin'}/bookings/${bookingId}/medication-stop-plan?${params}`); }} className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white">Add to Medical Preparation Calendar{preparationBookings.length > 1 ? ` · booking ${bookingId}` : ''}</button>)}
         {isDetailView && selected && user?.role === 'admin' && (
           <div className="flex flex-wrap justify-end gap-2">
