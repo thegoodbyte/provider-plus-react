@@ -22,6 +22,9 @@ for (const width of [1440,1024,390,320]) {
    const control = page.getByRole('button', { name, exact: true });await expect(control).toBeVisible();
    const bounds = await control.boundingBox();expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
   }
+  await expect(page.locator('.mrr-view-tabs button').first()).toHaveText('All');
+  await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveClass(/bg-blue-600/);
+  await page.getByRole('button', { name: 'Grouped', exact: true }).click();
   await page.getByRole('button', { name: /Potentials & unmatched/ }).click();
   for (const view of ['Grouped','All','WhatsApp handled']) {
    await page.getByRole('button', { name: view, exact: true }).click();

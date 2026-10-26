@@ -12,6 +12,7 @@ for(const width of [1440,390])test('WhatsApp handoff removes pending badge and s
   if(path==='/environment/status')return json({environment:'local',production:false,enabledJobs:[]});return json([]);
  });
  await page.goto('/admin/medical-review-requests');
+ await page.getByRole('button',{name:'Grouped',exact:true}).click();
  await expect(page.getByTitle('1 pending medical review request',{exact:true})).toBeVisible();
  await page.getByText('Synthetic WhatsApp Packet',{exact:true}).click();
  await page.locator('.mrr-list-row').filter({has:page.getByRole('button',{name:'#7981',exact:true})}).getByRole('button',{name:'Handle via WhatsApp',exact:true}).click();
@@ -20,6 +21,6 @@ for(const width of [1440,390])test('WhatsApp handoff removes pending badge and s
  await page.getByRole('button',{name:'Save and return to list',exact:true}).click();
  await expect.poll(()=>writes).toBe(1);
  await expect(page.locator('[title="1 pending medical review request"]')).toHaveCount(0);
- await page.reload();await expect(page.getByText('Synthetic WhatsApp Packet',{exact:true})).toBeVisible();await expect(page.locator('[title="1 pending medical review request"]')).toHaveCount(0);
+ await page.reload();await page.getByRole('button',{name:'Grouped',exact:true}).click();await expect(page.getByText('Synthetic WhatsApp Packet',{exact:true})).toBeVisible();await expect(page.locator('[title="1 pending medical review request"]')).toHaveCount(0);
  expect(writes).toBe(1);
 });
