@@ -240,3 +240,7 @@ it('opens the existing-payment review flow directly from the grid',async()=>{
   expect(screen.getByLabelText('I reviewed the receipt and selected relationships.')).toBeInTheDocument();
   expect(api.reconcile).not.toHaveBeenCalled();
 });
+it('shows the receipt email envelope beside its own linked payment ID',async()=>{
+ api.list.mockResolvedValue({data:{...snapshot,items:[{...row,status:'converted',paymentId:'payment-a',payment:{_id:'payment-a',display_id:1938,receiptEmail:{status:'sent'}}},{...row,_id:'other',status:'converted',paymentId:'payment-b',payment:{_id:'payment-b',display_id:1939,receiptEmail:{status:'not_sent'}}}]}} as any);
+ mount();const sent=await screen.findByRole('img',{name:'Receipt email sent'});expect(sent.closest('td')).toHaveTextContent('#1938');expect(screen.getByRole('img',{name:'No receipt email recorded for this payment'}).closest('td')).toHaveTextContent('#1939');expect(screen.getByRole('link',{name:'#1938'})).toHaveAttribute('href','/admin/payments/payment-a');
+});
