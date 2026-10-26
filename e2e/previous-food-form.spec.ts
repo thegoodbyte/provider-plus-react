@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
+// Both viewport journeys reset the same disposable booking/form fixture.
+test.describe.configure({ mode: 'serial' });
 const fixturePath = process.env.PREVIOUS_FOOD_FORM_FIXTURE;
 const f = fixturePath ? JSON.parse(fs.readFileSync(fixturePath, 'utf8')) : {};
 test.skip(!fixturePath, 'Requires the disposable real Mongo/Nest previous-food-form fixture');
