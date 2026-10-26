@@ -22,7 +22,7 @@ for (const width of [1440, 390]) for (const scenario of ['unpopulated', 'populat
   await expect(identity).toContainText(scenario === 'missing' ? 'Client name unavailable' : 'Aleksandra Maria Nowak-Kowalska');
   await expect(identity).toContainText(scenario === 'missing' ? 'Client ID unavailable' : 'Client ID: 1265');
   // Document type is a separate badge in the redesigned header.
-  await expect(page.getByText('Medications', { exact: true }).first()).toBeVisible();
+  await expect(identity.locator('xpath=following-sibling::div[1]')).toContainText('Medications');
   await expect(identity).not.toContainText(clientHash);
   await expect(heading).not.toContainText(requestHash);
   if (scenario !== 'missing') await expect(identity.getByRole('link')).toHaveAttribute('href', '/admin/medical/' + clientHash);
