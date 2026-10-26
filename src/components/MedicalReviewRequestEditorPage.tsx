@@ -138,6 +138,20 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const isEdit = Boolean(id);
   const { toast, showError, dismiss: dismissToast } = useToast();
   const artifactId = new URLSearchParams(location.search).get('artifactId') || '';
+  const canManageRequests = user?.role === 'admin' || user?.role === 'medical_staff';
+  const [downloadingForWhatsapp, setDownloadingForWhatsapp] = useState(false);
+  const downloadForWhatsapp = async () => {
+    if (!id || downloadingForWhatsapp) return;
+    setDownloadingForWhatsapp(true);
+    try {
+      const { data } = await medicalReviewRequestsApi.downloadForWhatsapp(id);
+      window.location.assign(data.url);
+    } catch (error) {
+      showError(apiErrorMessage(error, 'Unable to download this MRR. Please try again.'));
+    } finally {
+      setDownloadingForWhatsapp(false);
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [createdMrr, setCreatedMrr] = useState<MedicalReviewRequest | null>(null);
@@ -453,6 +467,10 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           <strong>Request #{requestNumber || '—'}</strong>
           {selectedClient && <span>{selectedClient.firstName} {selectedClient.lastName}</span>}
           {selectedRetreat && <small>{selectedRetreat.retreatCode || selectedRetreat.code || selectedRetreat.name}</small>}
+          {isEdit && canManageRequests && <button type="button" onClick={() => void downloadForWhatsapp()} disabled={downloadingForWhatsapp}
+            aria-label={`Download MRR #${requestNumber || ''} for WhatsApp`} className="mrr-whatsapp-download-button">
+            {downloadingForWhatsapp ? 'Preparing…' : 'Download for WhatsApp'}
+          </button>}
         </div>
       </header>
 
