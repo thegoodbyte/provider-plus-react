@@ -21,7 +21,7 @@ for (const width of [1440, 390]) for (const mode of ['view', 'edit']) test(`MRR 
     if (p === '/environment/status') return route.fulfill({ json: { environment: 'local', production: false, enabledJobs: [] } });
     return route.fulfill({ json: [] });
   });
-  const snapshot = async () => (await request.get(f.url + '/fixture/snapshot')).json();
+  const snapshot = async () => { const response = await request.get(f.url + '/fixture/snapshot'); expect(response.ok()).toBeTruthy(); return response.json(); };
   const before = await snapshot();
   const contextResponse = await request.get(f.url + '/medical-review-requests/' + f.requestId + '/context', { headers: { Authorization: 'Bearer ' + f.tokens.admin } });
   expect(contextResponse.ok()).toBeTruthy(); const names = (await contextResponse.json()).whatsappDownloadNames;
