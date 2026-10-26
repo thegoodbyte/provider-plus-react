@@ -62,10 +62,10 @@ it('shows readable MRR identity using context when clientId is unpopulated', asy
   (medicalReviewRequestsApi.getClientMessages as jest.Mock).mockResolvedValue({ data: { messages: [] } });
   (usersApi.findAll as jest.Mock).mockResolvedValue({ data: [] });
   render(<MemoryRouter initialEntries={['/admin/medical-review-requests/' + request._id]}><Routes><Route path="/admin/medical-review-requests/:id" element={<MedicalReviewRequestsPage />} /></Routes></MemoryRouter>);
-  expect(await screen.findByRole('heading', { name: 'Medical Review MRR #1413' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'MRR #1413' })).toBeInTheDocument();
   const identity = screen.getByRole('region', { name: 'Review identity' });
   expect(identity).toHaveTextContent('Ewa Franus');
   expect(identity).toHaveTextContent('Client ID: 1265');
-  expect(identity).toHaveTextContent('Medications');
   expect(identity).not.toHaveTextContent(request.clientId);
+  expect(screen.getByText('Medications', { exact: false })).toBeInTheDocument();
 });

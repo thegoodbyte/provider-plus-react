@@ -598,6 +598,21 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [validationError, setValidationError] = useState('');
   const [captureMode, setCaptureMode] = useState(false);
   const [relatedRecordsOpen, setRelatedRecordsOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) setMoreMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setMoreMenuOpen(false); };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [moreMenuOpen]);
   const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
   const canEditReview = user?.role === 'admin'
     || isEditRoute
@@ -1735,12 +1750,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const preparationBookings = Array.from(new Set([getId((selected as any)?.bookingId), ...linkedArtifacts.map(artifact => getId(artifact.bookingId))].filter(Boolean))) as string[];
   const reviewNav = (request?: MedicalReviewRequest) => request?._id && navigate(`${reviewListPath}/${request._id}`);
   const navigationControls = (className = '') => isDetailView && selected ? (
-    <div className={`mrr-review-navigation ${className}`}>
-      <button type="button" disabled={!previousRequest} onClick={() => reviewNav(previousRequest)}>← Previous</button>
-      <button type="button" onClick={() => navigate(reviewListPath)}>↑ List view</button>
-      <button type="button" disabled={!nextRequest} onClick={() => reviewNav(nextRequest)}>Next →</button>
+    <div className={`grid grid-cols-3 gap-2 ${className}`}>
+      <button type="button" disabled={!previousRequest} onClick={() => reviewNav(previousRequest)} className="min-h-10 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 disabled:opacity-40">← Previous</button>
+      <button type="button" onClick={() => navigate(reviewListPath)} className="min-h-10 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700">↑ List view</button>
+      <button type="button" disabled={!nextRequest} onClick={() => reviewNav(nextRequest)} className="min-h-10 rounded-lg border border-blue-200 bg-blue-50 text-xs font-bold text-blue-700 disabled:opacity-40">Next →</button>
     </div>
   ) : null;
+  const queuePosition = selectedRequestIndex >= 0 ? `${selectedRequestIndex + 1} of ${navigationRequests.length}` : '';
 
   return (
     <MedicalReviewDownloadContext.Provider value={selected?._id || ''}>
@@ -1758,111 +1774,119 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </div>
         </div>
       )}
-      {navigationControls('mb-3 sm:hidden')}
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-4 sm:mb-6">
-        <div className="min-w-0 w-full lg:flex-1">
-          <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
-            {isDetailView && selected ? (
-              <>Medical Review <span className="block text-2xl font-bold text-blue-800 sm:text-3xl">{selected.display_id ? `MRR #${selected.display_id}` : 'MRR number not assigned'}</span></>
-          ) : 'Medical Review Requests'}
-          </h1>
-              {isDetailView && selected ? (
-                <div className="mt-1">
-                  {['admin', 'medical_staff'].includes(user?.role || '') && <MedicalReviewBookingLink key={selected._id} requestId={selected._id!} prefix={isMedicalRoute ? '/medical' : '/admin'} onLinked={async () => {
-                    const [fresh, context] = await Promise.all([medicalReviewRequestsApi.getOne(selected._id!), medicalReviewRequestsApi.getContext(selected._id!)]);
-                    setSelected(fresh.data); setReviewContext(context.data); setRequests(current => current.map(item => item._id === selected._id ? fresh.data : item));
-                    setRelatedArtifacts(context.data?.artifacts?.all || []);
-                  }} />}
-                  <MedicalReviewFollowUpButton request={selected} onSaved={changes => {
-                    setSelected(current => current ? { ...current, ...changes } : current);
-                    setRequests(current => current.map(item => item._id === selected._id ? { ...item, ...changes } : item));
-                  }} />
-                  <section aria-label="Review identity" className="my-4 space-y-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4">
-                    <div className="break-words text-2xl font-bold leading-snug text-gray-950 sm:text-3xl">
-                      {profileHref ? <a href={profileHref} className="text-blue-800 underline decoration-blue-200 underline-offset-4 hover:text-blue-950">{selectedClientName}</a> : selectedClientName}
-                    </div>
-                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-lg font-bold text-gray-900 sm:text-xl">
-                      <span>{selectedClientDisplayId ? `Client ID: ${selectedClientDisplayId}` : 'Client ID unavailable'}</span>
-                      <span className="flex min-w-0 items-center gap-2"><MedicalDocumentTypeIcon type={selected.requestType} fallbackType={selected.documentType} />{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</span>
-                    </div>
-                    {(selectedClientAge || selectedClientGender) && <p className="text-sm font-medium text-gray-600">{[selectedClientAge ? `${selectedClientAge} yo` : '', selectedClientGender].filter(Boolean).join(' · ')}</p>}
-                  </section>
-                  {retreatStartDate && <div className="mt-1 text-xs font-medium text-gray-500">Retreat starts {retreatStartDate}</div>}
-                  <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
-                    <button type="button" className="mrr-related-mobile-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen} aria-controls="mrr-related-records">
-                      <FileText size={15} /> Related reviews <ChevronDown size={13} className={relatedRecordsOpen ? 'rotate-180' : ''} />
-                    </button>
-                    <button type="button" className="mrr-related-mobile-toggle" onClick={() => document.getElementById('mobile-additional-info')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                      Additional information <ChevronDown size={13} />
-                    </button>
-                  </div>
+      {isDetailView && selected ? (
+        <>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm">
+            <button type="button" onClick={() => navigate(reviewListPath)} className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:underline">
+              ↑ Medical reviews
+            </button>
+            <div className="flex items-center gap-3">
+              {queuePosition && <span className="text-xs font-semibold text-gray-500">{queuePosition}</span>}
+              <div className="inline-flex overflow-hidden rounded-lg border border-gray-300">
+                <button type="button" disabled={!previousRequest} onClick={() => reviewNav(previousRequest)} className="border-r border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white">← Previous</button>
+                <button type="button" disabled={!nextRequest} onClick={() => reviewNav(nextRequest)} className="bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-white">Next →</button>
+              </div>
+            </div>
+          </div>
+          <div className="mb-4 overflow-hidden rounded-xl border border-gray-200 bg-white sm:mb-6">
+            <div className="flex flex-wrap items-start justify-between gap-4 p-4 sm:p-5">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Medical Review</p>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  <h1 className="text-2xl font-extrabold leading-none text-blue-800 sm:text-3xl">{selected.display_id ? `MRR #${selected.display_id}` : 'MRR number not assigned'}</h1>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>{selected.status}</span>
                 </div>
-              ) : (
+                <section aria-label="Review identity" className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-base font-bold text-gray-900">
+                    {profileHref ? <a href={profileHref} className="text-blue-800 underline decoration-blue-200 underline-offset-4 hover:text-blue-950">{selectedClientName}</a> : selectedClientName}
+                  </span>
+                  <span className="text-gray-400">·</span>
+                  <span className="text-sm font-semibold text-gray-700">{selectedClientDisplayId ? `Client ID: ${selectedClientDisplayId}` : 'Client ID unavailable'}</span>
+                  {(selectedClientAge || selectedClientGender) && <><span className="text-gray-400">·</span><span className="text-sm text-gray-500">{[selectedClientAge ? `${selectedClientAge} yo` : '', selectedClientGender].filter(Boolean).join(' · ')}</span></>}
+                </section>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-700"><MedicalDocumentTypeIcon type={selected.requestType} fallbackType={selected.documentType} />{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</span>
+                  <button type="button" className="mrr-related-inline-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen}><FileText size={13} /> Related reviews <ChevronDown size={12} className={relatedRecordsOpen ? 'rotate-180' : ''} /></button>
+                  <span>
+                    {selected.createdAt
+                      ? `Created ${formatDateTime(selected.createdAt)}`
+                      : selected.requestedAt
+                        ? `Created ${formatDateTime(selected.requestedAt)}`
+                        : 'No created date'}
+                  </span>
+                  {retreatStartDate && <span>Retreat starts {retreatStartDate}</span>}
+                  {originalArtifactIds.map((artifactId, index) => (
+                    <button
+                      key={artifactId}
+                      type="button"
+                      onClick={() => navigate(`${artifactRoutePrefix}/medical-artifacts/${artifactId}/edit`)}
+                      className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 font-semibold text-blue-700 hover:bg-blue-100"
+                    >
+                      {originalArtifactIds.length > 1 ? `Edit original artifact ${index + 1}` : 'Edit original artifact'}
+                    </button>
+                  ))}
+                  {originalArtifactIds.length === 0 && (
+                    <span className="rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-800">No original artifact linked</span>
+                  )}
+                </div>
+                <button type="button" className="mrr-related-mobile-toggle mt-3 sm:hidden" onClick={() => document.getElementById('mobile-additional-info')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                  Additional information <ChevronDown size={13} />
+                </button>
+              </div>
+              <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+                <MrrWhatsappDownloadButton requestId={selected._id!} requestNumber={selected.display_id} onError={showError} />
+                <MedicalReviewFollowUpButton request={selected} onSaved={changes => {
+                  setSelected(current => current ? { ...current, ...changes } : current);
+                  setRequests(current => current.map(item => item._id === selected._id ? { ...item, ...changes } : item));
+                }} />
+                {user?.role === 'admin' && <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${selected._id}/edit`)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Edit request</button>}
+                {['admin', 'medical_staff'].includes(user?.role || '') && preparationBookings.map(bookingId => <button key={bookingId} type="button" onClick={() => { const artifact = linkedArtifacts.find(item => getId(item.bookingId) === bookingId); const params = new URLSearchParams({ medicalReviewRequestId: selected._id || '', artifactId: artifact?._id || '' }); navigate(`${isMedicalRoute ? '/medical' : '/admin'}/bookings/${bookingId}/medication-stop-plan?${params}`); }} className="rounded-md bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Add to Medical Preparation Calendar{preparationBookings.length > 1 ? ` · booking ${bookingId}` : ''}</button>)}
+                <div className="relative" ref={moreMenuRef}>
+                  <button type="button" aria-haspopup="menu" aria-expanded={moreMenuOpen} aria-label="More actions" onClick={() => setMoreMenuOpen((open) => !open)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">⋯</button>
+                  {moreMenuOpen && (
+                    <div role="menu" aria-label="More actions" className="absolute right-0 top-full z-20 mt-1 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+                      <button role="menuitem" type="button" onClick={() => { setCaptureMode((enabled) => !enabled); setMoreMenuOpen(false); }} className="no-print block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{captureMode ? 'Exit full-page mode' : 'Full-page screenshot'}</button>
+                      {user?.role === 'admin' && <>
+                        <div className="my-1 border-t border-gray-100" />
+                        <button role="menuitem" type="button" disabled={resettingReview || (!selected.reviewDecision && selected.status === 'pending')} onClick={() => { void handleResetReview(); setMoreMenuOpen(false); }} className="block w-full px-3 py-2 text-left text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{resettingReview ? 'Resetting...' : 'Reset review'}</button>
+                      </>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            {['admin', 'medical_staff'].includes(user?.role || '') && (
+              <div className="border-t border-gray-100 px-4 py-2 sm:px-5">
+                <MedicalReviewBookingLink key={selected._id} requestId={selected._id!} prefix={isMedicalRoute ? '/medical' : '/admin'} onLinked={async () => {
+                  const [fresh, context] = await Promise.all([medicalReviewRequestsApi.getOne(selected._id!), medicalReviewRequestsApi.getContext(selected._id!)]);
+                  setSelected(fresh.data); setReviewContext(context.data); setRequests(current => current.map(item => item._id === selected._id ? fresh.data : item));
+                  setRelatedArtifacts(context.data?.artifacts?.all || []);
+                }} />
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-4 sm:mb-6">
+          <div className="min-w-0 w-full lg:flex-1">
+            <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">Medical Review Requests</h1>
             <p className="text-sm text-gray-600">
               {isMedicalRoute ? 'Queue for review requests. Open Review to change decisions and comments.' : 'Administrative review request queue and history.'}
             </p>
-          )}
-          {isDetailView && selected && (
-            <div className="mt-2 hidden flex-wrap items-center gap-2 text-xs text-gray-500 sm:flex">
-              <span>Request #{selected.display_id || '—'}</span>
-              <button type="button" className="mrr-related-inline-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen}><FileText size={13} /> Related reviews <ChevronDown size={12} className={relatedRecordsOpen ? 'rotate-180' : ''} /></button>
-              <span>
-                {selected.createdAt
-                  ? `Created ${formatDateTime(selected.createdAt)}`
-                  : selected.requestedAt
-                    ? `Created ${formatDateTime(selected.requestedAt)}`
-                    : 'No created date'}
-              </span>
-              <span className={`rounded-full px-2 py-1 font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
-                {selected.status}
-              </span>
-              {originalArtifactIds.map((artifactId, index) => (
-                <button
-                  key={artifactId}
-                  type="button"
-                  onClick={() => navigate(`${artifactRoutePrefix}/medical-artifacts/${artifactId}/edit`)}
-                  className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 font-semibold text-blue-700 hover:bg-blue-100"
-                >
-                  {originalArtifactIds.length > 1 ? `Edit original artifact ${index + 1}` : 'Edit original artifact'}
-                </button>
-              ))}
-              {originalArtifactIds.length === 0 && (
-                <span className="rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-800">No original artifact linked</span>
-              )}
-            </div>
-          )}
-          {!isDetailView && (
             <p className="mt-1 text-xs text-gray-500 sm:text-sm">
               {pendingQueueCount} request{pendingQueueCount === 1 ? '' : 's'} awaiting review
             </p>
-          )}
-        </div>
-        {isDetailView && (
-          <button
-            type="button"
-            onClick={() => setCaptureMode((enabled) => !enabled)}
-            className="no-print hidden shrink-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:inline-flex"
-          >
-            {captureMode ? 'Exit full-page mode' : 'Full-page screenshot'}
-          </button>
-        )}
-        {!isMedicalRoute && !isDetailView && (
-          <button
-            onClick={() => navigate('/admin/medical-review-requests/new')}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            New Request
-          </button>
-        )}
-        {isDetailView && selected?._id && <MrrWhatsappDownloadButton requestId={selected._id} requestNumber={selected.display_id} onError={showError} />}
-        {isDetailView && selected && ['admin', 'medical_staff'].includes(user?.role || '') && preparationBookings.map(bookingId => <button key={bookingId} type="button" onClick={() => { const artifact = linkedArtifacts.find(item => getId(item.bookingId) === bookingId); const params = new URLSearchParams({ medicalReviewRequestId: selected._id || '', artifactId: artifact?._id || '' }); navigate(`${isMedicalRoute ? '/medical' : '/admin'}/bookings/${bookingId}/medication-stop-plan?${params}`); }} className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white">Add to Medical Preparation Calendar{preparationBookings.length > 1 ? ` · booking ${bookingId}` : ''}</button>)}
-        {isDetailView && selected && user?.role === 'admin' && (
-          <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${selected._id}/edit`)} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Edit request</button>
-            <button type="button" disabled={resettingReview || (!selected.reviewDecision && selected.status === 'pending')} onClick={handleResetReview} className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{resettingReview ? 'Resetting...' : 'Reset review'}</button>
           </div>
+          {!isMedicalRoute && (
+            <button
+              onClick={() => navigate('/admin/medical-review-requests/new')}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              New Request
+            </button>
           )}
         </div>
+      )}
         {isDetailView && selected && relatedRecordsOpen && (
           <div id="mrr-related-records" className="mrr-related-bar" role="region" aria-label="Related records">
             <div className="mrr-related-bar-inner">
