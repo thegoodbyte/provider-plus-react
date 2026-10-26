@@ -1,3 +1,4 @@
+import PaymentRequestInvoicePreview from './PaymentRequestInvoicePreview';
 import PaymentRequestSettlement from './PaymentRequestSettlement';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
 import RequestBookingAction from './RequestBookingAction';
@@ -386,6 +387,7 @@ const PaymentRequestEditorPage: React.FC = () => {
             )}
           </div>
 
+          {paymentRequest.context !== 'standalone_service' && <div className="mt-6"><PaymentRequestInvoicePreview key={id} requestId={id} /></div>}
           {paymentRequest.publicHash && <div className="mt-6 border-t border-gray-200 pt-6">
             <h2 className="text-lg font-semibold text-gray-900">Public payment-request pages</h2>
             <p className="mt-1 text-sm text-gray-600">Both pages use the same secure request hash and show the same payment data.</p>

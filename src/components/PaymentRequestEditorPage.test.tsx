@@ -1,3 +1,4 @@
+jest.mock('./PaymentRequestInvoicePreview', () => () => null);
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';

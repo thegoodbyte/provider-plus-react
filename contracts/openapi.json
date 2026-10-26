@@ -21277,6 +21277,36 @@
         ]
       }
     },
+    "/payment-requests/{id}/invoice-preview": {
+      "get": {
+        "operationId": "PaymentRequestsController_previewInvoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "PaymentRequests"
+        ]
+      }
+    },
     "/payment-requests/{id}/link": {
       "put": {
         "operationId": "PaymentRequestsController_link",

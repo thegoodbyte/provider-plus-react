@@ -724,6 +724,7 @@ export const paymentsApi = {
 };
 
 export const paymentRequestsApi = {
+  previewInvoice: (id: string) => api.get<{ previewOnly: boolean; invoice: any }>(`/payment-requests/${encodeURIComponent(id)}/invoice-preview`, { suppressGlobalError: true } as any),
   getSettlement: (id: string) => api.get<any>(`/payment-requests/${id}/settlement`),
   getBookingLinkReview: (requestId?: string) => api.get<any[]>('/payment-requests/booking-link-review', { params: { requestId } }),
   linkBooking: (id: string, bookingId: string) => {

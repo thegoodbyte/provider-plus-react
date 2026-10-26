@@ -10878,6 +10878,23 @@ export type PaymentRequestsControllerDecideIdentityChangeResponses = {
 
 export type PaymentRequestsControllerDecideIdentityChangeResponse = PaymentRequestsControllerDecideIdentityChangeResponses[keyof PaymentRequestsControllerDecideIdentityChangeResponses];
 
+export type PaymentRequestsControllerPreviewInvoiceData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-requests/{id}/invoice-preview';
+};
+
+export type PaymentRequestsControllerPreviewInvoiceResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PaymentRequestsControllerPreviewInvoiceResponse = PaymentRequestsControllerPreviewInvoiceResponses[keyof PaymentRequestsControllerPreviewInvoiceResponses];
+
 export type PaymentRequestsControllerLinkData = {
     body?: never;
     path: {
