@@ -1463,7 +1463,7 @@ const ClientDetailsPage: React.FC = () => {
                 {/* EKG and Liver Panel Test Sections - Entry Documents */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                   {/* EKG Test Section */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div role="region" aria-label="Entry EKG Test" className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
                       <Icon icon={Activity} className="w-4 h-4 mr-2" />
                       Entry EKG Test
@@ -1481,6 +1481,7 @@ const ClientDetailsPage: React.FC = () => {
                             <p className="text-xs text-gray-600">Booking-specific EKG status is shown above. These are stored file records.</p>
                             {latestEkg && (
                               <>
+                                <div><dt className="text-xs text-gray-600">Medical review:</dt><dd><ArtifactReviewStatus artifactId={latestEkg._id} state={artifactReviews} /></dd></div>
 
                                 <div className="flex justify-between">
                                   <dt className="text-xs text-gray-600">Received:</dt>
