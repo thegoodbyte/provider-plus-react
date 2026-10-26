@@ -54,6 +54,7 @@ it('shows a Download for WhatsApp button for an admin editing an existing reques
   fireEvent.click(button);
 
   await waitFor(() => expect(medicalReviewRequestsApi.downloadForWhatsapp).toHaveBeenCalledWith('mrr-1'));
+  expect(medicalReviewRequestsApi.getNextDisplayId).not.toHaveBeenCalled();
   await waitFor(() => expect(assign).toHaveBeenCalledWith('https://cdn.example/mrr-5001.zip'));
 
   Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });

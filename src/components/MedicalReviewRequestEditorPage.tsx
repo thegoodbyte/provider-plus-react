@@ -190,7 +190,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         clientsApi.getAll(),
         retreatsApi.getAll(),
         medicalReviewRequestsApi.getGroups().catch(() => ({ data: [] as MedicalReviewGroup[] })),
-        medicalReviewRequestsApi.getNextDisplayId(),
+        isEdit ? Promise.resolve({ data: null }) : medicalReviewRequestsApi.getNextDisplayId(),
         usersApi.getAll().catch(() => ({ data: [] as User[] })),
         artifactId ? medicalArtifactsApi.getOne(artifactId).catch(() => null) : Promise.resolve(null),
         medicalReviewRequestsApi.getRequestTypes(),
@@ -243,6 +243,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       if (isEdit && id) {
         const existing = await medicalReviewRequestsApi.getOne(id);
         const record = existing.data;
+        setRequestNumber(record.display_id || null);
         setForm({
           medicalTrackingId: typeof record.medicalTrackingId === 'string' ? record.medicalTrackingId : record.medicalTrackingId?._id || '',
           clientId: typeof record.clientId === 'string' ? record.clientId : record.clientId?._id || '',

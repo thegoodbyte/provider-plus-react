@@ -6,13 +6,14 @@ test.skip(!fixturePath, 'Requires disposable real Nest/Mongo download fixture wi
 for (const width of [1440, 390]) for (const mode of ['view', 'edit']) test(`MRR ${mode} downloads its WhatsApp archive at ${width}px`, async ({ page, request }) => {
   await page.setViewportSize({ width, height: 1000 });
   await page.addInitScript(token => { localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify({ id: 'staff', role: 'admin', email: 'admin@example.invalid' })); }, f.tokens.admin);
-  const writes: string[] = []; let prepared: any;
+  const writes: string[] = []; let prepared: any; let counterReads = 0;
   await page.route('**/*', async route => {
     const req = route.request(), url = new URL(req.url()), p = url.pathname;
     if (p.startsWith('/fixture/download/')) return route.continue();
     if (!['xhr', 'fetch'].includes(req.resourceType())) return route.continue();
     if (req.method() !== 'GET') { writes.push(req.method() + ' ' + p); return route.fulfill({ status: 405, json: {} }); }
     if (p.endsWith('/access-links')) return route.fulfill({ json: [] });
+    if (p.endsWith('/next-display-id')) { counterReads++; return route.fulfill({ json: 9999 }); }
     if (p.startsWith('/medical-review-requests')) {
       const response = await route.fetch({ url: f.url + p + url.search });
       if (p.endsWith('/whatsapp-download')) { expect(response.ok()).toBeTruthy(); prepared = await response.json(); }
@@ -28,6 +29,7 @@ for (const width of [1440, 390]) for (const mode of ['view', 'edit']) test(`MRR 
   await page.goto('/admin/medical-review-requests/' + f.requestId + (mode === 'edit' ? '/edit' : ''));
   const button = page.getByRole('button', { name: 'Download MRR #1423 for WhatsApp' });
   await expect(button).toBeVisible(); await button.scrollIntoViewIfNeeded();
+  await page.waitForLoadState('networkidle');
   const bounds = await button.boundingBox(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
   await button.locator('..').screenshot({ path: `${process.env.MRR_VIEW_DOWNLOAD_ARTIFACT_DIR || '../ppvc-934-validation'}/header-${mode}-${width}.png` });
   const downloaded = page.waitForEvent('download'); await button.click(); const download = await downloaded;
@@ -41,6 +43,7 @@ for (const width of [1440, 390]) for (const mode of ['view', 'edit']) test(`MRR 
     offset += 46 + length + bytes.readUInt16LE(offset + 30) + bytes.readUInt16LE(offset + 32);
   }
   expect(entries.sort()).toEqual([...names.fileNames].sort()); expect(count).toBe(prepared.fileCount);
-  expect(await snapshot()).toEqual(before); expect(writes).toEqual([]);
+  expect(await snapshot()).toEqual(before); expect(writes).toEqual([]); expect(counterReads).toBe(0);
   await page.reload(); await expect(page.getByRole('button', { name: 'Download MRR #1423 for WhatsApp' })).toBeVisible();
+  await page.waitForLoadState('networkidle');
 });
