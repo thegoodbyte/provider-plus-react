@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
+// Both viewport journeys reset and advance the same disposable email fixture.
+test.describe.configure({ mode: "serial" });
 const fixturePath = process.env.SCRATCHPAD_EMAIL_FIXTURE;
 const f = fixturePath ? JSON.parse(fs.readFileSync(fixturePath, "utf8")) : {};
 test.skip(
