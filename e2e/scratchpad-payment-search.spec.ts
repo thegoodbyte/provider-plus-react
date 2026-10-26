@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
+// Both viewport journeys mutate and reset one disposable payment fixture.
+test.describe.configure({ mode: 'serial' });
 const file=process.env.SCRATCHPAD_SEARCH_FIXTURE,f=file?JSON.parse(fs.readFileSync(file,'utf8')):{};
 test.skip(!file,'Requires disposable real Mongo/Nest scratchpad payment search fixture');
 for(const width of [1440,390])test(`find and link an existing payment at ${width}px`,async({page,request})=>{
