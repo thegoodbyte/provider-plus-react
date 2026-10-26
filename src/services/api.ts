@@ -624,6 +624,7 @@ export const scratchpadApi = {
 };
 
 export const paymentsApi = {
+  linkRequest: (id: string, paymentRequestId: string) => api.post<Payment & { requestLinkPending?: boolean }>(`/payments/${id}/link-request`, { paymentRequestId }),
   getFinancialSummary: (bookingId: string) => api.get(`/payments/booking/${bookingId}/financial-summary`, { params: { _fresh: Date.now() } }),
   getFinancialReconciliation: (after?: string) => api.get(`/payments/financial-reconciliation`, { params: { after } }),
   getPlanSettings: () => api.get('/payments/plan-settings'),

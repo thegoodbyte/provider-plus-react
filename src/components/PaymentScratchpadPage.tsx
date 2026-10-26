@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Modal, message } from 'antd';
 import { Eye, Pencil, Link2 } from 'lucide-react';
-import { clientsApi, bookingsApi, paymentRequestsApi, scratchpadApi, ScratchpadReceipt, ScratchpadSnapshot } from '../services/api';
+import { clientsApi, bookingsApi, paymentRequestsApi, paymentsApi, scratchpadApi, ScratchpadReceipt, ScratchpadSnapshot } from '../services/api';
 import SearchableClientSelect from './SearchableClientSelect';
 import ScratchpadOverview, { ScratchpadRefresh } from './ScratchpadOverview';
 
@@ -80,8 +80,9 @@ export default function PaymentScratchpadPage() {
   const changePaymentSearch = (changes: Partial<typeof emptyPaymentSearch>) => {
     setPaymentSearch(previous => ({ ...previous, ...changes, page: changes.page || 1 }));
     setTarget(previous => ({ ...previous, paymentId: '', confirmAccount: false }));
-    setConfirmed(false);
+    setRequestLinkId(''); setConfirmed(false);
   };
+  const [requestLinkId, setRequestLinkId] = useState('');
   const [candidateLoading, setCandidateLoading] = useState(false);
   const [candidateError, setCandidateError] = useState('');
   const [candidateAttempt, setCandidateAttempt] = useState(0);
@@ -136,7 +137,7 @@ export default function PaymentScratchpadPage() {
   };
   const open = async (id: string) => {
     const seq = ++detailSequence.current;
-    setError(''); setSelected(null); setForm(null); setEditing(false); setReason(''); setConfirmed(false);
+    setRequestLinkId(''); setError(''); setSelected(null); setForm(null); setEditing(false); setReason(''); setConfirmed(false);
     setDetailLoading(true);
     try {
       const [detail, suggestions, cs, bs, rs] = await Promise.all([scratchpadApi.detail(id), scratchpadApi.candidates(id), clientsApi.getAll(), bookingsApi.getAll(), paymentRequestsApi.getAllFresh()]);
@@ -165,8 +166,20 @@ export default function PaymentScratchpadPage() {
     setTarget(v => ({ ...v, paymentRequestId: id, paymentId: '', confirmAccount: false, ...(request ? { clientId: resolveId(request.clientId), bookingId: resolveId(request.bookingId) } : {}) })); setConfirmed(false);
   };
   const setExisting = (id: string) => {
+    setRequestLinkId('');
     const payment = candidates.payments.find(p => p._id === id);
     if (payment) { setTarget(v => ({ ...v, action: 'link', paymentId: id, clientId: resolveId(payment.clientId), bookingId: resolveId(payment.bookingId), paymentRequestId: resolveId(payment.paymentRequestId), confirmAccount: false })); setConfirmed(false); }
+  };
+  const linkSelectedRequest = () => {
+    const payment = candidates.payments.find(item => item._id === target.paymentId);
+    const requestId = resolveId(payment?.paymentRequestId) || requestLinkId;
+    if (!payment || !requestId) return;
+    void mutate(async () => {
+      const { data } = await paymentsApi.linkRequest(payment._id, requestId);
+      setCandidates(previous => ({ ...previous, payments: previous.payments.map(item => item._id === payment._id ? { ...item, ...data, requestLinkPending: Boolean(data.requestLinkPending) } : item) }));
+      setTarget(previous => ({ ...previous, paymentRequestId: resolveId(data.paymentRequestId), bookingId: resolveId(data.bookingId), clientId: resolveId(data.clientId), confirmAccount: false }));
+      setConfirmed(false); setNotice('Payment linked to the request. Review and confirm the scratchpad link separately.');
+    });
   };
   const finish = (e: React.FormEvent) => {
     e.preventDefault(); if (!selected) return;
@@ -331,12 +344,25 @@ export default function PaymentScratchpadPage() {
                 </label>) : <p className="text-sm text-slate-600">No matching payment found.</p>}
                 {Boolean(candidates.total && candidates.limit && candidates.total > candidates.limit) && <div className="flex items-center gap-2"><button type="button" className={buttonClass} disabled={candidateLoading || paymentSearch.page <= 1} onClick={() => changePaymentSearch({ page: paymentSearch.page - 1 })}>Previous payments</button><span>Page {paymentSearch.page}</span><button type="button" className={buttonClass} disabled={candidateLoading || paymentSearch.page * (candidates.limit || 25) >= (candidates.total || 0)} onClick={() => changePaymentSearch({ page: paymentSearch.page + 1 })}>Next payments</button></div>}
               </div>
+            {target.paymentId && (() => {
+              const payment = candidates.payments.find(item => item._id === target.paymentId);
+              if (!payment) return null;
+              const existingRequest = resolveId(payment.paymentRequestId);
+              const options = requests.filter(request => request.status !== 'cancelled' && resolveId(request.clientId) === resolveId(payment.clientId) && request.currency === payment.currency
+                && !request.participantBookings?.length && (request.context !== 'standalone_service' || (!resolveId(payment.bookingId) && !resolveId(payment.retreatId))) && (!resolveId(payment.retreatId) || !resolveId(request.retreatId) || resolveId(payment.retreatId) === resolveId(request.retreatId)) && (!resolveId(payment.bookingId) || !resolveId(request.bookingId) || resolveId(request.bookingId) === resolveId(payment.bookingId)))
+                .map(request => ({ id: request._id, label: `Request #${request.display_id || request.invoiceNumber} · ${request.requestedAmount || 0} ${request.currency} · ${request.status}`, sublabel: request.bookingId ? `Booking #${bookings.find(booking => booking._id === resolveId(request.bookingId))?.bookingNumber || resolveId(request.bookingId)}` : 'No booking' }));
+              return <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                {existingRequest ? <p className="text-sm">Payment request: <Link className="text-blue-700 underline" to={`/admin/payment-requests/${existingRequest}`}>View linked request</Link></p> : <><label htmlFor="scratchpad-link-request">Link selected payment to a payment request (optional)</label><SearchableSelect id="scratchpad-link-request" name="requestLinkId" value={requestLinkId} options={[{id:'',label:'Choose a payment request'},...options]} placeholder="Find payment request number" onChange={value => { setRequestLinkId(value); setConfirmed(false); }} /></>}
+                {(!existingRequest || payment.requestLinkPending) && <button type="button" className={buttonClass} disabled={!existingRequest && !requestLinkId} onClick={linkSelectedRequest}>{payment.requestLinkPending ? 'Retry payment request link' : 'Link payment to request'}</button>}
+                {!existingRequest && <p className="text-xs text-slate-600">This saves the request link and refreshes its paid total. If the payment has no booking, it uses the request’s booking. Then confirm the scratchpad link below.</p>}
+              </div>;
+            })()}
             <label className="flex items-start gap-2"><input type="checkbox" checked={target.confirmAccount} onChange={e => setTarget(v => ({ ...v, confirmAccount: e.target.checked }))} />I checked the original transaction and confirm the selected payment, provider, amount and client match this receipt.</label></>}
           </fieldset>
           <button type="button" className="text-left text-sm text-blue-700 underline" onClick={() => { if (linkMode) { setTarget(v => ({ ...v, action: 'convert', paymentId: '', confirmAccount: false })); setConfirmed(false); } else { setTarget(v => ({ ...v, action: 'link' })); } setLinkMode(!linkMode); }}>{linkMode ? '← Use a new payment instead' : 'Have an existing payment for this already? Link it instead →'}</button>
           {linkMode && <p className="rounded-lg bg-blue-50 p-3 text-sm">Review: {selected.receivedDate} · {selected.amount} {selected.currency}{selected.account ? ` · ${selected.account}` : ''}. Linking does not create a payment or change balances. No email will be sent.</p>}
           {linkMode && <label className="flex items-start gap-2"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={busy} required />I reviewed the receipt and selected relationships.</label>}
-          <button className={primaryClass} type="submit" disabled={busy || (linkMode && (candidateLoading || Boolean(candidateError))) || !target.clientId || (linkMode ? (!confirmed || !target.paymentId) : false)}>{busy ? 'Saving…' : selected.reconciliationPending ? 'Retry reconciliation' : linkMode ? 'Confirm link to existing payment' : 'Create payment'}</button>
+          <button className={primaryClass} type="submit" disabled={busy || (linkMode && (candidateLoading || Boolean(candidateError))) || !target.clientId || (linkMode ? (!confirmed || !target.paymentId || Boolean(candidates.payments.find(item => item._id === target.paymentId)?.requestLinkPending)) : false)}>{busy ? 'Saving…' : selected.reconciliationPending ? 'Retry reconciliation' : linkMode ? 'Confirm link to existing payment' : 'Create payment'}</button>
         </form>
       </>}
     </Modal>

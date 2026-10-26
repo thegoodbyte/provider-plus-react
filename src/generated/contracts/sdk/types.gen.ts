@@ -693,6 +693,10 @@ export type LinkMedicalReviewBookingDto = {
     previewToken: string;
 };
 
+export type LinkPaymentRequestDto = {
+    paymentRequestId: string;
+};
+
 export type LoginDto = {
     email?: string;
     password: string;
@@ -11896,6 +11900,23 @@ export type PaymentsControllerUpdateResponses = {
 };
 
 export type PaymentsControllerUpdateResponse = PaymentsControllerUpdateResponses[keyof PaymentsControllerUpdateResponses];
+
+export type PaymentsControllerLinkRequestData = {
+    body: LinkPaymentRequestDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payments/{id}/link-request';
+};
+
+export type PaymentsControllerLinkRequestResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PaymentsControllerLinkRequestResponse = PaymentsControllerLinkRequestResponses[keyof PaymentsControllerLinkRequestResponses];
 
 export type PaymentsControllerProcessRefundData = {
     body?: never;

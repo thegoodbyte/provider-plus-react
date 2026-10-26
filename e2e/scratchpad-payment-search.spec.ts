@@ -12,8 +12,9 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'staff',role:'admin',email:'staff@example.invalid'}));},f.tokens.admin);
  await page.route('**/*',async route=>{
   const r=route.request(),u=new URL(r.url());if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();
-  if(u.pathname.startsWith('/payment-scratchpad'))return route.fulfill({response:await route.fetch({url:f.url+u.pathname+u.search})});
+  if(u.pathname.startsWith('/payment-scratchpad') || /\/payments\/[^/]+\/link-request$/.test(u.pathname))return route.fulfill({response:await route.fetch({url:f.url+u.pathname+u.search})});
   if(u.pathname==='/clients')return route.fulfill({json:data.clients});
+  if(u.pathname==='/payment-requests')return route.fulfill({json:data.requests});
   if(u.pathname==='/bookings')return route.fulfill({json:data.bookings});
   if(u.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
   return route.fulfill({json:[]});
@@ -37,6 +38,9 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  await dialog.getByLabel('Booking (optional)',{exact:true}).selectOption(data.ids.booking);
  const choice=dialog.getByRole('checkbox',{name:'Select payment #9410',exact:true});
  await expect(choice).toBeVisible();await choice.check();await expect(choice).toBeChecked();
+ await dialog.getByLabel('Link selected payment to a payment request (optional)',{exact:true}).selectOption(data.ids.request);
+ await dialog.getByRole('button',{name:'Link payment to request',exact:true}).click();
+ await expect(dialog.getByRole('link',{name:'View linked request'})).toBeVisible();
  await dialog.getByLabel(/I checked the original transaction/).check();
  await dialog.getByLabel('I reviewed the receipt and selected relationships.').check();
  await expect(confirm).toBeEnabled();
@@ -47,6 +51,6 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  await page.reload();
  const linked=await(await request.get(f.url+'/payment-scratchpad/'+data.ids.receipts[0],{headers:{Authorization:'Bearer '+f.tokens.admin}})).json();
  expect(linked.status).toBe('converted');expect(linked.payment._id).toBe(data.ids.payments[0]);expect(linked.payment.booking.bookingNumber).toBe(9410);
- const after=await(await request.get(f.url+'/fixture/search-snapshot')).json();expect(after.payments.length).toBe(before.payments.length);expect(after.emails).toEqual([]);expect(after.legacy).toEqual([]);expect(after.bookings).toEqual(before.bookings);
+ const after=await(await request.get(f.url+'/fixture/search-snapshot')).json();expect(after.payments.length).toBe(before.payments.length);expect(after.emails).toEqual([]);expect(after.legacy).toEqual([]);expect(after.bookings[0].amountPaid).toBe(100);expect(after.bookings[0].totalAmount).toBe(before.bookings[0].totalAmount);expect(after.requests.find((r:any)=>r._id===data.ids.request).amountReceived).toBe(100);
  for(const payment of after.payments){const original=before.payments.find((p:any)=>p._id===payment._id);expect(payment.amount).toBe(original.amount);if(payment._id!==data.ids.payments[0])expect(payment).toEqual(original);}
 });

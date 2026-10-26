@@ -2,8 +2,8 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PaymentScratchpadPage from './PaymentScratchpadPage';
-import { scratchpadApi, clientsApi, bookingsApi, paymentRequestsApi } from '../services/api';
-jest.mock('../services/api', () => ({ scratchpadApi: { list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn() } }));
+import { scratchpadApi, paymentsApi, clientsApi, bookingsApi, paymentRequestsApi } from '../services/api';
+jest.mock('../services/api', () => ({ scratchpadApi: { list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, paymentsApi: { linkRequest: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn() } }));
 jest.mock('./SearchableClientSelect', () => ({ __esModule: true, default: (p: any) => <select aria-label={p.ariaLabel} value={p.value} onChange={e=>p.onChange(e.target.value)}><option value="">Choose</option><option value="client">Synthetic client</option></select> }));
 jest.mock('./Tasks/SearchableSelect', () => ({ SearchableSelect: (p: any) => <select id={p.id} value={p.value} onChange={e=>p.onChange(e.target.value)}>{p.options.map((o:any)=><option key={o.id} value={o.id}>{o.label}</option>)}</select> }));
 const api = scratchpadApi as jest.Mocked<typeof scratchpadApi>;
@@ -258,4 +258,30 @@ it('search filters work independently and changing them clears an existing selec
  expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();
  await waitFor(()=>expect(screen.getByRole('checkbox',{name:'Select payment #1401'})).not.toBeChecked());
  expect(api.reconcile).not.toHaveBeenCalled();
+});
+
+it('explicitly attaches a selected existing payment to a compatible request before scratchpad confirmation',async()=>{
+ const payment={_id:'payment',display_id:1401,clientId:'client',amount:5100,currency:'PLN',status:'completed'};
+ api.candidates.mockResolvedValue({data:{payments:[payment],requests:[]}} as any);
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[{_id:'request',display_id:1243,clientId:'client',currency:'PLN',status:'pending',requestedAmount:5100}]});
+ (paymentsApi.linkRequest as jest.Mock).mockResolvedValue({data:{...payment,paymentRequestId:'request'}});
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Link payment',exact:true}));
+ fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1401'}));
+ fireEvent.change(screen.getByLabelText('Link selected payment to a payment request (optional)'),{target:{value:'request'}});
+ fireEvent.click(screen.getByRole('button',{name:'Link payment to request',exact:true}));
+ await waitFor(()=>expect(paymentsApi.linkRequest).toHaveBeenCalledWith('payment','request'));
+ expect(await screen.findByRole('link',{name:'View linked request'})).toHaveAttribute('href','/admin/payment-requests/request');
+ expect(api.reconcile).not.toHaveBeenCalled();
+});
+
+it('clears a saved pending request link after successful retry so receipt confirmation can proceed',async()=>{
+ const payment={_id:'payment',display_id:1401,clientId:'client',paymentRequestId:'request',requestLinkPending:true,amount:5100,currency:'PLN',status:'completed'};
+ api.candidates.mockResolvedValue({data:{payments:[payment],requests:[]}} as any);
+ (paymentsApi.linkRequest as jest.Mock).mockResolvedValue({data:{...payment,requestLinkPending:undefined}});
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Link payment',exact:true}));
+ fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1401'}));
+ fireEvent.click(screen.getByRole('button',{name:'Retry payment request link'}));
+ await waitFor(()=>expect(screen.queryByRole('button',{name:'Retry payment request link'})).not.toBeInTheDocument());
+ fireEvent.click(screen.getByLabelText(/I checked the original transaction/));fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
+ await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeEnabled());
 });
