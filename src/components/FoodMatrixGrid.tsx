@@ -22,6 +22,7 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
   const languageOptions = [{ code: '', label: 'Original language' }, ...activeLanguages];
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [isExporting, setIsExporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isEmailing, setIsEmailing] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
 
@@ -34,7 +35,8 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
 
   const summary = useMemo(() => ({
     submitted: data?.columns.filter((column) => column.submitted).length || 0,
-    missing: data?.columns.filter((column) => !column.submitted).length || 0,
+    missing: data?.columns.filter((column) => !column.submitted && !column.usingPreviousForm).length || 0,
+    previous: data?.columns.filter((column) => column.usingPreviousForm).length || 0,
     safety: data?.columns.filter(hasSafetyFlag).length || 0,
   }), [data]);
 
@@ -57,6 +59,31 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
     finally { setIsEmailing(false); }
   };
 
+  const handlePreviousForm = async (column: FoodMatrixColumn, selected: boolean) => {
+    if (!column.bookingId || !column.previousForm) return;
+    setIsSaving(true); setMessage(null);
+    try {
+      setData((await foodMatrixApi.setPreviousForm(retreatId, column.bookingId,
+        selected ? column.previousForm.id : null, column.selectionVersion || 0)).data);
+    } catch (error) {
+      setMessage({ tone: 'error', text: apiErrorMessage(error, 'Unable to save the food form selection. Please refresh and try again.') });
+      // Another staff member may have changed the selection/current form.
+      try { setData((await foodMatrixApi.get(retreatId)).data); } catch { /* Keep the last visible matrix. */ }
+    } finally { setIsSaving(false); }
+  };
+
+  const previousFormControl = (column: FoodMatrixColumn) => <>
+    {column.previousFormUnavailable && <small role="status">The saved previous form is unavailable. Select another form or request an update.</small>}
+    {!column.submitted && column.previousForm && <div className="food-previous-form">
+      <label><input type="checkbox" checked={column.previousForm.selected}
+        disabled={isSaving || isExporting || isEmailing}
+        onChange={(event) => handlePreviousForm(column, event.target.checked)}
+        aria-label={`Use the previous food form for ${column.label}`} /> Use the previous food form</label>
+      <small>{column.previousForm.retreatLabel || 'Previous retreat'}{column.previousForm.submittedAt ? ` · ${new Date(column.previousForm.submittedAt).toLocaleDateString()}` : ''}</small>
+      {column.usingPreviousForm && <small>Using previous answers · confirm dietary changes with the client</small>}
+    </div>}
+  </>;
+
   if (isLoading) return <LoadingSpinner message="Loading food matrix..." />;
   if (!data) return <div className="p-6 text-sm text-gray-500">Unable to load the food matrix.</div>;
 
@@ -66,13 +93,14 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
       <div className="food-matrix-actions">
         <div className="food-view-toggle" role="group" aria-label="Food matrix view"><button className={viewMode === 'table' ? 'active' : ''} onClick={() => setViewMode('table')}><Table2 size={15} /> Table</button><button className={viewMode === 'cards' ? 'active' : ''} onClick={() => setViewMode('cards')}><LayoutGrid size={15} /> Cards</button></div>
         <select value={language} onChange={(event) => setLanguage(event.target.value)} aria-label="PDF language">{languageOptions.map((option) => <option key={option.code} value={option.code}>{option.label}</option>)}</select>
-        <button className="food-action secondary" onClick={handleDownloadPdf} disabled={isExporting || !data.columns.length}><Download size={16} />{isExporting ? 'Generating…' : 'Download PDF'}</button>
-        {data.cook?.email && <button className="food-action primary" onClick={handleEmailCook} disabled={isEmailing || !data.columns.length}><Mail size={16} />{isEmailing ? 'Sending…' : 'Email cook'}</button>}
+        <button className="food-action secondary" onClick={handleDownloadPdf} disabled={isSaving || isExporting || !data.columns.length}><Download size={16} />{isExporting ? 'Generating…' : 'Download PDF'}</button>
+        {data.cook?.email && <button className="food-action primary" onClick={handleEmailCook} disabled={isSaving || isEmailing || !data.columns.length}><Mail size={16} />{isEmailing ? 'Sending…' : 'Email cook'}</button>}
       </div>
     </header>
 
     <div className="food-summary-strip">
       <div><Check size={17} /><span><strong>{summary.submitted}</strong> submitted</span></div>
+      {summary.previous > 0 && <div><Check size={17} /><span><strong>{summary.previous}</strong> using previous forms</span></div>}
       <div className={summary.missing ? 'warning' : ''}><AlertTriangle size={17} /><span><strong>{summary.missing}</strong> missing forms</span></div>
       <div className={summary.safety ? 'danger' : ''}><AlertTriangle size={17} /><span><strong>{summary.safety}</strong> allergy/intolerance flags</span></div>
       <div className="cook-summary"><ChefHat size={18} /><span>{data.cook ? <><strong>{data.cook.name}</strong>{data.cook.email ? ` · ${data.cook.language.toUpperCase()}` : ' · email missing'}</> : 'No cook assigned'}</span></div>
@@ -81,7 +109,7 @@ const FoodMatrixGrid: React.FC<FoodMatrixGridProps> = ({ retreatId }) => {
     {!data.cook && <div className="food-matrix-notice">Assign a cook on the retreat file to enable emailing the translated PDF.</div>}
     {data.cook && !data.cook.email && <div className="food-matrix-notice">Add an email address for {data.cook.name} to enable emailing the PDF.</div>}
 
-    {!data.columns.length ? <div className="food-matrix-empty">No active clients booked on this retreat yet.</div> : viewMode === 'table' ? <div className="food-matrix-table-wrap"><table className="food-matrix-table"><thead><tr><th>Kitchen information</th>{data.columns.map((column) => <th key={column.clientId} className={hasSafetyFlag(column) ? 'client-risk' : column.submitted ? 'client-ready' : 'client-missing'}><div className="client-heading"><span>{column.label}</span>{hasSafetyFlag(column) ? <small><AlertTriangle size={12} /> Check allergy</small> : column.submitted ? <small><Check size={12} /> Submitted</small> : <small>Not submitted</small>}</div></th>)}</tr></thead><tbody>{data.questions.map((question) => <tr key={question.key} className={['allergies', 'foodIntolerances'].includes(question.key) ? 'safety-row' : ''}><th>{question.label}</th>{data.columns.map((column) => { const value = valueFor(column, question.key); const flagged = ['allergies', 'foodIntolerances'].includes(question.key) && meaningful(value); return <td key={column.clientId} className={flagged ? 'flagged-cell' : ''}>{value || <span className="empty-value">—</span>}</td>; })}</tr>)}</tbody></table></div> : <div className="food-matrix-cards">{data.columns.map((column) => <article key={column.clientId} className={`food-client-card ${hasSafetyFlag(column) ? 'has-risk' : ''}`}><header><div><h3>{column.label}</h3><p>{column.submitted ? 'Food form submitted' : 'Food form not submitted'}</p></div><span className={`food-client-status ${column.submitted ? 'ready' : 'missing'}`}>{column.submitted ? <Check size={14} /> : <AlertTriangle size={14} />}{column.submitted ? 'Ready' : 'Missing'}</span></header>{column.submitted ? <dl className="food-client-fields">{data.questions.map((question) => { const value = valueFor(column, question.key); const flagged = ['allergies', 'foodIntolerances'].includes(question.key) && meaningful(value); return <div key={question.key} className={flagged ? 'risk-field' : ''}><dt>{question.label}</dt><dd>{value || '—'}</dd></div>; })}</dl> : <div className="food-card-missing">No kitchen information is available for this client.</div>}</article>)}</div>}
+    {!data.columns.length ? <div className="food-matrix-empty">No active clients booked on this retreat yet.</div> : viewMode === 'table' ? <div className="food-matrix-table-wrap"><table className="food-matrix-table"><thead><tr><th>Kitchen information</th>{data.columns.map((column) => <th key={column.bookingId || column.clientId} className={hasSafetyFlag(column) ? 'client-risk' : column.submitted ? 'client-ready' : 'client-missing'}><div className="client-heading"><span>{column.label}</span>{hasSafetyFlag(column) ? <small><AlertTriangle size={12} /> Check allergy</small> : column.submitted ? <small><Check size={12} /> Submitted</small> : <small>{column.usingPreviousForm ? 'Using previous form' : 'Not submitted'}</small>}{previousFormControl(column)}</div></th>)}</tr></thead><tbody>{data.questions.map((question) => <tr key={question.key} className={['allergies', 'foodIntolerances'].includes(question.key) ? 'safety-row' : ''}><th>{question.label}</th>{data.columns.map((column) => { const value = valueFor(column, question.key); const flagged = ['allergies', 'foodIntolerances'].includes(question.key) && meaningful(value); return <td key={column.bookingId || column.clientId} className={flagged ? 'flagged-cell' : ''}>{value || <span className="empty-value">—</span>}</td>; })}</tr>)}</tbody></table></div> : <div className="food-matrix-cards">{data.columns.map((column) => <article key={column.bookingId || column.clientId} className={`food-client-card ${hasSafetyFlag(column) ? 'has-risk' : ''}`}><header><div><h3>{column.label}</h3><p>{column.submitted ? 'Food form submitted' : column.usingPreviousForm ? 'Using previous food form' : 'Food form not submitted'}</p>{previousFormControl(column)}</div><span className={`food-client-status ${(column.submitted || column.usingPreviousForm) ? 'ready' : 'missing'}`}>{column.submitted ? <Check size={14} /> : <AlertTriangle size={14} />}{(column.submitted || column.usingPreviousForm) ? 'Ready' : 'Missing'}</span></header>{(column.submitted || column.usingPreviousForm) ? <dl className="food-client-fields">{data.questions.map((question) => { const value = valueFor(column, question.key); const flagged = ['allergies', 'foodIntolerances'].includes(question.key) && meaningful(value); return <div key={question.key} className={flagged ? 'risk-field' : ''}><dt>{question.label}</dt><dd>{value || '—'}</dd></div>; })}</dl> : <div className="food-card-missing">No kitchen information is available for this client.</div>}</article>)}</div>}
   </section>;
 };
 export default FoodMatrixGrid;

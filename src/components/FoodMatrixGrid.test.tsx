@@ -4,7 +4,7 @@ import FoodMatrixGrid from './FoodMatrixGrid';
 import { foodMatrixApi, languagesApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
-  foodMatrixApi: { get: jest.fn(), getPdf: jest.fn(), emailCook: jest.fn() },
+  foodMatrixApi: { setPreviousForm: jest.fn(), get: jest.fn(), getPdf: jest.fn(), emailCook: jest.fn() },
   languagesApi: { getActive: jest.fn() },
 }));
 
@@ -78,4 +78,26 @@ describe('FoodMatrixGrid', () => {
     expect(await screen.findByText(/emailed to Kasia/i)).toBeInTheDocument();
     expect(foodMatrixApi.emailCook).toHaveBeenCalledWith('retreat-1');
   });
+  it('saves explicit reuse, shows historical answers without claiming a new submission, and supports clearing', async () => {
+    const column = { clientId: 'returning', bookingId: 'booking-9', label: 'Returning G.', submitted: false, selectionVersion: 0,
+      previousForm: { id: 'form-old', retreatLabel: 'OLD-RETREAT', selected: false }, answers: {} };
+    const matrix = { questions: [{ key: 'dietType', label: 'Usual diet' }], columns: [column] };
+    (foodMatrixApi.get as jest.Mock).mockResolvedValue({ data: matrix });
+    (foodMatrixApi.setPreviousForm as jest.Mock).mockResolvedValueOnce({ data: { ...matrix, columns: [{ ...column, selectionVersion: 1, usingPreviousForm: true, previousForm: { ...column.previousForm, selected: true }, answers: { dietType: 'Historical vegetarian' } }] } });
+    render(<FoodMatrixGrid retreatId="retreat-1" />);
+    const checkbox = await screen.findByRole('checkbox', { name: 'Use the previous food form for Returning G.' });
+    expect(checkbox).not.toBeChecked();
+    fireEvent.click(checkbox);
+    expect(await screen.findByText('Historical vegetarian')).toBeInTheDocument();
+    expect(foodMatrixApi.setPreviousForm).toHaveBeenCalledWith('retreat-1', 'booking-9', 'form-old', 0);
+    expect(screen.getByRole('checkbox')).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
+    expect(screen.getByText('Historical vegetarian')).toBeInTheDocument();
+    expect(screen.getByText('Using previous food form')).toBeInTheDocument();
+    (foodMatrixApi.setPreviousForm as jest.Mock).mockResolvedValueOnce({ data: matrix });
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(screen.queryByText('Historical vegetarian')).not.toBeInTheDocument());
+    expect(foodMatrixApi.setPreviousForm).toHaveBeenLastCalledWith('retreat-1', 'booking-9', null, 1);
+  });
+
 });

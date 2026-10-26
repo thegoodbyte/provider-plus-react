@@ -777,6 +777,11 @@ export type PaymentRequestType = {
     [key: string]: unknown;
 };
 
+export type PreviousFoodFormDto = {
+    expectedVersion: number;
+    formId: string | null;
+};
+
 export type RecordBookingConfirmationHistoryDto = {
     action?: 'created' | 'updated' | 'sent';
     language?: string;
@@ -13208,6 +13213,20 @@ export type FoodMatrixControllerGetMatrixData = {
 
 export type FoodMatrixControllerGetMatrixResponses = {
     200: unknown;
+};
+
+export type FoodMatrixControllerSetPreviousFormData = {
+    body: PreviousFoodFormDto;
+    path: {
+        retreatId: string;
+        bookingId: string;
+    };
+    query?: never;
+    url: '/retreats/{retreatId}/food-matrix/bookings/{bookingId}/previous-form';
+};
+
+export type FoodMatrixControllerSetPreviousFormResponses = {
+    201: unknown;
 };
 
 export type FoodMatrixControllerEmailCookData = {

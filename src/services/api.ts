@@ -2208,6 +2208,11 @@ export const assistantApi = {
 
 export type FoodMatrixColumn = {
   clientId: string;
+  bookingId?: string;
+  selectionVersion?: number;
+  previousForm?: { id: string; displayId?: number; submittedAt?: string; retreatLabel?: string; selected: boolean };
+  usingPreviousForm?: boolean;
+  previousFormUnavailable?: boolean;
   label: string;
   submitted: boolean;
   language?: string;
@@ -2223,6 +2228,8 @@ export type FoodMatrixData = {
 };
 
 export const foodMatrixApi = {
+  setPreviousForm: (retreatId: string, bookingId: string, formId: string | null, expectedVersion: number) =>
+    api.post<FoodMatrixData>(`/retreats/${retreatId}/food-matrix/bookings/${bookingId}/previous-form`, { formId, expectedVersion }),
   get: (retreatId: string) => api.get<FoodMatrixData>(`/retreats/${retreatId}/food-matrix`),
   getPdf: (retreatId: string, language?: string) =>
     api.get(`/retreats/${retreatId}/food-matrix/pdf`, { params: language ? { language } : {}, responseType: 'blob' }),

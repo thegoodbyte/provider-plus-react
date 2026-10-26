@@ -2429,6 +2429,23 @@
         "properties": {},
         "type": "object"
       },
+      "PreviousFoodFormDto": {
+        "properties": {
+          "expectedVersion": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "formId": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "formId",
+          "expectedVersion"
+        ],
+        "type": "object"
+      },
       "RecordBookingConfirmationHistoryDto": {
         "properties": {
           "action": {
@@ -25463,6 +25480,47 @@
         ],
         "responses": {
           "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FoodMatrix"
+        ]
+      }
+    },
+    "/retreats/{retreatId}/food-matrix/bookings/{bookingId}/previous-form": {
+      "post": {
+        "operationId": "FoodMatrixController_setPreviousForm",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "retreatId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "bookingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviousFoodFormDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
             "description": ""
           }
         },

@@ -357,3 +357,8 @@ textarea:focus-visible {
     display: block !important;
   }
 }
+
+.food-previous-form { margin-top: 8px; max-width: 260px; font-size: 12px; font-weight: 400; text-align: left; }
+.food-previous-form label { display: flex; align-items: flex-start; gap: 6px; cursor: pointer; line-height: 1.4; }
+.food-previous-form input { flex: 0 0 auto; margin-top: 2px; }
+.food-previous-form small { display: block; margin-top: 4px; color: #64748b; font-size: 11px; line-height: 1.4; }
