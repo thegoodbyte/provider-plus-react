@@ -69,9 +69,20 @@ it('uses the WhatsApp advisor and includes awaiting responses in Pending only', 
   expect(screen.queryByText('#7903')).not.toBeInTheDocument();
 });
 
+// PPVC-936: "All" is the default view, not "Grouped" -- confirms both the
+// pressed tab state and that ungrouped rows render without any tab click.
+it('defaults to the All view on initial render', async () => {
+  render(<MemoryRouter><MedicalReviewRequestsGrid /></MemoryRouter>);
+  expect(await screen.findByRole('button', { name: 'All', exact: true })).toHaveClass('bg-blue-600', 'text-white');
+  expect(screen.getByRole('button', { name: 'Grouped', exact: true })).not.toHaveClass('bg-blue-600');
+  expect(await screen.findByText('#7901')).toBeInTheDocument();
+  expect(screen.getByText('#7904')).toBeInTheDocument();
+});
+
 it('keeps status filtering in All and Grouped views', async () => {
   render(<MemoryRouter><MedicalReviewRequestsGrid /></MemoryRouter>);
   fireEvent.change(await screen.findByLabelText('Status'), { target: { value: 'approved' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Grouped', exact: true }));
   fireEvent.click(screen.getByRole('button', { name: /Potentials & unmatched/ }));
   expect(screen.getByText('#7902')).toBeInTheDocument();
   expect(screen.queryByText('#7901')).not.toBeInTheDocument();
@@ -116,6 +127,7 @@ it('excludes WhatsApp-handled requests from packet pendingCount yellow badge', a
   });
 
   render(<MemoryRouter><MedicalReviewRequestsGrid /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Grouped', exact: true }));
   const badge = await screen.findByTitle('1 pending medical review request');
   expect(badge).toBeInTheDocument();
   expect(badge).toHaveTextContent('1');
@@ -135,6 +147,7 @@ it('opens the WhatsApp form first and only saves accepted handoff fields on expl
   (medicalReviewRequestsApi.update as jest.Mock).mockResolvedValue({ data: { _id: 'r1', status: 'awaiting_whatsapp' } });
 
   render(<MemoryRouter><MedicalReviewRequestsGrid /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Grouped', exact: true }));
   const packetHeader = await screen.findByText('Test Retreat Packet');
   fireEvent.click(packetHeader);
 

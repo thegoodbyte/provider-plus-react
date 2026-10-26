@@ -159,7 +159,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [pendingOnly, setPendingOnly] = useState(false);
   const [followUpOnly, setFollowUpOnly] = useState(new URLSearchParams(location.search).get('followUp') === '1');
   const [filterAdvisorId, setFilterAdvisorId] = useState('all');
-  const [activeView, setActiveView] = useState<'grouped' | 'all' | 'whatsapp'>(new URLSearchParams(location.search).get('followUp') === '1' ? 'all' : 'grouped');
+  const [activeView, setActiveView] = useState<'grouped' | 'all' | 'whatsapp'>('all');
   const [advisors, setAdvisors] = useState<User[]>([]);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState('');
@@ -975,17 +975,17 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           <div className="mrr-view-tabs mt-3 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
             <button
               type="button"
-              onClick={() => setActiveView('grouped')}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'grouped' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
-            >
-              Grouped
-            </button>
-            <button
-              type="button"
               onClick={() => setActiveView('all')}
               className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'all' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
             >
               All
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('grouped')}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'grouped' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              Grouped
             </button>
             <button
               type="button"
