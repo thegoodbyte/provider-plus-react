@@ -614,7 +614,7 @@ export const scratchpadApi = {
   },
   state: (id: string, data: any) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/state`, data),
   reopen: (id: string, data: { revision: number; reason: string }) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/reopen`, data),
-  candidates: (id: string, params?: { clientId?: string; paymentRequestId?: string }) => api.get<{ payments: any[]; requests: any[]; match?: any }>(`/payment-scratchpad/${id}/candidates`, { params }),
+  candidates: (id: string, params?: { clientId?: string; paymentRequestId?: string; search?: string; bookingId?: string; amount?: string; dateFrom?: string; dateTo?: string; matchMode?: string; page?: number }) => api.get<{ payments: any[]; requests: any[]; match?: any; total?: number; page?: number; limit?: number }>(`/payment-scratchpad/${id}/candidates`, { params }),
   reconcile: (id: string, data: any) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('payment-requests:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');

@@ -68,13 +68,20 @@ export default function PaymentScratchpadPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
-  const [candidates, setCandidates] = useState<{ payments: any[]; requests: any[]; match?: any }>({ payments: [], requests: [] });
+  const [candidates, setCandidates] = useState<{ payments: any[]; requests: any[]; match?: any; total?: number; page?: number; limit?: number }>({ payments: [], requests: [] });
   const [target, setTarget] = useState({ clientId: '', bookingId: '', paymentRequestId: '', paymentId: '', action: 'convert', confirmAccount: false });
   // PPVC-917: the common case is "this money arrived, make it a payment" --
   // linkMode gates the secondary "I already have a payment for this"
   // path (candidate search, confirm-match checkbox) behind an explicit
   // opt-in, instead of showing it by default for every receipt.
   const [linkMode, setLinkMode] = useState(false);
+  const emptyPaymentSearch = { clientId: '', bookingId: '', amount: '', dateFrom: '', dateTo: '', matchMode: 'all', page: 1 };
+  const [paymentSearch, setPaymentSearch] = useState(emptyPaymentSearch);
+  const changePaymentSearch = (changes: Partial<typeof emptyPaymentSearch>) => {
+    setPaymentSearch(previous => ({ ...previous, ...changes, page: changes.page || 1 }));
+    setTarget(previous => ({ ...previous, paymentId: '', confirmAccount: false }));
+    setConfirmed(false);
+  };
   const [candidateLoading, setCandidateLoading] = useState(false);
   const [candidateError, setCandidateError] = useState('');
   const [candidateAttempt, setCandidateAttempt] = useState(0);
@@ -134,11 +141,12 @@ export default function PaymentScratchpadPage() {
     try {
       const [detail, suggestions, cs, bs, rs] = await Promise.all([scratchpadApi.detail(id), scratchpadApi.candidates(id), clientsApi.getAll(), bookingsApi.getAll(), paymentRequestsApi.getAllFresh()]);
       if (seq !== detailSequence.current) return;
+      setPaymentSearch({ ...emptyPaymentSearch, amount: String(detail.data.amount), dateFrom: detail.data.receivedDate, dateTo: detail.data.receivedDate });
       setSelected(detail.data); setCandidates(suggestions.data); setClients(cs.data); setBookings(bs.data); setRequests(rs.data);
       const pending = detail.data.reconciliation;
       const exact = suggestions.data.match?.status === 'exact_request' ? suggestions.data.match : null;
       const action = pending?.action || (exact?.paymentId ? 'link' : 'convert');
-      setTarget({ clientId: pending?.targets?.clientId || exact?.clientId || '', bookingId: pending?.targets?.bookingId || exact?.bookingId || '', paymentRequestId: pending?.targets?.paymentRequestId || exact?.requestId || '', paymentId: pending?.paymentId || exact?.paymentId || '', action, confirmAccount: pending?.confirmAccount || false });
+      setTarget({ clientId: pending?.targets?.clientId || exact?.clientId || '', bookingId: pending?.targets?.bookingId || exact?.bookingId || '', paymentRequestId: pending?.targets?.paymentRequestId || exact?.requestId || '', paymentId: pending?.paymentId || '', action, confirmAccount: pending?.confirmAccount || false });
       setLinkMode(action === 'link');
     } catch (e) { if (seq === detailSequence.current) setError(errorText(e)); }
     finally { if (seq === detailSequence.current) setDetailLoading(false); }
@@ -246,11 +254,11 @@ export default function PaymentScratchpadPage() {
     }
     let active = true;
     setCandidateLoading(true); setCandidateError('');
-    void scratchpadApi.candidates(selected._id, { clientId: target.clientId, paymentRequestId: target.paymentRequestId }).then(({ data }) => {
+    void scratchpadApi.candidates(selected._id, linkMode ? { search: 'true', ...paymentSearch } : { clientId: target.clientId, paymentRequestId: target.paymentRequestId }).then(({ data }) => {
       if (active) setCandidates(data);
     }).catch(e => { if (active) setCandidateError(errorText(e)); }).finally(() => { if (active) setCandidateLoading(false); });
     return () => { active = false; };
-  }, [matching, selected?._id, selected?.reconciliationPending, target.clientId, target.paymentRequestId, candidateAttempt]);
+  }, [matching, selected?._id, selected?.reconciliationPending, linkMode ? '' : target.clientId, linkMode ? '' : target.paymentRequestId, candidateAttempt, linkMode, paymentSearch]);
   const requestOptions = requests.filter(r => r.status !== 'cancelled' && (!target.clientId || resolveId(r.clientId) === target.clientId)).map(r => {
     const client = clients.find(c => c._id === resolveId(r.clientId));
     const clientName = client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : '';
@@ -260,7 +268,7 @@ export default function PaymentScratchpadPage() {
       : `Requested amount unavailable · ${r.currency}`;
     return { id: r._id, label: `#${r.display_id || r.invoiceNumber} · ${requested} · ${clientName || 'Client name unavailable'} · ${r.status}`, sublabel: [r.invoiceNumber, client?.display_id ? `Client #${client.display_id}` : ''].filter(Boolean).join(' · ') };
   });
-  const bookingOptions = bookings.filter(b => !target.clientId || resolveId(b.clientId) === target.clientId).map(b => ({ id: b._id, label: `Booking #${b.bookingNumber || b.display_id} · ${b.currency} · ${b.status}`, sublabel: b.retreatId?.retreatCode || b.retreatId?.name || '' }));
+  const bookingOptions = bookings.filter(b => linkMode || !target.clientId || resolveId(b.clientId) === target.clientId).map(b => ({ id: b._id, label: `Booking #${b.bookingNumber || b.display_id} · ${b.currency} · ${b.status}`, sublabel: b.retreatId?.retreatCode || b.retreatId?.name || '' }));
   const close = () => navigateTo(base);
   return <main ref={root} className={`mx-auto min-w-0 max-w-7xl space-y-6 p-4 sm:p-6 ${isIndex ? 'scratchpad-page' : ''}`} onClickCapture={event=>{ if (isIndex) rememberScroll(); if (dirty && (event.target as HTMLElement).closest('a') && !window.confirm('Discard unsaved receipt changes?')) {event.preventDefault();event.stopPropagation();} }}>{toastHolder}
     <header className="scratchpad-page-header flex flex-wrap items-start justify-between gap-4"><div><Link className="text-sm text-blue-700" to="/admin/payments">← Payments</Link><h1 className="scratchpad-heading mt-2 text-2xl font-semibold text-slate-900">Payment scratchpad</h1><p className="scratchpad-description mt-1 max-w-2xl text-sm text-slate-600">Record money already received, then match it when you know the client. Capture does not update balances.</p></div>{isIndex ? <div className="flex flex-wrap items-center gap-2"><ScratchpadRefresh snapshot={snapshot} loading={loading} failed={Boolean(listError)} onRefresh={() => void load()} /><button className={primaryClass} disabled={busy} onClick={() => navigateTo(`${base}/new`)}>New receipt</button></div> : <button className={buttonClass} onClick={close}>← Back to list</button>}</header>
@@ -296,17 +304,33 @@ export default function PaymentScratchpadPage() {
       <details><summary className="cursor-pointer font-medium">Receipt history ({selected.history?.length || 0})</summary><ol className="mt-3 space-y-3 text-sm">{selected.history?.map((h,i) => <li className="border-l-2 border-slate-200 pl-3" key={i}><p>{h.action.replace(/_/g, ' ')} · {h.actor} · {new Date(h.at).toLocaleString()}</p>{['before','after'].map(side => <div className="break-words text-xs text-slate-500" key={side}>{Object.entries((h as any)[side] || {}).filter(([key]) => historyFields[key]).map(([key,value]) => <p key={key}>{side === 'before' ? 'Previous' : 'Saved'} {key === 'amountMinor' ? 'amount' : historyFields[key]}: {key === 'amountMinor' ? (Number(value)/100).toFixed(2) : String(value || '—')}</p>)}</div>)}</li>)}</ol></details>
     </section>}
 
-    <Modal open={matching && Boolean(selected)} title={linkMode ? 'Link to an existing payment' : 'Payment from SP'} onCancel={()=>{if (!busy) setMatching(false);}} footer={null} width={760} destroyOnHidden={false} maskClosable={!busy} closable={!busy} keyboard={!busy}>
+    <Modal open={matching && Boolean(selected)} title={linkMode ? 'Link to an existing payment' : 'Payment from SP'} onCancel={()=>{if (!busy) setMatching(false);}} footer={null} width={760} styles={{ body: { maxHeight: '75dvh', overflowY: 'auto', overscrollBehavior: 'contain' } }} destroyOnHidden={false} maskClosable={!busy} closable={!busy} keyboard={!busy}>
       {selected && <><p className="mb-4 break-words">{selected.receivedDate} · {selected.amount} {selected.currency}{selected.account ? ` · ${selected.account}` : ''} · {selected.payer || 'Payer unknown'}</p>{error && <p role="alert" className="mb-3 text-red-800">{error}</p>}
         <form onSubmit={finish} className="space-y-4 border-t border-slate-200 pt-4">
           {!linkMode && <p className="text-sm text-slate-600">This creates a payment for {selected.amount} {selected.currency} received {selected.receivedDate}, using the date and amount already on this receipt. Pick the client below -- everything else fills in once you have.</p>}
           {candidates.match && candidates.match.status !== 'none' && <div role={candidates.match.warning ? 'alert' : 'status'} className="rounded-lg bg-blue-50 p-3 text-sm">{candidates.match.status === 'exact_request' && <p>Exact request number found. {target.paymentRequestId === candidates.match.requestId ? 'Client, booking and request are prefilled from it.' : 'Review your selected request before approving.'}</p>}{candidates.match.warning && <p>{candidates.match.warning}</p>}</div>}
           {candidates.requests.length > 0 && <p className="text-sm">Exact request number matches: {candidates.requests.map(r => `#${r.display_id || r.invoiceNumber}`).join(', ')}. Review before approving.</p>}
           <fieldset disabled={busy || selected.reconciliationPending} className="space-y-4">
-            <label>Client<SearchableClientSelect clients={clients} ariaLabel="Reconciliation client" value={target.clientId} onChange={clientId => { setTarget(v => ({ ...v, clientId, bookingId: '', paymentRequestId: '', paymentId: '' })); setConfirmed(false); }} /></label>
-            <label htmlFor="scratchpad-request">Payment request (optional)</label><SearchableSelect id="scratchpad-request" name="paymentRequestId" value={target.paymentRequestId} options={[{ id: '', label: 'No payment request' }, ...requestOptions]} placeholder="Search payment request number or client" onChange={setRequest} />
-            <label htmlFor="scratchpad-booking">Booking (optional)</label><SearchableSelect id="scratchpad-booking" name="bookingId" value={target.bookingId} options={[{ id: '', label: 'No booking' }, ...bookingOptions]} placeholder="Search booking number" onChange={bookingId => { const b = bookings.find(item => item._id === bookingId); setTarget(v => ({ ...v, bookingId, clientId: b ? resolveId(b.clientId) : v.clientId, paymentRequestId: '', paymentId: '', confirmAccount: false })); setConfirmed(false); }} />
-            {linkMode && <><div className="rounded-lg bg-slate-50 p-3"><p className="mb-2 text-sm font-medium">Potential existing payments (up to 50; selected client/request, transaction, reference and date matches first)</p>{candidateLoading ? <p role="status">Loading matching payments…</p> : candidateError ? <p role="alert">{candidateError} <button type="button" className={buttonClass} onClick={() => setCandidateAttempt(v => v + 1)}>Retry matching payments</button></p> : candidates.payments.length ? candidates.payments.map(p => <div className="mb-2 flex flex-wrap items-center gap-3 text-sm" key={p._id}><Link target="_blank" className="text-blue-700 underline" to={`/admin/payments/${p._id}`}>Payment #{p.display_id || p._id}</Link><span>{String(p.paymentDate || '').slice(0,10)} · {p.amount} {p.currency} · {p.receivingAccount || 'Account not recorded'} · {p.transactionReference || p.transactionId || 'No reference'}{p.sourceScratchpadId ? ' · Already linked' : ''}</span><button className={buttonClass} type="button" disabled={Boolean(p.sourceScratchpadId) || candidateLoading} onClick={() => setExisting(p._id)}>Select existing payment</button></div>) : <p className="text-sm text-slate-600">No matching payment found.</p>}</div>
+            <label>Client<SearchableClientSelect clients={clients} ariaLabel="Reconciliation client" value={linkMode ? paymentSearch.clientId : target.clientId} onChange={clientId => { if (linkMode) { changePaymentSearch({ clientId }); return; } setTarget(v => ({ ...v, clientId, bookingId: '', paymentRequestId: '', paymentId: '' })); setConfirmed(false); }} /></label>
+            {!linkMode && <><label htmlFor="scratchpad-request">Payment request (optional)</label><SearchableSelect id="scratchpad-request" name="paymentRequestId" value={target.paymentRequestId} options={[{ id: '', label: 'No payment request' }, ...requestOptions]} placeholder="Search payment request number or client" onChange={setRequest} /></>}
+            <label htmlFor="scratchpad-booking">Booking (optional)</label><SearchableSelect id="scratchpad-booking" name="bookingId" value={linkMode ? paymentSearch.bookingId : target.bookingId} options={[{ id: '', label: linkMode ? 'All bookings' : 'No booking' }, ...bookingOptions]} placeholder="Search booking number" onChange={bookingId => { if (linkMode) { changePaymentSearch({ bookingId }); return; } const b = bookings.find(item => item._id === bookingId); setTarget(v => ({ ...v, bookingId, clientId: b ? resolveId(b.clientId) : v.clientId, paymentRequestId: '', paymentId: '', confirmAccount: false })); setConfirmed(false); }} />
+            {linkMode && <>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="grid gap-1 text-sm">Payment amount<input className="rounded border p-2" type="number" min="0.01" step="0.01" value={paymentSearch.amount} onChange={event => changePaymentSearch({ amount: event.target.value })} /></label>
+                <label className="grid gap-1 text-sm">Match filters<select className="rounded border p-2" value={paymentSearch.matchMode} onChange={event => changePaymentSearch({ matchMode: event.target.value })}><option value="all">Match all filters</option><option value="any">Match any filter (union)</option></select></label>
+                <label className="grid gap-1 text-sm">Payment date from<input className="rounded border p-2" type="date" value={paymentSearch.dateFrom} onChange={event => changePaymentSearch({ dateFrom: event.target.value })} /></label>
+                <label className="grid gap-1 text-sm">Payment date to<input className="rounded border p-2" type="date" value={paymentSearch.dateTo} onChange={event => changePaymentSearch({ dateTo: event.target.value })} /></label>
+              </div>
+              <button type="button" className={buttonClass} onClick={() => changePaymentSearch(emptyPaymentSearch)}>Clear payment filters</button>
+              <p className="text-xs text-slate-600">Amount and dates start from the receipt. Clear any filter to search independently. Dates include the whole day (UTC). Select one payment below.</p>
+              <div className="rounded-lg bg-slate-50 p-3" aria-label="Payment search results">
+                <p className="mb-2 text-sm font-medium">Existing payments{candidates.total !== undefined ? ` · ${candidates.total} results` : ''}</p>
+                {candidateLoading ? <p role="status">Loading matching payments…</p> : candidateError ? <p role="alert">{candidateError} <button type="button" className={buttonClass} onClick={() => setCandidateAttempt(v => v + 1)}>Retry matching payments</button></p> : candidates.payments.length ? candidates.payments.map(p => <label className="mb-2 flex items-start gap-3 rounded border bg-white p-3 text-sm" key={p._id}>
+                  <input type="checkbox" aria-label={`Select payment #${p.display_id || p._id}`} checked={target.paymentId === p._id} disabled={Boolean(p.unavailableReason) || Boolean(p.sourceScratchpadId && p.sourceScratchpadId !== selected._id)} onChange={event => { if (event.target.checked) setExisting(p._id); else { setTarget(v => ({ ...v, paymentId: '', confirmAccount: false })); setConfirmed(false); } }} />
+                  <span className="min-w-0 break-words"><Link target="_blank" className="text-blue-700 underline" to={`/admin/payments/${p._id}`}>Payment #{p.display_id || p._id}</Link> · {p.clientName || clients.find(c => c._id === resolveId(p.clientId))?.firstName || 'Client unavailable'}{p.bookingNumber ? ` · Booking #${p.bookingNumber}` : ''}<br />{String(p.paymentDate || '').slice(0,10)} · {p.amount} {p.currency} · {p.paymentMethod === 'bank_transfer' ? 'Bank transfer' : p.paymentMethod} · {p.receivingAccount || 'Account not recorded'}<br />{p.transactionReference || p.transactionId || 'No reference'}{p.unavailableReason && <strong className="block text-amber-800">{p.unavailableReason}</strong>}</span>
+                </label>) : <p className="text-sm text-slate-600">No matching payment found.</p>}
+                {Boolean(candidates.total && candidates.limit && candidates.total > candidates.limit) && <div className="flex items-center gap-2"><button type="button" className={buttonClass} disabled={candidateLoading || paymentSearch.page <= 1} onClick={() => changePaymentSearch({ page: paymentSearch.page - 1 })}>Previous payments</button><span>Page {paymentSearch.page}</span><button type="button" className={buttonClass} disabled={candidateLoading || paymentSearch.page * (candidates.limit || 25) >= (candidates.total || 0)} onClick={() => changePaymentSearch({ page: paymentSearch.page + 1 })}>Next payments</button></div>}
+              </div>
             <label className="flex items-start gap-2"><input type="checkbox" checked={target.confirmAccount} onChange={e => setTarget(v => ({ ...v, confirmAccount: e.target.checked }))} />I checked the original transaction and confirm the selected payment, provider, amount and client match this receipt.</label></>}
           </fieldset>
           <button type="button" className="text-left text-sm text-blue-700 underline" onClick={() => { if (linkMode) { setTarget(v => ({ ...v, action: 'convert', paymentId: '', confirmAccount: false })); setConfirmed(false); } else { setTarget(v => ({ ...v, action: 'link' })); } setLinkMode(!linkMode); }}>{linkMode ? '← Use a new payment instead' : 'Have an existing payment for this already? Link it instead →'}</button>
