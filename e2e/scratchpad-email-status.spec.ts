@@ -4,7 +4,6 @@ import fs from "node:fs";
 test.describe.configure({ mode: "serial" });
 const fixturePath = process.env.SCRATCHPAD_EMAIL_FIXTURE;
 const f = fixturePath ? JSON.parse(fs.readFileSync(fixturePath, "utf8")) : {};
-test.describe.configure({ mode: "serial" });
 test.skip(
   !fixturePath,
   "Requires the disposable real Mongo/Nest scratchpad email fixture",
