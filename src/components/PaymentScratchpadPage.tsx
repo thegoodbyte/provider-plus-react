@@ -78,6 +78,7 @@ export default function PaymentScratchpadPage() {
   const emptyPaymentSearch = { clientId: '', bookingId: '', amount: '', dateFrom: '', dateTo: '', matchMode: 'all', page: 1 };
   const [paymentSearch, setPaymentSearch] = useState(emptyPaymentSearch);
   const changePaymentSearch = (changes: Partial<typeof emptyPaymentSearch>) => {
+    setError('');
     setPaymentSearch(previous => ({ ...previous, ...changes, page: changes.page || 1 }));
     setTarget(previous => ({ ...previous, paymentId: '', confirmAccount: false }));
     setRequestLinkId(''); setConfirmed(false);
@@ -166,7 +167,7 @@ export default function PaymentScratchpadPage() {
     setTarget(v => ({ ...v, paymentRequestId: id, paymentId: '', confirmAccount: false, ...(request ? { clientId: resolveId(request.clientId), bookingId: resolveId(request.bookingId) } : {}) })); setConfirmed(false);
   };
   const setExisting = (id: string) => {
-    setRequestLinkId('');
+    setError(''); setRequestLinkId('');
     const payment = candidates.payments.find(p => p._id === id);
     if (payment) { setTarget(v => ({ ...v, action: 'link', paymentId: id, clientId: resolveId(payment.clientId), bookingId: resolveId(payment.bookingId), paymentRequestId: resolveId(payment.paymentRequestId), confirmAccount: false })); setConfirmed(false); }
   };
@@ -189,7 +190,7 @@ export default function PaymentScratchpadPage() {
       // picking "Create payment" already is the confirmation. Linking to an
       // existing record still requires the explicit review checkbox below.
       const confirm = target.action === 'link' ? confirmed : true;
-      const { data } = await scratchpadApi.reconcile(selected._id, { ...target, revision: selected.revision, confirm });
+      const { data } = await scratchpadApi.reconcile(selected._id, { ...target, revision: selected.revision, confirm, confirmAccount: target.action === 'link' ? confirmed : false });
       setSelected(data); setMatching(false); setNotice(target.action === 'link' ? 'Receipt linked to the existing payment. The original received-money total is unchanged.' : 'Payment created from this receipt. The original received-money total is unchanged.'); void toast.success(target.action === 'link' ? 'Receipt linked.' : 'Payment created.'); if (filters.status === 'unassigned') navigate(`${base}${location.search}`);
     });
   };
@@ -330,12 +331,13 @@ export default function PaymentScratchpadPage() {
             {linkMode && <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="grid gap-1 text-sm">Payment amount<input className="rounded border p-2" type="number" min="0.01" step="0.01" value={paymentSearch.amount} onChange={event => changePaymentSearch({ amount: event.target.value })} /></label>
-                <label className="grid gap-1 text-sm">Match filters<select className="rounded border p-2" value={paymentSearch.matchMode} onChange={event => changePaymentSearch({ matchMode: event.target.value })}><option value="all">Match all filters</option><option value="any">Match any filter (union)</option></select></label>
+                <label className="grid gap-1 text-sm">Match filters<select className="rounded border p-2" value={paymentSearch.matchMode} onChange={event => changePaymentSearch({ matchMode: event.target.value })}><option value="all">Match all filters</option><option value="any">Match any filter</option></select></label>
                 <label className="grid gap-1 text-sm">Payment date from<input className="rounded border p-2" type="date" value={paymentSearch.dateFrom} onChange={event => changePaymentSearch({ dateFrom: event.target.value })} /></label>
                 <label className="grid gap-1 text-sm">Payment date to<input className="rounded border p-2" type="date" value={paymentSearch.dateTo} onChange={event => changePaymentSearch({ dateTo: event.target.value })} /></label>
               </div>
               <button type="button" className={buttonClass} onClick={() => changePaymentSearch(emptyPaymentSearch)}>Clear payment filters</button>
               <p className="text-xs text-slate-600">Amount and dates start from the receipt. Clear any filter to search independently. Dates include the whole day (UTC). Select one payment below.</p>
+              <p role="status" className="text-sm text-slate-700">{paymentSearch.matchMode === 'any' ? 'Match any: a payment can match the client, booking, amount OR date. Results may fall outside the chosen dates.' : 'Match all: payments must match every filled filter. Clear a filter to broaden the search.'}</p>
               <div className="rounded-lg bg-slate-50 p-3" aria-label="Payment search results">
                 <p className="mb-2 text-sm font-medium">Existing payments{candidates.total !== undefined ? ` · ${candidates.total} results` : ''}</p>
                 {candidateLoading ? <p role="status">Loading matching payments…</p> : candidateError ? <p role="alert">{candidateError} <button type="button" className={buttonClass} onClick={() => setCandidateAttempt(v => v + 1)}>Retry matching payments</button></p> : candidates.payments.length ? candidates.payments.map(p => <label className="mb-2 flex items-start gap-3 rounded border bg-white p-3 text-sm" key={p._id}>
@@ -357,11 +359,14 @@ export default function PaymentScratchpadPage() {
                 {!existingRequest && <p className="text-xs text-slate-600">This saves the request link and refreshes its paid total. If the payment has no booking, it uses the request’s booking. Then confirm the scratchpad link below.</p>}
               </div>;
             })()}
-            <label className="flex items-start gap-2"><input type="checkbox" checked={target.confirmAccount} onChange={e => setTarget(v => ({ ...v, confirmAccount: e.target.checked }))} />I checked the original transaction and confirm the selected payment, provider, amount and client match this receipt.</label></>}
+            </>}
           </fieldset>
           <button type="button" className="text-left text-sm text-blue-700 underline" onClick={() => { if (linkMode) { setTarget(v => ({ ...v, action: 'convert', paymentId: '', confirmAccount: false })); setConfirmed(false); } else { setTarget(v => ({ ...v, action: 'link' })); } setLinkMode(!linkMode); }}>{linkMode ? '← Use a new payment instead' : 'Have an existing payment for this already? Link it instead →'}</button>
           {linkMode && <p className="rounded-lg bg-blue-50 p-3 text-sm">Review: {selected.receivedDate} · {selected.amount} {selected.currency}{selected.account ? ` · ${selected.account}` : ''}. Linking does not create a payment or change balances. No email will be sent.</p>}
-          {linkMode && <label className="flex items-start gap-2"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={busy} required />I reviewed the receipt and selected relationships.</label>}
+          {linkMode && target.paymentId && <div className="space-y-2 rounded-lg border border-slate-200 p-3">
+            {(!selected.accountKey || !candidates.payments.find(item => item._id === target.paymentId)?.receivingAccountKey) && <p className="text-sm text-amber-900">Account details are missing. Check the original bank or provider transaction before confirming this match.</p>}
+            <label className="flex items-start gap-2"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={busy} required />I checked the original transaction and confirm the selected payment, provider, amount and client match this receipt.</label>
+          </div>}
           <button className={primaryClass} type="submit" disabled={busy || (linkMode && (candidateLoading || Boolean(candidateError))) || !target.clientId || (linkMode ? (!confirmed || !target.paymentId || Boolean(candidates.payments.find(item => item._id === target.paymentId)?.requestLinkPending)) : false)}>{busy ? 'Saving…' : selected.reconciliationPending ? 'Retry reconciliation' : linkMode ? 'Confirm link to existing payment' : 'Create payment'}</button>
         </form>
       </>}

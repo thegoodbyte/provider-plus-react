@@ -47,7 +47,7 @@ it('offers explicit linking for a possible existing payment and preserves its re
   fireEvent.click(await screen.findByRole('button',{name:'Have an existing payment for this already? Link it instead →'}));
   await screen.findByText('Link to an existing payment');
   fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1401'}));
-  fireEvent.click(screen.getByLabelText(/I checked the original transaction/)); fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
+  fireEvent.click(screen.getByLabelText(/I checked the original transaction/));
   api.reconcile.mockResolvedValue({data:{...row,status:'converted',paymentId:'payment',payment:{display_id:1401}}} as any);
   await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button',{name:'Confirm link to existing payment'}));
@@ -171,7 +171,7 @@ it('can retry a pending reconciliation after closing an unfinished candidate loo
  api.detail.mockResolvedValue({data:{...row,reconciliationPending:true,reconciliation:{action:'link',paymentId:'payment',targets:{clientId:'client'}}}} as any);
  api.candidates.mockResolvedValue({data:{payments:[],requests:[]}} as any);
  fireEvent.click(screen.getByRole('button',{name:'Payment from SP for receipt Synthetic Payer'}));
- fireEvent.click(await screen.findByLabelText('I reviewed the receipt and selected relationships.'));
+ fireEvent.click(await screen.findByLabelText(/I checked the original transaction/));
  await waitFor(()=>expect(screen.getByRole('button',{name:'Retry reconciliation'})).toBeEnabled());
 });
 
@@ -237,7 +237,7 @@ it('offers booking linking for a payment with no booking, without claiming a boo
 it('opens the existing-payment review flow directly from the grid',async()=>{
   mount();fireEvent.click(await screen.findByRole('button',{name:'Link payment',exact:true}));
   expect(await screen.findByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();
-  expect(screen.getByLabelText('I reviewed the receipt and selected relationships.')).toBeInTheDocument();
+  expect(screen.queryByLabelText(/I checked the original transaction/)).not.toBeInTheDocument();
   expect(api.reconcile).not.toHaveBeenCalled();
 });
 it('shows the receipt email envelope beside its own linked payment ID',async()=>{
@@ -282,6 +282,40 @@ it('clears a saved pending request link after successful retry so receipt confir
  fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1401'}));
  fireEvent.click(screen.getByRole('button',{name:'Retry payment request link'}));
  await waitFor(()=>expect(screen.queryByRole('button',{name:'Retry payment request link'})).not.toBeInTheDocument());
- fireEvent.click(screen.getByLabelText(/I checked the original transaction/));fireEvent.click(screen.getByLabelText('I reviewed the receipt and selected relationships.'));
+ fireEvent.click(screen.getByLabelText(/I checked the original transaction/));
  await waitFor(()=>expect(screen.getByRole('button',{name:'Confirm link to existing payment'})).toBeEnabled());
+});
+
+// PPVC-912: one deliberate transaction review supplies both API gates. Missing
+// receiving-account metadata must never require discovering a second checkbox.
+it('links a missing-account payment after exactly one transaction review, without submitting beforehand',async()=>{
+ const payment={_id:'payment',display_id:1211,clientId:'client',bookingId:'booking',paymentRequestId:'request',amount:2400,currency:'USD',paymentMethod:'paypal',paymentDate:'2026-10-26'};
+ api.detail.mockResolvedValue({data:{...row,account:undefined,accountKey:undefined,amount:'2400.00',currency:'USD',receivedDate:'2026-10-27'}} as any);
+ api.candidates.mockResolvedValue({data:{payments:[payment],requests:[]}} as any);
+ api.reconcile.mockResolvedValue({data:{...row,status:'converted',paymentId:'payment'}} as any);
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Link payment',exact:true}));
+ fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1211'}));
+ expect(screen.getByText(/Account details are missing/)).toBeInTheDocument();
+ expect(screen.getAllByRole('checkbox')).toHaveLength(2); // selection + one review
+ const submit=screen.getByRole('button',{name:'Confirm link to existing payment'});
+ expect(submit).toBeDisabled();expect(api.reconcile).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByLabelText(/I checked the original transaction/));
+ await waitFor(()=>expect(submit).toBeEnabled());fireEvent.click(submit);
+ await waitFor(()=>expect(api.reconcile).toHaveBeenCalledTimes(1));
+ expect(api.reconcile).toHaveBeenCalledWith('receipt',expect.objectContaining({action:'link',paymentId:'payment',clientId:'client',bookingId:'booking',paymentRequestId:'request',confirm:true,confirmAccount:true,revision:0}));
+});
+it('requires a fresh transaction review after changing payment or search filters',async()=>{
+ api.candidates.mockResolvedValue({data:{payments:[{_id:'a',display_id:1211,clientId:'client'},{_id:'b',display_id:1212,clientId:'client'}],requests:[]}} as any);
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Link payment',exact:true}));
+ const a=await screen.findByRole('checkbox',{name:'Select payment #1211'}),b=screen.getByRole('checkbox',{name:'Select payment #1212'});
+ fireEvent.click(a);fireEvent.click(screen.getByLabelText(/I checked the original transaction/));
+ const submit=screen.getByRole('button',{name:'Confirm link to existing payment'});await waitFor(()=>expect(submit).toBeEnabled());
+ fireEvent.click(b);expect(a).not.toBeChecked();expect(b).toBeChecked();expect(submit).toBeDisabled();
+ expect(screen.getByLabelText(/I checked the original transaction/)).not.toBeChecked();
+ fireEvent.click(screen.getByLabelText(/I checked the original transaction/));
+ fireEvent.change(screen.getByLabelText('Payment amount'),{target:{value:'5100'}});
+ expect(submit).toBeDisabled();expect(screen.queryByLabelText(/I checked the original transaction/)).not.toBeInTheDocument();
+ await waitFor(()=>expect(api.candidates).toHaveBeenLastCalledWith('receipt',expect.objectContaining({amount:'5100'})));
+ fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1211'}));
+ expect(screen.getByLabelText(/I checked the original transaction/)).not.toBeChecked();expect(api.reconcile).not.toHaveBeenCalled();
 });

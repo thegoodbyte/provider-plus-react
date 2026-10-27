@@ -591,7 +591,7 @@ export const retreatExpensesApi = {
 
 export interface ScratchpadReceipt {
   _id: string; display_id?: number; revision: number; receivedDate: string; amount: string; amountMinor: number;
-  currency: string; provider: string; account: string; payer?: string; phone?: string; externalId?: string;
+  currency: string; provider: string; account: string; accountKey?: string; payer?: string; phone?: string; externalId?: string;
   reference?: string; requestNumber?: string; notes?: string; status: 'unassigned' | 'converted' | 'excluded';
   paymentId?: string; payment?: any; paymentMissing?: boolean; duplicatePayments?: Array<{ _id: string; display_id?: number }>; reconciliationPending?: boolean;
   bookingReview?: { kind: string; label: string; message: string; client?: any; request?: any; bookings: any[] };

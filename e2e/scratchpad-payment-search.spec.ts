@@ -31,7 +31,12 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  await dialog.getByLabel('Payment amount',{exact:true}).fill('270');
  await expect(dialog.getByRole('checkbox',{name:'Select payment #9412',exact:true})).toBeDisabled();
  await expect(dialog.getByText('Amount or currency differs from this receipt')).toBeVisible();
+ await expect(dialog.getByText('Match all: payments must match every filled filter. Clear a filter to broaden the search.')).toBeVisible();
+ await dialog.getByLabel('Payment date from').fill('2026-10-21');
+ await dialog.getByLabel('Payment date to').fill('2026-10-21');
+ await expect(dialog.getByText('No matching payment found.')).toBeVisible();
  await dialog.getByLabel('Match filters').selectOption('any');
+ await expect(dialog.getByText(/Results may fall outside the chosen dates/)).toBeVisible();
  await dialog.getByLabel('Payment date from').fill('2026-10-20');
  await dialog.getByLabel('Payment date to').fill('2026-10-20');
  await expect(dialog.getByRole('checkbox',{name:'Select payment #9410',exact:true})).toBeVisible();
@@ -43,11 +48,17 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  await dialog.getByLabel('Link selected payment to a payment request (optional)',{exact:true}).selectOption(data.ids.request);
  await dialog.getByRole('button',{name:'Link payment to request',exact:true}).click();
  await expect(dialog.getByRole('link',{name:'View linked request'})).toBeVisible();
+ await expect(confirm).toBeDisabled();
+ await expect(dialog.getByText(/Account details are missing/)).toBeVisible();
+ await expect(dialog.getByRole('checkbox')).toHaveCount(2);
+ // The backend gate still rejects an API call missing the explicit acknowledgement.
+ const denied=await request.post(f.url+'/payment-scratchpad/'+data.ids.receipts[0]+'/reconcile',{headers:{Authorization:'Bearer '+f.tokens.admin},data:{action:'link',clientId:data.ids.clients[0],bookingId:data.ids.booking,paymentRequestId:data.ids.request,paymentId:data.ids.payments[0],revision:0,confirm:true,confirmAccount:false}});
+ expect(denied.status()).toBe(400);expect(await denied.text()).toContain('Account metadata is incomplete');
  await dialog.getByLabel(/I checked the original transaction/).check();
- await dialog.getByLabel('I reviewed the receipt and selected relationships.').check();
  await expect(confirm).toBeEnabled();
  await dialog.screenshot({path:`${process.env.SCRATCHPAD_SEARCH_ARTIFACT_DIR||'test-results/scratchpad-search'}/payment-search-${width}.png`});
- await confirm.click();await expect(dialog).not.toBeVisible();
+ const submitted=page.waitForRequest(r=>r.method()==='POST'&&r.url().includes('/reconcile'));
+ await confirm.click();const body=(await submitted).postDataJSON();expect(body.confirm).toBe(true);expect(body.confirmAccount).toBe(true);await expect(dialog).not.toBeVisible();
  await page.goto('/admin/payments/scratchpad/'+data.ids.receipts[0]);
  await expect(page.getByRole('link',{name:'View payment #9410',exact:true})).toBeVisible();
  await page.reload();
