@@ -1,10 +1,10 @@
-import { Edit2, Eye, Mail, Phone as PhoneIcon, Plus, Search as SearchIcon, Trash2, User, UserCheck } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit2, Eye, Mail, Phone as PhoneIcon, Plus, Search as SearchIcon, Trash2, User, UserCheck } from 'lucide-react';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientsApi, notesApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
-import { formatCalendarDate } from '../utils/dateFormat';
+import { formatCalendarDate, parseCalendarDate, toDateInputValue } from '../utils/dateFormat';
 import {
   clientWorkflowStatusLabels,
   clientWorkflowStatusTone,
@@ -21,6 +21,22 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
+// This is the date entered on the screening form. Completion timestamps are
+// updated by autosave; scheduled calls have their own separate date/time.
+const recordedScreeningDate = (client: any): Date | null => {
+  for (const raw of [client.screeningData?.screeningDate, client.screeningDate]) {
+    const date = parseCalendarDate(raw);
+    if (!date) continue;
+    if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      const calendar = raw.slice(0, 10);
+      const check = new Date(`${calendar}T00:00:00.000Z`);
+      if (!Number.isFinite(check.getTime()) || check.toISOString().slice(0, 10) !== calendar) continue;
+    }
+    return date;
+  }
+  return null;
+};
+
 const ScreeningClientsGrid: React.FC = () => {
   const navigate = useNavigate();
   const [screeningClients, setScreeningClients] = useState<any[]>([]);
@@ -28,6 +44,7 @@ const ScreeningClientsGrid: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
+  const [screeningDateOrder, setScreeningDateOrder] = useState<'asc' | 'desc'>('desc');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
 
@@ -102,8 +119,15 @@ const ScreeningClientsGrid: React.FC = () => {
       }
       return true;
     });
+    filtered.sort((left, right) => {
+      const a = recordedScreeningDate(left)?.getTime();
+      const b = recordedScreeningDate(right)?.getTime();
+      if (a === undefined) return b === undefined ? 0 : 1;
+      if (b === undefined) return -1;
+      return screeningDateOrder === 'asc' ? a - b : b - a;
+    });
     return { filteredClients: filtered, searchMatches: matchesMap };
-  }, [screeningClients, filterStatus, searchTerm, notes]);
+  }, [screeningClients, filterStatus, searchTerm, notes, screeningDateOrder]);
 
   const formatDate = (date: Date | string | undefined) => formatCalendarDate(date);
 
@@ -136,6 +160,7 @@ const ScreeningClientsGrid: React.FC = () => {
           />
         </div>
         <select
+          aria-label="Screening status"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -164,6 +189,13 @@ const ScreeningClientsGrid: React.FC = () => {
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ID
+                </th>
+                <th aria-sort={screeningDateOrder === 'desc' ? 'descending' : 'ascending'} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1 py-1 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+                    title={screeningDateOrder === 'desc' ? 'Show oldest screening dates first' : 'Show newest screening dates first'}
+                    onClick={() => setScreeningDateOrder(order => order === 'desc' ? 'asc' : 'desc')}>
+                    Screening date<Icon icon={screeningDateOrder === 'desc' ? ArrowDown : ArrowUp} className="h-3 w-3" />
+                  </button>
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Country
@@ -216,6 +248,12 @@ const ScreeningClientsGrid: React.FC = () => {
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
                     {client.display_id ? `#${client.display_id}` : 'No ID'}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                    {(() => {
+                      const date = recordedScreeningDate(client);
+                      return date ? <time dateTime={toDateInputValue(date)}>{formatDate(date)}</time> : <span className="text-gray-500">Not recorded</span>;
+                    })()}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
                     {client.country || 'N/A'}
