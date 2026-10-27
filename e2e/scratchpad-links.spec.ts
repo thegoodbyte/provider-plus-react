@@ -19,6 +19,7 @@ for(const width of [1440,390])test(`scratchpad/payment/booking ID navigation and
  const table=page.getByRole('table',{name:'Receipts',exact:true});await expect(table.getByRole('link',{name:'SP-'+row.display_id,exact:true})).toBeVisible();
  await table.getByRole('button',{name:'Link payment',exact:true}).click();await expect(page.getByRole('button',{name:'Confirm link to existing payment'})).toBeDisabled();
  expect(await snapshot()).toEqual(before);
+ await page.getByRole('checkbox',{name:'Select payment #1904',exact:true}).check();
  await page.getByRole('checkbox',{name:'I reviewed the receipt and selected relationships.'}).check();
  const account=page.getByRole('checkbox',{name:/account/i});if(await account.count())await account.check();
  await page.getByRole('button',{name:'Confirm link to existing payment'}).click();await expect(table.getByRole('link',{name:'#1904',exact:true})).toBeVisible();
