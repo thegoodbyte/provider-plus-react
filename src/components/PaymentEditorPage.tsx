@@ -321,11 +321,15 @@ const PaymentEditorPage: React.FC = () => {
     const service = paymentRequest.context === 'standalone_service';
     if (isExisting) {
       const requestBookingId = resolveId(paymentRequest.bookingId);
-      const compatibleBooking = resolveId(paymentRequest.clientId) === formData.clientId ? formData.bookingId : '';
+      const compatibleBooking = resolveId(paymentRequest.clientId) === formData.clientId && (!resolveId(paymentRequest.retreatId) || resolveId(paymentRequest.retreatId) === resolveId(selectedBooking?.retreatId)) ? formData.bookingId : '';
+      const nextBookingId = service ? '' : requestBookingId || compatibleBooking;
+      const keepsBooking = Boolean(nextBookingId && nextBookingId === formData.bookingId);
       setClientOnly(service || (!requestBookingId && !paymentRequest.retreatId && !compatibleBooking));
       setFormData(prev => ({ ...prev, paymentRequestId, clientId: resolveId(paymentRequest.clientId),
-        bookingId: service ? '' : requestBookingId || compatibleBooking,
+        bookingId: nextBookingId,
         retreatId: service ? '' : resolveId(paymentRequest.retreatId) || (compatibleBooking ? prev.retreatId : ''),
+        bookingCurrencyAmount: keepsBooking ? prev.bookingCurrencyAmount || (selectedPaymentRequest?.currency === selectedBooking?.currency ? prev.requestCurrencyAmount : '') : '',
+        bookingCurrencyExchangeDate: keepsBooking ? prev.bookingCurrencyExchangeDate || prev.requestCurrencyExchangeDate : '',
         ...emptyRequestConversion }));
       return;
     }
