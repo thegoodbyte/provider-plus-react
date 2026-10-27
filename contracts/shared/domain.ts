@@ -718,6 +718,7 @@ export interface ExpenseSummary {
 }
 
 export interface Payment {
+  receiptUnallocated?: boolean;
   sourceScratchpadId?: string | { _id: string; display_id?: number };
 
   _id?: string;
@@ -770,7 +771,7 @@ export interface Payment {
 
 export interface PaymentReceipt {
   allocationRevision?: number;
-  splitProgress?: { state: 'pending' | 'completed'; operationKey: string; sourcePaymentId: string; expectedRevision: number; allocations: { bookingId: string; amount: number }[] };
+  splitProgress?: { availableAmount?: number; remainingAmount?: number; state: 'pending' | 'completed'; operationKey: string; sourcePaymentId: string; expectedRevision: number; allocations: { bookingId: string; amount: number }[] };
 
   pdfMetadata?: Record<string, { generatedAt: string; sha256: string; fileName: string }>;
   pdfGenerationFailed?: boolean;
@@ -795,6 +796,7 @@ export interface PaymentReceipt {
   allocationCount: number;
   allocations?: Payment[];
   unallocatedAmount?: number;
+  unallocatedPayment?: Payment;
   lastSentAt?: Date | string;
   lastSentTo?: string;
   sentCount?: number;

@@ -119,3 +119,12 @@ test('pending split restores its immutable plan and operation key for recovery',
   await waitFor(()=>expect(paymentsApi.splitExistingReceipt).toHaveBeenCalledWith('receipt-1',expect.objectContaining({operationKey:'pending-confirmation-key'})));
   expect(paymentsApi.createJoint).not.toHaveBeenCalled();
 });
+test('existing receipt accepts one booking and keeps unused money without recording a new payment',async()=>{
+ await openExisting();await chooseBooking(1,'1300');
+ fireEvent.click(screen.getAllByTitle('Remove allocation')[1]);
+ expect(screen.getAllByLabelText(/Allocated amount/)).toHaveLength(1);
+ expect(screen.getByText(/Unused after allocation: 3800.00 PLN/)).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Confirm receipt split'}));
+ await waitFor(()=>expect(paymentsApi.splitExistingReceipt).toHaveBeenCalledWith('receipt-1',expect.objectContaining({allocations:[{bookingId:'booking-1',amount:3800}]})));
+ expect(paymentsApi.createJoint).not.toHaveBeenCalled();
+});

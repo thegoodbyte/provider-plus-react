@@ -1,3 +1,4 @@
+import ReceiptAllocationSummary from './ReceiptAllocationSummary';
 import React, { useEffect, useRef, useState } from 'react';
 import { paymentsApi } from '../services/api';
 import { Payment, PaymentReceipt } from '../types';
@@ -54,10 +55,11 @@ export default function PaymentReceiptPanel({ payment }: { payment: Payment }) {
   return <section aria-label="Payment receipt" className="mt-6 min-w-0 rounded-xl border border-blue-200 bg-white p-4 sm:p-6">
     <h2 className="text-xl font-bold text-gray-950">Receipt and client delivery</h2>
     {!receiptId ? <p className="mt-3 text-gray-600">This historical payment has no linked receipt. No receipt email or delivery history is available for it.</p> : loading ? <p className="mt-3">Loading receipt…</p> : <>
+      {receipt && <ReceiptAllocationSummary receipt={receipt}/>}
       {receipt && <div className="mt-3 space-y-2"><p className="font-semibold">Receipt #{receipt.display_id || '—'}{receipt.allocationCount > 1 ? ' · Shared transaction' : ''}</p><p className="text-sm text-gray-600">Actions and delivery history below apply only to this payment’s client.</p>
         <p className="font-semibold text-gray-900">{sentEmails.length ? `Emailed to client · ${sentEmails.length} successful email(s)` : 'Not emailed to this client yet'}</p>
         {sentEmails.length > 0 && <p className="break-words text-sm text-gray-600">Last successful email: {sentEmails[sentEmails.length - 1].to} · {new Date(sentEmails[sentEmails.length - 1].at).toLocaleString()}</p>}
-        {!allocation && <p role="alert" className="text-red-700">This payment is not an allocation of the linked receipt. Receipt actions are unavailable.</p>}
+        {!allocation && !(payment as any).receiptUnallocated && <p role="alert" className="text-red-700">This payment is not an allocation of the linked receipt. Receipt actions are unavailable.</p>}
         {!canUse && allocation && <p className="text-sm text-gray-600">Receipt acknowledgment is available only for completed payments on a received receipt.</p>}
         {canUse && <><p className="break-all text-sm">Email recipient: <strong>{client?.email || 'No email address on this client'}</strong></p><div className="flex flex-wrap gap-2 pt-2">
           <button type="button" disabled={!!busy} onClick={() => void action('preview')} className="rounded-lg border px-4 py-2 font-semibold">Preview PDF</button>

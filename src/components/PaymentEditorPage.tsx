@@ -550,7 +550,7 @@ const PaymentEditorPage: React.FC = () => {
             <div className="rounded-md border border-blue-300 bg-blue-50 p-4 text-blue-950">
               <h2 className="font-semibold">This payment belongs to one joint receipt</h2>
               <p className="mt-1 text-sm">
-                It is allocation {loadedPayment?.allocationIndex || '—'} of {loadedPayment?.allocationCount}.
+                The receipt allocation breakdown is shown on the payment view.
                 {receiptTotal > 0 ? ` The full received payment was ${receiptTotal.toLocaleString()} ${formData.currency}.` : ''}
                 {' '}Changing this allocation's amount or booking with Save is blocked because that would make the receipt totals incorrect.
               </p>

@@ -318,7 +318,7 @@ const PaymentsPage: React.FC = () => {
                     ) : (
                       payment.display_id ? `#${payment.display_id}` : '-'
                     )}
-                    {payment.allocationGroupId && <div className="mt-1 text-xs font-medium text-violet-700">Joint payment {payment.allocationIndex || '?'} of {payment.allocationCount || '?'}</div>}
+                    {(payment as any).receiptUnallocated && <div className="mt-1 text-xs font-semibold text-amber-800">Unused receipt funds · not allocated to a booking</div>}{payment.allocationGroupId && <div className="mt-1 text-xs font-medium text-violet-700">Shared received payment</div>}
                     {payment.receiptId && <div className="mt-1 text-xs text-gray-500">Receipt {typeof payment.receiptId === 'string' ? payment.receiptId.slice(-8) : payment.receiptId._id?.slice(-8)}</div>}
                   </td>
                   <td data-label="Date" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

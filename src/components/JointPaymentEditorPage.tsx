@@ -73,19 +73,20 @@ const JointPaymentEditorPage: React.FC = () => {
         if (receiptResponse) {
           const existing: any = receiptResponse.data;
           setReceipt(existing);
-          const source = existing.allocations?.[0];
+          const source = existing.unallocatedPayment || existing.allocations?.[0];
           const parent = (requestResponse.data || []).find((request: PaymentRequest) => request._id === id(existing.paymentRequestId || source?.paymentRequestId));
           if (!parent) throw new Error('This receipt needs an existing retreat payment request before it can be split.');
-          if (existing.splitProgress?.state === 'completed' || !existing.splitProgress && (existing.allocations?.length !== 1 || source?.bookingId || source?.status !== 'completed' || Number(source?.refundedAmount) > 0 || existing.status !== 'received')) {
+          if (existing.splitProgress?.state !== 'pending' && ((!existing.unallocatedPayment && (existing.splitProgress?.state === 'completed' || existing.allocations?.length !== 1)) || source?.bookingId || source?.status !== 'completed' || Number(source?.refundedAmount) > 0 || existing.status !== 'received')) {
             throw new Error('This receipt is already allocated or needs refund/conflict review.');
           }
-          setForm(current => ({ ...current, totalAmount: String(existing.totalAmount), currency: existing.currency, payerName: existing.payerName || '', paymentDate: String(existing.receivedDate).slice(0,10), paymentMethod: existing.paymentMethod, paymentType: existing.paymentType || source?.paymentType, transactionId: existing.transactionId || existing.transactionReference || '', paymentRequestId: parent?._id || '', notes: existing.notes || '', status: 'completed' }));
+          setForm(current => ({ ...current, totalAmount: String(existing.splitProgress?.state === 'pending' ? existing.splitProgress.availableAmount ?? existing.totalAmount : existing.unallocatedPayment ? existing.unallocatedAmount : existing.totalAmount), currency: existing.currency, payerName: existing.payerName || '', paymentDate: String(existing.receivedDate).slice(0,10), paymentMethod: existing.paymentMethod, paymentType: existing.paymentType || source?.paymentType, transactionId: existing.transactionId || existing.transactionReference || '', paymentRequestId: parent?._id || '', notes: existing.notes || '', status: 'completed' }));
           let draft: any = null;
           try { draft = JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { /* Start a clean draft if storage was malformed. */ }
-          const progress = existing.splitProgress;
+          const progress = existing.splitProgress?.state === 'pending' ? existing.splitProgress : null;
+          if (draft?.revision !== (existing.allocationRevision || 0)) draft = null;
           let next: Allocation[] = progress?.state === 'pending' ? progress.allocations.map((row: any) => ({ bookingId: row.bookingId, amount: String(row.amount) })) : draft?.allocations || [blankAllocation(), blankAllocation()];
           if (!progress && !draft) {
-            const shares = splitPaymentEvenly(existing.totalAmount, 2);
+            const shares = splitPaymentEvenly(existing.unallocatedPayment ? existing.unallocatedAmount : existing.totalAmount, 2);
             next = next.map((row, index) => ({ ...row, amount: shares[index].toFixed(2), bookingPrice: parent?.fullPrice ? (Number(parent.fullPrice) / 2).toFixed(2) : '' }));
           }
           const query = new URLSearchParams(location.search);
@@ -104,14 +105,14 @@ const JointPaymentEditorPage: React.FC = () => {
   }, [receiptId, location.search]);
 
   useEffect(() => {
-    if (receiptId && receipt && !loading && !receipt.splitProgress) sessionStorage.setItem(draftKey, JSON.stringify({ allocations, operationKey }));
+    if (receiptId && receipt && !loading && receipt.splitProgress?.state !== 'pending') sessionStorage.setItem(draftKey, JSON.stringify({ allocations, operationKey, revision: receipt?.allocationRevision || 0 }));
   }, [receiptId, receipt, loading, allocations, operationKey, draftKey]);
 
   const parentRequest = requests.find(request => request._id === form.paymentRequestId);
   const createBooking = (index: number) => {
     const row = allocations[index];
     if (!row.clientId || !parentRequest?.retreatId || !(Number(row.bookingPrice) > 0)) { setError('Select the participant and enter the agreed booking price first.'); return; }
-    sessionStorage.setItem(draftKey, JSON.stringify({ allocations, operationKey }));
+    sessionStorage.setItem(draftKey, JSON.stringify({ allocations, operationKey, revision: receipt?.allocationRevision || 0 }));
     const returnTo = `/admin/payments/joint/new?${new URLSearchParams({ receiptId, allocationRow: String(index) })}`;
     const query = new URLSearchParams({ clientId: row.clientId, retreatId: id(parentRequest.retreatId), totalAmount: row.bookingPrice!, currency: form.currency, paymentPlanEnabled: 'false', returnTo });
     if (parentRequest.bookingType) query.set('bookingType',parentRequest.bookingType);
@@ -129,23 +130,23 @@ const JointPaymentEditorPage: React.FC = () => {
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
-    if (allocations.length < 2 || allocations.some((allocation) => !allocation.bookingId || Number(allocation.amount) <= 0)) {
-      setError('Select at least two bookings and enter a positive amount for each allocation.');
+    if (allocations.length < (receiptId ? 1 : 2) || allocations.some((allocation) => !allocation.bookingId || Number(allocation.amount) <= 0)) {
+      setError(receiptId ? 'Select at least one booking and enter a positive amount for each allocation.' : 'Select at least two bookings and enter a positive amount for each allocation.');
       return;
     }
     if (new Set(allocations.map((allocation) => allocation.bookingId)).size !== allocations.length) {
       setError('Each booking can appear only once.');
       return;
     }
-    if (Math.abs(difference) > 0.005) {
-      setError(`Allocations must exactly match the received total. Difference: ${difference.toFixed(2)} ${form.currency}.`);
+    if (receiptId ? difference < -0.005 : Math.abs(difference) > 0.005) {
+      setError(`Allocations exceed the available funds or do not match a new payment. Difference: ${difference.toFixed(2)} ${form.currency}.`);
       return;
     }
     try {
       setSaving(true);
       if (receiptId) {
         if (!confirmed) throw new Error('Confirm the reviewed allocations before splitting the existing receipt.');
-        await paymentsApi.splitExistingReceipt(receiptId, { confirm: true, operationKey, sourcePaymentId: receipt.splitProgress?.sourcePaymentId || receipt.allocations[0]._id, expectedRevision: receipt.splitProgress?.expectedRevision ?? receipt.allocationRevision ?? 0, allocations: allocations.map(row => ({ bookingId: row.bookingId, amount: Number(row.amount) })) });
+        await paymentsApi.splitExistingReceipt(receiptId, { confirm: true, operationKey, sourcePaymentId: (receipt.splitProgress?.state === 'pending' ? receipt.splitProgress.sourcePaymentId : receipt.unallocatedPayment?._id || receipt.allocations[0]._id), expectedRevision: (receipt.splitProgress?.state === 'pending' ? receipt.splitProgress.expectedRevision : receipt.allocationRevision) ?? 0, allocations: allocations.map(row => ({ bookingId: row.bookingId, amount: Number(row.amount) })) });
         sessionStorage.removeItem(draftKey);
       } else await paymentsApi.createJoint({
         ...form,
@@ -155,7 +156,7 @@ const JointPaymentEditorPage: React.FC = () => {
         paymentRequestId: form.paymentRequestId || undefined,
         allocations: allocations.map((allocation) => ({ bookingId: allocation.bookingId, amount: Number(allocation.amount) })),
       });
-      navigate('/admin/payments');
+      navigate(receiptId ? `/admin/payments/receipts?receiptId=${receiptId}` : '/admin/payments');
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || requestError?.message || 'Unable to save the joint payment.');
     } finally {
@@ -173,7 +174,7 @@ const JointPaymentEditorPage: React.FC = () => {
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
       {receiptId && <div className="rounded border border-blue-200 bg-blue-50 p-4 text-sm">Receipt #{receipt?.display_id || receiptId} · Payment request #{parentRequest?.invoiceNumber || parentRequest?.display_id || '—'}. The existing amount, payer and received date are preserved. Create or select each booking, review the shares, then confirm. {receipt?.splitProgress?.state === 'pending' && <strong> An unfinished split was found. Resume the saved allocations below.</strong>}</div>}
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Received transaction</h2>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">{receiptId && receipt?.unallocatedPayment ? 'Unused funds available' : 'Received transaction'}</h2>{receiptId && <p className="mb-3 text-sm">Original received: {Number(receipt?.totalAmount || 0).toFixed(2)} {form.currency} · Available for this allocation: {Number(form.totalAmount || 0).toFixed(2)} {form.currency}. Unused funds stay on this receipt.</p>}
         <fieldset disabled={!!receiptId} className="grid gap-4 md:grid-cols-2">
           <label className="text-sm font-medium text-gray-700">Payer name<input value={form.payerName} onChange={(event) => setForm({ ...form, payerName: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Person who sent the money" /></label>
           <label className="text-sm font-medium text-gray-700">Transaction reference<input value={form.transactionId} onChange={(event) => setForm({ ...form, transactionId: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Bank, Revolut, PayPal reference" /></label>
@@ -217,7 +218,7 @@ const JointPaymentEditorPage: React.FC = () => {
         <div className="space-y-4">
           {allocations.map((allocation, index) => {
             const selectedBooking = bookings.find(booking => booking._id === allocation.bookingId);
-            const eligible = bookings.filter(booking => !receiptId || booking.currency === form.currency && id(booking.retreatId) === id(parentRequest?.retreatId) && (!allocation.clientId || id(booking.clientId) === allocation.clientId));
+            const eligible = bookings.filter(booking => !receiptId || (receipt?.splitProgress?.state === 'pending' || !receipt?.allocations?.some((old: any) => id(old.bookingId) === booking._id)) && booking.currency === form.currency && id(booking.retreatId) === id(parentRequest?.retreatId) && (!allocation.clientId || id(booking.clientId) === allocation.clientId));
             return <div key={index} className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-[1.8fr_.7fr_auto]">
               {receiptId && <div className="space-y-2 md:col-span-3">
                 <Select aria-label={`Participant ${index + 1}`} disabled={receipt?.splitProgress?.state === 'pending'} className="w-full" showSearch virtual={false} placeholder="Find participant by name or client number" value={allocation.clientId || undefined} filterOption={(input, option) => matchesSearch(String(option?.label || ''),input)} options={clients.map(client => ({ value: client._id, label: `#${client.display_id || ''} ${client.firstName} ${client.lastName}` }))} onChange={clientId => updateAllocation(index, { clientId, bookingId: '' })} />
@@ -242,11 +243,11 @@ const JointPaymentEditorPage: React.FC = () => {
                 onChange={(nextId) => updateAllocation(index, { bookingId: nextId || '' })}
               />
               <label className="min-w-0 text-sm font-medium text-gray-700">Allocated amount *<input type="number" min="0.01" step="0.01" disabled={receipt?.splitProgress?.state === 'pending'} required value={allocation.amount} onChange={(event) => updateAllocation(index, { amount: event.target.value })} className="mt-1 w-full min-w-0 max-w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label>
-              <button type="button" disabled={allocations.length <= 2 || receipt?.splitProgress?.state === 'pending'} onClick={() => setAllocations(allocations.filter((_, itemIndex) => itemIndex !== index))} className="mt-6 rounded-md p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30" title="Remove allocation"><Icon icon={Trash2} /></button>
+              <button type="button" disabled={allocations.length <= (receiptId ? 1 : 2) || receipt?.splitProgress?.state === 'pending'} onClick={() => setAllocations(allocations.filter((_, itemIndex) => itemIndex !== index))} className="mt-6 rounded-md p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30" title="Remove allocation"><Icon icon={Trash2} /></button>
             </div>;
           })}
         </div>
-        <div className={`mt-4 flex flex-wrap justify-end gap-x-6 gap-y-2 rounded-md px-4 py-3 text-sm font-semibold ${Math.abs(difference) <= 0.005 && Number(form.totalAmount) > 0 ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}><span>Received: {(Number(form.totalAmount) || 0).toFixed(2)} {form.currency}</span><span>Allocated: {allocatedTotal.toFixed(2)} {form.currency}</span><span>Difference: {difference.toFixed(2)} {form.currency}</span></div>
+        <div className={`mt-4 flex flex-wrap justify-end gap-x-6 gap-y-2 rounded-md px-4 py-3 text-sm font-semibold ${Math.abs(difference) <= 0.005 && Number(form.totalAmount) > 0 ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}><span>Received: {(Number(form.totalAmount) || 0).toFixed(2)} {form.currency}</span><span>Allocated: {allocatedTotal.toFixed(2)} {form.currency}</span><span>{receiptId ? 'Unused after allocation' : 'Difference'}: {difference.toFixed(2)} {form.currency}</span></div>
       </section>
       <label className="block text-sm font-medium text-gray-700">Notes<textarea disabled={!!receiptId} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} rows={3} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Context about the joint payment" /></label>
       {receiptId && <label className="flex items-start gap-3 rounded border p-4 text-sm"><input className="mt-1 h-4 w-4 shrink-0" type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />I reviewed the participant bookings and amounts. Allocate this existing receipt without recording another payment.</label>}
