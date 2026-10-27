@@ -23223,6 +23223,36 @@
         ]
       }
     },
+    "/payments/{id}/resume-edit": {
+      "post": {
+        "operationId": "PaymentsController_resumeEdit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
     "/payments/{id}/use-entire-receipt": {
       "post": {
         "operationId": "PaymentsController_useEntireReceipt",

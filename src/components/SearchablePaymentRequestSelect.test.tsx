@@ -42,7 +42,7 @@ describe('SearchablePaymentRequestSelect', () => {
   it('renders the selected request and toggles the menu', async () => {
     render(<SearchablePaymentRequestSelect selectedPaymentRequestId="p2" onPaymentRequestSelect={jest.fn()} />);
     expect(await screen.findByText('#22 - c2')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button', { name: '#22 - c2' }));
     expect(screen.getByRole('textbox')).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button')[0]);
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
@@ -62,4 +62,11 @@ describe('SearchablePaymentRequestSelect', () => {
     await waitFor(() => expect(errorSpy).toHaveBeenCalledWith('Error loading payment requests:', expect.any(Error)));
     errorSpy.mockRestore();
   });
+});
+
+test('offers an explicit clear action without selecting another request',async()=>{
+ getAllFresh.mockResolvedValue({data:requests});
+ const onSelect=jest.fn();render(<SearchablePaymentRequestSelect selectedPaymentRequestId="p2" onPaymentRequestSelect={onSelect} />);
+ fireEvent.click(await screen.findByRole('button',{name:'Clear payment request'}));
+ expect(onSelect).toHaveBeenCalledWith('');
 });

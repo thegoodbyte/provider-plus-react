@@ -11935,6 +11935,23 @@ export type PaymentsControllerProcessRefundResponses = {
 
 export type PaymentsControllerProcessRefundResponse = PaymentsControllerProcessRefundResponses[keyof PaymentsControllerProcessRefundResponses];
 
+export type PaymentsControllerResumeEditData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payments/{id}/resume-edit';
+};
+
+export type PaymentsControllerResumeEditResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PaymentsControllerResumeEditResponse = PaymentsControllerResumeEditResponses[keyof PaymentsControllerResumeEditResponses];
+
 export type PaymentsControllerUseEntireReceiptData = {
     body?: never;
     path: {

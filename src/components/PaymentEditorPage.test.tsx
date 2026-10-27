@@ -10,9 +10,13 @@ jest.mock('../services/api', () => ({
   paymentsApi: { getOne: jest.fn(), getAll: jest.fn(), getNextDisplayId: jest.fn(), conversionQuote: jest.fn(), convert: jest.fn(), create: jest.fn(), update: jest.fn() },
 }));
 jest.mock('./BookingEditorForm',()=> (props: any)=><div><span>Booking prefill: {props.initialBookingData.clientId} / {String(props.initialBookingData.paymentPlanEnabled)}</span><button type="button" onClick={()=>props.onSaved({_id:'new-booking',clientId:props.initialBookingData.clientId,retreatId:'r1',bookingNumber:920,totalAmount:9000,currency:'PLN'})}>Create synthetic booking</button><button type="button" onClick={props.onCancel}>Cancel synthetic booking</button></div>);
-jest.mock('./SearchableClientSelect', () => (props: any) => <select aria-label="Client" value={props.selectedClientId} onChange={e => props.onClientSelect(e.target.value)}><option value="">Choose</option><option value="c1">Anna</option></select>);
+jest.mock('./SearchableClientSelect', () => (props: any) => <select aria-label="Client" value={props.selectedClientId} onChange={e => props.onClientSelect(e.target.value)}><option value="">Choose</option><option value="c1">Anna</option><option value="c2">Ben</option></select>);
 jest.mock('./SearchableRetreatSelect', () => () => <div>Retreat selector</div>);
-jest.mock('./SearchablePaymentRequestSelect', () => () => <div>Request selector</div>);
+jest.mock('./SearchablePaymentRequestSelect', () => (props: any) => <div data-testid="request-picker" data-client={props.clientId || ''}>Request selector
+  {props.selectedPaymentRequestId && <button type="button" onClick={()=>props.onPaymentRequestSelect('')}>Clear payment request</button>}
+  <button type="button" onClick={()=>props.onPaymentRequestSelect('q1',{_id:'q1',clientId:'c1',retreatId:'r1',bookingId:'b1',requestedAmount:9999,currency:'EUR',paymentType:'CSOB',status:'pending'})}>Choose Anna request</button>
+  <button type="button" onClick={()=>props.onPaymentRequestSelect('q2',{_id:'q2',clientId:'c2',retreatId:'r2',bookingId:'b2',requestedAmount:7000,currency:'PLN',paymentType:'Revolut',status:'pending'})}>Choose Ben request</button>
+</div>);
 jest.mock('./SearchableBookingSelect', () => (props: any) => <select aria-label="Booking" value={props.selectedBookingId} onChange={e => props.onBookingSelect(e.target.value)}><option value="">Choose</option>{props.bookings.map((booking: any) => <option key={booking._id} value={booking._id}>{booking.bookingNumber}</option>)}</select>);
 const mock = (fn: unknown) => fn as jest.Mock;
 const view = (path = '/admin/payments/new?clientId=c1') => render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/admin/payments/new" element={<PaymentEditorPage />} /><Route path="/admin/payments/:id/edit" element={<PaymentEditorPage />} /><Route path="/admin/payments" element={<div>Payment list</div>} /></Routes></MemoryRouter>);
@@ -147,4 +151,36 @@ test('payment view uses readable details instead of disabled edit fields', async
  expect(screen.getByRole('region',{name:'Payment details'})).toHaveTextContent('A real purpose');
  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();expect(screen.queryByRole('combobox')).not.toBeInTheDocument();expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
  expect(screen.getByText(/historical payment has no linked receipt/)).toBeInTheDocument();
+});
+
+const recordedPayment = { _id:'p1',display_id:1002,clientId:'c1',retreatId:'r1',bookingId:'b1',paymentRequestId:{_id:'q1',clientId:'c1',retreatId:'r1',bookingId:'b1',currency:'EUR',requestedAmount:9999,status:'paid'},amount:150,currency:'EUR',paymentMethod:'cash',status:'completed',paymentDate:'2026-10-16',description:'Original received money' };
+test('clears a saved request with explicit null while retaining client, booking and original received money', async()=>{
+ mock(paymentsApi.getOne).mockResolvedValue({data:recordedPayment});
+ mock(bookingsApi.getAll).mockResolvedValue({data:[{_id:'b1',clientId:'c1',retreatId:'r1',currency:'EUR',bookingNumber:12}]});
+ view('/admin/payments/p1/edit');
+ fireEvent.click(await screen.findByRole('button',{name:'Clear payment request'}));
+ expect(screen.getByDisplayValue('150')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Update Payment'}));
+ await waitFor(()=>expect(paymentsApi.update).toHaveBeenCalledWith('p1',expect.objectContaining({paymentRequestId:null,clientId:'c1',bookingId:'b1',retreatId:'r1',amount:150,currency:'EUR',paymentMethod:'cash',paymentDate:'2026-10-16'})));
+});
+test('changing a saved client clears stale links and requires explicit confirmation without repricing',async()=>{
+ mock(paymentsApi.getOne).mockResolvedValue({data:recordedPayment});
+ view('/admin/payments/p1/edit');
+ const client=await screen.findByLabelText('Client');fireEvent.change(client,{target:{value:'c2'}});
+ expect(screen.getByTestId('request-picker')).toHaveAttribute('data-client','c2');
+ fireEvent.click(screen.getByRole('button',{name:'Update Payment'}));
+ await screen.findByText('Confirm the correction to this payment’s client before saving.');expect(paymentsApi.update).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('checkbox',{name:/I confirm correcting this payment/}));
+ fireEvent.click(screen.getByRole('button',{name:'Update Payment'}));
+ await waitFor(()=>expect(paymentsApi.update).toHaveBeenCalledWith('p1',expect.objectContaining({clientId:'c2',confirmClientChange:true,paymentRequestId:null,bookingId:null,retreatId:null,amount:150,currency:'EUR',paymentMethod:'cash'})));
+});
+test('a request can drive client selection when no client is selected and existing-money fields stay unchanged',async()=>{
+ mock(paymentsApi.getOne).mockResolvedValue({data:recordedPayment});
+ view('/admin/payments/p1/edit');
+ fireEvent.change(await screen.findByLabelText('Client'),{target:{value:''}});
+ fireEvent.click(screen.getByRole('button',{name:'Choose Ben request'}));
+ expect(screen.getByLabelText('Client')).toHaveValue('c2');
+ expect(screen.getByDisplayValue('150')).toBeInTheDocument();
+ expect(screen.getByDisplayValue('Cash')).toBeInTheDocument();
+ expect(screen.getByLabelText('Payment date')).toHaveValue('2026-10-16');
 });

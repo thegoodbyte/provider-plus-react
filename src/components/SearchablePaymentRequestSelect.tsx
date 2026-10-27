@@ -76,6 +76,7 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
   const filteredRequests = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return paymentRequests.filter((request) => {
+      if (request.status === 'cancelled') return false;
       if (clientId && resolveId(request.clientId) !== clientId) return false;
       if (retreatId && resolveId(request.retreatId) !== retreatId) return false;
       if (!term) return true;
@@ -114,6 +115,8 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
         </span>
         <span className="text-gray-400">{open ? <Icon icon={X} /> : <Icon icon={SearchIcon} />}</span>
       </button>
+
+      {selectedPaymentRequestId && <button type="button" className="mt-2 text-sm font-medium text-blue-700 underline" onClick={() => { onPaymentRequestSelect(''); setSearchTerm(''); setOpen(false); }}>Clear payment request</button>}
 
       {open && (
         <div className="absolute z-20 mt-2 w-full rounded-md border border-gray-200 bg-white shadow-lg">
