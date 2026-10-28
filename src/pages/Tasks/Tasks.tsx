@@ -1,3 +1,5 @@
+import { useLocation } from 'react-router-dom';
+import ClientSupportInbox from '../../components/Tasks/ClientSupportInbox';
 import React, { useState, useEffect, useMemo } from 'react';
 import { BookingFlowItem } from '../../types';
 import { bookingFlowApi } from '../../services/api';
@@ -10,6 +12,7 @@ import { SprintBoard } from '../../components/Tasks/SprintBoard';
 import './Tasks.css';
 
 export const Tasks: React.FC = () => {
+  const supportLocation = useLocation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [deadlines, setDeadlines] = useState<BookingFlowItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +22,7 @@ export const Tasks: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>('list');
   const [activeContext, setActiveContext] = useState<'client' | 'booking' | 'retreat' | 'generic'>('client');
-  const [originFilter, setOriginFilter] = useState<'all' | 'custom' | 'system'>('all');
+  const [originFilter, setOriginFilter] = useState<'all' | 'custom' | 'system' | 'client'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | Task['category']>('all');
   const [newTaskContext, setNewTaskContext] = useState<'client' | 'booking' | 'retreat' | 'generic'>('client');
   const [newTaskSprint, setNewTaskSprint] = useState<string | null>(null);
@@ -66,6 +69,8 @@ export const Tasks: React.FC = () => {
   };
 
   const originTasks = useMemo(() => tasks.filter(task => {
+    if (originFilter === 'client') return ['client_support','client_portal_request'].includes(task.sourceType || '');
+    if (['client_support','client_portal_request'].includes(task.sourceType || '') && originFilter !== 'all') return false;
     if (originFilter === 'system') return isSystemTask(task);
     if (originFilter === 'custom') return !isSystemTask(task);
     return true;
@@ -155,6 +160,8 @@ export const Tasks: React.FC = () => {
 
   const stats = getTaskStats();
 
+  if (new URLSearchParams(supportLocation.search).has('support')) return <ClientSupportInbox />;
+
   if (loading) {
     return (
       <div className="tasks-page">
@@ -167,7 +174,7 @@ export const Tasks: React.FC = () => {
     <div className="tasks-page">
       <div className="tasks-header">
         <div className="header-content">
-          <div><h1>Tasks</h1><p className="tasks-subtitle">One clear place for what needs your attention.</p></div>
+          <div><a href="/admin/tasks?support=all" className="btn btn-primary">Client support inbox / Copy support links</a><h1>Tasks</h1><p className="tasks-subtitle">One clear place for what needs your attention.</p></div>
           <div className="task-header-actions">
             <div className="tasks-view-toggle" aria-label="Task view">
               <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
@@ -201,7 +208,7 @@ export const Tasks: React.FC = () => {
       </nav>
 
       <div className="task-origin-bar">
-        <div><strong>Show</strong>{(['all', 'custom', 'system'] as const).map(origin => <button key={origin} type="button" className={originFilter === origin ? 'active' : ''} onClick={() => setOriginFilter(origin)}>{origin === 'all' ? 'All' : origin === 'custom' ? 'Custom — created by me' : 'System generated'}</button>)}</div>
+        <div><strong>Show</strong>{(['all', 'client', 'custom', 'system'] as const).map(origin => <button key={origin} type="button" className={originFilter === origin ? 'active' : ''} onClick={() => setOriginFilter(origin)}>{origin === 'all' ? 'All' : origin === 'client' ? 'Client requests' : origin === 'custom' ? 'Custom — created by me' : 'System generated'}</button>)}</div>
         <div className="task-category-filter" aria-label="Task category"><strong>Category</strong>{(['all', 'medical', 'documents', 'financial', 'communication', 'operations'] as const).map(category => <button key={category} type="button" className={categoryFilter === category ? 'active' : ''} onClick={() => setCategoryFilter(category)}>{category === 'all' ? 'All' : category[0].toUpperCase() + category.slice(1)}</button>)}</div>
         <details><summary>Advanced filters</summary><TaskFiltersPanel filters={filters} onFiltersChange={handleFiltersChange} /></details>
       </div>

@@ -110,7 +110,7 @@ export const TaskList: React.FC<TaskListProps> = ({
     );
   };
 
-  const isSystemTask = (task: Task) => Boolean(task.sourceType || task.sourceId || task.bookingFlowItemId);
+  const isSystemTask = (task: Task) => Boolean(task.sourceType && !['client_support', 'client_portal_request'].includes(task.sourceType) || task.sourceId || task.bookingFlowItemId);
 
   if (tasks.length === 0) {
     return (
@@ -184,7 +184,7 @@ export const TaskList: React.FC<TaskListProps> = ({
           >
             <div className="task-cell task-name">
               <span className="task-cell-label">Task</span>
-              <div className="task-title-row"><div className="task-title">{task.name}</div><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{isSystemTask(task) ? 'System' : 'Custom'}</span></div>
+              <div className="task-title-row"><div className="task-title">{task.supportReference ? <a href={'/admin/tasks?support='+encodeURIComponent(task.supportReference)}>{task.supportReference} · {task.name}</a> : task.name}</div><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? 'Client request' : isSystemTask(task) ? 'System' : 'Custom'}</span></div>
             </div>
 
             <div className="task-cell">
@@ -259,7 +259,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                 {task.status !== 'completed' && (
                   <button
                     className="task-action-btn task-action-complete"
-                    onClick={() => onCompleteTask(task.id)}
+                    disabled={Boolean(task.supportReference)} onClick={() => onCompleteTask(task.id)}
                     title="Mark as complete"
                     aria-label="Mark task as complete"
                   >
@@ -268,7 +268,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                 )}
                 <button
                   className="task-action-btn task-action-edit"
-                  onClick={() => onEditTask(task)}
+                  disabled={Boolean(task.supportReference)} onClick={() => onEditTask(task)}
                   title="Edit task"
                   aria-label="Edit task"
                 >
@@ -276,7 +276,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                 </button>
                 <button
                   className="task-action-btn task-action-delete"
-                  onClick={() => onDeleteTask(task.id)}
+                  disabled={Boolean(task.supportReference)} onClick={() => onDeleteTask(task.id)}
                   title="Delete task"
                   aria-label="Delete task"
                 >

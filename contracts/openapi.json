@@ -10943,6 +10943,113 @@
         ]
       }
     },
+    "/client-portal/support/context": {
+      "get": {
+        "operationId": "ClientSupportController_context",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientSupport"
+        ]
+      }
+    },
+    "/client-portal/support/requests": {
+      "get": {
+        "operationId": "ClientSupportController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientSupport"
+        ]
+      },
+      "post": {
+        "operationId": "ClientSupportController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientSupport"
+        ]
+      }
+    },
+    "/client-portal/support/requests/{id}": {
+      "get": {
+        "operationId": "ClientSupportController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientSupport"
+        ]
+      }
+    },
+    "/client-portal/support/requests/{id}/messages": {
+      "post": {
+        "operationId": "ClientSupportController_message",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientSupport"
+        ]
+      }
+    },
     "/client-portal/tasks": {
       "get": {
         "operationId": "ClientPortalTasksController_findMine",
@@ -23697,6 +23804,87 @@
         ]
       }
     },
+    "/public/support/access/begin": {
+      "post": {
+        "operationId": "PublicSupportAccessController_begin",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicSupportAccess"
+        ]
+      }
+    },
+    "/public/support/access/requests/{id}": {
+      "get": {
+        "operationId": "PublicSupportAccessController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicSupportAccess"
+        ]
+      }
+    },
+    "/public/support/access/requests/{id}/messages": {
+      "post": {
+        "operationId": "PublicSupportAccessController_message",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicSupportAccess"
+        ]
+      }
+    },
+    "/public/support/access/verify": {
+      "post": {
+        "operationId": "PublicSupportAccessController_verify",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicSupportAccess"
+        ]
+      }
+    },
     "/referral-portal/auth/login": {
       "post": {
         "operationId": "ReferralPortalController_login",
@@ -26732,6 +26920,183 @@
         },
         "tags": [
           "Tasks"
+        ]
+      }
+    },
+    "/tasks/support/requests": {
+      "get": {
+        "operationId": "StaffSupportController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffSupport"
+        ]
+      },
+      "post": {
+        "operationId": "StaffSupportController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffSupport"
+        ]
+      }
+    },
+    "/tasks/support/requests/{id}": {
+      "get": {
+        "operationId": "StaffSupportController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffSupport"
+        ]
+      },
+      "patch": {
+        "operationId": "StaffSupportController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffSupport"
+        ]
+      }
+    },
+    "/tasks/support/requests/{id}/messages": {
+      "post": {
+        "operationId": "StaffSupportController_message",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffSupport"
+        ]
+      }
+    },
+    "/tasks/support/requests/{id}/retry-notifications": {
+      "post": {
+        "operationId": "StaffSupportController_retry",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffSupport"
+        ]
+      }
+    },
+    "/tasks/support/settings": {
+      "get": {
+        "operationId": "StaffSupportController_settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffSupport"
+        ]
+      },
+      "patch": {
+        "operationId": "StaffSupportController_save",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffSupport"
         ]
       }
     },

@@ -2362,3 +2362,14 @@ export const serviceRequestsApi = {
  get: (id: string) => api.get(`/service-payment-requests/${id}`),
  action: (id: string, action: string) => {cacheService.clearPattern('payment-requests:');return api.post(`/service-payment-requests/${id}/${action}`,{});},
 };
+
+export const clientSupportApi = {
+  settings: () => api.get('/tasks/support/settings'),
+  saveSettings: (data: any) => api.patch('/tasks/support/settings', data),
+  list: (params: any) => api.get('/tasks/support/requests', { params }),
+  detail: (id: string) => api.get('/tasks/support/requests/' + encodeURIComponent(id)),
+  update: (id: string, data: any) => api.patch('/tasks/support/requests/' + id, data),
+  message: (id: string, data: any) => api.post('/tasks/support/requests/' + id + '/messages', data),
+  retry: (id: string) => api.post('/tasks/support/requests/' + id + '/retry-notifications'),
+  create: (data: any) => api.post('/tasks/support/requests', data),
+};

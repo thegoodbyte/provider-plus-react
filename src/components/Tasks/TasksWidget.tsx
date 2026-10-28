@@ -146,6 +146,7 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
     <div className="tasks-widget">
       <div className="widget-header">
         <h3>{getWidgetTitle()} ({tasks.length})</h3>
+        {clientId && <a href={'/admin/tasks?support=all&clientId='+encodeURIComponent(clientId)}>Client support requests</a>}
         <div className="task-header-actions">
           {retreatId && (
             <button

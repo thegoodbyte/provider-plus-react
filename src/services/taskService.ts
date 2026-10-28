@@ -2,6 +2,7 @@ import { authFetch } from './authService';
 import { API_BASE_URL } from '../config/api.config';
 
 export interface Task {
+  supportReference?: string;
   id: string;
   name: string;
   description: string;

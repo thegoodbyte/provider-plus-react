@@ -5120,6 +5120,77 @@ export type ClientPortalAccountControllerSaveScreeningResponses = {
     200: unknown;
 };
 
+export type ClientSupportControllerContextData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/client-portal/support/context';
+};
+
+export type ClientSupportControllerContextResponses = {
+    200: unknown;
+};
+
+export type ClientSupportControllerListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/client-portal/support/requests';
+};
+
+export type ClientSupportControllerListResponses = {
+    200: unknown;
+};
+
+export type ClientSupportControllerCreateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/client-portal/support/requests';
+};
+
+export type ClientSupportControllerCreateResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type ClientSupportControllerCreateResponse = ClientSupportControllerCreateResponses[keyof ClientSupportControllerCreateResponses];
+
+export type ClientSupportControllerGetData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/client-portal/support/requests/{id}';
+};
+
+export type ClientSupportControllerGetResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ClientSupportControllerGetResponse = ClientSupportControllerGetResponses[keyof ClientSupportControllerGetResponses];
+
+export type ClientSupportControllerMessageData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/client-portal/support/requests/{id}/messages';
+};
+
+export type ClientSupportControllerMessageResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type ClientSupportControllerMessageResponse = ClientSupportControllerMessageResponses[keyof ClientSupportControllerMessageResponses];
+
 export type ClientPortalTasksControllerFindMineData = {
     body?: never;
     path?: never;
@@ -12216,6 +12287,58 @@ export type PublicServiceRequestsControllerAcceptResponses = {
     201: unknown;
 };
 
+export type PublicSupportAccessControllerBeginData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/public/support/access/begin';
+};
+
+export type PublicSupportAccessControllerBeginResponses = {
+    201: unknown;
+};
+
+export type PublicSupportAccessControllerGetData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/public/support/access/requests/{id}';
+};
+
+export type PublicSupportAccessControllerGetResponses = {
+    200: unknown;
+};
+
+export type PublicSupportAccessControllerMessageData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/public/support/access/requests/{id}/messages';
+};
+
+export type PublicSupportAccessControllerMessageResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PublicSupportAccessControllerMessageResponse = PublicSupportAccessControllerMessageResponses[keyof PublicSupportAccessControllerMessageResponses];
+
+export type PublicSupportAccessControllerVerifyData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/public/support/access/verify';
+};
+
+export type PublicSupportAccessControllerVerifyResponses = {
+    201: unknown;
+};
+
 export type ReferralPortalControllerLoginData = {
     body?: never;
     path?: never;
@@ -13869,6 +13992,122 @@ export type TasksControllerStatisticsData = {
 };
 
 export type TasksControllerStatisticsResponses = {
+    200: unknown;
+};
+
+export type StaffSupportControllerListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tasks/support/requests';
+};
+
+export type StaffSupportControllerListResponses = {
+    200: unknown;
+};
+
+export type StaffSupportControllerCreateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tasks/support/requests';
+};
+
+export type StaffSupportControllerCreateResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type StaffSupportControllerCreateResponse = StaffSupportControllerCreateResponses[keyof StaffSupportControllerCreateResponses];
+
+export type StaffSupportControllerGetData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/tasks/support/requests/{id}';
+};
+
+export type StaffSupportControllerGetResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type StaffSupportControllerGetResponse = StaffSupportControllerGetResponses[keyof StaffSupportControllerGetResponses];
+
+export type StaffSupportControllerUpdateData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/tasks/support/requests/{id}';
+};
+
+export type StaffSupportControllerUpdateResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type StaffSupportControllerUpdateResponse = StaffSupportControllerUpdateResponses[keyof StaffSupportControllerUpdateResponses];
+
+export type StaffSupportControllerMessageData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/tasks/support/requests/{id}/messages';
+};
+
+export type StaffSupportControllerMessageResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type StaffSupportControllerMessageResponse = StaffSupportControllerMessageResponses[keyof StaffSupportControllerMessageResponses];
+
+export type StaffSupportControllerRetryData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/tasks/support/requests/{id}/retry-notifications';
+};
+
+export type StaffSupportControllerRetryResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type StaffSupportControllerRetryResponse = StaffSupportControllerRetryResponses[keyof StaffSupportControllerRetryResponses];
+
+export type StaffSupportControllerSettingsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tasks/support/settings';
+};
+
+export type StaffSupportControllerSettingsResponses = {
+    200: unknown;
+};
+
+export type StaffSupportControllerSaveData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tasks/support/settings';
+};
+
+export type StaffSupportControllerSaveResponses = {
     200: unknown;
 };
 
