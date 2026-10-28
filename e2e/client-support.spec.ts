@@ -16,7 +16,13 @@ async function routeApi(page: Page, loseFirstSubmit = false) {
     const r = route.request();
     if (!["xhr", "fetch"].includes(r.resourceType())) return route.continue();
     const u = new URL(r.url()),
-      path = u.pathname.replace(/^\/api(?=\/)/, "");
+      originalPath = u.pathname.replace(/^\/api(?=\/)/, ""),
+      // The production IR configuration uses the legacy authentication alias.
+      // Both entry URLs reach this fixture's synthetic login boundary; support APIs remain real.
+      path =
+        originalPath === "/auth/login/client-portal"
+          ? "/auth/client-login"
+          : originalPath;
     if (
       path.startsWith("/client-portal/support") ||
       path.startsWith("/public/support") ||
@@ -241,8 +247,21 @@ for (const width of [1440, 390])
         "admin@example.invalid",
       );
       await staff
-        .locator(".support-inbox")
-        .screenshot({ path: `${artifacts}/support-staff-${width}.png` });
+        .getByRole("heading", {
+          name: reference + " · I have paid — please check",
+        })
+        .scrollIntoViewIfNeeded();
+      await staff.screenshot({
+        path: `${artifacts}/support-staff-top-${width}.png`,
+      });
+      await staff.getByLabel("Client-visible reply").scrollIntoViewIfNeeded();
+      await staff.screenshot({
+        path: `${artifacts}/support-staff-composer-${width}.png`,
+      });
+      await staff.getByLabel("Owner email").scrollIntoViewIfNeeded();
+      await staff.screenshot({
+        path: `${artifacts}/support-staff-${width}.png`,
+      });
       await client.screenshot({
         path: `${artifacts}/support-client-${width}.png`,
         fullPage: true,
