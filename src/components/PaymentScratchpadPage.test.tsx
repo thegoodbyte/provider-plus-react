@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PaymentScratchpadPage from './PaymentScratchpadPage';
 import { scratchpadApi, paymentsApi, clientsApi, bookingsApi, paymentRequestsApi } from '../services/api';
-jest.mock('../services/api', () => ({ scratchpadApi: { matches: jest.fn(), list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, paymentsApi: { linkRequest: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn() } }));
+jest.mock('../services/api', () => ({ scratchpadApi: { matches: jest.fn(), list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, paymentsApi: { linkRequest: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn(), getSettlement: jest.fn() } }));
 jest.mock('./SearchableClientSelect', () => ({ __esModule: true, default: (p: any) => <select aria-label={p.ariaLabel} value={p.value} onChange={e=>p.onChange(e.target.value)}><option value="">Choose</option><option value="client">Synthetic client</option></select> }));
 jest.mock('./Tasks/SearchableSelect', () => ({ SearchableSelect: (p: any) => <select id={p.id} value={p.value} onChange={e=>p.onChange(e.target.value)}>{p.options.map((o:any)=><option key={o.id} value={o.id}>{o.label}</option>)}</select> }));
 const api = scratchpadApi as jest.Mocked<typeof scratchpadApi>;
@@ -319,4 +319,14 @@ it('requires a fresh transaction review after changing payment or search filters
  await waitFor(()=>expect(api.candidates).toHaveBeenLastCalledWith('receipt',expect.objectContaining({amount:'5100'})));
  fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1211'}));
  expect(screen.getByLabelText(/I checked the original transaction/)).not.toBeChecked();expect(api.reconcile).not.toHaveBeenCalled();
+});
+
+it('keeps receipt fields and client/PR together on failed edit and sends one atomic save without reconciliation',async()=>{
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[{_id:'request',display_id:3100,clientId:'client',currency:'PLN',requestedAmount:1000,status:'pending'}]});
+ (paymentRequestsApi.getSettlement as jest.Mock).mockResolvedValue({data:{amountOutstanding:600}});
+ api.edit.mockRejectedValue({response:{data:{message:'Retry this edit'}}});
+ render(<MemoryRouter initialEntries={['/admin/payments/scratchpad/receipt/edit']}><PaymentScratchpadPage/></MemoryRouter>);
+ const picker=await screen.findByLabelText('Payment request (optional)',{exact:true});fireEvent.change(picker,{target:{value:'request'}});fireEvent.change(screen.getByLabelText('Notes (optional)'),{target:{value:'Keep matching'}});fireEvent.click(screen.getByRole('button',{name:'Save receipt',exact:true}));
+ await screen.findByRole('alert');expect(picker).toHaveValue('request');expect(screen.getByLabelText('Receipt client (optional)')).toHaveValue('client');expect(screen.getByLabelText('Notes (optional)')).toHaveValue('Keep matching');
+ expect(api.edit).toHaveBeenCalledTimes(1);expect(api.edit).toHaveBeenCalledWith('receipt',expect.objectContaining({revision:0,notes:'Keep matching',matchingDetails:{clientId:'client',paymentRequestId:'request'}}));expect(api.reconcile).not.toHaveBeenCalled();
 });
