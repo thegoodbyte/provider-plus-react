@@ -98,6 +98,7 @@ test.describe('Recent PPVC ticket regressions', () => {
       const url = new URL(request.url());
       if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
       if (url.pathname === '/') return route.fulfill({ json: { ok: true } });
+      if (url.pathname === '/room-inventory/options') return route.fulfill({ json: [{ key: 'shared', active: true, labels: { en: 'Shared' }, occupancy: 'shared', legacyRoomType: 'shared' }] });
       if (url.pathname === '/referrals') return route.fulfill({ json: [] });
       if (url.pathname === `/clients/${clientId}` && request.method() === 'GET') return route.fulfill({ json: {
         _id: clientId,
@@ -132,10 +133,12 @@ test.describe('Recent PPVC ticket regressions', () => {
     await otherDrugs.check();
     await page.locator('textarea[name="opioidsDetails"]').fill('Prescription oxycodone, last used January 2026');
     await page.locator('textarea[name="otherDrugsDetails"]').fill('Occasional kratom use');
+    await page.getByRole('combobox', { name: /Desired accommodation/ }).selectOption('shared');
     await page.getByRole('button', { name: 'Save Screening' }).first().click();
 
     await expect.poll(() => savedScreening.opioids).toBe(true);
     expect(savedScreening).toMatchObject({
+      desiredAccommodationKey: 'shared',
       opioids: true,
       opioidsDetails: 'Prescription oxycodone, last used January 2026',
       otherDrugs: true,
