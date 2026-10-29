@@ -1,3 +1,4 @@
+const freePort = () => new Promise((resolve,reject)=>{const server=require('node:net').createServer();server.once('error',reject);server.listen(0,'127.0.0.1',()=>{const port=server.address().port;server.close(()=>resolve(port));});});
 const fs = require("node:fs"),
   path = require("node:path"),
   os = require("node:os"),
@@ -28,13 +29,13 @@ const fs = require("node:fs"),
     );
     const { createServer } = await import("vite");
     adminServer = await createServer({
-      server: { host: "127.0.0.1", port: 0 },
+      server: { host: "127.0.0.1", port: await freePort() },
     });
     await adminServer.listen();
     irServer = await createServer({
       root: path.resolve(ir),
       configFile: path.resolve(ir, "vite.config.mts"),
-      server: { host: "127.0.0.1", port: 0 },
+      server: { host: "127.0.0.1", port: await freePort() },
     });
     await irServer.listen();
     const child = spawn(
