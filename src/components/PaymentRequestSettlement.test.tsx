@@ -19,5 +19,5 @@ it('warns that a paid PR is not a paid booking and links the explicit repair, wi
  expect(await screen.findByRole('alert')).toHaveTextContent('A paid request alone does not mean the booking is paid in full');expect(screen.getByRole('link',{name:'Review and finish payment allocation'})).toHaveAttribute('href','/admin/payment-requests/booking-review?requestId=request');
 });
 it('removes the warning after a fresh load confirms the allocation is complete',async()=>{
- (paymentRequestsApi.getSettlement as jest.Mock).mockResolvedValue({data:{requestedAmount:6600,amountReceived:6600,amountOutstanding:0,amountOverpaid:0,currency:'PLN',settlementStatus:'settled',payments,bookingAllocation:{needsReview:false}}});open();await screen.findByText('6,600.00 PLN');expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+ (paymentRequestsApi.getSettlement as jest.Mock).mockResolvedValue({data:{requestedAmount:6600,amountReceived:6600,amountOutstanding:0,amountOverpaid:0,currency:'PLN',settlementStatus:'settled',payments,bookingAllocation:{needsReview:false}}});open();await screen.findByRole('link',{name:'Payment #1911'});expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
