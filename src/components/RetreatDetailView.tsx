@@ -1177,7 +1177,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {isTabAvailableForRetreat('rooms', retreat) && (
           <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Room allocation</button>
         )}
-        {isTabAvailableForRetreat('stayPlanner', retreat) && <button className={`tab-btn ${activeTab === 'stayPlanner' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'stayPlanner'} onClick={() => handleTabChange('stayPlanner')}>Stay planner</button>}
         {isTabAvailableForRetreat('occupancy', retreat) && (
           <button className={`tab-btn ${activeTab === 'occupancy' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'occupancy'} onClick={() => handleTabChange('occupancy')}>Occupancy</button>
         )}
@@ -1197,10 +1196,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         )}
         {isTabAvailableForRetreat('clients', retreat) && (
           <button
-            className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
+            className={`tab-btn ${['clients', 'stayPlanner'].includes(activeTab) ? 'active' : ''}`}
             onClick={() => handleTabChange('clients')}
             role="tab"
-            aria-selected={activeTab === 'clients'}
+            aria-selected={['clients', 'stayPlanner'].includes(activeTab)}
           >
             <Icon icon={Users} className="retreat-tab-icon" />
             <span>Clients ({activeClientCount})</span>
@@ -1329,6 +1328,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'integration' && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <RouteContentBoundary><IntegrationCalendar retreatId={retreatId} /></RouteContentBoundary>}
         {activeTab === 'rooms' && <details className="mb-4"><summary className="cursor-pointer">Accommodation rates and room settings</summary><RouteContentBoundary><RetreatRoomsTab retreatId={retreatId} /></RouteContentBoundary></details>}
         {activeTab === 'announcements' && authService.getUser()?.role === 'admin' && <RouteContentBoundary><AnnouncementsPage retreatId={retreatId} /></RouteContentBoundary>}
+        {['clients', 'stayPlanner'].includes(activeTab) && isTabAvailableForRetreat('stayPlanner', retreat) && (
+          <div className="mb-5 flex flex-wrap items-center gap-2" role="group" aria-label="Clients view">
+            <span className="mr-2 text-sm font-medium text-slate-600">Clients view</span>
+            <button type="button" aria-pressed={activeTab === 'clients'} onClick={() => handleTabChange('clients')} className={`rounded-md border px-4 py-2 text-sm ${activeTab === 'clients' ? 'border-teal-700 bg-teal-50 text-teal-900' : 'border-slate-300 bg-white'}`}>Client list</button>
+            <button type="button" aria-pressed={activeTab === 'stayPlanner'} onClick={() => handleTabChange('stayPlanner')} className={`rounded-md border px-4 py-2 text-sm ${activeTab === 'stayPlanner' ? 'border-teal-700 bg-teal-50 text-teal-900' : 'border-slate-300 bg-white'}`}>Stay planner</button>
+          </div>
+        )}
         {activeTab === 'clients' && (
         <div className="clients-section">
           <div className="section-header">
