@@ -12,6 +12,7 @@ export default function PaymentRequestBookingLinks({ request }: { request: any }
   const clientId = id(request.clientId);
   return <div className="flex flex-col items-start gap-1 text-sm">
     {bookings.size ? [...bookings].map(([bookingId, booking]) => <Link key={bookingId} className="text-blue-700 underline" to={`/admin/bookings/${encodeURIComponent(bookingId)}`}>{booking.bookingNumber ? `Booking #${booking.bookingNumber}` : 'View linked booking'}</Link>) : <><span className="text-gray-500">No booking linked</span>{request._id && <Link className="text-blue-700 underline" to={`/admin/payment-requests/booking-review?requestId=${encodeURIComponent(request._id)}`}>Review booking links</Link>}</>}
+    {bookings.size > 0 && request._id && request.context !== 'standalone_service' && <Link className="text-blue-700 underline" to={`/admin/payment-requests/booking-review?requestId=${encodeURIComponent(request._id)}`}>Review payment allocation</Link>}
     {clientId && <Link className="text-blue-700 underline" to={clientBookingsPath(clientId)}>Client bookings</Link>}
   </div>;
 }

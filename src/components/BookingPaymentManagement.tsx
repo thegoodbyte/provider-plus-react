@@ -1,6 +1,6 @@
 import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Payment, PaymentRequest } from '../types';
 import { configSummaryApi, paymentRequestsApi, paymentsApi } from '../services/api';
 import CurrencyDisplay from './CurrencyDisplay';
@@ -741,6 +741,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       </div>
 
       {summaryError && <p role="alert">{summaryError}</p>}
+      <p className="my-3 text-sm">Recorded a receipt already? Use Scratchpad to select its payment request and confirm once. Paid requests only count here when their payments are allocated. <Link className="text-blue-700 underline" to={`/admin/payment-requests/booking-review?bookingId=${encodeURIComponent(bookingId)}`}>Review existing payment allocations</Link></p>
       {financialSummary && <div className="booking-balance-summary authoritative-financial-summary">
         <div className="booking-balance-metric total"><span>Agreed price</span><strong><CurrencyDisplay amount={financialSummary.price} currency={financialSummary.currency} showUSD={false}/></strong><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Manage booking price</button></div>
         <div className="booking-balance-metric received"><span>Gross receipts</span><strong><CurrencyDisplay amount={financialSummary.grossReceived} currency={financialSummary.currency} showUSD={false}/></strong></div>

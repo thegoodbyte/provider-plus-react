@@ -24,3 +24,9 @@ it('keeps the selection and shows a server conflict for staff review',async()=>{
  (paymentRequestsApi.linkBooking as jest.Mock).mockRejectedValue({response:{data:{message:'Request changed'}}});mount();fireEvent.click(await screen.findByRole('button',{name:'Link request #1392 to booking #1909'}));fireEvent.click(screen.getByRole('checkbox'));fireEvent.click(screen.getByRole('button',{name:'Confirm booking link'}));
  await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('Request changed'));expect(screen.getByRole('dialog')).toBeInTheDocument();
 });
+it('scopes booking repair, shows unallocated money and preserves explicit confirmation',async()=>{
+ (paymentRequestsApi.getBookingLinkReview as jest.Mock).mockResolvedValue({data:[{...row,unallocatedPayments:[{_id:'payment',display_id:1213,amount:6600,currency:'PLN',status:'completed'}]},{...row,request:{...row.request,_id:'other'},candidates:[{...row.candidates[0],_id:'other-booking',bookingNumber:9999}]}]});
+ render(<MemoryRouter initialEntries={['/admin/payment-requests/booking-review?bookingId=b']}><RequestBookingReviewPage /></MemoryRouter>);
+ expect(await screen.findByText('Unallocated payment #1213: 6600 PLN · completed')).toBeInTheDocument();
+ expect(screen.queryByRole('link',{name:'Booking #9999'})).not.toBeInTheDocument();expect(screen.getByText('1 requests need review')).toBeInTheDocument();expect(screen.getByRole('link',{name:'Return to booking'})).toHaveAttribute('href','/admin/bookings/b');expect(paymentRequestsApi.linkBooking).not.toHaveBeenCalled();
+});
