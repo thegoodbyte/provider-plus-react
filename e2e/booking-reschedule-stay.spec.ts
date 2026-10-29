@@ -83,7 +83,7 @@ for (const [width, timezoneId] of [
       await dialog.getByRole("button", { name: "Confirm reschedule" }).click();
       await expect(dialog).toHaveCount(0);
       await page.reload();
-      await page.getByText("Booking dates", { exact: true }).click();
+      await expect(page.getByRole("region", { name: "Retreat & dates", exact: true })).toBeVisible();
       await expect(
         page.getByText("Mar 28, 2099 · 17:30", { exact: true }),
       ).toBeVisible();
@@ -122,7 +122,7 @@ for (const [width, timezoneId] of [
         .screenshot({
           path: `${process.env.RESCHEDULE_STAY_ARTIFACT_DIR || "test-results"}/repair-${width}.png`,
         });
-      await page.getByText("Booking dates", { exact: true }).click();
+      await expect(page.getByRole("region", { name: "Retreat & dates", exact: true })).toBeVisible();
       await expect(
         page.getByText("Mar 28, 2099 · 17:30", { exact: true }),
       ).toBeVisible();
