@@ -77,7 +77,9 @@ for (const [width, timezoneId] of [
       await dialog
         .getByRole("textbox", { name: "Internal note" })
         .fill("New stay requested");
-      await dialog.screenshot({path:`${process.env.RESCHEDULE_STAY_ARTIFACT_DIR||'test-results'}/dialog-${width}.png`});
+      await dialog.screenshot({
+        path: `${process.env.RESCHEDULE_STAY_ARTIFACT_DIR || "test-results"}/dialog-${width}.png`,
+      });
       await dialog.getByRole("button", { name: "Confirm reschedule" }).click();
       await expect(dialog).toHaveCount(0);
       await page.reload();
@@ -112,7 +114,11 @@ for (const [width, timezoneId] of [
       await expect(
         page.getByRole("status").filter({ hasText: "Stay dates aligned" }),
       ).toBeVisible();
-      await page.getByRole("region",{name:"Moved booking dates"}).screenshot({path:`${process.env.RESCHEDULE_STAY_ARTIFACT_DIR||'test-results'}/repair-${width}.png`});
+      await page
+        .getByRole("region", { name: "Moved booking dates" })
+        .screenshot({
+          path: `${process.env.RESCHEDULE_STAY_ARTIFACT_DIR || "test-results"}/repair-${width}.png`,
+        });
       await page.getByText("Booking dates", { exact: true }).click();
       await expect(
         page.getByText("Mar 28, 2099 · 17:30", { exact: true }),
@@ -136,6 +142,28 @@ for (const [width, timezoneId] of [
       await expect(
         planner.getByRole("link", { name: /Full retreat #9600/ }),
       ).toBeVisible();
+      const boosterMove = await request.patch(
+        f.url + "/bookings/" + f.ids.bookings[2] + "/reschedule",
+        {
+          headers,
+          data: {
+            targetRetreatId: f.ids.target,
+            reason: "client_requested",
+            note: "Booster destination requested",
+          },
+        },
+      );
+      expect(boosterMove.status()).toBe(200);
+      await page.reload();
+      await expect(
+        planner.getByRole("link", { name: /Booster #9602/ }),
+      ).toBeVisible();
+      await expect(
+        planner.getByText("2 occupied · 8 free", { exact: true }),
+      ).toHaveCount(1);
+      await expect(
+        planner.getByText("1 occupied · 9 free", { exact: true }),
+      ).toHaveCount(6);
       await page.screenshot({
         path: `${process.env.RESCHEDULE_STAY_ARTIFACT_DIR || "test-results"}/planner-${width}.png`,
         fullPage: true,
