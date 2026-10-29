@@ -24,7 +24,7 @@ for (const width of [1440, 390])
     await page.route("**/*", async (route) => {
       const q = route.request(),
         u = new URL(q.url());
-      if (u.href === "https://ibogaspirit.pl/clients/payment/admin-preview")
+      if (u.pathname === "/clients/payment/admin-preview")
         return route.fulfill({
           contentType: "text/html",
           body: `<script>window.addEventListener('message',e=>{if(e.data.type==='isc-invoice-preview:data')document.body.textContent='Synthetic invoice '+e.data.invoice.invoiceNumber});parent.postMessage({type:'isc-invoice-preview:ready'},'*')</script>`,
