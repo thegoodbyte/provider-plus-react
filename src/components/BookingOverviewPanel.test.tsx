@@ -63,3 +63,8 @@ it('keeps booster dates instead of the containing retreat dates in both details 
  expect(dates.getByText('Sep 3, 2026')).toBeVisible();expect(dates.getByText('Sep 4, 2026')).toBeVisible();
  expect(screen.getByRole('complementary')).toHaveTextContent('Sep 3, 2026 – Sep 4, 2026');
 });
+
+it('shows saved stay instants on the retreat calendar day, independent of the viewer timezone',()=>{
+ expect(formatBookingDate('2099-03-28T16:30:00Z')).toBe('Mar 28, 2099');
+ expect(formatBookingDate('2099-03-30T22:00:00Z')).toBe('Mar 31, 2099');
+});

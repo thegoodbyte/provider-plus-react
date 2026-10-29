@@ -1,3 +1,4 @@
+import BookingStayAlignment from './BookingStayAlignment';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -285,6 +286,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         onNextBooking={() => nextBooking?._id && navigate(`${routePrefix}/bookings/${nextBooking._id}`)}
         onTabChange={setActiveTab}
       />
+      <BookingStayAlignment booking={booking} isAdmin={user?.role === 'admin'} onRefresh={async () => { setBooking((await bookingsApi.getOneFresh(bookingId)).data); }} />
       {rescheduleOpen && <BookingRescheduleDialog hasPrimaryPaymentRequest={Boolean(booking.paymentRequestId)} currentRetreatId={retreatId} currentRetreatStartDate={retreat?.startDate} retreats={rescheduleRetreats} isAdmin={user?.role === 'admin'} saving={rescheduling} error={rescheduleError} onClose={()=>setRescheduleOpen(false)} onSubmit={submitReschedule} />}
       {booking.rescheduleHistory?.length > 0 && (()=>{const last=booking.rescheduleHistory[booking.rescheduleHistory.length-1]; return <div className="mx-5 mt-3 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>Rescheduled {booking.rescheduleCount || booking.rescheduleHistory.length}×</strong> · {last.fromRetreatCode || 'Previous retreat'} → {last.toRetreatCode || retreatCode} · {String(last.reason || '').replace(/_/g,' ')}<div className="mt-1 text-xs text-amber-800">{last.note} · {new Date(last.rescheduledAt).toLocaleString()} · {last.rescheduledBy}</div></div>;})()}
 

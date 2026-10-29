@@ -2,10 +2,13 @@ import React, { useMemo } from 'react';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import { useBookingRequirements } from './useBookingRequirements';
 import { confirmationState } from './bookingStatusSelectors';
-import { formatCalendarDate } from '../utils/dateFormat';
 import { BookingType } from '../constants/eventTypes';
 
-export const formatBookingDate = (date?: string | Date) => formatCalendarDate(date, 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+export const formatBookingDate = (date?: string | Date) => {
+  if (!date) return 'N/A';
+  const value = new Date(typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T12:00:00Z` : date);
+  return Number.isNaN(value.getTime()) ? 'N/A' : value.toLocaleDateString('en-US', {timeZone:'Europe/Prague',year:'numeric',month:'short',day:'numeric'});
+};
 export const formatHistoryDateTime = (date?: string | Date) => { if (!date) return 'N/A'; const value = new Date(date); if (Number.isNaN(value.getTime())) return 'N/A'; return value.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 export const retreatTown = (retreat: any) => String(retreat?.location_town || retreat?.locationTown || retreat?.generalTown || retreat?.general_town || retreat?.house?.generalTown || retreat?.house?.general_town || retreat?.house?.city || retreat?.houseId?.generalTown || retreat?.houseId?.general_town || retreat?.houseId?.city || retreat?.location || '').trim();
 export { sentConfirmationStep } from './bookingStatusSelectors';

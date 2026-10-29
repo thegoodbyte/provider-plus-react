@@ -3,8 +3,16 @@ export const plannerDay = (value: unknown): number | null => {
   const text = value instanceof Date ? (Number.isNaN(value.getTime()) ? '' : value.toISOString()) : String(value || '');
   const match = /^(\d{4}-\d{2}-\d{2})(?:$|T)/.exec(text);
   if (!match || (text.length > 10 && !Number.isFinite(Date.parse(text)))) return null;
-  const time = Date.parse(`${match[1]}T00:00:00Z`);
-  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === match[1] ? time : null;
+  const literal = Date.parse(`${match[1]}T00:00:00Z`);
+  if (!Number.isFinite(literal) || new Date(literal).toISOString().slice(0,10) !== match[1]) return null;
+  let calendar = match[1];
+  if (text.length > 10 && /(?:Z|[+-]\d{2}:?\d{2})$/.test(text)) {
+    const parts = new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Prague',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(text));
+    const part = (key:string) => parts.find(p=>p.type===key)?.value;
+    calendar = `${part('year')}-${part('month')}-${part('day')}`;
+  }
+  const time = Date.parse(`${calendar}T00:00:00Z`);
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === calendar ? time : null;
 };
 export const plannerDate = (day: number) => new Date(day).toISOString().slice(0, 10);
 export interface PlannerStay { id: string; bookingNumber: string; name: string; type: 'Full retreat' | 'Booster'; start: number; end: number; lane: number; room: string }

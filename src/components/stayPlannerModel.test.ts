@@ -30,10 +30,14 @@ it('excludes cancellations and separates tentative bookings without consuming co
 });
 it('handles leap, month/year and DST boundaries with date-only night counts',()=>{
  for(const [startDate,endDate,nights] of [['2028-02-28','2028-03-01',2],['2026-12-30','2027-01-02',3],['2026-10-24','2026-10-27',3]] as const){const p=build({startDate,endDate,capacity:8},[booking('one')]);expect(p.days).toHaveLength(nights);expect(p.days.every(d=>d.occupied===1)).toBe(true);}
- expect(plannerDay('2026-10-24T23:30:00-07:00')).toBe(plannerDay('2026-10-24'));expect(plannerDay('2026-02-30')).toBeNull();expect(plannerDay('bad')).toBeNull();expect(plannerDay('2026-10-24Tinvalid')).toBeNull();
+ expect(plannerDay('2026-10-24T23:30:00-07:00')).toBe(plannerDay('2026-10-25'));expect(plannerDay('2026-02-30')).toBeNull();expect(plannerDay('bad')).toBeNull();expect(plannerDay('2026-10-24Tinvalid')).toBeNull();
 });
 it('rejects reversed/missing dates, deduplicates IDs and stays deterministic under reordered API results',()=>{
  expect(build({startDate:'2026-10-31',endDate:'2026-10-24'},[]).error).not.toBe('');
  const rows=[booking('A'),booking('B')];expect(build(retreat,[...rows,rows[0]]).stays).toHaveLength(2);expect(build(retreat,rows).stays).toEqual(build(retreat,[...rows].reverse()).stays);
  const invalid=build(retreat,[booking('reverse',{bookingType:'booster',checkInDate:'2026-10-27',checkOutDate:'2026-10-25'})]);expect(invalid.issues).toHaveLength(1);expect(invalid.minimumFree).toBeNull();
+});
+
+it('uses retreat-local days for saved booster instants across DST, independent of browser timezone',()=>{
+ const p=build({startDate:'2099-03-28',endDate:'2099-04-04',capacity:2},[booking('booster',{bookingType:'booster',checkInDate:'2099-03-30T22:00:00Z',checkOutDate:'2099-03-31T22:00:00Z'})]);expect(p.days.map(d=>d.occupied)).toEqual([0,0,0,1,0,0,0]);
 });
