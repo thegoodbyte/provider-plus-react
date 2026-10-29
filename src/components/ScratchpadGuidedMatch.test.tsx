@@ -36,3 +36,10 @@ it('can create a client-only payment when explicitly chosen, without pretending 
  api.matches.mockResolvedValue({data:{clients:[client],requests:[],payments:[]}} as any);mount({...receipt,requestNumber:''},'client');fireEvent.click(await screen.findByRole('button',{name:/#330 Anna/}));
  await waitFor(()=>expect(screen.getByRole('button',{name:'Create client payment without a PR'})).toBeEnabled());fireEvent.click(screen.getByRole('button',{name:'Create client payment without a PR'}));await waitFor(()=>expect(api.confirmMatch).toHaveBeenCalledWith('receipt',expect.objectContaining({action:'convert',clientId:'client-a',paymentRequestId:''})));
 });
+
+it('saved client-only context takes precedence over old PR/phone hints when making a later payment',async()=>{
+ api.matches.mockResolvedValue({data:{clients:[{...client,_id:'saved-client'}],requests:[],suggestedRequestId:''}} as any);
+ mount({...receipt,matchedClientId:'saved-client',matchedPaymentRequestId:undefined});
+ await waitFor(()=>expect(api.matches).toHaveBeenCalledWith('receipt',expect.objectContaining({mode:'client',q:'',clientId:'saved-client'})));
+ expect(screen.getByRole('button',{name:'Create client payment without a PR'})).toBeEnabled();expect(api.confirmMatch).not.toHaveBeenCalled();
+});

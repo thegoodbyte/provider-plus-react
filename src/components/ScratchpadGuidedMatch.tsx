@@ -7,9 +7,9 @@ const errorMessage = (error: any) => { const value = error?.response?.data?.mess
 const modes = [['request','PR number'],['client','Client / phone'],['amount','Unpaid PR amount'],['payment','Existing payment']] as const;
 export default function ScratchpadGuidedMatch({receipt,initialMode,onSaved,onComplete,onBusy,onFallback}:{receipt:ScratchpadReceipt;initialMode?:string;onSaved:(row:ScratchpadReceipt)=>void;onComplete:(row:ScratchpadReceipt)=>void;onBusy:(value:boolean)=>void;onFallback:()=>void}) {
   const navigate = useNavigate();
-  const initial = initialMode || (receipt.requestNumber||receipt.matchedPaymentRequestId?'request':receipt.phone||receipt.matchedClientId?'client':'amount');
+  const initial = initialMode || (receipt.matchedPaymentRequestId?'request':receipt.matchedClientId?'client':receipt.requestNumber?'request':receipt.phone?'client':'amount');
   const [mode,setMode] = useState(initial);
-  const [query,setQuery] = useState(initial==='request'?(receipt.matchedPaymentRequestId?'':receipt.requestNumber||''):initial==='client'?receipt.phone||'':receipt.amount);
+  const [query,setQuery] = useState(initial==='request'?(receipt.matchedPaymentRequestId?'':receipt.requestNumber||''):initial==='client'?(receipt.matchedClientId?'':receipt.phone||''):receipt.amount);
   const [clientId,setClientId] = useState(receipt.matchedClientId||'');
   const [selected,setSelected] = useState<any>(null);
   const [bookingPrice,setBookingPrice] = useState('');
