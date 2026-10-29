@@ -1,3 +1,4 @@
+import { getEventCapabilities, EventType } from '../generated/contracts/shared/event-types';
 import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { filterRetreatEmailTemplates, normalizeTemplateLanguage, retreatEmailTemplateSearchText } from './retreatEmailTemplateFilters';
 import { isTabAvailableForRetreat, percentOf } from './RetreatDetailView';
@@ -144,4 +145,11 @@ describe('percentOf', () => {
 it('makes the stay planner follow accommodation occupancy capabilities and preserve its route key',()=>{
  expect(isTabAvailableForRetreat('stayPlanner',{capabilities:{availableTabs:['clients','occupancy']}} as any)).toBe(true);
  expect(isTabAvailableForRetreat('stayPlanner',{capabilities:{availableTabs:['clients']}} as any)).toBe(false);
+});
+
+it.each(Object.values(EventType))('shows Stay planner for the actual API accommodation capability of %s', type => {
+ const capabilities = getEventCapabilities(type);
+ expect(capabilities.availableTabs).toContain('rooms');
+ expect(capabilities.availableTabs).not.toContain('occupancy');
+ expect(isTabAvailableForRetreat('stayPlanner', {type, capabilities} as any)).toBe(true);
 });

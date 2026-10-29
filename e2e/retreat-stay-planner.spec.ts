@@ -1,5 +1,6 @@
+import { getEventCapabilities } from '../src/generated/contracts/shared/event-types';
 import {test,expect} from '@playwright/test';
-const retreat={_id:'r957',name:'Synthetic lane retreat',code:'LANES-957',startDate:'2026-10-24',endDate:'2026-10-31',capacity:8,status:'scheduled',type:'regular',capabilities:{availableTabs:['clients','rooms','occupancy']}};
+const retreat={_id:'r957',name:'Synthetic lane retreat',code:'LANES-957',startDate:'2026-10-24',endDate:'2026-10-31',capacity:8,status:'scheduled',type:'regular',capabilities:getEventCapabilities('regular')};
 const booking=(id:string,extra:any={})=>({_id:id,bookingNumber:Number(id),retreatId:'r957',bookingType:'full_retreat',status:'confirmed',totalAmount:0,currency:'PLN',clientId:{_id:'client-'+id,firstName:'Guest',lastName:id},...extra});
 for(const [width,timezoneId] of [[1440,'America/Los_Angeles'],[390,'Pacific/Kiritimati']] as const)test.describe(`${width}px ${timezoneId}`,()=>{
  test.use({timezoneId});

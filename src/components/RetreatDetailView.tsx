@@ -65,7 +65,9 @@ export type RetreatDetailTab = typeof RETREAT_DETAIL_TABS[number];
 export function isTabAvailableForRetreat(tab: RetreatDetailTab, retreat?: Retreat | null): boolean {
   if (!retreat) return true;
   if (Array.isArray(retreat.capabilities?.availableTabs) && retreat.capabilities.availableTabs.length > 0) {
-    return retreat.capabilities.availableTabs.includes(tab === 'stayPlanner' ? 'occupancy' : tab);
+    // The API advertises accommodation through rooms; occupancy is a legacy UI key.
+    if (tab === 'stayPlanner') return ['rooms', 'occupancy'].some(key => retreat.capabilities!.availableTabs.includes(key));
+    return retreat.capabilities.availableTabs.includes(tab);
   }
   const type = retreat.type || EventType.REGULAR;
   if (type === EventType.LEARNING_WEEKEND || type === EventType.WORKSHOP) {
