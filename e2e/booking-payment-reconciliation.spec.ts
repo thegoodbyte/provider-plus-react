@@ -14,12 +14,13 @@ for(const width of [1440,390]) test(`review existing money and refresh booking b
  });
  await page.goto('/admin/payment-requests/booking-review?bookingId='+f.ids.booking);
  await expect(page.getByText('Unallocated payment #1213: 6600 PLN · completed')).toBeVisible();
+ await page.screenshot({path:`${process.env.BOOKING_RECONCILIATION_ARTIFACT_DIR||'test-results'}/review-${width}.png`,fullPage:true});
  const before=await (await request.get(f.url+'/fixture/reconciliation-snapshot')).json();expect(before.payments).toHaveLength(2);
  await page.getByRole('button',{name:'Link request #1365 to booking #1311'}).click();
  const dialog=page.getByRole('dialog',{name:'Confirm existing booking link'});await expect(dialog.getByRole('button',{name:'Confirm booking link'})).toBeDisabled();
  await dialog.getByRole('checkbox').check();await dialog.getByRole('button',{name:'Confirm booking link'}).click();
  await expect(page.getByText('Existing payments linked and booking balance refreshed. No new payment or booking was created.')).toBeVisible();
- await page.reload();await expect(page.getByRole('button',{name:'Link request #1365 to booking #1311'})).toHaveCount(0);
+ await page.reload();await expect(page.getByRole('heading',{name:'Booking link review',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Refresh',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'Link request #1365 to booking #1311'})).toHaveCount(0);
  const after=await(await request.get(f.url+'/fixture/reconciliation-snapshot')).json();const booking=after.bookings.find((b:any)=>b._id===f.ids.booking);expect(booking.amountPaid).toBe(11000);expect(booking.financialSummary.paidInFull).toBe(true);expect(after.payments).toHaveLength(2);expect(after.payments[1].amount).toBe(6600);expect(after.payments[1].exchangeRate).toBe(4.39);expect(after.payments[0]).toEqual(before.payments[0]);expect(after.emails).toEqual([]);
  await page.screenshot({path:`${process.env.BOOKING_RECONCILIATION_ARTIFACT_DIR||'test-results'}/reconciled-${width}.png`,fullPage:true});
 });
