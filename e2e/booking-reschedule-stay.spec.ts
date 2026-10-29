@@ -116,6 +116,9 @@ for (const [width, timezoneId] of [
       ).toBeVisible();
       await page
         .getByRole("region", { name: "Moved booking dates" })
+        .evaluate((el) => el.scrollIntoView({ block: "end" }));
+      await page
+        .getByRole("region", { name: "Moved booking dates" })
         .screenshot({
           path: `${process.env.RESCHEDULE_STAY_ARTIFACT_DIR || "test-results"}/repair-${width}.png`,
         });
@@ -164,6 +167,9 @@ for (const [width, timezoneId] of [
       await expect(
         planner.getByText("1 occupied · 9 free", { exact: true }),
       ).toHaveCount(6);
+      await planner
+        .getByRole("region", { name: "Stay lanes by night" })
+        .scrollIntoViewIfNeeded();
       await page.screenshot({
         path: `${process.env.RESCHEDULE_STAY_ARTIFACT_DIR || "test-results"}/planner-${width}.png`,
         fullPage: true,
