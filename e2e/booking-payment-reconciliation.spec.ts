@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const fixturePath=process.env.BOOKING_RECONCILIATION_FIXTURE;
 test.skip(!fixturePath,'Requires real API/Mongo booking reconciliation fixture');
 for(const width of [1440,390]) test(`receive before booking, warn after PR edit, reconcile and reload at ${width}px`,async({page,request})=>{
- const f=JSON.parse(fs.readFileSync(fixturePath!,'utf8'));await request.post(f.url+'/fixture/reconciliation-reset',{data:{scenario:'receive-first'}});
+ const f=JSON.parse(fs.readFileSync(fixturePath!,'utf8'));const reset=await request.post(f.url+'/fixture/reconciliation-reset',{data:{scenario:'receive-first'}});expect(reset.ok()).toBe(true);f.ids=(await reset.json()).ids;
  const headers={Authorization:'Bearer '+f.tokens.admin};
  const converted=await request.post(f.url+'/payment-scratchpad/'+f.ids.receipts[0]+'/match-payment',{headers,data:{action:'convert',clientId:f.ids.clients[0],paymentRequestId:f.ids.requests[1],revision:0,confirm:true}});expect(converted.status()).toBe(201);
  const edited=await request.put(f.url+'/payment-requests/'+f.ids.requests[1],{headers,data:{bookingId:f.ids.booking}});expect(edited.status()).toBe(200);
