@@ -26,8 +26,10 @@ export function buildStayPlanner(retreat: {startDate?: unknown; endDate?: unknow
     if (!ACTIVE.includes(booking.status)) { tentative.push({id,bookingNumber,reason: `${booking.status || 'Status missing'} — not counted in confirmed occupancy`}); continue; }
     const booster = booking.bookingType === 'booster';
     if (booking.bookingType && !['full_retreat','booster'].includes(booking.bookingType)) { issues.push({id,bookingNumber,reason:'Booking type needs review'}); continue; }
-    const rawStart = booking.roomStayStart || booking.checkInDate || (!booster ? retreat.startDate : undefined);
-    const rawEnd = booking.roomStayEnd || booking.checkOutDate || (!booster ? retreat.endDate : undefined);
+    // Full-retreat attendance follows the retreat window, as room inventory does.
+    // Generic check-in/out can be historical actual/registration timestamps.
+    const rawStart = booking.roomStayStart || (booster ? booking.checkInDate : retreat.startDate);
+    const rawEnd = booking.roomStayEnd || (booster ? booking.checkOutDate : retreat.endDate);
     const from = plannerDay(rawStart), to = plannerDay(rawEnd);
     if (from === null || to === null || to <= from) { issues.push({id,bookingNumber,reason:booster?'Booster arrival/checkout dates need review':'Arrival/checkout dates need review'}); continue; }
     if (to <= start || from >= end) { outside.push({id,bookingNumber,reason:'Stay is outside the retreat dates'}); continue; }

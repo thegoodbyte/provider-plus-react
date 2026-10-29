@@ -30,4 +30,17 @@ for(const [width,timezoneId] of [[1440,'America/Los_Angeles'],[390,'Pacific/Kiri
   });
   await page.goto('/admin/retreats/r957/stayPlanner');const planner=page.getByRole('region',{name:'Retreat stay planner',exact:true});await expect(planner.getByRole('alert').filter({hasText:'Some confirmed stays'})).toBeVisible();await expect(planner.getByRole('alert').filter({hasText:'Over capacity'})).toBeVisible();await expect(planner.getByLabel('Place 2 overflow',{exact:true}).getByRole('link',{name:/Full retreat #1314/})).toBeVisible();await expect(planner.getByRole('link',{name:'Booking #1315',exact:true})).toHaveAttribute('href','/admin/bookings/1315');await expect(planner.getByText('Needs review',{exact:true})).toBeVisible();await expect(planner.getByText('2 occupied · ? free · 1 over',{exact:true})).toHaveCount(7);
  });
+ test('six full-retreat clients remain six occupied lanes despite legacy check-in timestamps',async({page})=>{
+  await page.setViewportSize({width,height:1000});const writes:string[]=[];
+  const event={...retreat,startDate:'2026-11-06',endDate:'2026-11-13',capacity:6};
+  const rows=[booking('1265',{checkInDate:'2026-07-06T18:00:00Z',checkOutDate:'2026-07-06T09:00:00Z'}),booking('1266',{checkInDate:'2026-07-07',checkOutDate:'2026-07-14'}),booking('1274'),booking('1275',{checkInDate:'2026-08-01',checkOutDate:'2026-08-08'}),booking('1301',{checkInDate:'2026-11-06',checkOutDate:'2026-11-13'}),booking('1306',{bookingType:undefined,checkInDate:'2026-09-01',checkOutDate:'2026-09-08'})];
+  await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const p=new URL(r.url()).pathname;
+   if(r.method()!=='GET'){writes.push(r.method()+' '+p);return route.fulfill({status:405,json:{}})}
+   if(p==='/retreats/r957')return route.fulfill({json:event});if(p==='/retreats')return route.fulfill({json:[event]});if(p==='/bookings/retreat/r957/with-details')return route.fulfill({json:rows});if(p==='/environment/status')return route.fulfill({json:{production:true}});if(p.includes('retreat-expenses'))return route.fulfill({json:{totalExpenses:0,categories:[]}});if(p.includes('config-summary')||p==='/users/navigation-permissions')return route.fulfill({json:{}});return route.fulfill({json:[]});
+  });
+  await page.goto('/admin/retreats/r957/stayPlanner');const planner=page.getByRole('region',{name:'Retreat stay planner',exact:true});
+  for(const row of rows)await expect(planner.getByRole('link',{name:new RegExp('Full retreat #'+row.bookingNumber)})).toHaveAttribute('href','/admin/bookings/'+row._id);
+  await expect(planner.getByText('6 occupied · 0 free',{exact:true})).toHaveCount(7);await expect(planner.getByRole('alert')).toHaveCount(0);await expect(planner.getByLabel('Place 6',{exact:true})).toBeVisible();
+  await page.reload();await expect(planner.getByText('6 occupied · 0 free',{exact:true})).toHaveCount(7);expect(writes).toEqual([]);
+ });
 });
