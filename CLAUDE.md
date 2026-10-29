@@ -1,3 +1,16 @@
+## Local development stack
+
+A full local stack (this admin app + the API + the ibogaready.com client
+portal + their own Mongo, isolated from anything else on the machine)
+already exists at
+`/Users/martinhalla/websites/ISCZ-web-development/provider-plus-node-react-active-dev/`
+— see `LOCAL_DEVELOPMENT.md` there. `./scripts/dev-up.sh` starts everything
+and seeds a working admin login; `./scripts/sync-prod-snapshot.sh` pulls a
+depersonalized copy of production data in so tickets can be verified
+against real-shaped data instead of an empty database or production
+itself. Check there before reaching for ad-hoc `npm run dev` + mocked API
+routes to verify a ticket.
+
 # Multi-agent coordination protocol (read this every session)
 
 You (Claude Code) are one of three AI coding agents working concurrently on this repository under the same account — alongside Codex (which performs production deploys) and Gemini. Without coordination, agents have duplicated work (the same bug fixed twice, independently) and tracking files have gone stale (claiming work was "pending deployment" when another agent had already pushed and deployed it). Follow the protocol below every session, not just the first one. The full version lives in `AGENTS.md` in this repo — read it too if anything here is unclear.
