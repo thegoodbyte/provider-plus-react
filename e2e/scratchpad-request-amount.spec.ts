@@ -14,7 +14,7 @@ for(const width of [1440,390])test(`scratchpad request amount distinguishes choi
   if(u.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
   if(u.pathname.includes('config-summary'))return route.fulfill({json:{}});return route.fulfill({json:[]});
  });
- await page.goto('/admin/payments/scratchpad/'+id);await page.getByRole('button',{name:'Payment from SP',exact:true}).click();const dialog=page.getByRole('dialog');const picker=dialog.getByLabel('Payment request (optional)');
+ await page.goto('/admin/payments/scratchpad/'+id);await page.getByRole('button',{name:'Payment from SP',exact:true}).click();const dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:'Advanced matching',exact:true}).click();const picker=dialog.getByLabel('Payment request (optional)');
  await expect(picker.getByRole('option',{name:/#1352.*Requested: 5,100.50 PLN/})).toHaveCount(1);await expect(picker.getByRole('option',{name:/#1351.*Requested: 2,500.75 PLN/})).toHaveCount(1);
  await dialog.getByPlaceholder('Search payment request number or client').fill('Synthetic');await picker.selectOption('request-a');await expect(picker).toHaveValue('request-a');await expect(picker).toHaveJSProperty('selectedIndex',1);await expect(picker.locator('option:checked')).toContainText('Requested: 5,100.50 PLN');
  await picker.selectOption('request-b');await expect(picker.locator('option:checked')).toContainText('Requested: 2,500.75 PLN');await expect(dialog.getByRole('button',{name:'Create payment',exact:true})).toBeVisible();expect(mutations).toEqual([]);

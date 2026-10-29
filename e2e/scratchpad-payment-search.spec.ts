@@ -24,7 +24,7 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  await page.goto('/admin/payments/scratchpad');
  const row=page.getByText('Synthetic search receipt 0',{exact:true}).locator('xpath=ancestor::tr');
  await row.getByRole('button',{name:'Link payment',exact:true}).click();
- const dialog=page.getByRole('dialog');await expect(dialog.getByText('Link to an existing payment',{exact:true})).toBeVisible();
+ const dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:'Advanced matching',exact:true}).click();await expect(dialog.getByText('Link to an existing payment',{exact:true})).toBeVisible();
  const confirm=dialog.getByRole('button',{name:'Confirm link to existing payment'});
  await expect(confirm).toBeDisabled();
  await dialog.getByRole('button',{name:'Clear payment filters'}).click();
