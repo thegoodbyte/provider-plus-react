@@ -25,7 +25,10 @@ for (const width of [1440, 390]) for (const scenario of ['unpopulated', 'populat
   await expect(identity.locator('xpath=following-sibling::div[1]')).toContainText('Medications');
   await expect(identity).not.toContainText(clientHash);
   await expect(heading).not.toContainText(requestHash);
-  if (scenario !== 'missing') await expect(identity.getByRole('link')).toHaveAttribute('href', '/admin/medical/' + clientHash);
+  if (scenario !== 'missing') {
+    await expect(identity.getByRole('link',{name:'Aleksandra Maria Nowak-Kowalska',exact:true})).toHaveAttribute('href', '/admin/medical/' + clientHash);
+    await expect(identity.getByRole('link',{name:'Client ID: 1265',exact:true})).toHaveAttribute('href', '/admin/clients/' + clientHash);
+  }
   const bounds = await identity.boundingBox(); expect(bounds).toBeTruthy(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
   await heading.locator('..').screenshot({ path: `../mrr-identity-screenshots/${scenario}-${width}.png` });
 });

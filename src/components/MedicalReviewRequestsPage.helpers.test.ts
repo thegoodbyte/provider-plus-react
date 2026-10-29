@@ -1,5 +1,7 @@
 import {
   composeWhatsappReviewNotes,
+  displayWhatsappReviewNotes,
+  whatsappResultFallback,
   extractWhatsappNotes,
   findReviewerTranslation,
   getAssociatedMedicalReviewRequests,
@@ -265,4 +267,21 @@ describe('numeric MRR client display ID (PPVC-793)', () => {
   it.each([0, -1, 'hash', '', null, undefined])('does not render invalid ID %s', value => {
     expect(getMedicalReviewClientDisplayId({ clientId: { _id: 'hash', display_id: value } })).toBeUndefined();
   });
+});
+
+describe('decision-specific WhatsApp fallback copy (PPVC-948)',()=>{
+ it.each([['OK','OK'],['NOT OK','NOT OK'],['caution','Caution'],['more_info_needed','More information needed'],['WONT_DO','Won’t do']])('makes the recorded %s result explicit when notes are blank', (decision,label)=>{
+   expect(composeWhatsappReviewNotes('  ',decision)).toBe(label+' — medical advisor via WhatsApp');
+   const record=makeRequest({reviewChannel:'whatsapp',whatsappStatus:'responded',whatsappDecision:decision as any,reviewNotes:'Advisor response received via WhatsApp'});
+   expect(displayWhatsappReviewNotes(record)).toBe(label+' — medical advisor via WhatsApp');
+   expect(extractWhatsappNotes({...record,reviewNotes:whatsappResultFallback(decision)})).toBe('');
+ });
+ it('preserves actual notes and does not invent approval for a pending or unknown result',()=>{
+   const note='Please check the QT interval before approval.';
+   const record=makeRequest({reviewChannel:'whatsapp',whatsappStatus:'responded',whatsappDecision:'OK',reviewNotes:note});
+   expect(displayWhatsappReviewNotes(record)).toBe(note);expect(extractWhatsappNotes(record)).toBe(note);
+   expect(displayWhatsappReviewNotes({...record,whatsappStatus:'awaiting_response',reviewNotes:''})).toBe('');
+   expect(displayWhatsappReviewNotes({...record,whatsappDecision:undefined,reviewDecision:undefined,reviewNotes:''})).toBe('Advisor response received via WhatsApp');
+   expect(displayWhatsappReviewNotes({...record,reviewChannel:'internal',reviewNotes:''})).toBe('');
+ });
 });

@@ -26,7 +26,7 @@ test.each([['OK', 'approved'], ['NOT OK', 'rejected'], ['caution', 'caution'], [
   fireEvent.change(screen.getByLabelText('WhatsApp status'), { target: { value: 'responded' } });
   fireEvent.change(screen.getByLabelText('Advisor result'), { target: { value: decision } });
   fireEvent.click(screen.getByText('Save and return to list'));
-  await waitFor(() => expect(update).toHaveBeenCalledWith('mrr1', expect.objectContaining({ whatsappStatus: 'responded', whatsappDecision: decision, reviewDecision: decision, status, reviewNotes: 'Advisor response received via WhatsApp' })));
+  await waitFor(() => expect(update).toHaveBeenCalledWith('mrr1', expect.objectContaining({ whatsappStatus: 'responded', whatsappDecision: decision, reviewDecision: decision, status, reviewNotes: ({ OK: 'OK', 'NOT OK': 'NOT OK', caution: 'Caution', more_info_needed: 'More information needed', WONT_DO: 'Won’t do' } as any)[decision] + ' — medical advisor via WhatsApp' })));
   expect(update.mock.calls[0][1]).not.toHaveProperty('advisorDeliveryStatus');
 });
 
@@ -71,4 +71,9 @@ test('work-mode reply preserves the actual notes and delegation draft on a faile
  fireEvent.click(screen.getByText('Save advisor reply'));await screen.findByRole('alert');
  expect(screen.getByLabelText('What did the advisor say?')).toHaveValue('Synthetic advisor requests further information');
  expect(save).toHaveBeenCalledWith(expect.objectContaining({decision:'more_info_needed',delegationReason:'Transcribed actual advisor response'}));expect(update).not.toHaveBeenCalled();
+});
+
+test('reopens automatic notes as blank and uses the newly selected result instead of stale OK copy',async()=>{
+ update.mockResolvedValue({data:request});render(<MedicalReviewWhatsAppForm request={{...request,reviewChannel:'whatsapp',whatsappStatus:'responded',whatsappDecision:'OK',reviewNotes:'OK — medical advisor via WhatsApp'}} advisors={advisors} onClose={jest.fn()} onSaved={jest.fn()}/>);
+ expect(screen.getByLabelText('What did the advisor say?')).toHaveValue('');fireEvent.change(screen.getByLabelText('Advisor result'),{target:{value:'NOT OK'}});fireEvent.click(screen.getByText('Save and return to list'));await waitFor(()=>expect(update).toHaveBeenCalledWith('mrr1',expect.objectContaining({reviewDecision:'NOT OK',status:'rejected',reviewNotes:'NOT OK — medical advisor via WhatsApp'})));
 });

@@ -27,15 +27,29 @@ const decisionAliases: Record<string, 'OK' | 'caution' | 'more_info_needed' | 'N
 export const WHATSAPP_NOTES_PREFIX = 'Advisor response received via WhatsApp: ';
 const WHATSAPP_NOTES_NO_NOTES = 'Advisor response received via WhatsApp';
 
-export const composeWhatsappReviewNotes = (notes: string) => {
-  const trimmed = notes.trim();
-  return trimmed ? `${WHATSAPP_NOTES_PREFIX}${trimmed}` : WHATSAPP_NOTES_NO_NOTES;
+export const whatsappResultFallback = (decision?: string | null) => {
+  const labels: Record<string,string> = { OK: 'OK', caution: 'Caution', more_info_needed: 'More information needed', 'NOT OK': 'NOT OK', WONT_DO: 'Won’t do' };
+  return decision && labels[decision] ? `${labels[decision]} — medical advisor via WhatsApp` : WHATSAPP_NOTES_NO_NOTES;
 };
-
-export const extractWhatsappNotes = (request: Pick<MedicalReviewRequest, 'reviewChannel' | 'reviewNotes'>) =>
-  request.reviewChannel === 'whatsapp' && request.reviewNotes?.startsWith(WHATSAPP_NOTES_PREFIX)
-    ? request.reviewNotes.slice(WHATSAPP_NOTES_PREFIX.length)
-    : '';
+const automaticWhatsappNotes = (notes: string) => !notes.trim() || notes.trim() === WHATSAPP_NOTES_NO_NOTES || ['OK','caution','more_info_needed','NOT OK','WONT_DO'].some(d => notes.trim() === whatsappResultFallback(d));
+export const composeWhatsappReviewNotes = (notes: string, decision?: string | null) => {
+  const trimmed = notes.trim();
+  return trimmed ? `${WHATSAPP_NOTES_PREFIX}${trimmed}` : whatsappResultFallback(decision);
+};
+export const extractWhatsappNotes = (request: Pick<MedicalReviewRequest, 'reviewChannel' | 'reviewNotes'>) => {
+  if (request.reviewChannel !== 'whatsapp') return '';
+  const note = request.reviewNotes || '';
+  if (automaticWhatsappNotes(note)) return '';
+  return note.startsWith(WHATSAPP_NOTES_PREFIX) ? note.slice(WHATSAPP_NOTES_PREFIX.length) : note;
+};
+/** Historical generic notes get clear result copy without rewriting clinical history. */
+export const displayWhatsappReviewNotes = (request: MedicalReviewRequest) => {
+  const notes = request.reviewNotes || '';
+  const answered = request.whatsappStatus === 'responded' || (!request.whatsappStatus && ['approved','caution','needs_resubmission','rejected','wont_do'].includes(request.status));
+  return request.reviewChannel === 'whatsapp' && answered && automaticWhatsappNotes(notes)
+    ? whatsappResultFallback(request.whatsappDecision || request.reviewDecision)
+    : notes;
+};
 
 export const medicalReviewDecisionOptions = ['OK', 'caution', 'more_info_needed', 'NOT OK', 'WONT_DO'] as const;
 

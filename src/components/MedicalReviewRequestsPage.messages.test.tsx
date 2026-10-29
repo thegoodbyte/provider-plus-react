@@ -24,7 +24,7 @@ it.each(['admin', 'medical_advisor'])('renders saved translated messages at the 
   const route = role === 'admin' ? '/admin/medical-review-requests' : '/medical/review-requests';
   render(<MemoryRouter initialEntries={[`${route}/mrr-1325`]}><Routes><Route path={`${route}/:id`} element={<MedicalReviewRequestsPage />} /></Routes></MemoryRouter>);
   expect(await screen.findByText('Proszę przesłać nowe zdjęcie.')).toBeInTheDocument();
-  expect(screen.getByText('Client ID: 1201')).toBeInTheDocument();
+  expect(screen.getByRole('link', {name:'Client ID: 1201'})).toHaveAttribute('href', role === 'admin' ? '/admin/clients/client-1' : '/medical/client/client-1');
   expect(screen.queryByText('ID: client-1')).not.toBeInTheDocument();
   const history = screen.getByRole('region', { name: 'Client message history' });
   expect(history.closest('.mrr-desktop-legacy')).toBeNull();

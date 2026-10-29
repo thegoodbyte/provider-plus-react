@@ -18,6 +18,7 @@ import {
   getMedicalReviewClientDisplayId,
   getMedicalReviewClientName,
   composeWhatsappReviewNotes,
+  displayWhatsappReviewNotes,
   extractWhatsappNotes,
   findReviewerTranslation,
   formatMedicalReviewDecisionLabel,
@@ -680,7 +681,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         setWhatsappRespondedAt(selectedItem.whatsappRespondedAt ? new Date(selectedItem.whatsappRespondedAt).toISOString().slice(0, 10) : '');
         setWhatsappDecision(selectedItem.whatsappDecision || '');
         setWhatsappNotes(extractWhatsappNotes(selectedItem));
-        setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
+        setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || displayWhatsappReviewNotes(selectedItem) || '');
         setClientVisibleAdminNote(selectedItem.clientVisibleAdminNote || '');
         setClientVisibleAdminNoteSource(selectedItem.clientVisibleAdminNote || '');
         setClientVisibleAdminNoteStatus('');
@@ -977,7 +978,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       try {
         setSavingReview(true);
         const resultStatus = whatsappStatus !== 'responded' ? 'awaiting_whatsapp' : whatsappDecision === 'OK' ? 'approved' : whatsappDecision === 'NOT OK' ? 'rejected' : whatsappDecision === 'caution' ? 'caution' : whatsappDecision === 'more_info_needed' ? 'needs_resubmission' : whatsappDecision === 'WONT_DO' ? 'wont_do' : 'awaiting_whatsapp';
-        await medicalReviewRequestsApi.update(selected._id, { reviewChannel: 'whatsapp', whatsappStatus, whatsappAdvisorUserId, whatsappSentAt, whatsappRespondedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, whatsappDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, status: resultStatus as any, reviewDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, reviewedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, reviewNotes: whatsappStatus === 'responded' ? composeWhatsappReviewNotes(whatsappNotes) : undefined });
+        await medicalReviewRequestsApi.update(selected._id, { reviewChannel: 'whatsapp', whatsappStatus, whatsappAdvisorUserId, whatsappSentAt, whatsappRespondedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, whatsappDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, status: resultStatus as any, reviewDecision: whatsappStatus === 'responded' ? whatsappDecision as any : undefined, reviewedAt: whatsappStatus === 'responded' ? whatsappRespondedAt : undefined, reviewNotes: whatsappStatus === 'responded' ? composeWhatsappReviewNotes(whatsappNotes, whatsappDecision) : undefined });
         await loadRequests();
       } catch (error: any) {
         setValidationError(apiErrorMessage(error, 'Could not save WhatsApp status. Please try again.'));
@@ -1476,7 +1477,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         {item.reviewDecision ? ` • ${formatMedicalReviewDecisionLabel(item.reviewDecision)}` : ''}
       </div>
       <div className="mt-1 text-xs text-gray-500">
-        {item.reviewNotes || item.medicalStaffNotes || item.overallNotes || 'No notes saved yet.'}
+        {displayWhatsappReviewNotes(item) || item.medicalStaffNotes || item.overallNotes || 'No notes saved yet.'}
       </div>
     </button>
   );
@@ -1677,6 +1678,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     : reviewContext?.client?.screeningData
       ? [reviewContext.client.screeningData]
       : [];
+  const selectedClientProfileId = getId(selected?.clientId) || getId(reviewContext?.client);
   const selectedClientDisplayId = getMedicalReviewClientDisplayId(selected, reviewContext?.client);
   const selectedClientName = getMedicalReviewClientName(selected, reviewContext?.client);
   const selectedClientAge = (() => {
@@ -1801,7 +1803,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     {profileHref ? <a href={profileHref} className="text-blue-800 underline decoration-blue-200 underline-offset-4 hover:text-blue-950">{selectedClientName}</a> : selectedClientName}
                   </span>
                   <span className="text-gray-400">·</span>
-                  <span className="text-sm font-semibold text-gray-700">{selectedClientDisplayId ? `Client ID: ${selectedClientDisplayId}` : 'Client ID unavailable'}</span>
+                  <span className="text-sm font-semibold text-gray-700">{selectedClientDisplayId && selectedClientProfileId ? <a href={`${isMedicalRoute ? '/medical/client' : '/admin/clients'}/${selectedClientProfileId}`} className="text-blue-800 underline decoration-blue-200 underline-offset-4 hover:text-blue-950">Client ID: {selectedClientDisplayId}</a> : selectedClientDisplayId ? `Client ID: ${selectedClientDisplayId}` : 'Client ID unavailable'}</span>
                   {(selectedClientAge || selectedClientGender) && <><span className="text-gray-400">·</span><span className="text-sm text-gray-500">{[selectedClientAge ? `${selectedClientAge} yo` : '', selectedClientGender].filter(Boolean).join(' · ')}</span></>}
                 </section>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
@@ -2084,7 +2086,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   {isReadOnlyView ? (
                     <div className="rounded-md bg-gray-50 p-3 text-sm">
                       <div className="font-semibold text-gray-900">{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</div>
-                      <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
+                      <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || displayWhatsappReviewNotes(selected) || 'No medical staff notes.'}</div>
                     </div>
                   ) : (
                     <>
@@ -2224,7 +2226,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="mrr-canvas-thumbnails">{linkedArtifacts.flatMap((artifact) => (artifact.files || []).map((file, index) => <button key={`${artifact._id}-${index}`} type="button" className="mrr-canvas-thumb" onClick={() => document.getElementById(`mrr-artifact-${artifact._id}-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>PG {index + 1}</button>))}</div>
                 </div>
                 <div ref={reviewDecisionSectionRef} className="mrr-canvas-actions">
-                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <>
+                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || displayWhatsappReviewNotes(selected) || 'No notes saved.'}</p></div> : <>
                     <textarea id="desktop-medical-staff-notes" value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder={reviewDecision === 'caution' ? 'Explain the caution and recommended follow-up (required)' : 'Add your review notes here...'} />
                     <div className="mrr-decision-buttons">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => { setReviewDecision(option); if (option === 'OK') setMedicalStaffNotes('OK'); else if (option === 'caution') { setMedicalStaffNotes(''); window.setTimeout(() => document.getElementById('desktop-medical-staff-notes')?.focus(), 0); } }} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div>
                     {reviewDecision === 'WONT_DO' && (
@@ -2707,7 +2709,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 {isReadOnlyView ? (
                   <div className="rounded-md bg-gray-50 p-3 text-sm">
                     <div className="font-semibold text-gray-900">{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</div>
-                    <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
+                    <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || displayWhatsappReviewNotes(selected) || 'No medical staff notes.'}</div>
                   </div>
                 ) : (
                   <>

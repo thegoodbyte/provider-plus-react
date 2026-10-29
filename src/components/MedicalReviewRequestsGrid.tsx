@@ -1,3 +1,4 @@
+import { displayWhatsappReviewNotes } from './MedicalReviewRequestsPage.helpers';
 import { AlertTriangle, Check, ChevronDown, ChevronRight, Clock, Copy as CopyIcon, Download as DownloadIcon, Edit2, Eye, Folder, Link as LinkIcon, Lock as LockIcon, Menu, Plus as PlusIcon, RefreshCw, Search as SearchIcon, Send as SendIcon, ThumbsDown, ThumbsUp, Trash2, Unlock as UnlockIcon, X, Zap } from 'lucide-react';
 import MedicalReviewListRow from './MedicalReviewListRow';
 import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
@@ -1531,7 +1532,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                                 ? <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass[normalizeReviewStatus(request.status)] || 'bg-gray-100 text-gray-700'}`}>{whatsappDecisionLabels[request.whatsappDecision || ''] || request.whatsappDecision || '—'}</span>
                                 : <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Awaiting answer</span>}
                             </td>
-                            <td data-label="Note" className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={request.reviewNotes || ''}>{noteExcerpt(request.reviewNotes)}</td>
+                            <td data-label="Note" className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={displayWhatsappReviewNotes(request)}>{noteExcerpt(displayWhatsappReviewNotes(request))}</td>
                             {canManageRequests && <td data-label="Actions" className="px-4 py-2">{followUpAction(request)}
                               {downloadAction(request)}</td>}
                           </tr>

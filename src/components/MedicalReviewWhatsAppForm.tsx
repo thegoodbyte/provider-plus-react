@@ -1,3 +1,4 @@
+import { extractWhatsappNotes, whatsappResultFallback } from './MedicalReviewRequestsPage.helpers';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
@@ -25,7 +26,7 @@ export default function MedicalReviewWhatsAppForm({ request, clientLabel, adviso
   const [status, setStatus] = useState(workMode?.action === 'reply' || request.whatsappStatus === 'responded' ? 'responded' : 'awaiting_response');
   const [respondedAt, setRespondedAt] = useState(dateValue(request.whatsappRespondedAt) || dateValue(new Date()));
   const [decision, setDecision] = useState(request.whatsappDecision || '');
-  const [advisorNote, setAdvisorNote] = useState(request.reviewNotes || '');
+  const [advisorNote, setAdvisorNote] = useState(request.reviewChannel === 'whatsapp' ? extractWhatsappNotes(request) : request.reviewNotes || '');
   const [saving, setSaving] = useState(false);
   const [delegationReason, setDelegationReason] = useState('');
   const [followUpRequired, setFollowUpRequired] = useState(Boolean(request.followUpRequired));
@@ -79,7 +80,7 @@ export default function MedicalReviewWhatsAppForm({ request, clientLabel, adviso
         ...(status === 'responded' ? {
           whatsappRespondedAt: respondedAt, whatsappDecision: decision as MedicalReviewRequest['whatsappDecision'],
           reviewDecision: decision as MedicalReviewRequest['reviewDecision'], reviewedAt: respondedAt,
-          reviewNotes: advisorNote.trim() || 'Advisor response received via WhatsApp',
+          reviewNotes: advisorNote.trim() || whatsappResultFallback(decision),
         } : {}),
       };
       const response = await medicalReviewRequestsApi.update(request._id, payload);
