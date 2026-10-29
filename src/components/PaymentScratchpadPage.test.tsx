@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PaymentScratchpadPage from './PaymentScratchpadPage';
 import { scratchpadApi, paymentsApi, clientsApi, bookingsApi, paymentRequestsApi } from '../services/api';
-jest.mock('../services/api', () => ({ scratchpadApi: { list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, paymentsApi: { linkRequest: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn() } }));
+jest.mock('../services/api', () => ({ scratchpadApi: { matches: jest.fn(), list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, paymentsApi: { linkRequest: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn() } }));
 jest.mock('./SearchableClientSelect', () => ({ __esModule: true, default: (p: any) => <select aria-label={p.ariaLabel} value={p.value} onChange={e=>p.onChange(e.target.value)}><option value="">Choose</option><option value="client">Synthetic client</option></select> }));
 jest.mock('./Tasks/SearchableSelect', () => ({ SearchableSelect: (p: any) => <select id={p.id} value={p.value} onChange={e=>p.onChange(e.target.value)}>{p.options.map((o:any)=><option key={o.id} value={o.id}>{o.label}</option>)}</select> }));
 const api = scratchpadApi as jest.Mocked<typeof scratchpadApi>;
@@ -11,6 +11,7 @@ const row: any = { _id:'receipt', revision:0, receivedDate:'2026-10-16', amount:
 const snapshot: any = { items:[row], total:1, page:1, limit:25, refreshedAt:'2026-10-16T12:00:00Z', totals:[{currency:'PLN',status:'logged',count:1,amount:'5100.00'},{currency:'PLN',status:'unassigned',count:1,amount:'5100.00'}] };
 beforeEach(()=>{
   jest.resetAllMocks(); Object.defineProperty(window.crypto,'randomUUID',{configurable:true,value:()=> '11111111-1111-4111-8111-111111111111'});
+  api.matches.mockRejectedValue({response:{status:404}});
   api.list.mockResolvedValue({data:snapshot} as any); api.detail.mockResolvedValue({data:row} as any); api.candidates.mockResolvedValue({data:{payments:[],requests:[]}} as any);
   (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[]}); (bookingsApi.getAll as jest.Mock).mockResolvedValue({data:[]}); (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[]});
 });

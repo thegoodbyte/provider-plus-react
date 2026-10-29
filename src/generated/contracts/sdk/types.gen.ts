@@ -11133,6 +11133,23 @@ export type ScratchpadControllerEditResponses = {
 
 export type ScratchpadControllerEditResponse = ScratchpadControllerEditResponses[keyof ScratchpadControllerEditResponses];
 
+export type ScratchpadControllerAssociateData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-scratchpad/{id}/association';
+};
+
+export type ScratchpadControllerAssociateResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ScratchpadControllerAssociateResponse = ScratchpadControllerAssociateResponses[keyof ScratchpadControllerAssociateResponses];
+
 export type ScratchpadControllerCandidatesData = {
     body?: never;
     path: {
@@ -11166,6 +11183,40 @@ export type ScratchpadControllerCorrectDateResponses = {
 };
 
 export type ScratchpadControllerCorrectDateResponse = ScratchpadControllerCorrectDateResponses[keyof ScratchpadControllerCorrectDateResponses];
+
+export type ScratchpadControllerConfirmMatchData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-scratchpad/{id}/match-payment';
+};
+
+export type ScratchpadControllerConfirmMatchResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type ScratchpadControllerConfirmMatchResponse = ScratchpadControllerConfirmMatchResponses[keyof ScratchpadControllerConfirmMatchResponses];
+
+export type ScratchpadControllerMatchesData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-scratchpad/{id}/matches';
+};
+
+export type ScratchpadControllerMatchesResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ScratchpadControllerMatchesResponse = ScratchpadControllerMatchesResponses[keyof ScratchpadControllerMatchesResponses];
 
 export type ScratchpadControllerReconcileData = {
     body?: never;

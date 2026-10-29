@@ -593,6 +593,8 @@ export interface ScratchpadReceipt {
   _id: string; display_id?: number; revision: number; receivedDate: string; amount: string; amountMinor: number;
   currency: string; provider: string; account: string; accountKey?: string; payer?: string; phone?: string; externalId?: string;
   reference?: string; requestNumber?: string; notes?: string; status: 'unassigned' | 'converted' | 'excluded';
+  matchedClient?: any; matchedRequest?: any;
+  matchedClientId?: string; matchedPaymentRequestId?: string; matchedBookingId?: string;
   paymentId?: string; payment?: any; paymentMissing?: boolean; duplicatePayments?: Array<{ _id: string; display_id?: number }>; reconciliationPending?: boolean;
   bookingReview?: { kind: string; label: string; message: string; client?: any; request?: any; bookings: any[] };
   dateCorrection?: any; dateCorrectionError?: string;
@@ -614,6 +616,12 @@ export const scratchpadApi = {
   },
   state: (id: string, data: any) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/state`, data),
   reopen: (id: string, data: { revision: number; reason: string }) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/reopen`, data),
+  matches: (id: string, params: Record<string,string|number>) => api.get<any>(`/payment-scratchpad/${id}/matches`,{params}),
+  associate: (id: string, data: any) => api.patch<ScratchpadReceipt>(`/payment-scratchpad/${id}/association`,data),
+  confirmMatch: (id: string, data: any) => {
+    cacheService.clearPattern('payments:'); cacheService.clearPattern('payment-requests:'); cacheService.clearPattern('bookings:'); invalidateBookingRequirements();
+    return api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/match-payment`,data);
+  },
   candidates: (id: string, params?: { clientId?: string; paymentRequestId?: string; search?: string; bookingId?: string; amount?: string; dateFrom?: string; dateTo?: string; matchMode?: string; page?: number }) => api.get<{ payments: any[]; requests: any[]; match?: any; total?: number; page?: number; limit?: number }>(`/payment-scratchpad/${id}/candidates`, { params }),
   reconcile: (id: string, data: any) => {
     cacheService.clearPattern('payments:');

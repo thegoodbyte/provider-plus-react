@@ -16,6 +16,19 @@ const toFiniteNumber = (value: string | null) => {
   return Number.isFinite(number) ? number : undefined;
 };
 
+export function matchingBookingReturnPath(returnTo: string | null, routePrefix: string, bookingId: string, origin: string) {
+  if (!returnTo) return null;
+  try {
+    const target = new URL(returnTo,origin);
+    const joint = target.pathname === `${routePrefix}/payments/joint/new`;
+    const scratchpad = new RegExp(`^${routePrefix}/payments/scratchpad/[a-f0-9]{24}$`,'i').test(target.pathname);
+    if (target.origin !== origin || !joint && !scratchpad) return null;
+    target.searchParams.set('createdBookingId',bookingId);
+    if (scratchpad) target.searchParams.set('match','1');
+    return target.pathname + target.search;
+  } catch { return null; }
+}
+
 const BookingEditorPage: React.FC<Props> = ({ mode }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,13 +80,8 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
           onCancel={() => navigate(-1)}
           onSaved={(booking) => {
             const returnTo = new URLSearchParams(location.search).get('returnTo');
-            if (mode === 'create' && returnTo && returnTo.startsWith(`${routePrefix}/payments/joint/new?`)) {
-              const target = new URL(returnTo,window.location.origin);
-              if (target.pathname === `${routePrefix}/payments/joint/new` && booking?._id) {
-                target.searchParams.set('createdBookingId',booking._id);
-                navigate(target.pathname + target.search); return;
-              }
-            }
+            const backToMatch = mode === 'create' && booking?._id ? matchingBookingReturnPath(returnTo,routePrefix,booking._id,window.location.origin) : null;
+            if (backToMatch) { navigate(backToMatch); return; }
             navigate(routePrefix ? `${routePrefix}/bookings` : '/bookings');
           }}
         />

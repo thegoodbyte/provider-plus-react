@@ -21706,6 +21706,36 @@
         ]
       }
     },
+    "/payment-scratchpad/{id}/association": {
+      "patch": {
+        "operationId": "ScratchpadController_associate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Scratchpad"
+        ]
+      }
+    },
     "/payment-scratchpad/{id}/candidates": {
       "get": {
         "operationId": "ScratchpadController_candidates",
@@ -21739,6 +21769,66 @@
     "/payment-scratchpad/{id}/date": {
       "patch": {
         "operationId": "ScratchpadController_correctDate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Scratchpad"
+        ]
+      }
+    },
+    "/payment-scratchpad/{id}/match-payment": {
+      "post": {
+        "operationId": "ScratchpadController_confirmMatch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Scratchpad"
+        ]
+      }
+    },
+    "/payment-scratchpad/{id}/matches": {
+      "get": {
+        "operationId": "ScratchpadController_matches",
         "parameters": [
           {
             "in": "path",
