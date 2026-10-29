@@ -1,3 +1,11 @@
+## Local development reference
+
+The API repository's `docs/local-development/README.md` contains the versioned
+local stack, installer, bootstrap admin and opt-in email-masked snapshot tools
+(PPVC-665). Consult it when setting up local apps. Existing quality gates still
+apply; synthetic isolated fixtures remain valid. Do not fetch production data
+automatically, and do not treat email masking as full anonymization.
+
 # Multi-agent coordination protocol
 
 This repository is worked on concurrently by multiple AI coding agents under the same account — Claude Code, Codex, and Gemini. Codex is the agent that performs production deploys. Without coordination, agents have duplicated work (the same bug fixed twice, independently, in the same session window) and tracking files have gone stale (one agent reporting work as "pending deployment" when another agent had already pushed and deployed it). This document exists to prevent that. Follow it every session, not just the first one.
