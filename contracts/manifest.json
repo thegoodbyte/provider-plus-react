@@ -1,7 +1,7 @@
 {
   "format": 1,
   "files": {
-    "openapi.json": "68329580caaed869c098742dcf3a4565b26d8adc64ec72230ab7d1c73d5772c0",
+    "openapi.json": "0559317965b22c9c04bc97a12ee628936c53791f757c2df01f67e67d14b525eb",
     "shared/domain.ts": "17089b0fb5999b8e9e1cb99cae4b991c59962688faaf854939bb0797658adcd1",
     "shared/event-types.ts": "2493dc1629af3e63a641efdb00d3fd8a193ba63e362f5f8c8b08037312dd68cb",
     "shared/workflow-status.ts": "008442612d28acce417bc821f2379dea58a08dd8f1f6bfe8a333ef5b7d65be2c",

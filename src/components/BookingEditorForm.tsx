@@ -188,6 +188,14 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [cancellationReason, setCancellationReason] = useState('');
   const [depositTreatment, setDepositTreatment] = useState<'no_refund' | 'partial_refund' | 'full_refund' | 'credit_transfer'>('no_refund');
   const [cancellationNotes, setCancellationNotes] = useState('');
+  useEffect(() => {
+    if (mode !== 'create' || !formData.clientId) return;
+    let active = true;
+    roomInventoryApi.preference(formData.clientId).then(({data}) => {
+      if (active && data?.option?.active && ['shared','private'].includes(data.option.occupancy)) setFormData(prev => prev.clientId === formData.clientId && !prev.accommodationKey && prev.roomType === 'unspecified' ? {...prev,accommodationKey:data.option.key,roomType:data.option.legacyRoomType as BookingFormData['roomType']} : prev);
+    }).catch(() => { /* Required explicit choice remains available. */ });
+    return () => { active = false; };
+  }, [mode, formData.clientId]);
   const [roomAvailability, setRoomAvailability] = useState<{ availableToSell: number; freeBeds: number } | null>(null);
 
   useEffect(() => {
@@ -444,6 +452,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         showError(`Ceremony ${formData.ceremonyNumber} does not have a ceremony record yet for this retreat. Add it on the Ceremonies tab before booking a booster guest for it.`);
         return;
       }
+      if (!['shared', 'private', 'private_ensuite'].includes(formData.roomType)) { showError('Choose a Shared or Private room type before saving.'); return; }
       if (formData.checkInDate && formData.checkOutDate && new Date(formData.checkOutDate) <= new Date(formData.checkInDate)) {
         showError('Check-out must be after check-in.');
         return;
@@ -652,10 +661,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
         <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <h3 className="font-semibold text-slate-900">Room and accommodation</h3>
-          <p className="mt-1 text-xs text-slate-600">Choose the accommodation agreed for this booking. The payment request choice is copied automatically when available.</p>
+          <p className="mt-1 text-xs text-slate-600">Choose the accommodation agreed for this booking. Shared or Private is required. A known payment request or screening choice is copied when available; no room is reserved by this choice.</p>
           {roomAvailability && <p className="mt-1 text-xs font-medium text-slate-700">{roomAvailability.availableToSell} place{roomAvailability.availableToSell === 1 ? '' : 's'} available to sell · {roomAvailability.freeBeds} free bed{roomAvailability.freeBeds === 1 ? '' : 's'} in this retreat's house — see the Rooms tab for details.</p>}
           <div className="mt-3 grid gap-4 md:grid-cols-2">
-            <AccommodationSelect clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as BookingFormData['roomType'] }))} />
+            <AccommodationSelect required clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as BookingFormData['roomType'] }))} />
             <label className="text-sm font-medium text-gray-700">Bedroom
               <select disabled={!formData.retreatId || bedroomsLoading || Boolean(bedroomsError) || (!houseBedrooms.length && !formData.roomNumber)} value={formData.roomNumber} onChange={(event) => setFormData(prev => ({ ...prev, roomNumber: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
                 <option value="">Not assigned</option>{formData.roomNumber && !houseBedrooms.some(room => room.name === formData.roomNumber) && <option value={formData.roomNumber}>{formData.roomNumber} · saved room unavailable</option>}{houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}

@@ -14852,6 +14852,27 @@
         ]
       }
     },
+    "/initial-questionnaires/public/accommodation-options": {
+      "get": {
+        "operationId": "InitialQuestionnairesController_accommodationOptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "InitialQuestionnaires"
+        ]
+      }
+    },
     "/initial-questionnaires/public/pre-call/{token}": {
       "get": {
         "operationId": "InitialQuestionnairesController_getPreCall",

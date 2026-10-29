@@ -7259,6 +7259,21 @@ export type InitialQuestionnairesControllerSubmitPublicResponses = {
 
 export type InitialQuestionnairesControllerSubmitPublicResponse = InitialQuestionnairesControllerSubmitPublicResponses[keyof InitialQuestionnairesControllerSubmitPublicResponses];
 
+export type InitialQuestionnairesControllerAccommodationOptionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/initial-questionnaires/public/accommodation-options';
+};
+
+export type InitialQuestionnairesControllerAccommodationOptionsResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type InitialQuestionnairesControllerAccommodationOptionsResponse = InitialQuestionnairesControllerAccommodationOptionsResponses[keyof InitialQuestionnairesControllerAccommodationOptionsResponses];
+
 export type InitialQuestionnairesControllerGetPreCallData = {
     body?: never;
     path: {

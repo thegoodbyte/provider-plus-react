@@ -947,6 +947,7 @@ const ClientScreening: React.FC = () => {
   };
 
   const persistScreening = async () => {
+    if (!formData.desiredAccommodationKey) throw new Error('Choose a Shared or Private room type before saving.');
     const birthError = validateScreeningBirth(formData.year_of_birth, formData.month_of_birth, formData.day_of_birth);
     if (birthError) throw new Error(birthError);
     const { referralId, referralClientId: rawReferralClientId, ...screeningFields } = formData;
@@ -2046,7 +2047,7 @@ const ClientScreening: React.FC = () => {
         </div>
       </div>
 
-      <section className="rounded-lg border p-4"><AccommodationSelect preference value={formData.desiredAccommodationKey} onChange={key => setFormData(prev => ({ ...prev, desiredAccommodationKey: key }))} /></section>
+      <section className="rounded-lg border p-4"><AccommodationSelect required preference value={formData.desiredAccommodationKey} onChange={key => { setHasChanges(true); setFormData(prev => ({ ...prev, desiredAccommodationKey: key })); }} /></section>
       {/* Additional Notes */}
       <div className={sectionStyles.notes.container}>
         <h2 className={sectionStyles.notes.heading}>Additional Information</h2>

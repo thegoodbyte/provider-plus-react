@@ -47,3 +47,6 @@ it("preserves an unavailable saved category visibly", async () => {
   render(<AccommodationSelect value="old" onChange={() => {}} />);
   expect(await screen.findByText("old (unavailable)")).toBeInTheDocument();
 });
+it('requires an explicit Shared or Private choice without inventing a default',async()=>{
+ render(<AccommodationSelect required preference value="" onChange={()=>{}}/>);await screen.findByText('Private room');const choice=screen.getByRole('combobox');expect(choice).toBeRequired();expect(choice).toHaveValue('');expect(choice).toBeInvalid();
+});

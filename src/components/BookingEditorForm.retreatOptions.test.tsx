@@ -19,7 +19,7 @@ jest.mock('../services/api', () => ({
   paymentRequestsApi: { getOne: jest.fn(), getAllFresh: jest.fn() },
   retreatsApi: { getAll: jest.fn() },
 }));
-jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { view: jest.fn(), options: jest.fn() } }));
+jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { view: jest.fn(), options: jest.fn(), preference: jest.fn().mockResolvedValue({data:null}) } }));
 
 describe('retreatsForBookingType', () => {
   const retreats = [

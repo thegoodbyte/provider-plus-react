@@ -8,6 +8,7 @@ export default function AccommodationSelect({
   clientId,
   onChange,
   disabled = false,
+  required = false,
   preference = false,
   offeredOptions,
   optionDescriptions,
@@ -16,6 +17,7 @@ export default function AccommodationSelect({
   clientId?: string;
   onChange: (key: string, legacy: string) => void;
   disabled?: boolean;
+  required?: boolean;
   preference?: boolean;
   offeredOptions?: AccommodationOption[];
   optionDescriptions?: Record<string, string>;
@@ -68,9 +70,10 @@ export default function AccommodationSelect({
     );
   return (
     <label className="block text-sm font-medium text-gray-700">
-      {preference ? "Desired accommodation" : "Accommodation"}
+      {preference ? "Desired accommodation" : "Accommodation"}{required ? " *" : ""}
       <select
         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+        required={required}
         value={selected}
         disabled={disabled}
         onChange={(event) => {
@@ -80,7 +83,7 @@ export default function AccommodationSelect({
           onChange(event.target.value, option?.legacyRoomType || "unspecified");
         }}
       >
-        <option value="">Not decided</option>
+        <option value="">{required ? "Choose Shared or Private" : "Not decided"}</option>
         {displayedOptions
           .filter((option) => option.active)
           .map((option) => (

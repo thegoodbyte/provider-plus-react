@@ -1,4 +1,4 @@
-jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { options: async () => ({data:[]}), preference: async () => ({data:{key:''}}) } }));
+jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { options: async () => ({data:[{key:'shared',active:true,labels:{en:'Shared room'},legacyRoomType:'shared'}]}), preference: async () => ({data:{key:''}}) } }));
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -26,7 +26,7 @@ const mockedTaskService = (jest.requireMock('../services/taskService') as any).t
 
 const client = {
   _id: 'client-1', firstName: 'Eva', lastName: 'Novak', display_id: 501, phone: '+420777123456',
-  email: 'eva@example.com', screeningData: {},
+  email: 'eva@example.com', screeningData: {desiredAccommodationKey:'shared'},
 };
 
 const renderPage = () => render(
@@ -131,7 +131,7 @@ describe('ClientScreening referral capture', () => {
     })));
   });
   it('loads location and exact birth date, accepts year correction, and saves optional date parts', async () => {
-    mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, city: 'Prague', country: 'Czechia', dateOfBirth: '1990-06-15', screeningData: { year_of_birth: 1990 } } } as any);
+    mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, city: 'Prague', country: 'Czechia', dateOfBirth: '1990-06-15', screeningData: { desiredAccommodationKey: 'shared', year_of_birth: 1990 } } } as any);
     renderPage();
     await waitFor(() => expect(screen.getByLabelText('Town / City')).toHaveValue('Prague'));
     expect(screen.getByLabelText('Birth Month (optional)')).toHaveValue(6);
@@ -143,7 +143,7 @@ describe('ClientScreening referral capture', () => {
   });
 
   it('autofills year from age, allows correction and keeps unknown date parts empty', async () => {
-    mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, dateOfBirth: '1991-01-01', screeningData: { year_of_birth: 1991 } } } as any);
+    mockedClientsApi.getOne.mockResolvedValue({ data: { ...client, dateOfBirth: '1991-01-01', screeningData: { desiredAccommodationKey: 'shared', year_of_birth: 1991 } } } as any);
     renderPage();
     await waitFor(() => expect(screen.getByLabelText('Year of Birth')).toHaveValue(1991));
     expect(screen.getByLabelText('Birth Month (optional)')).toHaveValue(null);
