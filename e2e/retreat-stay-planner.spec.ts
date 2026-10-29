@@ -1,0 +1,32 @@
+import {test,expect} from '@playwright/test';
+const retreat={_id:'r957',name:'Synthetic lane retreat',code:'LANES-957',startDate:'2026-10-24',endDate:'2026-10-31',capacity:8,status:'scheduled',type:'regular',capabilities:{availableTabs:['clients','rooms','occupancy']}};
+const booking=(id:string,extra:any={})=>({_id:id,bookingNumber:Number(id),retreatId:'r957',bookingType:'full_retreat',status:'confirmed',totalAmount:0,currency:'PLN',clientId:{_id:'client-'+id,firstName:'Guest',lastName:id},...extra});
+for(const [width,timezoneId] of [[1440,'America/Los_Angeles'],[390,'Pacific/Kiritimati']] as const)test.describe(`${width}px ${timezoneId}`,()=>{
+ test.use({timezoneId});
+ test('full stays and sequential boosters use numbered lanes, survive reload and refresh without writes',async({page})=>{
+  await page.setViewportSize({width,height:1000});const writes:string[]=[],errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  let rows=[booking('1311'),booking('1312',{bookingType:'booster',checkInDate:'2026-10-24',checkOutDate:'2026-10-27'}),booking('1313',{bookingType:'booster',checkInDate:'2026-10-27',checkOutDate:'2026-10-31'}),booking('canceled',{bookingNumber:999,status:'cancelled'})];let fail=false;
+  await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const p=new URL(r.url()).pathname;
+   if(r.method()!=='GET'){writes.push(r.method()+' '+p);return route.fulfill({status:405,json:{}})}
+   if(p==='/retreats/r957')return route.fulfill({json:retreat});if(p==='/retreats')return route.fulfill({json:[retreat]});
+   if(p==='/bookings/retreat/r957/with-details')return route.fulfill(fail?{status:503,json:{message:'Synthetic unavailable'}}:{json:rows});
+   if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
+   if(p.includes('retreat-expenses'))return route.fulfill({json:{totalExpenses:0,categories:[]}});
+   if(p.includes('config-summary')||p==='/users/navigation-permissions')return route.fulfill({json:{}});return route.fulfill({json:[]});
+  });
+  await page.goto('/admin/retreats/r957');await page.getByRole('tab',{name:'Stay planner',exact:true}).click();await expect(page).toHaveURL(/\/stayPlanner$/);
+  const planner=page.getByRole('region',{name:'Retreat stay planner',exact:true});await expect(planner.getByRole('link',{name:/Full retreat #1311/})).toHaveAttribute('href','/admin/bookings/1311');await expect(planner.getByLabel('Place 8',{exact:true})).toBeVisible();
+  const lane=planner.getByLabel('Place 2',{exact:true});await expect(lane.getByRole('link',{name:/Booster #1312/})).toHaveAttribute('href','/admin/bookings/1312');await expect(lane.getByRole('link',{name:/Booster #1313/})).toHaveAttribute('href','/admin/bookings/1313');await expect(planner.getByText('2 occupied · 6 free',{exact:true})).toHaveCount(7);
+  await expect(planner.getByRole('link',{name:/999/})).toHaveCount(0);await planner.scrollIntoViewIfNeeded();await page.screenshot({path:`${process.env.STAY_PLANNER_ARTIFACT_DIR||'test-results'}/planner-${width}.png`,fullPage:true});
+  await page.reload();await expect(page.getByRole('tab',{name:'Stay planner',exact:true})).toHaveAttribute('aria-selected','true');await expect(planner.getByLabel('Place 2',{exact:true}).getByRole('link',{name:/Booster #1313/})).toBeVisible();
+  rows=[];await planner.getByRole('button',{name:'Refresh stays'}).click();await expect(planner.getByText(/No confirmed full stays/)).toBeVisible();await expect(planner.getByText('0 occupied · 8 free',{exact:true})).toHaveCount(7);
+  fail=true;await planner.getByRole('button',{name:'Refresh stays'}).click();await expect(planner.getByRole('alert')).toHaveText(/Could not load/);await expect(planner.getByText('0 occupied · 8 free',{exact:true})).toHaveCount(0);expect(writes).toEqual([]);expect(errors).toEqual([]);
+ });
+ test('overflow and missing booster dates remain visible without confident availability',async({page})=>{
+  await page.setViewportSize({width,height:1000});
+  await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const p=new URL(r.url()).pathname;
+   if(p==='/retreats/r957')return route.fulfill({json:{...retreat,capacity:1}});if(p==='/retreats')return route.fulfill({json:[retreat]});if(p==='/bookings/retreat/r957/with-details')return route.fulfill({json:[booking('1311'),booking('1314'),booking('1315',{bookingType:'booster'})]});if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});if(p.includes('retreat-expenses'))return route.fulfill({json:{totalExpenses:0,categories:[]}});if(p.includes('config-summary')||p==='/users/navigation-permissions')return route.fulfill({json:{}});return route.fulfill({json:[]});
+  });
+  await page.goto('/admin/retreats/r957/stayPlanner');const planner=page.getByRole('region',{name:'Retreat stay planner',exact:true});await expect(planner.getByRole('alert').filter({hasText:'Some confirmed stays'})).toBeVisible();await expect(planner.getByRole('alert').filter({hasText:'Over capacity'})).toBeVisible();await expect(planner.getByLabel('Place 2 overflow',{exact:true}).getByRole('link',{name:/Full retreat #1314/})).toBeVisible();await expect(planner.getByRole('link',{name:'Booking #1315',exact:true})).toHaveAttribute('href','/admin/bookings/1315');await expect(planner.getByText('Needs review',{exact:true})).toBeVisible();await expect(planner.getByText('2 occupied · ? free · 1 over',{exact:true})).toHaveCount(7);
+ });
+});

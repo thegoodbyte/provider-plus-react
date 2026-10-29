@@ -140,3 +140,8 @@ describe('percentOf', () => {
     expect(percentOf(-10, 100)).toBe(0);
   });
 });
+
+it('makes the stay planner follow accommodation occupancy capabilities and preserve its route key',()=>{
+ expect(isTabAvailableForRetreat('stayPlanner',{capabilities:{availableTabs:['clients','occupancy']}} as any)).toBe(true);
+ expect(isTabAvailableForRetreat('stayPlanner',{capabilities:{availableTabs:['clients']}} as any)).toBe(false);
+});
