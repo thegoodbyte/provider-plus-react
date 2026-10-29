@@ -1,16 +1,17 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
-const fixturePath = process.env.INVOICE_PREVIEW_FIXTURE;
-const f = fixturePath ? JSON.parse(fs.readFileSync(fixturePath, "utf8")) : {};
+const fixturePath = process.env.INVOICE_PREVIEW_FIXTURE,
+  website = process.env.INVOICE_CLIENT_WEBSITE_URL;
 test.skip(
-  !fixturePath,
-  "Requires real Nest/Mongo admin invoice preview fixture",
+  !fixturePath || !website,
+  "Requires real API/Mongo fixture and canonical client website",
 );
 for (const width of [1440, 390])
-  test(`admin invoice skips consent without writes at ${width}px`, async ({
+  test(`actual client renderer parity, language, consent bypass and no writes at ${width}px`, async ({
     page,
     request,
   }) => {
+    const f = JSON.parse(fs.readFileSync(fixturePath!, "utf8"));
     await page.setViewportSize({ width, height: 1080 });
     await page.addInitScript((token) => {
       localStorage.setItem("token", token);
@@ -27,31 +28,36 @@ for (const width of [1440, 390])
       await request.get(f.url + "/fixture/snapshot")
     ).json();
     let writes = 0,
-      previewCalls = 0,
-      failPreview = true;
+      publicCalls = 0,
+      fail = true;
     await page.route("**/*", async (route) => {
-      const req = route.request(),
-        url = new URL(req.url()),
-        path = url.pathname;
-      if (!["xhr", "fetch"].includes(req.resourceType()))
-        return route.continue();
-      if (!["GET", "HEAD"].includes(req.method())) writes++;
-      if (path.endsWith("/invoice-preview")) {
-        previewCalls++;
-        if (failPreview)
+      const r = route.request(),
+        u = new URL(r.url()),
+        p = u.pathname;
+      if (!["xhr", "fetch"].includes(r.resourceType())) return route.continue();
+      if (!["GET", "HEAD"].includes(r.method())) writes++;
+      if (p.includes("/public/")) {
+        publicCalls++;
+        return route.fulfill({
+          status: 503,
+          json: { message: "Preview must never load a public invoice" },
+        });
+      }
+      if (p.endsWith("/invoice-preview")) {
+        if (fail)
           return route.fulfill({
             status: 503,
             json: { message: "Synthetic preview outage" },
           });
         return route.fulfill({
-          response: await route.fetch({ url: f.url + path }),
+          response: await route.fetch({ url: f.url + p }),
         });
       }
-      if (/^\/payment-requests\/[a-f0-9]{24}$/.test(path))
+      if (/^\/payment-requests\/[a-f0-9]{24}$/.test(p))
         return route.fulfill({
-          response: await route.fetch({ url: f.url + path }),
+          response: await route.fetch({ url: f.url + p }),
         });
-      if (path.endsWith("/settlement"))
+      if (p.endsWith("/settlement"))
         return route.fulfill({
           json: {
             requestedAmount: 3800,
@@ -62,9 +68,9 @@ for (const width of [1440, 390])
             payments: [],
           },
         });
-      if (path.startsWith("/invoice-visits/"))
+      if (p.startsWith("/invoice-visits/"))
         return route.fulfill({ json: { items: [], total: 0, pageSize: 20 } });
-      if (path === "/environment/status")
+      if (p === "/environment/status")
         return route.fulfill({
           json: { environment: "local", production: false, enabledJobs: [] },
         });
@@ -75,53 +81,96 @@ for (const width of [1440, 390])
       name: "Preview online invoice (admin)",
       exact: true,
     });
-    await expect(open).toBeVisible();
-    expect(previewCalls).toBe(0);
     await open.click();
-    const dialog = page.getByRole("dialog", { name: "Admin invoice preview" });
-    await expect(dialog.getByRole("alert")).toContainText(
-      "Could not load the invoice preview",
-    );
-    await expect(dialog.getByRole("article")).toHaveCount(0);
-    failPreview = false;
-    await dialog.getByRole("button", { name: "Retry invoice preview" }).click();
-    await expect(
-      dialog.getByRole("heading", { name: "Invoice #1931", exact: true }),
-    ).toBeVisible();
-    const invoice = dialog.getByRole("article", { name: "Invoice preview" });
-    await expect(invoice).toContainText("Synthetic Client");
-    await expect(invoice).toContainText("not recorded");
-    await expect(invoice).toContainText("3,800.00");
-    await expect(
-      invoice.getByText("Shared room", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      dialog.locator('form,input[type="checkbox"],input[type="text"],canvas'),
-    ).toHaveCount(0);
-    await dialog.screenshot({
-      path: `${process.env.INVOICE_PREVIEW_ARTIFACT_DIR || "../ppvc-931-validation"}/preview-${width}.png`,
+    const dialog = page.getByRole("dialog", {
+      name: "Client website invoice preview",
     });
-    const bounds = await dialog.boundingBox();
-    expect(bounds!.x).toBeGreaterThanOrEqual(0);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
+    await expect(dialog.getByRole("alert")).toBeVisible();
+    fail = false;
+    await dialog.getByRole("button", { name: "Retry invoice preview" }).click();
+    const frame = page.frameLocator(
+      'iframe[title="Actual client invoice page"]',
+    );
+    await expect(
+      frame.getByRole("heading", { name: "Payment Information", exact: true }),
+    ).toBeVisible();
+    await expect(frame.locator("input,canvas,form")).toHaveCount(0);
+    expect(publicCalls).toBe(0);
+    // Public client branch uses the same canonical component after device-local
+    // synthetic consent; it must retain the normal form on a fresh device.
+    const response = await request.get(
+      f.url + "/payment-requests/" + f.requestIds[0] + "/invoice-preview",
+      { headers: { Authorization: "Bearer " + f.tokens.admin } },
+    );
+    const { invoice } = await response.json();
+    const client = await page.context().newPage();
+    await client.route("**/public/invoices/parity", (route) =>
+      route.fulfill({ json: invoice }),
+    );
+    await client.addInitScript(() =>
+      localStorage.setItem("deposit-consent:parity", "accepted"),
+    );
+    const frameBox = await page
+      .locator('iframe[title="Actual client invoice page"]')
+      .boundingBox();
+    await client.setViewportSize({
+      width: Math.round(frameBox!.width),
+      height: 1000,
+    });
+    await client.goto(website + "/clients/payment/request/parity?lang=en");
+    const normal = client.locator("div.min-h-screen.bg-gradient-to-br").first(),
+      actual = frame.locator("[data-admin-invoice-preview] > div");
+    await expect(
+      normal.getByRole("heading", { name: "Payment Information", exact: true }),
+    ).toBeVisible();
+    expect(await actual.innerText()).toBe(await normal.innerText());
+    const presentation = async (locator: any) =>
+      locator.evaluate((el: Element) => {
+        const s = getComputedStyle(el);
+        return {
+          background: s.backgroundImage,
+          color: s.color,
+          font: s.fontFamily,
+        };
+      });
+    expect(await presentation(actual)).toEqual(await presentation(normal));
+    await client.close();
+    await frame.locator('a[href*="revolut"]').first().click();
+    expect(page.context().pages()).toHaveLength(1);
+    expect(publicCalls).toBe(0);
+    await dialog.getByLabel("Preview language").selectOption("pl");
+    await expect(
+      frame.getByRole("heading", {
+        name: "Informacja o płatności",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await dialog
+      .getByRole("button", { name: "Mobile view", exact: true })
+      .click();
+    await expect(
+      dialog.getByRole("button", { name: "Mobile view", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await dialog.screenshot({
+      path: `${process.env.INVOICE_PREVIEW_ARTIFACT_DIR || "test-results"}/actual-client-${width}.png`,
+      animations: "disabled",
+    });
+    const frameUrl = await page
+      .locator('iframe[title="Actual client invoice page"]')
+      .getAttribute("src");
+    expect(frameUrl).toBe(website + "/clients/payment/admin-preview");
+    expect(frameUrl).not.toContain(f.requestIds[0]);
     await dialog
       .getByRole("button", { name: "Close preview", exact: true })
       .click();
     await page.reload();
     await open.click();
     await expect(
-      dialog.getByRole("heading", { name: "Invoice #1931", exact: true }),
+      frame.getByRole("heading", { name: "Payment Information", exact: true }),
     ).toBeVisible();
     expect(writes).toBe(0);
-    const after = await (await request.get(f.url + "/fixture/snapshot")).json();
-    expect(after).toEqual(before);
-    await dialog
-      .getByRole("button", { name: "Close preview", exact: true })
-      .click();
-    await page.goto("/admin/payment-requests/" + f.requestIds[2]);
-    await open.click();
-    await expect(dialog.getByText(/Cancelled invoice\./)).toBeVisible();
-    await expect(dialog.getByRole("article")).toContainText(
-      "Synthetic cancellation",
-    );
+    expect(publicCalls).toBe(0);
+    expect(
+      await (await request.get(f.url + "/fixture/snapshot")).json(),
+    ).toEqual(before);
   });

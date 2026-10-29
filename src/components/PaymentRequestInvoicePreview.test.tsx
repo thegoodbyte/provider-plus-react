@@ -1,6 +1,10 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
-import PaymentRequestInvoicePreview from "./PaymentRequestInvoicePreview";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import PaymentRequestInvoicePreview, {
+  PREVIEW_READY,
+  PREVIEW_DATA,
+  clientPreviewUrl,
+} from "./PaymentRequestInvoicePreview";
 import { paymentRequestsApi } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 jest.mock("../services/api", () => ({
@@ -14,60 +18,102 @@ jest.mock("antd", () => ({
 const preview = paymentRequestsApi.previewInvoice as jest.Mock,
   auth = useAuth as jest.Mock;
 beforeEach(() => {
-  preview.mockReset();
+  jest.clearAllMocks();
   auth.mockReturnValue({ user: { role: "admin" } });
   preview.mockResolvedValue({
     data: {
       previewOnly: true,
       invoice: {
         invoiceNumber: "1931",
-        clientName: "Synthetic Client",
-        status: "pending",
         currency: "PLN",
-        totalPrice: 9500,
         depositAmount: 0,
-        depositConsent: null,
-        notes: "<script>do not execute</script>",
+        language: "PL",
       },
     },
   });
 });
-test("loads only on explicit opening and shows the invoice without a form or mutation controls", async () => {
+const open = () => {
   render(<PaymentRequestInvoicePreview requestId="request-1" />);
-  expect(preview).not.toHaveBeenCalled();
   fireEvent.click(
     screen.getByRole("button", { name: "Preview online invoice (admin)" }),
   );
-  expect(
-    await screen.findByRole("heading", { name: "Invoice #1931" }),
-  ).toBeVisible();
+};
+test("uses the actual website frame with no invoice IDs, hashes or credentials in its URL", async () => {
+  open();
+  const frame = await screen.findByTitle("Actual client invoice page");
+  expect(frame).toHaveAttribute("src", clientPreviewUrl());
+  expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-same-origin");
+  expect(frame).toHaveAttribute("referrerpolicy", "no-referrer");
   expect(preview).toHaveBeenCalledWith("request-1");
-  expect(screen.getByText("PLN 0.00")).toBeVisible();
-  expect(screen.getByText(/Client consent:/)).toHaveTextContent("not recorded");
-  expect(screen.getByText("<script>do not execute</script>")).toBeVisible();
-  expect(document.querySelector("script,form,input")).toBeNull();
+  expect(screen.queryByRole("article")).toBeNull();
+  const win = (frame as HTMLIFrameElement).contentWindow!,
+    post = jest.spyOn(win, "postMessage");
+  fireEvent(
+    window,
+    new MessageEvent("message", {
+      origin: "https://bad.invalid",
+      source: win,
+      data: { type: PREVIEW_READY },
+    }),
+  );
+  expect(post).not.toHaveBeenCalled();
+  fireEvent(
+    window,
+    new MessageEvent("message", {
+      origin: new URL(clientPreviewUrl()).origin,
+      source: window,
+      data: { type: PREVIEW_READY },
+    }),
+  );
+  expect(post).not.toHaveBeenCalled();
+  fireEvent(
+    window,
+    new MessageEvent("message", {
+      origin: new URL(clientPreviewUrl()).origin,
+      source: win,
+      data: { type: PREVIEW_READY },
+    }),
+  );
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: PREVIEW_DATA,
+        previewOnly: true,
+        invoice: expect.objectContaining({ depositAmount: 0, language: "pl" }),
+      }),
+      new URL(clientPreviewUrl()).origin,
+    ),
+  );
+  fireEvent.change(screen.getByLabelText("Preview language"), {
+    target: { value: "cz" },
+  });
+  await waitFor(() =>
+    expect(post).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        invoice: expect.objectContaining({ language: "cz" }),
+      }),
+      new URL(clientPreviewUrl()).origin,
+    ),
+  );
 });
-test("non-admin users see no preview action and trigger no API call", () => {
+test("non-admin users get no action or API call", () => {
   auth.mockReturnValue({ user: { role: "medical_staff" } });
   render(<PaymentRequestInvoicePreview requestId="request-1" />);
   expect(screen.queryByRole("button")).toBeNull();
   expect(preview).not.toHaveBeenCalled();
 });
-test("failed lookup offers retry without exposing stale invoice content", async () => {
+test("failed lookup retries without displaying stale invoice data", async () => {
   preview.mockRejectedValueOnce(Error("offline"));
-  render(<PaymentRequestInvoicePreview requestId="request-1" />);
-  fireEvent.click(
-    screen.getByRole("button", { name: "Preview online invoice (admin)" }),
-  );
+  open();
   await screen.findByRole("alert");
-  expect(screen.queryByRole("article")).toBeNull();
+  expect(screen.queryByTitle("Actual client invoice page")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Retry invoice preview" }),
   );
-  await screen.findByRole("heading", { name: "Invoice #1931" });
+  await screen.findByTitle("Actual client invoice page");
   expect(preview).toHaveBeenCalledTimes(2);
 });
-test("ignores an invoice response after closing the preview", async () => {
+test("closing ignores a late response and unmounts the client frame", async () => {
   let resolve: any;
   preview.mockImplementation(
     () =>
@@ -75,11 +121,9 @@ test("ignores an invoice response after closing the preview", async () => {
         resolve = r;
       }),
   );
-  render(<PaymentRequestInvoicePreview requestId="request-1" />);
-  fireEvent.click(
-    screen.getByRole("button", { name: "Preview online invoice (admin)" }),
-  );
+  open();
   fireEvent.click(screen.getByRole("button", { name: "Close preview" }));
   resolve({ data: { previewOnly: true, invoice: { invoiceNumber: "old" } } });
-  expect(screen.queryByRole("dialog")).toBeNull();
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.queryByTitle("Actual client invoice page")).toBeNull();
 });
