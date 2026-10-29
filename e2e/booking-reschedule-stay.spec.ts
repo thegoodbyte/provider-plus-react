@@ -21,7 +21,7 @@ for (const [width, timezoneId] of [
           await request.get(f.url + "/fixture/snapshot")
         ).json(),
         headers = { Authorization: "Bearer " + f.tokens.admin };
-      await page.setViewportSize({ width, height: 1100 });
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 1100 });
       await page.addInitScript((token) => {
         localStorage.setItem("token", token);
         localStorage.setItem(
@@ -77,6 +77,7 @@ for (const [width, timezoneId] of [
       await dialog
         .getByRole("textbox", { name: "Internal note" })
         .fill("New stay requested");
+      await dialog.screenshot({path:`${process.env.RESCHEDULE_STAY_ARTIFACT_DIR||'test-results'}/dialog-${width}.png`});
       await dialog.getByRole("button", { name: "Confirm reschedule" }).click();
       await expect(dialog).toHaveCount(0);
       await page.reload();
@@ -111,6 +112,7 @@ for (const [width, timezoneId] of [
       await expect(
         page.getByRole("status").filter({ hasText: "Stay dates aligned" }),
       ).toBeVisible();
+      await page.getByRole("region",{name:"Moved booking dates"}).screenshot({path:`${process.env.RESCHEDULE_STAY_ARTIFACT_DIR||'test-results'}/repair-${width}.png`});
       await page.getByText("Booking dates", { exact: true }).click();
       await expect(
         page.getByText("Mar 28, 2099 · 17:30", { exact: true }),

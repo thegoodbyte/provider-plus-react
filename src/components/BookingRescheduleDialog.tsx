@@ -38,7 +38,7 @@ export default function BookingRescheduleDialog({ hasPrimaryPaymentRequest = fal
   useEffect(() => { if (targetRetreatId && !selected) setTargetRetreatId(''); }, [selected, targetRetreatId]);
 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="reschedule-title">
-    <form className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); void onSubmit({ targetRetreatId, reason, note, sendEmail, allowEarlierRetreat: isAdmin && allowEarlierRetreat, clearPaymentRequest: hasPrimaryPaymentRequest && clearPaymentRequest }); }}>
+    <form className="max-h-[calc(100dvh-2rem)] overflow-y-auto w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl" onSubmit={(event) => { event.preventDefault(); void onSubmit({ targetRetreatId, reason, note, sendEmail, allowEarlierRetreat: isAdmin && allowEarlierRetreat, clearPaymentRequest: hasPrimaryPaymentRequest && clearPaymentRequest }); }}>
       <h2 id="reschedule-title" className="text-xl font-semibold">Reschedule booking</h2>
       <p className="mt-1 text-sm text-gray-600">Completed payments, documents, medical reviews and steps remain. Arrival and departure will change to the destination’s dates and times (Europe/Prague). Retreat-relative deadlines will be recalculated. Booster bookings move to the same ceremony number in the destination and retain a one-night stay.</p>
       {error && <div role="alert" className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{error}</div>}
