@@ -1,64 +1,40 @@
-import { test,expect,Page } from '@playwright/test';
-const bookingId='507f1f77bcf86cd799439494',clientId='507f1f77bcf86cd799439495',retreatId='507f1f77bcf86cd799439496';
-const client={_id:clientId,firstName:'Overview',lastName:'Fixture',email:'overview@example.invalid',phone:'+420 777 123 456',country:'Czech Republic',display_id:1494,source:'Friend'};
-const retreat={_id:retreatId,name:'Overview test retreat',code:'F494',retreatCode:'F494',startDate:'2027-06-01',endDate:'2027-06-08',startTime:'18:00',endTime:'10:00',capacity:12,location_town:'Mistrovice',address:'Fixture address'};
-const payment={_id:'507f1f77bcf86cd799439497',display_id:1080,bookingId,clientId,retreatId,amount:2250,currency:'PLN',usd_amount:585,status:'completed',paymentDate:'2026-10-01',paymentMethod:'bank_transfer',paymentType:'deposit_non_refundable',isRefundable:false};
-async function fixture(page:Page,baseURL:string,mode='normal'){
- const writes:any[]=[];
- const booking={_id:bookingId,bookingNumber:1186,bookingHash:'overview-fixture-hash',clientId:client,retreatId:retreat,bookingType:mode==='booster'?'booster':'regular',boosterStartDate:'2027-06-03',boosterEndDate:'2027-06-04',totalAmount:7500,currency:'PLN',roomType:'private',roomNumber:'Garden',status:'confirmed',registrationDate:'2026-09-01',checkInDate:'2027-06-01',checkOutDate:'2027-06-08'};
- const payments=mode==='overpaid'?[{...payment,amount:2050,currency:'USD',usd_amount:2050}]:[payment];
- await page.addInitScript(()=>{localStorage.setItem('token','synthetic-overview-fixture');localStorage.setItem('user',JSON.stringify({id:'admin',role:'admin',email:'admin@example.invalid'}));});
+import { test, expect, Page } from '@playwright/test';
+import path from 'node:path';
+const bookingId='507f1f77bcf86cd799439011', clientId='507f1f77bcf86cd799439012', retreatId='507f1f77bcf86cd799439013';
+async function fixture(page:Page,baseURL:string,options:{overpaid?:boolean;failSummary?:boolean;booster?:boolean}={}) {
+ const calls={writes:[] as string[],summary:0};
+ await page.addInitScript(()=>{localStorage.setItem('token','synthetic-overview-token');localStorage.setItem('user',JSON.stringify({id:'admin-e2e',role:'admin',email:'admin@example.invalid'}));});
  await page.route('**/*',async route=>{
-  const request=route.request(),url=new URL(request.url());if(url.origin===new URL(baseURL).origin && !url.pathname.startsWith('/api/'))return route.continue();
-  const path=url.pathname.replace(/^\/api(?=\/)/,'');let data:any=[];
-  if(!['GET','HEAD','OPTIONS'].includes(request.method()))writes.push({path,method:request.method()});
-  if(path==='/environment/status')data={production:true};
-  if(path==='/users/navigation-permissions'||path==='/config-summary')data={};
-  if(path==='/submission-notifications/unread-count')data={count:0};
-  if(path===`/bookings/${bookingId}`)data=booking;
-  if(path.startsWith('/bookings/retreat/'))data=[booking];
-  if(path===`/clients/${clientId}`)data=client;
-  if(path==='/clients')data=[client];
-  if(path==='/retreats')data=[retreat];
-  if(path===`/retreats/${retreatId}`)data=retreat;
-  if(path===`/payments/by-booking/${bookingId}`||path==='/payments/by-booking-hash/overview-fixture-hash')data=payments;
-  if(path==='/payments/convert-to-usd')data={amount:Number(url.searchParams.get('amount')),currency:url.searchParams.get('currency'),usd_amount:Number(url.searchParams.get('amount'))*0.26};
-  if(path===`/payments/plan-settings/booking/${bookingId}`)data=null;
-  if(path.endsWith(`/bookings/${bookingId}/requirements`))data={items:[],artifacts:[],documents:[],documentCandidates:[],reviews:[],requirements:[],templates:[],libraryTemplates:[],actionLogs:[]};
-  if(path.endsWith(`/bookings/${bookingId}/workflow-snapshot`))data={items:[],templates:[],actionLogs:[]};
-  return route.fulfill({json:data});
+  const req=route.request(),u=new URL(req.url());if(u.origin===new URL(baseURL).origin&&!u.pathname.startsWith('/api/'))return route.continue();const p=u.pathname.replace(/^\/api(?=\/)/,'');
+  const json=(body:unknown,status=200)=>route.fulfill({json:body,status});
+  if(!['GET','HEAD','OPTIONS'].includes(req.method())){calls.writes.push(req.method()+' '+p);return json({message:'Writes forbidden in overview regression'},409);}
+  if(p===`/bookings/${bookingId}`)return json({_id:bookingId,bookingNumber:1247,bookingType:options.booster?'booster':'full',status:'confirmed',totalAmount:59900,currency:'CZK',registrationDate:'2026-06-24',bookingConfirmationHistory:[],roomType:'private',bookingHash:'synthetic-hash',checkInDate:'2026-06-24',checkOutDate:'2026-06-24',...(options.booster?{boosterStartDate:'2026-11-08',boosterEndDate:'2026-11-09'}:{}),clientId:{_id:clientId,firstName:'Denis',lastName:'Synthetic',email:'denis@example.invalid',phone:'+420 777 123 456',country:'Poland',display_id:1187,language:'pl'},retreatId:{_id:retreatId,name:'Jablonne nad Orlici',code:'JNO-11-06-26',location_town:'Jablonné nad Orlicí',startDate:'2026-11-06',endDate:'2026-11-13',capacity:8}});
+  if(p===`/payments/booking/${bookingId}/financial-summary`){calls.summary++;if(options.failSummary&&calls.summary===1)return json({message:'Synthetic outage'},503);return json({currency:'CZK',price:59900,grossReceived:options.overpaid?60900:24000,refunded:0,paidInFull:!!options.overpaid,sourceState:'verified_ledger',cachedAmountPaid:options.overpaid?60900:24000,calculated:{netPaid:options.overpaid?60900:24000},netPaid:options.overpaid?60900:24000,balance:options.overpaid?0:35900,overpayment:options.overpaid?1000:0});}
+  if(p.startsWith('/payments/plan-settings/booking/'))return json(null);
+  if(p.endsWith('/requirement-projection/ekg'))return json({required:true,satisfied:false,state:'missing',label:'Entry EKG missing'});
+  if(p===`/booking-flow/bookings/${bookingId}/requirements`)return json({items:[],artifacts:[],documents:[],reviews:[],requirements:[]});
+  if(p==='/environment/status')return json({production:false});if(p==='/users/navigation-permissions'||p==='/config-summary')return json({});return json([]);
  });
- return writes;
+ return calls;
 }
-for(const viewport of [{width:1440,height:1050},{width:390,height:844}])test(`payment-first overview and working navigation at ${viewport.width}px`,async({page,baseURL})=>{
- await page.setViewportSize(viewport);const writes=await fixture(page,baseURL!);
- await page.goto(`/admin/bookings/${bookingId}`);
- const overview=page.locator('.booking-overview-layout');await expect(overview.getByRole('heading',{name:'Payments',exact:true})).toBeVisible();
- await expect(overview.locator('.booking-balance-metric.received')).toContainText('$585.00');
- await expect(overview.locator('.booking-balance-metric.outstanding')).toContainText('$1,365.00');
- await expect(overview.getByRole('table')).toContainText('1080');
- await page.screenshot({path:`test-results/ppvc494-${viewport.width}-overview.png`});
- for(const name of ['Requirements next up','Retreat information','Booking dates'])await expect(overview.locator('details').filter({has:page.getByText(name,{exact:true})})).not.toHaveAttribute('open','');
- await overview.getByText('Retreat information',{exact:true}).click();
- await expect(overview.locator('.booking-overview-disclosure[open]')).toContainText('F494');
- await overview.getByText('Retreat information',{exact:true}).click();
- await overview.locator('summary').filter({hasText:'Booking dates'}).focus();await page.keyboard.press('Enter');await expect(overview.locator('.booking-overview-disclosure[open]')).toContainText('Jun 1, 2027');await overview.getByText('Booking dates',{exact:true}).click();
- expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);expect(writes).toHaveLength(0);
- await page.getByRole('tab',{name:'Payments',exact:true}).click();await expect(page.locator('.booking-balance-metric.outstanding')).toContainText('$1,365.00');
- await page.getByRole('tab',{name:'Overview',exact:true}).click();
- await overview.getByText('Requirements next up',{exact:true}).click();await overview.getByRole('button',{name:'Open all requirements'}).click();await expect(page.getByRole('tab',{name:/^Requirements(?:\s|$)/})).toHaveAttribute('aria-selected','true');
- await page.getByRole('tab',{name:'Overview',exact:true}).click();await overview.getByRole('button',{name:'Record a payment',exact:true}).click();
- await expect(page).toHaveURL(new RegExp(`/admin/payments/new\\?bookingId=${bookingId}&clientId=${clientId}`));expect(writes).toHaveLength(0);
+for(const width of [1440,768,390])test(`booking overview summary and navigation at ${width}px`,async({page,baseURL},info)=>{
+ await page.setViewportSize({width,height:1100});const calls=await fixture(page,baseURL!);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(`/admin/bookings/${bookingId}`);const overview=page.getByRole('region',{name:'Booking overview',exact:true});await expect(overview.getByText('40% paid')).toBeVisible();
+ await expect(overview.getByRole('region',{name:'Retreat & dates'})).toContainText('Nov 6, 2026');await expect(overview.getByRole('region',{name:'Client',exact:true})).toContainText('denis@example.invalid');
+ await expect(overview.getByRole('region',{name:'Requirements',exact:true})).toContainText('required');
+ await overview.getByRole('button',{name:'Refresh payment summary'}).click();await expect.poll(()=>calls.summary).toBe(2);await expect(overview.getByText('40% paid')).toBeVisible();
+ const artifact=process.env.BOOKING_OVERVIEW_ARTIFACTS?path.join(process.env.BOOKING_OVERVIEW_ARTIFACTS,`overview-${width}.png`):info.outputPath(`overview-${width}.png`);await page.screenshot({path:artifact,fullPage:true});
+ await overview.getByRole('region',{name:'Confirmation',exact:true}).scrollIntoViewIfNeeded();await expect(overview.getByRole('region',{name:'Confirmation',exact:true})).toBeVisible();await page.screenshot({path:process.env.BOOKING_OVERVIEW_ARTIFACTS?path.join(process.env.BOOKING_OVERVIEW_ARTIFACTS,`overview-${width}-details.png`):info.outputPath(`overview-${width}-details.png`),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await overview.getByRole('button',{name:'Open all requirements'}).click();await expect(overview).toHaveCount(0);await page.getByRole('tab',{name:'Overview',exact:true}).click();
+ await page.getByRole('region',{name:'Booking overview'}).getByRole('button',{name:'View payments'}).click();await expect(page.getByRole('region',{name:'Booking overview'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Record a payment',exact:true}).click();await expect(page).toHaveURL(new RegExp(`/admin/payments/new\\?bookingId=${bookingId}&clientId=${clientId}`));expect(calls.writes).toEqual([]);expect(errors).toEqual([]);
 });
-
-test('overpayment remains a client credit after reload',async({page,baseURL})=>{
- await fixture(page,baseURL!,'overpaid');await page.goto(`/admin/bookings/${bookingId}`);
- const overview=page.locator('.booking-overview-layout');await expect(overview.locator('.booking-balance-metric.outstanding')).toContainText('Overpaid');await expect(overview.locator('.booking-balance-metric.outstanding')).toContainText('$100.00');
- await page.reload();await expect(page.locator('.booking-balance-metric.outstanding')).toContainText('$100.00');
+test('summary read failure can retry; overpayment is fully paid credit',async({page,baseURL})=>{
+ const calls=await fixture(page,baseURL!,{failSummary:true,overpaid:true});await page.goto(`/admin/bookings/${bookingId}`);const overview=page.getByRole('region',{name:'Booking overview'});
+ await overview.getByRole('button',{name:'Retry payment summary'}).click();await expect(overview.getByText('Paid in full · credit available')).toBeVisible();await expect(overview.getByRole('progressbar')).toHaveAttribute('aria-valuenow','100');await page.reload();await expect(overview.getByText('Paid in full · credit available')).toBeVisible();expect(calls.writes).toEqual([]);
 });
-
-test('booster summary and booking-date disclosure show the actual overnight stay',async({page,baseURL})=>{
- await fixture(page,baseURL!,'booster');await page.goto(`/admin/bookings/${bookingId}`);const overview=page.locator('.booking-overview-layout');
- await overview.getByText('Booking dates',{exact:true}).click();const dates=overview.locator('details[open]');
- await expect(dates).toContainText('Jun 3, 2027');await expect(dates).toContainText('Jun 4, 2027');await expect(dates).not.toContainText('Jun 8, 2027');
+test('booster displays its own dates and opening confirmation does not send',async({page,baseURL})=>{
+ const calls=await fixture(page,baseURL!,{booster:true});await page.goto(`/admin/bookings/${bookingId}`);const overview=page.getByRole('region',{name:'Booking overview'});await expect(overview.getByText('40% paid')).toBeVisible();
+ const dates=overview.getByRole('region',{name:'Retreat & dates'});await expect(dates).toContainText('Nov 8, 2026');await expect(dates).toContainText('Nov 9, 2026');
+ await overview.getByRole('button',{name:'Send confirmation',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();expect(calls.writes).toEqual([]);
 });
