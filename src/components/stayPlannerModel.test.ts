@@ -20,7 +20,7 @@ it('excludes cancellations and separates tentative bookings without consuming co
 });
 it('handles leap, month/year and DST boundaries with date-only night counts',()=>{
  for(const [startDate,endDate,nights] of [['2028-02-28','2028-03-01',2],['2026-12-30','2027-01-02',3],['2026-10-24','2026-10-27',3]] as const){const p=build({startDate,endDate,capacity:8},[booking('one')]);expect(p.days).toHaveLength(nights);expect(p.days.every(d=>d.occupied===1)).toBe(true);}
- expect(plannerDay('2026-10-24T23:30:00-07:00')).toBe(plannerDay('2026-10-24'));expect(plannerDay('2026-02-30')).toBeNull();expect(plannerDay('bad')).toBeNull();
+ expect(plannerDay('2026-10-24T23:30:00-07:00')).toBe(plannerDay('2026-10-24'));expect(plannerDay('2026-02-30')).toBeNull();expect(plannerDay('bad')).toBeNull();expect(plannerDay('2026-10-24Tinvalid')).toBeNull();
 });
 it('rejects reversed/missing dates, deduplicates IDs and stays deterministic under reordered API results',()=>{
  expect(build({startDate:'2026-10-31',endDate:'2026-10-24'},[]).error).not.toBe('');

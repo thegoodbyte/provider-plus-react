@@ -6,7 +6,7 @@ import './RetreatStayPlanner.css';
 const label = (date: string) => new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'2-digit',month:'short',timeZone:'UTC'}).format(new Date(`${date}T00:00:00Z`));
 export default function RetreatStayPlanner({retreatId,retreat}:{retreatId:string;retreat:{startDate?:unknown;endDate?:unknown;capacity?:unknown}}) {
   const [rows,setRows]=useState<any[]|null>(null),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
-  useEffect(()=>{let active=true;setRows(null);setError('');bookingsApi.getByRetreatWithDetails(retreatId,{suppressGlobalError:true}).then(result=>{if(active)setRows(Array.isArray(result.data)?result.data:[])}).catch(()=>{if(active)setError('Could not load stay bookings. Refresh to try again.');});return()=>{active=false};},[retreatId,refresh]);
+  useEffect(()=>{let active=true;setRows(null);setError('');bookingsApi.getByRetreatWithDetails(retreatId,{suppressGlobalError:true}).then(result=>{if(!Array.isArray(result.data))throw Error('Invalid booking response');if(active)setRows(result.data)}).catch(()=>{if(active)setError('Could not load stay bookings. Refresh to try again.');});return()=>{active=false};},[retreatId,refresh]);
   const plan=rows?buildStayPlanner(retreat,rows):null;
   return <section aria-label="Retreat stay planner" className="stay-planner">
     <div className="stay-planner-heading"><div><h2>Stay planner</h2><p>Full retreats and boosters across the retreat, with one numbered lane per guest place.</p></div><button type="button" onClick={()=>setRefresh(value=>value+1)} disabled={!rows&&!error}>Refresh stays</button></div>

@@ -23,3 +23,6 @@ it('does not render old retreat records when a slower previous request resolves'
  let finish:(v:any)=>void=()=>{};(bookingsApi.getByRetreatWithDetails as jest.Mock).mockReturnValueOnce(new Promise(resolve=>{finish=resolve})).mockResolvedValueOnce({data:[]});
  const view=render(<MemoryRouter><RetreatStayPlanner retreatId="old" retreat={retreat}/></MemoryRouter>);view.rerender(<MemoryRouter><RetreatStayPlanner retreatId="new" retreat={retreat}/></MemoryRouter>);await screen.findByText(/No confirmed full stays/);finish({data:[one]});await waitFor(()=>expect(screen.queryByRole('link',{name:/Full retreat #1311/})).not.toBeInTheDocument());
 });
+it('does not report empty/free capacity for a malformed successful API response',async()=>{
+ (bookingsApi.getByRetreatWithDetails as jest.Mock).mockResolvedValue({data:{items:[]}});mount();expect(await screen.findByRole('alert')).toHaveTextContent('Could not load');expect(screen.queryByText('Minimum free places per night')).not.toBeInTheDocument();
+});
