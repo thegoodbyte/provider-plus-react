@@ -359,7 +359,7 @@ const PaymentRequestsGrid: React.FC = () => {
               className="mt-1 block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2" />
           </label>)}
           <label className="min-w-0 text-sm font-medium">Currency
-            <select value={details.currency} onChange={event => setDetails(current => ({ ...current, currency: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+            <select aria-label="Currency" value={details.currency} onChange={event => setDetails(current => ({ ...current, currency: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
               <option value="">All currencies</option>{currencies.map(currency => <option key={currency} value={currency}>{currency}</option>)}
             </select>
           </label>
