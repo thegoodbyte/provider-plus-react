@@ -15,6 +15,7 @@ import { getIbogaReadyPaymentUrl, getPolishWebsitePaymentUrl, getPreferredPaymen
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import { emptyRequestFilters, matchesRequestFilters, requestFilterError } from './paymentRequestFilters';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -61,6 +62,10 @@ const PaymentRequestsGrid: React.FC = () => {
   const [selectedSendRequest, setSelectedSendRequest] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [details, setDetails] = useState(emptyRequestFilters);
+  const filterError = requestFilterError(details);
+  const hasFilters = paymentFilter !== 'all' || Boolean(searchTerm) || Object.values(details).some(Boolean);
+  const currencies = [...new Set(paymentRequests.map(request => paymentRequestFinancialSummary(request).currency).filter(Boolean))].sort();
   const [sortKey, setSortKey] = useState<PaymentRequestSortKey>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [cancellingRequest, setCancellingRequest] = useState<any | null>(null);
@@ -191,6 +196,7 @@ const PaymentRequestsGrid: React.FC = () => {
     const term = searchTerm.toLowerCase();
 
     return paymentRequests.filter((request) => {
+      if (filterError || !matchesRequestFilters(request, details)) return false;
       const paid = request.status === 'paid';
       const hasBooking = Boolean(typeof request.bookingId === 'string' ? request.bookingId.trim() : request.bookingId?._id || request.bookingId?.id)
         || Boolean((request as any).participantBookings?.length)
@@ -214,7 +220,7 @@ const PaymentRequestsGrid: React.FC = () => {
         (request.note || request.notes || '').toLowerCase().includes(term)
       );
     });
-  }, [paymentRequests, searchTerm, paymentFilter]);
+  }, [paymentRequests, searchTerm, paymentFilter, details, filterError]);
 
   const getSortValue = (request: any, key: PaymentRequestSortKey) => {
     const client = resolveClient(request.clientId);
@@ -323,7 +329,7 @@ const PaymentRequestsGrid: React.FC = () => {
         </label>
         <span className="text-sm text-gray-600" role="status">{filteredRequests.length} of {paymentRequests.length} requests</span>
         {paymentFilter === 'paid-unbooked' && <p className="text-sm text-gray-600">This filter checks saved request links. Use <Link className="text-blue-700 underline" to="/admin/payment-requests/booking-review">Booking link review</Link> to find existing bookings and repair missing links.</p>}
-        {(paymentFilter !== 'all' || searchTerm) && <button type="button" onClick={() => { setPaymentFilter('all'); setSearchTerm(''); }} className="text-sm text-blue-700 underline">Clear filters</button>}
+        {hasFilters && <button type="button" onClick={() => { setPaymentFilter('all'); setSearchTerm(''); setDetails(emptyRequestFilters); }} className="text-sm text-blue-700 underline">Clear filters</button>}
       </div>
       <div className="mb-4 relative max-w-xl">
         <Icon icon={SearchIcon} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -337,8 +343,32 @@ const PaymentRequestsGrid: React.FC = () => {
         />
       </div>
 
+      <fieldset className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
+        <legend className="px-1 text-sm font-semibold">Detailed filters</legend>
+        <p className="mb-3 text-sm text-gray-600">All filters apply together. Amounts use the requested amount in the selected currency. Dates include both days in the Request Date column.</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {([
+            ['clientName', 'Client name', 'text'],
+            ['amountMin', 'Requested amount from', 'number'],
+            ['amountMax', 'Requested amount to', 'number'],
+            ['dateFrom', 'Request date from', 'date'],
+            ['dateTo', 'Request date to', 'date'],
+          ] as const).map(([key, label, type]) => <label key={key} className="min-w-0 text-sm font-medium">{label}
+            <input type={type} value={details[key]} onChange={event => setDetails(current => ({ ...current, [key]: event.target.value }))}
+              {...(type === 'number' ? { min: 0, step: '0.01' } : {})}
+              className="mt-1 block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2" />
+          </label>)}
+          <label className="min-w-0 text-sm font-medium">Currency
+            <select value={details.currency} onChange={event => setDetails(current => ({ ...current, currency: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+              <option value="">All currencies</option>{currencies.map(currency => <option key={currency} value={currency}>{currency}</option>)}
+            </select>
+          </label>
+        </div>
+        {filterError && <p role="alert" className="mt-3 text-sm text-red-700">{filterError}</p>}
+      </fieldset>
+
       <div className="workspace-mobile-sort"><label htmlFor="mobile-request-sort">Sort by</label><select id="mobile-request-sort" value={sortKey} onChange={event => setSortKey(event.target.value as PaymentRequestSortKey)}><option value="invoice">Invoice number</option><option value="client">Client</option><option value="retreat">Retreat</option><option value="date">Request date</option><option value="paidDate">Paid date</option><option value="requested">Amount</option><option value="usd">USD amount</option><option value="currency">Currency</option><option value="status">Status</option></select><button type="button" onClick={() => setSortDirection(value => value === 'asc' ? 'desc' : 'asc')} aria-label="Reverse request sort order">{sortDirection === 'asc' ? '↑' : '↓'}</button></div>
-      {sortedRequests.length === 0 && <div role="status" className="workspace-empty-state">{searchTerm ? 'No payment requests match your search. Try another name or invoice.' : 'No payment requests yet. Create a request to start tracking client payments.'}</div>}
+      {sortedRequests.length === 0 && <div role="status" className="workspace-empty-state">{hasFilters ? 'No payment requests match your filters. Adjust or clear the filters.' : 'No payment requests yet. Create a request to start tracking client payments.'}</div>}
       <div className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden ${sortedRequests.length === 0 ? 'hidden' : ''}`}>
         <div className="overflow-x-auto">
           <table className="workspace-request-table min-w-full divide-y divide-gray-200">

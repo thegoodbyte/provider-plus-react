@@ -93,3 +93,26 @@ it('allows cancelling an invoice (storno) from the grid actions', async () => {
   expect(screen.getByText('No booking linked')).toBeInTheDocument();
   expect(screen.getAllByRole('link', { name: 'Client bookings' }).map(link => link.getAttribute('href'))).toEqual(expect.arrayContaining(['/admin/clients/client-1?tab=bookings', '/admin/clients/client-2?tab=bookings']));
  });
+
+it('combines detailed filters with search/status and resets every filter', async () => {
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[
+  {...requests[0],clientId:{firstName:'Ewa',lastName:'Franus'},status:'sent'},
+  {...requests[1],clientId:{firstName:'Ewa',lastName:'Franus'},status:'paid'},
+  {...requests[2],clientId:{firstName:'Samuel'},status:'sent'},
+ ]});
+ mount(); await screen.findByText('INV-DEPOSIT');
+ fireEvent.change(screen.getByLabelText('Client name'),{target:{value:'franus'}});
+ fireEvent.change(screen.getByLabelText('Requested amount from'),{target:{value:'2500'}});
+ fireEvent.change(screen.getByLabelText('Requested amount to'),{target:{value:'2500'}});
+ fireEvent.change(screen.getByLabelText('Currency'),{target:{value:'PLN'}});
+ fireEvent.change(screen.getByLabelText('Request date from'),{target:{value:'2026-09-18'}});
+ fireEvent.change(screen.getByLabelText('Request date to'),{target:{value:'2026-09-18'}});
+ fireEvent.change(screen.getByLabelText('Payment status'),{target:{value:'unpaid'}});
+ expect(screen.getByText('INV-DEPOSIT')).toBeInTheDocument(); expect(screen.queryByText('INV-BALANCE')).not.toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Search payment requests'),{target:{value:'BALANCE'}});
+ expect(screen.getByText(/No payment requests match your filters/)).toBeInTheDocument();
+ fireEvent.click(screen.getByText('Clear filters'));
+ expect(screen.getByText('INV-BALANCE')).toBeInTheDocument();expect(screen.getByLabelText('Client name')).toHaveValue('');expect(screen.getByLabelText('Currency')).toHaveValue('');
+ fireEvent.change(screen.getByLabelText('Requested amount from'),{target:{value:'10'}});fireEvent.change(screen.getByLabelText('Requested amount to'),{target:{value:'1'}});
+ expect(screen.getByRole('alert')).toHaveTextContent('must not exceed');expect(screen.queryByText('INV-DEPOSIT')).not.toBeInTheDocument();
+});
