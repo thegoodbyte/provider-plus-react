@@ -160,7 +160,7 @@ for (const width of [1440, 390])
     });
     await expect(heading).toBeVisible();
     const compose = page.locator("div.fixed").filter({ has: heading }).last();
-    await expect(compose.locator('input[type="email"]').first()).toHaveValue(
+    await expect(compose.getByRole("textbox").first()).toHaveValue(
       client.email,
     );
     await expect(compose.locator("textarea").first()).toHaveValue(
