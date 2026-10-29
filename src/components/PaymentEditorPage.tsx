@@ -1,3 +1,4 @@
+import PaymentInvoiceActions from './PaymentInvoiceActions';
 import PaymentDetailSummary from './PaymentDetailSummary';
 import PaymentReceiptPanel from './PaymentReceiptPanel';
 import { Modal } from 'antd';
@@ -540,7 +541,7 @@ const PaymentEditorPage: React.FC = () => {
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        {isView && loadedPayment ? <><PaymentDetailSummary payment={loadedPayment} client={typeof loadedPayment.clientId === 'object' ? loadedPayment.clientId : clients.find(client => client._id === formData.clientId)} booking={typeof loadedPayment.bookingId === 'object' ? loadedPayment.bookingId : bookings.find(booking => booking._id === formData.bookingId)} retreat={typeof loadedPayment.retreatId === 'object' ? loadedPayment.retreatId : retreats.find(retreat => retreat._id === formData.retreatId)} request={selectedPaymentRequest} /><PaymentReceiptPanel key={loadedPayment._id} payment={loadedPayment}/></> : <form onSubmit={handleSubmit} className="space-y-6">
+        {isView && loadedPayment ? <><PaymentInvoiceActions key={loadedPayment._id} requestId={resolveId(loadedPayment.paymentRequestId)} clientId={resolveId(loadedPayment.clientId)} onRequestLoaded={setSelectedPaymentRequest} /><PaymentDetailSummary payment={loadedPayment} client={typeof loadedPayment.clientId === 'object' ? loadedPayment.clientId : clients.find(client => client._id === formData.clientId)} booking={typeof loadedPayment.bookingId === 'object' ? loadedPayment.bookingId : bookings.find(booking => booking._id === formData.bookingId)} retreat={typeof loadedPayment.retreatId === 'object' ? loadedPayment.retreatId : retreats.find(retreat => retreat._id === formData.retreatId)} request={selectedPaymentRequest} /><PaymentReceiptPanel key={loadedPayment._id} payment={loadedPayment}/></> : <form onSubmit={handleSubmit} className="space-y-6">
           {formError && (
             <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
               {formError}

@@ -750,7 +750,7 @@ export const paymentRequestsApi = {
   getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payment-requests')),
   getAllFresh: (options?: ReadOptions) => api.get<PaymentRequest[]>('/payment-requests', options),
   getOne: (id: string) => cachedGet<PaymentRequest>(`payment-requests:${id}`, () => api.get<PaymentRequest>(`/payment-requests/${id}`)),
-  getOneFresh: (id: string) => api.get<PaymentRequest>(`/payment-requests/${id}`),
+  getOneFresh: (id: string, options?: ReadOptions) => api.get<PaymentRequest>(`/payment-requests/${id}`, options),
   getPublicDeposit: (hash: string) => api.get(`/payment-requests/public/deposit/${hash}`),
   getPublicInvoice: (hash: string) => api.get(`/public/invoices/${hash}`),
   getIdentityChange: (id: string) => api.get(`/payment-requests/${id}/identity-change`),
