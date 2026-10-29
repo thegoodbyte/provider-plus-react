@@ -136,6 +136,9 @@ for (const width of [1440, 390])
     expect(await page.evaluate(() => (window as any).copiedInvoice)).toBe(
       await link.getAttribute("href"),
     );
+    await expect(
+      page.getByRole("alert", { name: "Connection and loading feedback" }),
+    ).toHaveCount(0);
     await actions
       .getByRole("button", { name: "Preview online invoice (admin)" })
       .click();
