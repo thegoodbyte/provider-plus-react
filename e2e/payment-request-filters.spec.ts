@@ -44,7 +44,7 @@ for (const [width, timezoneId] of [[1440, 'America/Los_Angeles'], [390, 'Pacific
   await expect(page.getByLabel('Client name',{exact:true})).toHaveValue('');
   await page.getByLabel('Request date from',{exact:true}).fill('2026-10-30');
   await page.getByLabel('Request date to',{exact:true}).fill('2026-10-29');
-  await expect(page.getByRole('alert')).toContainText('must not be after');
+  await expect(page.getByRole('group',{name:'Detailed filters'}).getByRole('alert')).toContainText('must not be after');
   expect(writes).toEqual([]);
   const bounds=await page.getByRole('group',{name:'Detailed filters'}).boundingBox();
   expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(width+1);
