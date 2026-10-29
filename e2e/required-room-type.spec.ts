@@ -222,6 +222,10 @@ for (const width of [1440, 390])
       ir.getByRole("button", { name: "Submit questionnaire", exact: true }),
     ).toBeDisabled();
     await preference.selectOption("private");
+    await preference.scrollIntoViewIfNeeded();
+    await ir.screenshot({
+      path: `${process.env.REQUIRED_ROOM_ARTIFACT_DIR || "test-results"}/ir-room-${width}.png`,
+    });
     const submitted = ir.waitForResponse(
       (r) =>
         r.url().includes("initial-questionnaires/public") &&

@@ -33,7 +33,7 @@ const fs = require("node:fs"),
     await adminServer.listen();
     irServer = await createServer({
       root: path.resolve(ir),
-      configFile: path.resolve(ir, "vite.config.ts"),
+      configFile: path.resolve(ir, "vite.config.mts"),
       server: { host: "127.0.0.1", port: 0 },
     });
     await irServer.listen();
