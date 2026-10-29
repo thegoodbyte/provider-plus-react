@@ -52,7 +52,8 @@
     "test:config": "node scripts/check-vite-config.mjs",
     "generate:contracts": "node scripts/contracts/generate.mjs",
     "check:contracts": "node scripts/contracts/generate.mjs --check",
-    "test:contracts": "node --test scripts/contracts/*.test.mjs"
+    "test:contracts": "node --test scripts/contracts/*.test.mjs",
+    "test:booking-reconciliation": "node scripts/test-booking-reconciliation.cjs"
   },
   "browserslist": {
     "production": [
