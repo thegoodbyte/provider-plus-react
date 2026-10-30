@@ -485,7 +485,7 @@ const AppleLayout: React.FC = () => {
         {quickMenuOpen && (
           <div
             id="quick-menu"
-            className="fixed inset-3 z-50 overflow-y-auto rounded-apple-lg border border-apple-gray-200 bg-white p-4 shadow-apple-lg md:absolute md:inset-auto md:left-0 md:top-full md:mt-2 md:w-[520px]"
+            className="fixed inset-3 z-50 overflow-y-auto rounded-apple-lg border border-apple-gray-200 bg-white p-4 shadow-apple-lg md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:w-[520px]"
           >
             <div className="mb-4 flex items-center justify-between">
               <div>
