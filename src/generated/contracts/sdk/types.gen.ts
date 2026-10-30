@@ -13760,6 +13760,81 @@ export type ScreeningUploadCompatControllerUploadHandwritingResponses = {
 
 export type ScreeningUploadCompatControllerUploadHandwritingResponse = ScreeningUploadCompatControllerUploadHandwritingResponses[keyof ScreeningUploadCompatControllerUploadHandwritingResponses];
 
+export type InvoiceDraftsControllerListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/service-invoice-drafts';
+};
+
+export type InvoiceDraftsControllerListResponses = {
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type InvoiceDraftsControllerListResponse = InvoiceDraftsControllerListResponses[keyof InvoiceDraftsControllerListResponses];
+
+export type InvoiceDraftsControllerGetData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/service-invoice-drafts/{id}';
+};
+
+export type InvoiceDraftsControllerGetResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type InvoiceDraftsControllerGetResponse = InvoiceDraftsControllerGetResponses[keyof InvoiceDraftsControllerGetResponses];
+
+export type InvoiceDraftsControllerSaveData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/service-invoice-drafts/{id}';
+};
+
+export type InvoiceDraftsControllerSaveResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type InvoiceDraftsControllerSaveResponse = InvoiceDraftsControllerSaveResponses[keyof InvoiceDraftsControllerSaveResponses];
+
+export type InvoiceDraftsControllerDiscardData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/service-invoice-drafts/{id}/discard';
+};
+
+export type InvoiceDraftsControllerDiscardResponses = {
+    201: unknown;
+};
+
+export type InvoiceDraftsControllerIssueData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/service-invoice-drafts/{id}/issue';
+};
+
+export type InvoiceDraftsControllerIssueResponses = {
+    201: unknown;
+};
+
 export type ServiceRequestsControllerCreateData = {
     body?: never;
     path?: never;

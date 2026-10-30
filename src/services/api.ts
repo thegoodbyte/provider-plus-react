@@ -2368,6 +2368,14 @@ export const missingItemsReminderApi = {
   preview: () => api.get('/missing-items-reminder/preview'),
 };
 
+export const invoiceDraftsApi = {
+ list:()=>api.get<any[]>('/service-invoice-drafts'),
+ get:(id:string)=>api.get<any>(`/service-invoice-drafts/${id}`),
+ save:(id:string,body:any)=>api.put<any>(`/service-invoice-drafts/${id}`,body),
+ discard:(id:string,body:any)=>api.post(`/service-invoice-drafts/${id}/discard`,body),
+ issue:(id:string,body:any)=>{cacheService.clearPattern('payment-requests:');return api.post<any>(`/service-invoice-drafts/${id}/issue`,body);},
+};
+
 export const serviceRequestsApi = {
  previewInvoice: (id:string,data:any) => api.post(`/service-payment-requests/${id}/invoice-preview`,data,{responseType:"blob"}),
  issueInvoice: (id:string, data:any) => api.post(`/service-payment-requests/${id}/invoice`,data),

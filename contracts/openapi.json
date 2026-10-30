@@ -26457,6 +26457,134 @@
         ]
       }
     },
+    "/service-invoice-drafts": {
+      "get": {
+        "operationId": "InvoiceDraftsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "InvoiceDrafts"
+        ]
+      }
+    },
+    "/service-invoice-drafts/{id}": {
+      "get": {
+        "operationId": "InvoiceDraftsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "InvoiceDrafts"
+        ]
+      },
+      "put": {
+        "operationId": "InvoiceDraftsController_save",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "InvoiceDrafts"
+        ]
+      }
+    },
+    "/service-invoice-drafts/{id}/discard": {
+      "post": {
+        "operationId": "InvoiceDraftsController_discard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "InvoiceDrafts"
+        ]
+      }
+    },
+    "/service-invoice-drafts/{id}/issue": {
+      "post": {
+        "operationId": "InvoiceDraftsController_issue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "InvoiceDrafts"
+        ]
+      }
+    },
     "/service-payment-requests": {
       "post": {
         "operationId": "ServiceRequestsController_create",
