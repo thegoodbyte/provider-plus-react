@@ -2074,3 +2074,10 @@
 .booking-next-action-blockers ul { list-style: none; margin: 0; padding: 0; }
 .booking-next-action-blockers li { padding: 12px 0; border-bottom: 1px solid #e2e8f0; }
 @media (max-width: 640px) { .booking-next-action { margin: 0 10px 12px; padding: 14px; } .booking-next-action-main, .booking-next-action-blockers li { align-items: stretch; flex-direction: column; } }
+
+/* Keep the compact confirmation menu below its toggle, including when open. */
+@media (max-width: 600px) {
+  .booking-more-menu { width: 34px; height: 34px; }
+  .booking-more-menu > .booking-more-button { position: static; inset: auto; }
+  .booking-more-menu-popover { top: calc(100% + 6px); }
+}
