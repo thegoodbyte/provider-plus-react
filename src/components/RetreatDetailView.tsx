@@ -1,3 +1,4 @@
+import BalanceReminderButton from './BalanceReminderButton';
 import MedicalPayoutPanel from './MedicalPayoutPanel';
 import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, CreditCard, Edit2, Eye, FlaskConical, Flower2, ListChecks, Mail, PiggyBank, Plus, Printer, RefreshCw, Sparkles, Trash2, TrendingUp, UserPlus, Users, UtensilsCrossed, X } from 'lucide-react';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
@@ -1528,6 +1529,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${paymentStatusClass(client)}`}>{paymentStatusLabel(client)}</span>
+                        <BalanceReminderButton bookingId={client._id} clientName={client.clientName} disabledReason={isCancelledBookingStatus(client.status) ? 'Booking cancelled.' : !client.clientEmail ? 'Client has no email address.' : bookingFinancialSummary(client).state === 'unreconciled' ? 'Reconcile payment history first.' : bookingFinancialSummary(client).balance <= 0.005 ? 'No unpaid balance.' : undefined} />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatAmount(client.totalAmount, client.currency)}

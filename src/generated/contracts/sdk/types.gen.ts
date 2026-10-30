@@ -11324,6 +11324,36 @@ export type PaymentsControllerAutoLinkPaymentsForBookingResponses = {
     201: unknown;
 };
 
+export type BookingBalanceReminderControllerPreviewData = {
+    body?: never;
+    path: {
+        bookingId: string;
+    };
+    query?: never;
+    url: '/payments/booking/{bookingId}/balance-reminder/preview';
+};
+
+export type BookingBalanceReminderControllerPreviewResponses = {
+    201: unknown;
+};
+
+export type BookingBalanceReminderControllerSendData = {
+    body?: never;
+    path: {
+        bookingId: string;
+    };
+    query?: never;
+    url: '/payments/booking/{bookingId}/balance-reminder/send';
+};
+
+export type BookingBalanceReminderControllerSendResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type BookingBalanceReminderControllerSendResponse = BookingBalanceReminderControllerSendResponses[keyof BookingBalanceReminderControllerSendResponses];
+
 export type PaymentsControllerGetBookingFinancialSummaryData = {
     body?: never;
     path: {

@@ -639,6 +639,8 @@ export const paymentsApi = {
   getAllFresh: () => api.get<Payment[]>('/payments', { suppressGlobalError: true } as ReadOptions),
   resumeEdit: (id: string) => api.post<Payment>(`/payments/${id}/resume-edit`),
   linkRequest: (id: string, paymentRequestId: string) => api.post<Payment & { requestLinkPending?: boolean }>(`/payments/${id}/link-request`, { paymentRequestId }),
+  previewBalanceReminder: (bookingId: string, data: any = {}) => api.post(`/payments/booking/${bookingId}/balance-reminder/preview`, data),
+  sendBalanceReminder: (bookingId: string, data: any) => api.post(`/payments/booking/${bookingId}/balance-reminder/send`, data),
   getFinancialSummary: (bookingId: string) => api.get(`/payments/booking/${bookingId}/financial-summary`, { params: { _fresh: Date.now() } }),
   getFinancialReconciliation: (after?: string) => api.get(`/payments/financial-reconciliation`, { params: { after } }),
   getPlanSettings: () => api.get('/payments/plan-settings'),

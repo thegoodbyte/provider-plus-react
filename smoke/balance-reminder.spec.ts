@@ -1,0 +1,22 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+const fixturePath=process.env.BALANCE_REMINDER_FIXTURE;
+test.skip(!fixturePath,'Requires the disposable real API/Mongo balance reminder fixture');
+for(const width of [1440,390])test(`review and send balance reminders from booking and retreat ${width}px`,async({page,request,baseURL},info)=>{
+ const f=JSON.parse(fs.readFileSync(fixturePath!,'utf8'));expect((await request.post(f.url+'/fixture/balance-reset')).ok()).toBe(true);
+ const initial=await (await request.get(f.url+'/fixture/balance-data')).json();const {ids}=initial;
+ await page.setViewportSize({width,height:1000});await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'admin',role:'admin',email:'admin@example.invalid'}));},f.tokens.admin);
+ await page.route('**/*',async route=>{const req=route.request(),u=new URL(req.url());if(u.origin===new URL(baseURL!).origin&&!u.pathname.startsWith('/api/'))return route.continue();const p=u.pathname.replace(/^\/api(?=\/)/,'');
+ if(/^\/(payments|payment-requests|communications|bookings|retreats)(\/|$)/.test(p))return route.fulfill({response:await route.fetch({url:f.url+p+u.search,headers:{...req.headers(),authorization:'Bearer '+f.tokens.admin}})});
+ return route.fulfill({json:p.includes('retreat-expenses')?{totalExpenses:0,categories:[]}:p==='/environment/status'?{production:true}:p.includes('config-summary')||p==='/users/navigation-permissions'?{}:[]});});
+ await page.goto(`/admin/bookings/${ids.bookings[0]}`);await page.getByRole('tab',{name:'Payments',exact:true}).click();await page.getByRole('button',{name:/Email client about balance/}).click();
+ const dialog=page.getByRole('dialog',{name:'Email client about balance'});await expect(dialog.getByLabel('Reminder wording')).toHaveValue('overdue');await expect(dialog.getByLabel('Reminder language')).toHaveValue('en');await expect(dialog.getByLabel('To',{exact:true})).toHaveValue('balance0@example.invalid');
+ expect((await(await request.get(f.url+'/fixture/balance-data')).json()).captures).toHaveLength(0);
+ const body=dialog.getByLabel('Message',{exact:true});await body.fill((await body.inputValue())+'\nPersonal review note.');
+ await body.scrollIntoViewIfNeeded();
+ const png=process.env.BALANCE_REMINDER_ARTIFACTS?path.join(process.env.BALANCE_REMINDER_ARTIFACTS,`balance-${width}.png`):info.outputPath(`balance-${width}.png`);await page.screenshot({path:png,fullPage:true});
+ await dialog.getByRole('button',{name:'Send Email',exact:true}).click();await expect(dialog).toHaveCount(0);let data=await(await request.get(f.url+'/fixture/balance-data')).json();expect(data.captures).toHaveLength(1);expect(data.captures[0].bodyText).toContain('Personal review note.');expect(data.financial).toEqual(initial.financial);
+ await page.goto(`/admin/retreats/${ids.retreat}?tab=clients`);await page.getByRole('tab',{name:/^Clients/}).click();const row=page.getByRole('row').filter({hasText:'Czech Synthetic'});await expect(row).toContainText('Balance');await row.getByRole('button',{name:/Email client about balance/}).click();await expect(dialog.getByLabel('Reminder language')).toHaveValue('cz');await expect(dialog.getByLabel('Reminder wording')).toHaveValue('due');await dialog.getByLabel('Reminder language').selectOption('pl');await expect(dialog.getByLabel('Reminder language')).toHaveValue('pl');await expect(dialog.getByLabel('Subject')).toHaveValue(/Przypomnienie/);await dialog.getByRole('button',{name:'Send Email',exact:true}).click();await expect(dialog).toHaveCount(0);
+ await page.reload();await expect(page.getByRole('row').filter({hasText:'Czech Synthetic'})).toContainText('Balance');data=await(await request.get(f.url+'/fixture/balance-data')).json();expect(data.captures).toHaveLength(2);expect(data.emails).toHaveLength(2);expect(data.financial).toEqual(initial.financial);expect(data.emails.map((e:any)=>e.bookingId)).toEqual(expect.arrayContaining(ids.bookings));
+});

@@ -22036,6 +22036,59 @@
         ]
       }
     },
+    "/payments/booking/{bookingId}/balance-reminder/preview": {
+      "post": {
+        "operationId": "BookingBalanceReminderController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bookingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BookingBalanceReminder"
+        ]
+      }
+    },
+    "/payments/booking/{bookingId}/balance-reminder/send": {
+      "post": {
+        "operationId": "BookingBalanceReminderController_send",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "bookingId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "BookingBalanceReminder"
+        ]
+      }
+    },
     "/payments/booking/{bookingId}/financial-summary": {
       "get": {
         "operationId": "PaymentsController_getBookingFinancialSummary",

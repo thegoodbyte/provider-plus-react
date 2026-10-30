@@ -1,3 +1,4 @@
+import BalanceReminderButton from './BalanceReminderButton';
 import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -735,6 +736,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
           <h3>Payments</h3>
         </div>
         <div className="payment-header-actions">
+          <BalanceReminderButton bookingId={bookingId} clientName={clientName} disabledReason={!financialSummary ? 'Load the current balance first.' : financialSummary.sourceState !== 'verified_ledger' ? 'Reconcile payment history first.' : financialSummary.balance <= 0.005 ? 'No unpaid balance.' : undefined} />
           <button type="button" className="refresh-payments-button" onClick={() => { void fetchPayments(); void syncPaymentPlan(); }} disabled={isLoading || paymentPlanSaving}>↻ <span>Refresh</span></button>
           <button type="button" className="record-payment-button" onClick={openPaymentEditor}><span aria-hidden="true">+</span> Record a payment</button>
         </div>

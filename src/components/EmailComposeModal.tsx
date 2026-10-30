@@ -107,6 +107,8 @@ interface EmailComposeModalProps {
   initialValues: EmailComposeInitialValues;
   extraContent?: React.ReactNode;
   onClose: () => void;
+  lockTemplate?: boolean;
+  onSendEmail?: (payload: any) => Promise<{data:any}>;
   onSent?: (sentEmail: any) => void | Promise<void>;
 }
 
@@ -114,6 +116,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   title = 'Send Email',
   initialValues,
   extraContent,
+  lockTemplate = false,
+  onSendEmail,
   onClose,
   onSent,
 }) => {
@@ -301,7 +305,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     let active = true;
     const bookingId = initialValues.bookingId || initialValues.variables?.bookingId || initialValues.variables?.booking?._id || initialValues.variables?.booking?.id;
     const clientId = initialValues.clientId || initialValues.variables?.client?._id || initialValues.variables?.client?.id;
-    if (!selectedTemplateId || (!bookingId && !clientId)) return () => { active = false; };
+    if (lockTemplate || !selectedTemplateId || (!bookingId && !clientId)) return () => { active = false; };
     communicationsApi.previewEmail({
       templateId: selectedTemplateId,
       ...(bookingId ? { bookingId: String(bookingId) } : {}),
@@ -357,7 +361,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   }, [preparedVariables, templates]);
 
   useEffect(() => {
-    if (!initialValues.templateKey || templates.length === 0) return;
+    if (lockTemplate || !initialValues.templateKey || templates.length === 0) return;
     const current = templates.find((template) => template._id === selectedTemplateId);
     if (current?.templateKey === initialValues.templateKey && normalizeBookingConfirmationLanguage(current.language) === selectedLanguage) return;
     const matchingTemplate = templates.find((template) =>
@@ -422,7 +426,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
     setSending(true);
     try {
-      const response = await communicationsApi.sendEmail({
+      const response = await (onSendEmail || communicationsApi.sendEmail)({
         to,
         cc: formData.cc.trim() || undefined,
         bcc: formData.bcc.trim() || undefined,
@@ -460,7 +464,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <Toast toast={toast} onDismiss={dismissToast} />
       {deliveryUncertain && <p className="absolute bottom-4 rounded-lg bg-white p-3 text-sm"><a href="/admin/communications">Check sent messages in Communications</a></p>}
       {sending && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45" role="status" aria-live="polite" aria-label="Sending email"><div className="flex min-w-[220px] flex-col items-center gap-4 rounded-xl bg-white px-8 py-7 text-gray-900 shadow-2xl"><Icon icon={Loader} className="h-10 w-10 animate-spin text-blue-600" /><strong className="text-base">Sending email</strong><span className="text-center text-sm text-gray-500">Please keep this window open.</span></div></div>}
@@ -483,7 +487,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
           {extraContent}
 
-          {templates.length > 0 && (
+          {!lockTemplate && templates.length > 0 && (
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Language</label>
@@ -565,6 +569,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">To</label>
               <input
+                aria-label="To"
+                readOnly={lockTemplate}
                 value={formData.to}
                 onChange={(event) => updateField('to', event.target.value)}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -618,6 +624,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
             <input
+              aria-label="Subject"
               value={formData.subject}
               onChange={(event) => updateField('subject', event.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -629,6 +636,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             {formData.bodyHtml && <div className="mb-4"><div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Live HTML preview</div><iframe title="Booking email HTML preview" sandbox="" srcDoc={formData.bodyHtml} className="h-[520px] w-full rounded-md border border-gray-300 bg-white" /></div>}
             <textarea
               rows={14}
+              aria-label="Message"
               value={formData.bodyText}
               onChange={(event) => {
                 const value = event.target.value;
