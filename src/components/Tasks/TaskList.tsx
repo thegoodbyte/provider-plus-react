@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Task, taskService } from '../../services/taskService';
 import './TaskList.css';
+import { Eye } from 'lucide-react';
+import { TaskDetails } from './TaskDetails';
 
 interface TaskListProps {
   tasks: Task[];
@@ -15,6 +17,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onDeleteTask,
   onCompleteTask,
 }) => {
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [sortField, setSortField] = useState<string>('dueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -184,7 +187,8 @@ export const TaskList: React.FC<TaskListProps> = ({
           >
             <div className="task-cell task-name">
               <span className="task-cell-label">Task</span>
-              <div className="task-title-row"><div className="task-title">{task.supportReference ? <a href={'/admin/tasks?support='+encodeURIComponent(task.supportReference)}>{task.supportReference} · {task.name}</a> : task.name}</div><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? 'Client request' : isSystemTask(task) ? 'System' : 'Custom'}</span></div>
+              <span className="task-reference">{task.taskNumber ? `Task #${task.taskNumber}` : 'Reference pending'}</span>
+              <div className="task-title-row"><div className="task-title">{task.supportReference ? <a href={'/admin/tasks?support='+encodeURIComponent(task.supportReference)}>{task.supportReference} · {task.name}</a> : <button className="task-title-link" onClick={() => setViewingTask(task)}>{task.name}</button>}</div><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? 'Client request' : isSystemTask(task) ? 'System' : 'Custom'}</span></div>
             </div>
 
             <div className="task-cell">
@@ -234,7 +238,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               {task.clientId && typeof task.clientId === 'object' ? (
                 <div className="client-info">
                   <div className="client-name" title={`${getClientDisplayName(task.clientId)} ${getClientNumber(task.clientId)}`}>
-                    {getClientDisplayName(task.clientId)} {getClientNumber(task.clientId)}
+                    {task.clientId._id || task.clientId.id ? <a href={'/admin/clients/' + encodeURIComponent(task.clientId._id || task.clientId.id!)}>{getClientDisplayName(task.clientId)} {getClientNumber(task.clientId)}</a> : <>{getClientDisplayName(task.clientId)} {getClientNumber(task.clientId)}</>}
                   </div>
                 </div>
               ) : (
@@ -256,6 +260,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             <div className="task-cell actions">
               <span className="task-cell-label">Actions</span>
               <div className="action-buttons">
+                {task.supportReference ? <a className="task-action-btn" href={'/admin/tasks?support='+encodeURIComponent(task.supportReference)} aria-label="View support request" title="View support request"><Eye size={16} aria-hidden="true" /></a> : <button className="task-action-btn" onClick={() => setViewingTask(task)} aria-label="View task" title="View task"><Eye size={16} aria-hidden="true" /></button>}
                 {task.status !== 'completed' && (
                   <button
                     className="task-action-btn task-action-complete"
@@ -287,6 +292,7 @@ export const TaskList: React.FC<TaskListProps> = ({
           </div>
         ))}
       </div>
+      {viewingTask && <TaskDetails task={viewingTask} onClose={() => setViewingTask(null)} onEdit={onEditTask} />}
     </div>
   );
 };

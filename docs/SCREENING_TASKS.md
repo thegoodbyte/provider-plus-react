@@ -1,0 +1,9 @@
+# Screening task references
+
+In a client's Screening page, Quick Tasks shows a stable numeric Task # reference. Select the task title or eye icon to inspect its description, status, priority, due date and notes. View does not save or change status. Edit from details or the pencil icon opens the existing form. Select a linked client name to open that client's profile. Support requests keep their existing inbox link and protected write workflow. The same improvements apply to all shared task lists.
+
+Task numbers are server-owned and immutable. Existing tasks with absent/null references are numbered on API startup, after the partial unique numeric index is installed. Atomic sequence allocation covers document saves, insertMany and findOneAndUpdate upserts used by manual/support/automation writers. Gaps are intentional after failed writes/retries. Existing IDs and all task content survive repeated/concurrent startup. A failed repair aborts startup; restart safely resumes. Do not remove numbers or drop the index on rollback; older clients ignore the additive field.
+
+Deploy API before admin. No notification, public visibility or medical approval policy changes.
+
+Validation from clean checkouts: build API, run `TEST_MONGO_URL=mongodb://127.0.0.1:27017 npm run test:db`. In admin run `npm test -- --runInBand` and `npm run build`. For real API/Mongo desktop/mobile browser coverage, run `TEST_MONGO_URL=mongodb://127.0.0.1:27017 TASK_IDENTITY_API_CHECKOUT=/absolute/path/to/built/api node scripts/run-task-identity-e2e.cjs`. Optional `TASK_IDENTITY_ARTIFACT_DIR` saves screenshots. Runner starts disposable fixture/server and fails if dependencies/Mongo are missing. The screening auxiliary API data is synthetic; tasks/client records use actual API/services and indexed MongoDB. Outbound email is stubbed and asserted unused.

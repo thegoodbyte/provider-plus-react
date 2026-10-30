@@ -2,6 +2,7 @@ import { authFetch } from './authService';
 import { API_BASE_URL } from '../config/api.config';
 
 export interface Task {
+  taskNumber?: number;
   supportReference?: string;
   id: string;
   name: string;
@@ -12,6 +13,8 @@ export interface Task {
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   dueDate?: string;
   clientId?: string | {
+    _id?: string;
+    id?: string;
     firstName: string;
     lastName: string;
     fname?: string;
