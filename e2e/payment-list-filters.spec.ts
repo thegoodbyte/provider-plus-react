@@ -198,12 +198,20 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole("button", { name: "Preview PDF", exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", {
-        name: "Review email with PDF attachment",
-        exact: true,
-      }),
-    ).toBeVisible();
+    if (width < 600) {
+      await page.getByLabel("More booking actions", { exact: true }).click();
+      await expect(
+        page.getByRole("button", { name: "Review email", exact: true }),
+      ).toBeVisible();
+      await page.getByLabel("More booking actions", { exact: true }).click();
+    } else {
+      await expect(
+        page.getByRole("button", {
+          name: "Review email with PDF attachment",
+          exact: true,
+        }),
+      ).toBeVisible();
+    }
     await expect(
       page.getByRole("heading", { name: "Booking #1311", exact: true }),
     ).toBeVisible();
