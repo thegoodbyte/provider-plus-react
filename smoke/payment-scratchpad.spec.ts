@@ -106,8 +106,14 @@ for (const device of ['desktop','mobile']) test.describe(`Scratchpad ${device}`,
     await expect(page.getByText('1 matching receipts',{exact:false})).toBeVisible();
     await page.route('**/payment-scratchpad?**',route=>route.fulfill({status:503,json:{message:'Synthetic refresh failure'}}));
     await page.getByRole('button',{name:'Refresh',exact:true}).click();
-    await expect(page.getByText(/Previous snapshot shown below/)).toBeVisible();
-    await expect(page.getByText(/Last successful refresh/)).toBeVisible();
+    await expect(page.getByRole('alert').filter({hasText:'Previous snapshot is available in View totals'})).toBeVisible();
+    await expect(page.getByText(marker,{exact:false})).toBeVisible();
+    await page.getByRole('button',{name:'View totals',exact:true}).click();
+    const totals=page.getByRole('dialog',{name:'Scratchpad totals'});
+    await expect(totals.getByText(/Last successful refresh/)).toBeVisible();
+    await expect(totals.getByRole('status')).toContainText('These totals are from the last successful refresh');
+    await totals.getByRole('button',{name:'Close totals',exact:true}).click();
+    await expect(totals).toBeHidden();
     await expect(page.getByText(marker,{exact:false})).toBeVisible();
   });
 });
