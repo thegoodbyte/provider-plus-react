@@ -3,12 +3,12 @@ import BookingEditorForm from './BookingEditorForm';
 import { bookingsApi, clientsApi, paymentRequestsApi, ceremoniesApi } from '../services/api';
 import { roomInventoryApi } from '../services/roomInventoryApi';
 jest.mock('../services/authService', () => ({ authService: { getUser: () => ({ role: 'staff' }) } }));
-jest.mock('../services/api', () => ({ bookingsApi: { create: jest.fn(), update: jest.fn(), getOne: jest.fn(), isBookingNumberAvailable: jest.fn() }, clientsApi: { getBookingOptions: jest.fn() }, ceremoniesApi: { getByRetreat: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getAllFresh: jest.fn() }, referralsApi: { getAll: jest.fn() } }));
+jest.mock('../services/api', () => ({ bookingsApi: { getNextBookingNumber: jest.fn().mockResolvedValue({data:9500}), create: jest.fn(), update: jest.fn(), getOne: jest.fn(), isBookingNumberAvailable: jest.fn() }, clientsApi: { getBookingOptions: jest.fn() }, ceremoniesApi: { getByRetreat: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getAllFresh: jest.fn() }, referralsApi: { getAll: jest.fn() } }));
 jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { view: jest.fn(), options: jest.fn(), preference: jest.fn() } }));
 jest.mock('./SearchablePaymentRequestSelect', () => ({ __esModule: true, default: ({ onPaymentRequestSelect }: any) => <button type="button" onClick={() => onPaymentRequestSelect('new-request', { _id: 'new-request', retreatId: 'other-retreat', currency: 'USD', fullPrice: 9999, roomType: 'single' })}>Choose replacement request</button> }));
 const booking: any = { _id: 'booking', bookingNumber: 1902, clientId: 'client', retreatId: 'retreat', paymentRequestId: 'old-request', totalAmount: 1000, amountPaid: 400, currency: 'PLN', status: 'confirmed', registrationDate: '2026-10-20', bookingType: 'full_retreat', roomType: 'private' };
 beforeEach(() => {
- jest.clearAllMocks(); (bookingsApi.isBookingNumberAvailable as jest.Mock).mockResolvedValue({ data: { available: true } }); (clientsApi.getBookingOptions as jest.Mock).mockResolvedValue({ data: [{ _id: 'client', firstName: 'Synthetic', lastName: 'Client' }] });
+ jest.clearAllMocks(); (bookingsApi.getNextBookingNumber as jest.Mock).mockResolvedValue({data:9500}); (bookingsApi.isBookingNumberAvailable as jest.Mock).mockResolvedValue({ data: { available: true } }); (clientsApi.getBookingOptions as jest.Mock).mockResolvedValue({ data: [{ _id: 'client', firstName: 'Synthetic', lastName: 'Client' }] });
  (paymentRequestsApi.getOne as jest.Mock).mockResolvedValue({ data: { _id: 'old-request', requestedAmount: 1000, currency: 'PLN' } });
  (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [] });
  (roomInventoryApi.view as jest.Mock).mockResolvedValue({ data: null }); (roomInventoryApi.options as jest.Mock).mockResolvedValue({ data: [] });
