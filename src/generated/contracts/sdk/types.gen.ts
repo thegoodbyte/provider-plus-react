@@ -520,6 +520,7 @@ export type CreatePaymentRequestDto = {
     ceremonyId?: string;
     ceremonyNumber?: number;
     clientId: string;
+    consentRequired?: boolean;
     context?: 'retreat' | 'standalone_service' | 'event';
     createdBy?: string;
     currency: string;

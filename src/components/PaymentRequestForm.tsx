@@ -89,6 +89,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     error: '',
   });
   const [formData, setFormData] = useState({
+    consentRequired: paymentRequest?.consentRequired ?? ((paymentRequest?.requestType || 'deposit') === 'deposit'),
     display_id: paymentRequest?.display_id || '',
     invoiceNumber: paymentRequest?.invoiceNumber || paymentRequest?.display_id?.toString() || '',
     clientId: resolveId(paymentRequest?.clientId),
@@ -331,6 +332,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized, lineItems, depositOverridden, planSettings.depositPercentage]);
 
   const handleChange = (field: string, value: any) => {
+    if(field==='requestType'){setFormData(prev=>({...prev,requestType:value,consentRequired:value==='deposit'}));return;}
     if (field === 'requestedAmount' && formData.requestType === 'deposit') setDepositOverridden(true);
     if (field === 'status' && value === 'cancelled' && !formData.cancellationReason) {
       setFormData(prev => ({ ...prev, status: value, cancellationReason: 'Client did not pay' }));
@@ -435,6 +437,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         paymentDate: formData.paymentDate,
         paymentType: formData.paymentType as PaymentRequest['paymentType'],
         requestType: formData.requestType as PaymentRequest['requestType'],
+        consentRequired: formData.requestType === 'deposit' && formData.consentRequired,
         requestedAmount,
         baseBookingPrice: ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? Number(formData.fullPriceQuote) : undefined,
         lineItems: itemized ? lineItems : [],
@@ -681,6 +684,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               </select>
             </div>
 
+            <div className="md:col-span-2 rounded-md border border-blue-200 bg-blue-50 p-3">
+              {formData.requestType==='deposit' ? <label className="flex items-start gap-2"><input type="checkbox" checked={formData.consentRequired} onChange={event=>{const consentRequired=event.currentTarget.checked;setFormData(prev=>({...prev,consentRequired}));}}/>Require consent before payment</label> : <p>Additional and non-deposit payments go directly to payment details; deposit consent is not required.</p>}
+              <p className="mt-2 text-xs text-gray-600">For deposits, consent is required by default. Uncheck only when it is not needed for this request. This changes the client page; it does not record consent on the client’s behalf. Admin preview always opens without the consent form.</p>
+            </div>
             {bookingDefaultsLoading && (
               <div className="md:col-span-2 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
                 Loading active booking defaults…

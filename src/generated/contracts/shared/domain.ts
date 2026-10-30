@@ -1829,6 +1829,7 @@ export interface PaymentRequestLineItem {
 }
 
 export interface PaymentRequest {
+  consentRequired?: boolean;
   participantBookings?: { clientId: string; bookingId: string | { _id: string; bookingNumber?: number }; amount: number; currency: string }[];
   context?: 'retreat' | 'standalone_service' | 'event';
   amountReceived?: number;

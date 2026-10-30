@@ -1681,6 +1681,9 @@
           "clientId": {
             "type": "string"
           },
+          "consentRequired": {
+            "type": "boolean"
+          },
           "context": {
             "enum": [
               "retreat",
