@@ -10,7 +10,7 @@ for (const width of [1440,1024,768,390]) test(`Quick Menu remains inside the vie
     if(url.pathname==='/retreats') return route.fulfill({json:[{_id:'synthetic-retreat',name:'Synthetic retreat',startDate:'2026-11-01'}]});
     return route.fulfill({json:url.pathname==='/users/navigation-permissions'||url.pathname.includes('config-summary')?{}:url.pathname==='/environment/status'?{production:true}:[]});
   });
-  await page.goto('/admin/notifications');
+  await page.goto('/admin/ir-notifications');
   const trigger=page.getByRole('button',{name:'Quick Menu',exact:true});
   if(!await trigger.isVisible()) await page.getByLabel('Account and tools',{exact:true}).click();
   await trigger.click();
