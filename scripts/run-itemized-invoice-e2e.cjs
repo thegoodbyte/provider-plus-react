@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),{spa
 (async()=>{
  if(!process.env.ITEMIZED_INVOICE_API_CHECKOUT)throw Error('Set ITEMIZED_INVOICE_API_CHECKOUT to a built API checkout; MongoDB is required.');
  process.env.APP_ENV='production';
- const {createFixture}=require(path.resolve(process.env.ITEMIZED_INVOICE_API_CHECKOUT,'test/itemized-invoice.fixture.cjs'));
+ const {createFixture}=require(path.resolve(process.env.ITEMIZED_INVOICE_API_CHECKOUT,'test/invoice-drafts.fixture.cjs'));
  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'itemized-invoice-'));let f,server;
  try{
  f=await createFixture();await f.app.listen(0,'127.0.0.1');fs.writeFileSync(path.join(folder,'fixture.json'),JSON.stringify({url:'http://127.0.0.1:'+f.app.getHttpServer().address().port,ids:f.ids,tokens:f.tokens}));
