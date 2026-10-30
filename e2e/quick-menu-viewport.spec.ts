@@ -7,6 +7,7 @@ for (const width of [1440,1024,768,390]) test(`Quick Menu remains inside the vie
     const request=route.request(),url=new URL(request.url());
     if(!['xhr','fetch'].includes(request.resourceType())) return route.continue();
     if(request.method()!=='GET') return route.abort();
+    if(url.pathname==='/retreats') return route.fulfill({json:[{_id:'synthetic-retreat',name:'Synthetic retreat',startDate:'2026-11-01'}]});
     return route.fulfill({json:url.pathname==='/users/navigation-permissions'||url.pathname.includes('config-summary')?{}:url.pathname==='/environment/status'?{production:true}:[]});
   });
   await page.goto('/admin/notifications');
