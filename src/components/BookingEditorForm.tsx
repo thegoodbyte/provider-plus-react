@@ -410,6 +410,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       const bookingNumberValue = formData.bookingNumber.trim();
       const bookingNumber = bookingNumberValue ? Number(bookingNumberValue) : undefined;
       if (lockedClientId && formData.clientId !== lockedClientId) throw new Error('The booking client changed. Reopen the booking form.');
+      if (mode === 'create' && formData.paymentRequestId && !(Number(formData.totalAmount) > 0)) throw new Error('Enter the full agreed booking price. A payment request may only cover a deposit.');
       const payload = {
         ...(formData.paymentPlanEnabled === false ? { paymentPlanEnabled: false } : {}),
         ...(authService.getUser()?.role === 'admin' ? { referralAttribution: formData.referralAttribution, referralPartnerId: ['direct', 'influenced'].includes(formData.referralAttribution) ? formData.referralPartnerId : null, referralEvidence: formData.referralEvidence } : {}),
@@ -766,7 +767,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             <label className="mb-1 block text-sm font-medium text-gray-700">Agreed price for this booking</label>
             <input
               type="number"
-              min="0"
+              min={mode === 'create' && formData.paymentRequestId ? '0.01' : '0'}
               step="0.01"
               value={formData.totalAmount}
               onChange={(e) => setFormData({ ...formData, totalAmount: Number(e.target.value) })}

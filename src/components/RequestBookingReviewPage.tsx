@@ -1,3 +1,4 @@
+import RequestBookingAction from './RequestBookingAction';
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
@@ -42,6 +43,7 @@ export default function RequestBookingReviewPage() {
           <h2 className="font-semibold"><Link className="text-blue-700 underline" to={`/admin/payment-requests/${request._id}`}>Request #{request.invoiceNumber || request.display_id}</Link> · {[request.clientId?.firstName, request.clientId?.lastName].filter(Boolean).join(' ')}</h2>
           <p className="my-2 text-sm">{row.message}</p>
           {row.unallocatedPayments?.map((payment: any) => <p key={payment._id} className="my-1 text-sm">Unallocated payment #{payment.display_id || payment._id}: {payment.amount} {payment.currency} · {payment.status}</p>)}
+          {!bookingId && !row.candidates.some((booking: any) => !['cancelled','canceled'].includes(booking.status) || booking.evidence === 'Existing booking/payment reference') && <RequestBookingAction request={request} />}
           {clientId && <Link className="text-blue-700 underline" to={clientBookingsPath(clientId)}>Client bookings</Link>}
           {row.candidates.filter((booking: any) => !bookingId || booking._id === bookingId).map((booking: any) => <div key={booking._id} className="mt-3 rounded-md bg-gray-50 p-3">
             <Link className="font-medium text-blue-700 underline" to={`/admin/bookings/${booking._id}`}>Booking #{booking.bookingNumber || booking._id}</Link>

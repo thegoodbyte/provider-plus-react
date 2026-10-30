@@ -1,18 +1,170 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import RequestBookingAction from './RequestBookingAction';
-import { paymentRequestsApi } from '../services/api';
-const mockNavigate=jest.fn();
-jest.mock('react-router-dom',()=>({...jest.requireActual('react-router-dom'),useNavigate:()=>mockNavigate}));
-jest.mock('../services/api',()=>({paymentRequestsApi:{getOneFresh:jest.fn(),getBookingLinkReview:jest.fn()}}));
-const request:any={_id:'req',clientId:{_id:'client'},retreatId:{_id:'retreat'},fullPrice:1000,requestedAmount:400,currency:'PLN',status:'paid',requestType:'deposit',bookingType:'booster',ceremonyId:{_id:'ceremony'},ceremonyNumber:2};
-const open=(patch:any={})=>render(<MemoryRouter initialEntries={['/admin/payment-requests/req']}><RequestBookingAction request={{...request,...patch}} /></MemoryRouter>);
-it('opens a review form with the full agreed price and booster context, without claiming payment as booking money',()=>{open();const url=new URL(screen.getByRole('link',{name:'Create booking'}).getAttribute('href')!,'https://local.invalid');expect(url.pathname).toBe('/admin/bookings/new');expect(Object.fromEntries(url.searchParams)).toEqual({paymentRequestId:'req',clientId:'client',retreatId:'retreat',totalAmount:'1000',currency:'PLN',bookingType:'booster',ceremonyId:'ceremony',ceremonyNumber:'2'});expect(url.searchParams.has('amountPaid')).toBe(false);});
-it('opens the existing booking instead of inviting a duplicate',()=>{open({bookingId:{_id:'booking'}});expect(screen.getByRole('link',{name:'Open booking'})).toHaveAttribute('href','/admin/bookings/booking');expect(screen.queryByRole('link',{name:'Create booking'})).not.toBeInTheDocument();});
-it.each([{status:'cancelled'},{context:'standalone_service'},{requestType:'additional'},{fullPrice:0}])('does not offer booking creation for %j',patch=>{open(patch);expect(screen.queryByRole('link',{name:'Create booking'})).not.toBeInTheDocument();});
-it('does not copy an entire multi-person quote onto one participant booking',()=>{open({lineItems:[{clientId:'one'},{clientId:'two'}]});expect(screen.queryByRole('link',{name:'Create booking'})).not.toBeInTheDocument();expect(screen.getByText(/multiple participants/)).toBeInTheDocument();});
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import RequestBookingAction from "./RequestBookingAction";
+import { paymentRequestsApi } from "../services/api";
+const mockNavigate = jest.fn();
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+}));
+jest.mock("../services/api", () => ({
+  paymentRequestsApi: {
+    getOneFresh: jest.fn(),
+    getBookingLinkReview: jest.fn(),
+  },
+}));
+const request: any = {
+  _id: "req",
+  clientId: { _id: "client" },
+  retreatId: { _id: "retreat" },
+  fullPrice: 1000,
+  requestedAmount: 400,
+  currency: "PLN",
+  status: "paid",
+  requestType: "deposit",
+  bookingType: "booster",
+  ceremonyId: { _id: "ceremony" },
+  ceremonyNumber: 2,
+};
+const open = (patch: any = {}) =>
+  render(
+    <MemoryRouter initialEntries={["/admin/payment-requests/req"]}>
+      <RequestBookingAction request={{ ...request, ...patch }} />
+    </MemoryRouter>,
+  );
+it("opens a review form with the full agreed price and booster context, without claiming payment as booking money", () => {
+  open();
+  const url = new URL(
+    screen.getByRole("link", { name: "Create booking" }).getAttribute("href")!,
+    "https://local.invalid",
+  );
+  expect(url.pathname).toBe("/admin/bookings/new");
+  expect(Object.fromEntries(url.searchParams)).toEqual({
+    paymentRequestId: "req",
+    clientId: "client",
+    retreatId: "retreat",
+    paymentPlanEnabled: "false",
+    totalAmount: "1000",
+    currency: "PLN",
+    bookingType: "booster",
+    ceremonyId: "ceremony",
+    ceremonyNumber: "2",
+  });
+  expect(url.searchParams.has("amountPaid")).toBe(false);
+});
+it("opens the existing booking instead of inviting a duplicate", () => {
+  open({ bookingId: { _id: "booking" } });
+  expect(screen.getByRole("link", { name: "Open booking" })).toHaveAttribute(
+    "href",
+    "/admin/bookings/booking",
+  );
+  expect(
+    screen.queryByRole("link", { name: "Create booking" }),
+  ).not.toBeInTheDocument();
+});
+it.each([
+  { status: "cancelled" },
+  { context: "standalone_service" },
+  { requestType: "additional" },
+])("does not offer booking creation for %j", (patch) => {
+  open(patch);
+  expect(
+    screen.queryByRole("link", { name: "Create booking" }),
+  ).not.toBeInTheDocument();
+});
+it("does not copy an entire multi-person quote onto one participant booking", () => {
+  open({ lineItems: [{ clientId: "one" }, { clientId: "two" }] });
+  expect(
+    screen.queryByRole("link", { name: "Create booking" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByText(/multiple participants/)).toBeInTheDocument();
+});
 
-beforeEach(()=>{jest.clearAllMocks();(paymentRequestsApi.getOneFresh as jest.Mock).mockResolvedValue({data:request});(paymentRequestsApi.getBookingLinkReview as jest.Mock).mockResolvedValue({data:[]});});
-it('checks fresh request and similar bookings before navigating to create',async()=>{open();expect(paymentRequestsApi.getBookingLinkReview).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('link',{name:'Create booking'}));await waitFor(()=>expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/admin/bookings/new?')));expect(paymentRequestsApi.getOneFresh).toHaveBeenCalledWith('req');expect(paymentRequestsApi.getBookingLinkReview).toHaveBeenCalledWith('req');});
-it('offers existing booking review instead of creating a similar booking',async()=>{(paymentRequestsApi.getBookingLinkReview as jest.Mock).mockResolvedValue({data:[{request:{_id:'req'},candidates:[{_id:'existing',bookingNumber:1910,status:'confirmed'}]}]});open();fireEvent.click(screen.getByRole('link',{name:'Create booking'}));expect(await screen.findByRole('link',{name:'Booking #1910'})).toHaveAttribute('href','/admin/bookings/existing');expect(mockNavigate).not.toHaveBeenCalled();});
-it('does not navigate when the preflight check fails',async()=>{(paymentRequestsApi.getBookingLinkReview as jest.Mock).mockRejectedValue(new Error('Offline'));open();fireEvent.click(screen.getByRole('link',{name:'Create booking'}));await screen.findByRole('alert');expect(mockNavigate).not.toHaveBeenCalled();});
+beforeEach(() => {
+  jest.clearAllMocks();
+  (paymentRequestsApi.getOneFresh as jest.Mock).mockResolvedValue({
+    data: request,
+  });
+  (paymentRequestsApi.getBookingLinkReview as jest.Mock).mockResolvedValue({
+    data: [],
+  });
+});
+it("checks fresh request and similar bookings before navigating to create", async () => {
+  open();
+  expect(paymentRequestsApi.getBookingLinkReview).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("link", { name: "Create booking" }));
+  await waitFor(() =>
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining("/admin/bookings/new?"),
+    ),
+  );
+  expect(paymentRequestsApi.getOneFresh).toHaveBeenCalledWith("req");
+  expect(paymentRequestsApi.getBookingLinkReview).toHaveBeenCalledWith("req");
+});
+it("offers existing booking review instead of creating a similar booking", async () => {
+  (paymentRequestsApi.getBookingLinkReview as jest.Mock).mockResolvedValue({
+    data: [
+      {
+        request: { _id: "req" },
+        candidates: [
+          { _id: "existing", bookingNumber: 1910, status: "confirmed" },
+        ],
+      },
+    ],
+  });
+  open();
+  fireEvent.click(screen.getByRole("link", { name: "Create booking" }));
+  expect(
+    await screen.findByRole("link", { name: "Booking #1910" }),
+  ).toHaveAttribute("href", "/admin/bookings/existing");
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+it("does not navigate when the preflight check fails", async () => {
+  (paymentRequestsApi.getBookingLinkReview as jest.Mock).mockRejectedValue(
+    new Error("Offline"),
+  );
+  open();
+  fireEvent.click(screen.getByRole("link", { name: "Create booking" }));
+  await screen.findByRole("alert");
+  expect(mockNavigate).not.toHaveBeenCalled();
+});
+
+it("allows a legacy missing full price to be reviewed without treating its paid deposit as the booking total", async () => {
+  (paymentRequestsApi.getOneFresh as jest.Mock).mockResolvedValue({
+    data: { ...request, fullPrice: undefined },
+  });
+  open({ fullPrice: undefined });
+  expect(
+    screen.getByText(/full agreed booking price in the booking form/),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "Create booking" }));
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+  const url = new URL(mockNavigate.mock.calls[0][0], "https://local.invalid");
+  expect(url.searchParams.has("totalAmount")).toBe(false);
+  expect(url.searchParams.has("amountPaid")).toBe(false);
+  expect(url.searchParams.get("paymentPlanEnabled")).toBe("false");
+});
+it("rejects stale group allocation and uses freshly corrected full price and booster details", async () => {
+  (paymentRequestsApi.getOneFresh as jest.Mock).mockResolvedValueOnce({
+    data: { ...request, participantBookings: [{ bookingId: "other" }] },
+  });
+  open();
+  fireEvent.click(screen.getByRole("link", { name: "Create booking" }));
+  await screen.findByRole("alert");
+  expect(mockNavigate).not.toHaveBeenCalled();
+  (paymentRequestsApi.getOneFresh as jest.Mock).mockResolvedValueOnce({
+    data: {
+      ...request,
+      fullPrice: 2800,
+      fullPriceQuote: 1000,
+      bookingType: "full_retreat",
+      ceremonyId: undefined,
+      ceremonyNumber: undefined,
+    },
+  });
+  fireEvent.click(screen.getByRole("link", { name: "Create booking" }));
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+  const url = new URL(mockNavigate.mock.calls[0][0], "https://local.invalid");
+  expect(url.searchParams.get("totalAmount")).toBe("2800");
+  expect(url.searchParams.has("ceremonyId")).toBe(false);
+});

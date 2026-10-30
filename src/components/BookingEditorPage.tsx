@@ -82,6 +82,7 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
             const returnTo = new URLSearchParams(location.search).get('returnTo');
             const backToMatch = mode === 'create' && booking?._id ? matchingBookingReturnPath(returnTo,routePrefix,booking._id,window.location.origin) : null;
             if (backToMatch) { navigate(backToMatch); return; }
+            if (mode === 'create' && createPrefill.paymentRequestId && booking?._id) { navigate(`${routePrefix}/bookings/${encodeURIComponent(booking._id)}`); return; }
             navigate(routePrefix ? `${routePrefix}/bookings` : '/bookings');
           }}
         />

@@ -3,7 +3,7 @@ import BookingEditorForm from './BookingEditorForm';
 import { bookingsApi, clientsApi, paymentRequestsApi, ceremoniesApi } from '../services/api';
 import { roomInventoryApi } from '../services/roomInventoryApi';
 jest.mock('../services/authService', () => ({ authService: { getUser: () => ({ role: 'staff' }) } }));
-jest.mock('../services/api', () => ({ bookingsApi: { update: jest.fn(), getOne: jest.fn(), isBookingNumberAvailable: jest.fn() }, clientsApi: { getBookingOptions: jest.fn() }, ceremoniesApi: { getByRetreat: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getAllFresh: jest.fn() }, referralsApi: { getAll: jest.fn() } }));
+jest.mock('../services/api', () => ({ bookingsApi: { create: jest.fn(), update: jest.fn(), getOne: jest.fn(), isBookingNumberAvailable: jest.fn() }, clientsApi: { getBookingOptions: jest.fn() }, ceremoniesApi: { getByRetreat: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getAllFresh: jest.fn() }, referralsApi: { getAll: jest.fn() } }));
 jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { view: jest.fn(), options: jest.fn(), preference: jest.fn() } }));
 jest.mock('./SearchablePaymentRequestSelect', () => ({ __esModule: true, default: ({ onPaymentRequestSelect }: any) => <button type="button" onClick={() => onPaymentRequestSelect('new-request', { _id: 'new-request', retreatId: 'other-retreat', currency: 'USD', fullPrice: 9999, roomType: 'single' })}>Choose replacement request</button> }));
 const booking: any = { _id: 'booking', bookingNumber: 1902, clientId: 'client', retreatId: 'retreat', paymentRequestId: 'old-request', totalAmount: 1000, amountPaid: 400, currency: 'PLN', status: 'confirmed', registrationDate: '2026-10-20', bookingType: 'full_retreat', roomType: 'private' };
@@ -24,3 +24,5 @@ it('keeps the existing agreement when choosing a request with different defaults
  open(); fireEvent.click(await screen.findByRole('button', { name: 'Choose replacement request' })); fireEvent.click(screen.getByRole('button', { name: 'Update Booking' }));
  await waitFor(() => expect(bookingsApi.update).toHaveBeenCalledWith('booking', expect.objectContaining({ paymentRequestId: 'new-request', totalAmount: 1000, currency: 'PLN', retreatId: 'retreat', roomType: 'private' })));
 });
+
+it('requires a full agreed price for a new request-based booking instead of guessing from its deposit',async()=>{const {container}=render(<BookingEditorForm mode="create" initialBookingData={{clientId:'client',retreatId:'retreat',paymentRequestId:'old-request',totalAmount:0,paymentPlanEnabled:false}} initialRetreats={[{_id:'retreat',name:'Current Retreat',startDate:'2099-01-01',endDate:'2099-01-07'} as any]} onSaved={jest.fn()} onCancel={jest.fn()}/>);await screen.findByRole('button',{name:'Add Booking'});fireEvent.submit(container.querySelector('form')!);expect(await screen.findByText(/Enter the full agreed booking price/)).toBeInTheDocument();expect(bookingsApi.create).not.toHaveBeenCalled();});
