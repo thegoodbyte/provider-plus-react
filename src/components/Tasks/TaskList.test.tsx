@@ -99,9 +99,10 @@ it('opens numbered task details without editing, links the exact client and pres
   render(<TaskList tasks={[task]} onEditTask={edit} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
   expect(screen.getByText('Task #968')).toBeInTheDocument();
   expect(screen.getByRole('link', {name:'Ewa Synthetic #1333'})).toHaveAttribute('href','/admin/clients/client-ewa');
-  fireEvent.click(screen.getByRole('button',{name:'Upload EKG'}));
+  const opener=screen.getByRole('button',{name:'Upload EKG'}); opener.focus();
+  fireEvent.click(opener);
   const dialog=screen.getByRole('dialog',{name:'Task details'});
   expect(within(dialog).getByText('Tonight')).toBeInTheDocument();expect(edit).not.toHaveBeenCalled();
   fireEvent.click(within(dialog).getByRole('button',{name:'Edit task'}));expect(edit).toHaveBeenCalledWith(task);expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByLabelText('View task'));fireEvent.click(screen.getByLabelText('Close task details'));expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText('View task'));fireEvent.click(screen.getByLabelText('Close task details'));expect(screen.queryByRole('dialog')).not.toBeInTheDocument();expect(opener).toHaveFocus();
 });
