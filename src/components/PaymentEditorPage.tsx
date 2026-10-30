@@ -414,7 +414,7 @@ const PaymentEditorPage: React.FC = () => {
       return;
     }
 
-    if (!formData.clientId || (!clientOnly && !formData.retreatId) || !formData.amount) {
+    if ((!formData.clientId && selectedPaymentRequest?.context !== 'standalone_service') || (!clientOnly && !formData.retreatId) || !formData.amount) {
       setFormError(clientOnly ? 'Select a client and enter the payment amount.' : 'Complete the required client, retreat, and amount fields before saving.');
       return;
     }
@@ -429,7 +429,7 @@ const PaymentEditorPage: React.FC = () => {
       display_id: displayId,
       ...(isExisting ? { expectedRelationships: { clientId: resolveId(loadedPayment?.clientId), bookingId: resolveId(loadedPayment?.bookingId) || null, paymentRequestId: resolveId(loadedPayment?.paymentRequestId) || null } } : {}),
       paymentRequestId: formData.paymentRequestId || (isExisting ? null : undefined),
-      clientId: formData.clientId,
+      clientId: formData.clientId || undefined,
       retreatId: (clientOnly ? '' : formData.retreatId) || (isExisting ? null : undefined),
       bookingId: formData.bookingId || (isExisting ? null : undefined),
       ...(isExisting && resolveId(loadedPayment?.clientId) !== formData.clientId ? { confirmClientChange: true } : {}),
@@ -645,7 +645,7 @@ const PaymentEditorPage: React.FC = () => {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-              {isView || isIssuedService || isSplitReceipt || selectedPaymentRequest?.context === 'standalone_service' ? <p>{clients.find(client => client._id === formData.clientId)?.firstName} {clients.find(client => client._id === formData.clientId)?.lastName}</p> : <SearchableClientSelect
+              {isView || isIssuedService || isSplitReceipt || selectedPaymentRequest?.context === 'standalone_service' ? <p>{!formData.clientId && selectedPaymentRequest?.serviceDocument?.client?.name}{clients.find(client => client._id === formData.clientId)?.firstName} {clients.find(client => client._id === formData.clientId)?.lastName}</p> : <SearchableClientSelect
                 clients={clients}
                 ariaLabel="Payment client"
                 selectedClientId={formData.clientId}

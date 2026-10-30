@@ -1835,6 +1835,7 @@ export interface PaymentRequest {
   amountReceived?: number;
   amountOutstanding?: number;
   serviceDocument?: any;
+  invoiceDocument?: any;
   baseBookingPrice?: number;
   _id?: string;
   display_id?: number;

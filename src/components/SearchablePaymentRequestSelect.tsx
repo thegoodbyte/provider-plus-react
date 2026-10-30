@@ -82,7 +82,7 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
       if (!term) return true;
 
       const invoice = String(request.invoiceNumber || request.display_id || '').toLowerCase();
-      const client = resolveClient(request.clientId).toLowerCase();
+      const client = resolveClient(request.clientId || (request.serviceDocument?.client ? {firstName:request.serviceDocument.client.name} : undefined)).toLowerCase();
       const retreat = resolveRetreat(request.retreatId).toLowerCase();
       return (
         invoice.includes(term) ||
@@ -110,7 +110,7 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
       >
         <span className={selectedRequest ? 'text-gray-900' : 'text-gray-400'}>
           {selectedRequest
-            ? `${selectedRequest.invoiceNumber || `#${selectedRequest.display_id || 'n/a'}`} - ${resolveClient(selectedRequest.clientId)}`
+            ? `${selectedRequest.invoiceNumber || `#${selectedRequest.display_id || 'n/a'}`} - ${resolveClient(selectedRequest.clientId || (selectedRequest.serviceDocument?.client ? {firstName:selectedRequest.serviceDocument.client.name} : undefined))}`
             : placeholder}
         </span>
         <span className="text-gray-400">{open ? <Icon icon={X} /> : <Icon icon={SearchIcon} />}</span>
@@ -149,7 +149,7 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
                         {request.invoiceNumber || `#${request.display_id || 'n/a'}`}
                       </div>
                       <div className="text-sm text-gray-600">
-                        {resolveClient(request.clientId)} - {resolveRetreat(request.retreatId)}
+                        {resolveClient(request.clientId || (request.serviceDocument?.client ? {firstName:request.serviceDocument.client.name} : undefined))} - {resolveRetreat(request.retreatId)}
                       </div>
                     </div>
                     <div className="shrink-0 text-sm text-gray-500">

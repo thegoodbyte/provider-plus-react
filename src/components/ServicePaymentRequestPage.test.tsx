@@ -8,6 +8,9 @@ jest.mock("../services/api", () => ({
   clientsApi: { getBookingOptions: jest.fn() },
   serviceRequestsApi: {
     settings: jest.fn(),
+    issueInvoice: jest.fn(),
+    invoicePdf: jest.fn(),
+    previewInvoice: jest.fn(),
     create: jest.fn(),
     get: jest.fn(),
     action: jest.fn(),
@@ -197,4 +200,37 @@ test("settled request is immutable and hides recording and cancellation", async 
   expect(
     screen.queryByRole("button", { name: "Cancel request" }),
   ).not.toBeInTheDocument();
+});
+
+test('one-off recipient creates an itemized request without manufacturing a client', async () => {
+  mount(); await screen.findByLabelText('Client');
+  fireEvent.change(screen.getByLabelText('Recipient type'),{target:{value:'recipient'}});
+  expect(screen.queryByLabelText('Client')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Recipient / company name'),{target:{value:'Example Company'}});
+  fireEvent.change(screen.getByLabelText('Billing email'),{target:{value:'billing@example.invalid'}});
+  fireEvent.change(screen.getByLabelText('Recipient billing address'),{target:{value:'Test address'}});
+  fireEvent.change(screen.getByLabelText('Add a configured service'),{target:{value:'medical'}});
+  fireEvent.click(screen.getByRole('button',{name:'Review request'}));
+  expect(screen.getByText(/Example Company/)).toBeInTheDocument();expect(serviceRequestsApi.create).not.toHaveBeenCalled();
+  mock(serviceRequestsApi.create).mockResolvedValue({data:{_id:'s1'}});
+  fireEvent.click(screen.getByRole('button',{name:'Issue payment request'}));
+  await waitFor(()=>expect(serviceRequestsApi.create).toHaveBeenCalledWith(expect.objectContaining({clientId:undefined,billingRecipient:expect.objectContaining({name:'Example Company',address:'Test address'}),requestedAmount:25})));
+});
+test('invoice issuance is separate from payment recording and keeps received/outstanding state', async () => {
+  const r={_id:'s1',invoiceNumber:'2000',publicHash:'a'.repeat(32),status:'pending',amountReceived:0,amountOutstanding:25,requestedAmount:25,currency:'EUR',serviceDocument:{title:'Medical',client:{name:'Anna',email:'anna@example.invalid'},policy:config.policies[0]},lineItems:[]};
+  mock(serviceRequestsApi.get).mockResolvedValue({data:r});mock(serviceRequestsApi.issueInvoice).mockResolvedValue({data:{}});
+  mount('/admin/payment-requests/services/s1');await screen.findByRole('button',{name:'Issue invoice'});
+  fireEvent.change(screen.getByLabelText('Recipient billing address'),{target:{value:'Billing address'}});
+  mock(serviceRequestsApi.get).mockResolvedValue({data:{...r,invoiceDocument:{number:'INV-2000',issuedAt:'2026-10-30',recipient:{name:'Anna',address:'Billing address'}}}});
+  fireEvent.click(screen.getByRole('button',{name:'Issue invoice'}));
+  await screen.findByRole('button',{name:'Download invoice PDF'});
+  expect(serviceRequestsApi.issueInvoice).toHaveBeenCalledWith('s1',expect.objectContaining({billingRecipient:expect.objectContaining({address:'Billing address'})}));
+  expect(screen.getByRole('link',{name:'Record payment'})).toBeInTheDocument();expect(screen.getByText('Outstanding €25.00')).toBeInTheDocument();expect(screen.queryByText('Paid in full')).not.toBeInTheDocument();expect(screen.queryByRole('button',{name:'Cancel request'})).not.toBeInTheDocument();
+});
+test('client profile shortcut prefills its client without requiring another selection', async () => {
+  mock(serviceRequestsApi.create).mockResolvedValue({data:{_id:'s1'}});
+  mount('/admin/payment-requests/services/new?clientId=c1');await screen.findByLabelText('Client');
+  fireEvent.change(screen.getByLabelText('Add a configured service'),{target:{value:'medical'}});
+  fireEvent.click(screen.getByRole('button',{name:'Review request'}));fireEvent.click(screen.getByRole('button',{name:'Issue payment request'}));
+  await waitFor(()=>expect(serviceRequestsApi.create).toHaveBeenCalledWith(expect.objectContaining({clientId:'c1'})));
 });

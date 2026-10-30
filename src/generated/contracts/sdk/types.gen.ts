@@ -12354,6 +12354,19 @@ export type PublicServiceRequestsControllerAcceptResponses = {
     201: unknown;
 };
 
+export type PublicServiceRequestsControllerInvoicePdfData = {
+    body?: never;
+    path: {
+        hash: string;
+    };
+    query?: never;
+    url: '/public/service-payment-requests/{hash}/invoice.pdf';
+};
+
+export type PublicServiceRequestsControllerInvoicePdfResponses = {
+    200: unknown;
+};
+
 export type PublicSupportAccessControllerBeginData = {
     body?: never;
     path?: never;
@@ -13792,6 +13805,49 @@ export type ServiceRequestsControllerGetData = {
 };
 
 export type ServiceRequestsControllerGetResponses = {
+    200: unknown;
+};
+
+export type ServiceRequestsControllerIssueInvoiceData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/service-payment-requests/{id}/invoice';
+};
+
+export type ServiceRequestsControllerIssueInvoiceResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type ServiceRequestsControllerIssueInvoiceResponse = ServiceRequestsControllerIssueInvoiceResponses[keyof ServiceRequestsControllerIssueInvoiceResponses];
+
+export type ServiceRequestsControllerPreviewInvoiceData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/service-payment-requests/{id}/invoice-preview';
+};
+
+export type ServiceRequestsControllerPreviewInvoiceResponses = {
+    201: unknown;
+};
+
+export type ServiceRequestsControllerInvoicePdfData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/service-payment-requests/{id}/invoice.pdf';
+};
+
+export type ServiceRequestsControllerInvoicePdfResponses = {
     200: unknown;
 };
 

@@ -1200,7 +1200,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
             <div className="info-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <div>
-                  <h3>💳 Payment Requests</h3>
+                  <h3>💳 Payment Requests</h3><button type="button" className="text-sm text-teal-700 underline" onClick={() => navigate(`/admin/payment-requests/services/new?clientId=${clientId}`)}>New itemized request / invoice</button>
                   <p style={{ margin: '4px 0 0', color: '#6b7280' }}>
                     Create deposit links for this client and copy the public payment consent URL.
                   </p>

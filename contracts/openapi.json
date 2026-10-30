@@ -23918,6 +23918,29 @@
         ]
       }
     },
+    "/public/service-payment-requests/{hash}/invoice.pdf": {
+      "get": {
+        "operationId": "PublicServiceRequestsController_invoicePdf",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hash",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicServiceRequests"
+        ]
+      }
+    },
     "/public/support/access/begin": {
       "post": {
         "operationId": "PublicSupportAccessController_begin",
@@ -26484,6 +26507,82 @@
     "/service-payment-requests/{id}": {
       "get": {
         "operationId": "ServiceRequestsController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceRequests"
+        ]
+      }
+    },
+    "/service-payment-requests/{id}/invoice": {
+      "post": {
+        "operationId": "ServiceRequestsController_issueInvoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceRequests"
+        ]
+      }
+    },
+    "/service-payment-requests/{id}/invoice-preview": {
+      "post": {
+        "operationId": "ServiceRequestsController_previewInvoice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ServiceRequests"
+        ]
+      }
+    },
+    "/service-payment-requests/{id}/invoice.pdf": {
+      "get": {
+        "operationId": "ServiceRequestsController_invoicePdf",
         "parameters": [
           {
             "in": "path",

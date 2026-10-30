@@ -6,11 +6,11 @@ import { formatCalendarDate } from '../utils/dateFormat';
 const label = (value?: string) => value ? value.replace(/_/g, ' ') : '—';
 export default function PaymentDetailSummary({ payment, client, booking, retreat, request }: { payment: Payment; client?: any; booking?: any; retreat?: any; request?: any }) {
   const rows: Array<[string, React.ReactNode]> = [
-    ['Client', client ? <Link to={`/admin/clients/${client._id}`} className="text-blue-700 underline">{[client.firstName, client.lastName].filter(Boolean).join(' ') || 'Client'}{client.display_id ? ` · #${client.display_id}` : ''}</Link> : 'Client details unavailable'],
+    [!client && request?.context === 'standalone_service' ? 'Billing recipient' : 'Client', client ? <Link to={`/admin/clients/${client._id}`} className="text-blue-700 underline">{[client.firstName, client.lastName].filter(Boolean).join(' ') || 'Client'}{client.display_id ? ` · #${client.display_id}` : ''}</Link> : request?.serviceDocument?.client?.name || 'Client details unavailable'],
     ['Received date', formatCalendarDate(payment.paymentDate)], ['Status', label(payment.status)], ['Payment method', label(payment.paymentMethod)],
     ['Booking', booking ? <Link to={`/admin/bookings/${booking._id}`} className="text-blue-700 underline">Booking #{booking.bookingNumber || '—'}</Link> : 'No booking linked'],
     ['Retreat', retreat ? [retreat.name, retreat.retreatCode || retreat.code].filter(Boolean).join(' · ') : 'No retreat linked'],
-    ['Payment request', request ? <Link to={`/admin/payment-requests/${request._id}`} className="text-blue-700 underline">Request #{request.invoiceNumber || request.display_id || '—'}</Link> : 'No payment request linked'],
+    ['Payment request', request ? <Link to={request.context === 'standalone_service' ? `/admin/payment-requests/services/${request._id}` : `/admin/payment-requests/${request._id}`} className="text-blue-700 underline">Request #{request.invoiceNumber || request.display_id || '—'}</Link> : 'No payment request linked'],
     ['Payment type', label(payment.paymentType)], ['Transaction ID', payment.transactionId || '—'],
     ['Deposit', payment.isDeposit ? 'Yes' : 'No'], ['Final payment', payment.isFinalPayment ? 'Yes' : 'No'], ['Refundable', payment.isRefundable ? 'Yes' : 'No'],
     ['Purpose', payment.description || '—'], ['Internal notes', payment.notes || '—'],

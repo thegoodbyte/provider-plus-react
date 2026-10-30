@@ -2369,6 +2369,9 @@ export const missingItemsReminderApi = {
 };
 
 export const serviceRequestsApi = {
+ previewInvoice: (id:string,data:any) => api.post(`/service-payment-requests/${id}/invoice-preview`,data,{responseType:"blob"}),
+ issueInvoice: (id:string, data:any) => api.post(`/service-payment-requests/${id}/invoice`,data),
+ invoicePdf: (id:string) => api.get(`/service-payment-requests/${id}/invoice.pdf`,{responseType:"blob"}),
  settings: () => api.get('/service-payment-requests/settings'),
  saveSettings: (data: any) => api.put('/service-payment-requests/settings',data),
  create: (data: any) => {cacheService.clearPattern('payment-requests:');return api.post('/service-payment-requests',data);},

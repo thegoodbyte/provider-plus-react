@@ -1765,7 +1765,7 @@ const ClientDetailsPage: React.FC = () => {
             <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Payment Requests</h3>
+                  <h3 className="text-sm font-semibold text-gray-900">Payment Requests</h3><button type="button" className="text-sm text-teal-700 underline" onClick={() => navigate(`/admin/payment-requests/services/new?clientId=${clientId}`)}>New itemized request / invoice</button>
                   <p className="mt-1 text-xs text-gray-500">Create deposit requests and copy the public consent/payment link.</p>
                 </div>
                 <AppleButton

@@ -1,9 +1,11 @@
+import { BillingPartyFields, emptyBillingParty } from './BillingPartyFields';
+import { API_BASE_URL } from '../config/api.config';
 import InvoiceVisitHistory from './InvoiceVisitHistory';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { clientsApi, serviceRequestsApi } from "../services/api";
 import { getServicePaymentUrl } from "./paymentRequestLinks";
 import "./ServicePaymentRequestPage.css";
@@ -26,6 +28,12 @@ export default function ServicePaymentRequestPage() {
     [currency, setCurrency] = useState("EUR"),
     [policyCode, setPolicy] = useState(""),
     [dueDate, setDue] = useState("");
+  const [recipientMode, setRecipientMode] = useState('client');
+  const [billingRecipient, setBillingRecipient] = useState<any>(emptyBillingParty);
+  const [invoiceBusy, setInvoiceBusy] = useState(false);
+  const location = useLocation();
+  const initialClient = new URLSearchParams(location.search).get('clientId');
+  useEffect(() => { if (initialClient) setClient(initialClient); }, [initialClient]);
   const [items, setItems] = useState<any[]>([]),
     [preview, setPreview] = useState(false),
     [busy, setBusy] = useState(false),
@@ -48,7 +56,7 @@ export default function ServicePaymentRequestPage() {
         setMethods(s.data.configuration.paymentMethods);
         setClients(c.data);
         setPolicy(s.data.configuration.policies[0]?.code || "");
-        if (r) setRequest(r.data);
+        if (r) { setRequest(r.data); setBillingRecipient(r.data.serviceDocument?.billingRecipient || r.data.serviceDocument?.client || emptyBillingParty); }
       })
       .catch((e) => live && setError(errorText(e)));
     return () => {
@@ -75,7 +83,7 @@ export default function ServicePaymentRequestPage() {
       ),
     ) / 100;
   const valid =
-    clientId &&
+    (recipientMode === 'client' ? clientId : billingRecipient.name.trim() && billingRecipient.email.trim()) &&
     items.length > 0 &&
     items.every(
       (i) =>
@@ -94,7 +102,8 @@ export default function ServicePaymentRequestPage() {
     setError("");
     try {
       const response = await serviceRequestsApi.create({
-        clientId,
+        clientId: recipientMode === 'client' ? clientId : undefined,
+        billingRecipient: billingRecipient.name.trim() ? billingRecipient : undefined,
         title,
         currency,
         policyCode,
@@ -110,6 +119,17 @@ export default function ServicePaymentRequestPage() {
     } finally {
       setBusy(false);
     }
+  };
+  const invoiceUrl = request?.publicHash ? `${API_BASE_URL}/public/service-payment-requests/${request.publicHash}/invoice.pdf` : '';
+  const invoiceAction = async (download: boolean | 'preview' = false) => {
+    setInvoiceBusy(true); setError('');
+    try {
+      if (download) {
+        const response = download === 'preview' ? await serviceRequestsApi.previewInvoice(id!, {billingRecipient}) : await serviceRequestsApi.invoicePdf(id!);
+        const url = URL.createObjectURL(response.data); const link = document.createElement('a');
+        link.href = url; link.download = download === 'preview' ? 'invoice-preview.pdf' : `invoice-${request.invoiceDocument.number}.pdf`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } else { await serviceRequestsApi.issueInvoice(id!, {billingRecipient}); setRequest((await serviceRequestsApi.get(id!)).data); setNotice('Invoice issued. No payment was recorded and no email sent.'); }
+    } catch (e) { setError(errorText(e)); } finally { setInvoiceBusy(false); }
   };
   const linkAction = async (action: string) => {
     setBusy(true);
@@ -144,7 +164,7 @@ Loading service billing…</div>;
           <h1>
             {id
               ? request?.serviceDocument?.title || "Service payment request"
-              : "New service payment request"}
+              : "New itemized payment request"}
           </h1>
           <p>Itemized services, clear terms, one private payment link.</p>
         </div>
@@ -171,7 +191,7 @@ Loading service billing…</div>;
           initialValues={{
             to: request.serviceDocument.client.email,
             subject: `Service payment request ${request.invoiceNumber}`,
-            bodyText: `Hello ${request.serviceDocument.client.name},\n\nYour payment request for ${request.serviceDocument.title} is ready.\nTotal: ${money(request.requestedAmount, request.currency)}\n\nReview your services and payment terms at this private link:\n${getServicePaymentUrl(request)}\n\nThank you,\nIboga Spirit`,
+            bodyText: `Hello ${request.serviceDocument.client.name},\n\nYour payment request for ${request.serviceDocument.title} is ready.\nTotal: ${money(request.requestedAmount, request.currency)}\n\nReview your services and payment terms at this private link:\n${getServicePaymentUrl(request)}${request.invoiceDocument && !request.publicLinkRevokedAt ? `\nInvoice PDF: ${invoiceUrl}` : ""}\n\nThank you,\nIboga Spirit`,
             clientId:
               typeof request.clientId === "object"
                 ? request.clientId._id
@@ -257,6 +277,10 @@ Loading service billing…</div>;
             </p>
           </section>
           <section className="sr-card">
+            <h2>Invoice</h2>
+            {request.invoiceDocument ? <><p>Invoice {request.invoiceDocument.number} · issued {String(request.invoiceDocument.issuedAt).slice(0,10)}</p><p>{request.invoiceDocument.recipient.name} · {request.invoiceDocument.recipient.address}</p><div className="sr-actions"><button type="button" disabled={invoiceBusy} className="sr-primary" onClick={() => invoiceAction(true)}>Download invoice PDF</button>{!request.publicLinkRevokedAt && <button type="button" className="sr-secondary" onClick={async()=>{try {await navigator.clipboard.writeText(invoiceUrl);setNotice('Private invoice link copied.');}catch {setError('Could not copy. Copy the invoice link below.');}}}>Copy invoice link</button>}</div>{!request.publicLinkRevokedAt && <label>Private invoice link<input readOnly value={invoiceUrl}/></label>}<p className="sr-muted">Issued billing details and totals are preserved. Payment status remains on the payment request.</p></> : <><BillingPartyFields value={billingRecipient} onChange={setBillingRecipient} /><p>Issue a separate invoice using the configured seller and recipient billing details. This does not record a payment.</p><button type="button" className="sr-primary" disabled={invoiceBusy || request.status === 'cancelled'} onClick={()=>invoiceAction()}>Issue invoice</button><button type="button" className="sr-secondary" disabled={invoiceBusy} onClick={()=>invoiceAction('preview')}>Preview invoice PDF</button></>}
+          </section>
+          <section className="sr-card">
             <h2>Share with your client</h2>
             <p>Anyone with this private link can view the payment request.</p>
             {request.publicLinkRevokedAt ? (
@@ -329,7 +353,7 @@ Loading service billing…</div>;
                   Revoke link
                 </button>
               )}
-              {request.status !== "paid" && request.status !== "cancelled" && (
+              {!request.invoiceDocument && request.status !== "paid" && request.status !== "cancelled" && (
                 <button
                   disabled={busy}
                   className="sr-secondary"
@@ -353,7 +377,8 @@ Loading service billing…</div>;
           >
             <section className="sr-card">
               <h2>1. Client & request</h2>
-              <div className="sr-fields">
+              <label>Recipient type<select value={recipientMode} onChange={e=>{setRecipientMode(e.target.value);setPreview(false);}}><option value="client">Existing client</option><option value="recipient">One-off billing recipient</option></select></label>
+              {recipientMode === 'client' && <div className="sr-fields">
                 <label>
                   Client
                   <SearchableClientSelect
@@ -367,6 +392,10 @@ Loading service billing…</div>;
                     placeholder="Search by client name, email or number"
                   />
                 </label>
+              </div>}
+              <h3>Billing recipient</h3><p className="sr-muted">For a one-off recipient, enter name and email. To issue an invoice, also enter their billing address. Existing clients can use different company billing details.</p>
+              <BillingPartyFields value={billingRecipient} onChange={value=>{setBillingRecipient(value);setPreview(false);}} />
+              <div className="sr-fields">
                 <label>
                   Request title
                   <input
@@ -631,7 +660,7 @@ Loading service billing…</div>;
               <section className="sr-card sr-preview">
                 <h2>Ready to issue</h2>
                 <p>
-                  {clients.find((c) => c._id === clientId)?.firstName}{" "}
+                  {billingRecipient.name || clients.find((c) => c._id === clientId)?.firstName}{" "}
                   {clients.find((c) => c._id === clientId)?.lastName} · {title}
                 </p>
                 <strong>{money(total, currency)}</strong>

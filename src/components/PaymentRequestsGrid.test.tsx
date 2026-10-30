@@ -116,3 +116,9 @@ it('combines detailed filters with search/status and resets every filter', async
  fireEvent.change(screen.getByLabelText('Requested amount from'),{target:{value:'10'}});fireEvent.change(screen.getByLabelText('Requested amount to'),{target:{value:'1'}});
  expect(screen.getByRole('alert')).toHaveTextContent('must not exceed');expect(screen.queryByText('INV-DEPOSIT')).not.toBeInTheDocument();
 });
+it('distinguishes booking and itemized documents and shows the billing recipient and issued invoice', async () => {
+  (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[requests[0],{_id:'service',context:'standalone_service',invoiceNumber:'SERVICE-969',requestedAmount:50,currency:'EUR',serviceDocument:{title:'Integration',client:{name:'Ewa Billing Company',email:'billing@example.invalid'}},invoiceDocument:{number:'INV-1969'}}]});
+  mount();const kind=await screen.findByRole('combobox',{name:'Document kind'});fireEvent.change(kind,{target:{value:'itemized'}});
+  expect(screen.getByText('Ewa Billing Company')).toBeInTheDocument();expect(screen.getByText('Itemized · INV-1969')).toBeInTheDocument();expect(screen.queryByText('INV-DEPOSIT')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Clear filters'}));expect(screen.getByText('INV-DEPOSIT')).toBeInTheDocument();
+});

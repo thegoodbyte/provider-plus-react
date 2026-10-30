@@ -61,10 +61,11 @@ const PaymentRequestsGrid: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSendRequest, setSelectedSendRequest] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [documentKind, setDocumentKind] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [details, setDetails] = useState(emptyRequestFilters);
   const filterError = requestFilterError(details);
-  const hasFilters = paymentFilter !== 'all' || Boolean(searchTerm) || Object.values(details).some(Boolean);
+  const hasFilters = documentKind !== 'all' || paymentFilter !== 'all' || Boolean(searchTerm) || Object.values(details).some(Boolean);
   const currencies = [...new Set(paymentRequests.map(request => paymentRequestFinancialSummary(request).currency).filter(Boolean))].sort();
   const [sortKey, setSortKey] = useState<PaymentRequestSortKey>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -136,7 +137,7 @@ const PaymentRequestsGrid: React.FC = () => {
   };
 
   const buildPaymentEmail = (request: any): EmailComposeInitialValues => {
-    const client = resolveClient(request.clientId);
+    const client = resolveClient(request.clientId || (request.serviceDocument?.client ? {firstName:request.serviceDocument.client.name,email:request.serviceDocument.client.email} : undefined));
     const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
     const paymentUrl = getPreferredPaymentUrl(request);
     const invoiceNumber = request.invoiceNumber || request.display_id || request._id;
@@ -196,6 +197,7 @@ const PaymentRequestsGrid: React.FC = () => {
     const term = searchTerm.toLowerCase();
 
     return paymentRequests.filter((request) => {
+      if (documentKind === 'booking' && request.context === 'standalone_service' || documentKind === 'itemized' && request.context !== 'standalone_service') return false;
       if (filterError || !matchesRequestFilters(request, details)) return false;
       const paid = request.status === 'paid';
       const hasBooking = Boolean(typeof request.bookingId === 'string' ? request.bookingId.trim() : request.bookingId?._id || request.bookingId?.id)
@@ -205,7 +207,7 @@ const PaymentRequestsGrid: React.FC = () => {
       if (paymentFilter === 'unpaid' && !['pending', 'sent', 'overdue'].includes(request.status || 'pending')) return false;
       if (paymentFilter === 'paid-unbooked' && (!paid || hasBooking)) return false;
       if (!term) return true;
-      const client = resolveClient(request.clientId);
+      const client = resolveClient(request.clientId || (request.serviceDocument?.client ? {firstName:request.serviceDocument.client.name,email:request.serviceDocument.client.email} : undefined));
       const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
       return (
         String(paymentRequestFinancialSummary(request).requested).includes(term) ||
@@ -220,10 +222,10 @@ const PaymentRequestsGrid: React.FC = () => {
         (request.note || request.notes || '').toLowerCase().includes(term)
       );
     });
-  }, [paymentRequests, searchTerm, paymentFilter, details, filterError]);
+  }, [documentKind, paymentRequests, searchTerm, paymentFilter, details, filterError]);
 
   const getSortValue = (request: any, key: PaymentRequestSortKey) => {
-    const client = resolveClient(request.clientId);
+    const client = resolveClient(request.clientId || (request.serviceDocument?.client ? {firstName:request.serviceDocument.client.name,email:request.serviceDocument.client.email} : undefined));
     const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
 
     switch (key) {
@@ -317,8 +319,9 @@ const PaymentRequestsGrid: React.FC = () => {
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-3"><Link className="px-4 py-2 rounded-md border border-blue-600 text-blue-700" to="/admin/payment-requests/booking-review">Booking link review</Link><Link className="px-4 py-2 rounded-md bg-teal-700 text-white" to="/admin/payment-requests/services/new">New standalone service request</Link><Link className="px-4 py-2 rounded-md border border-gray-300" to="/admin/payment-requests/services/settings">Service & policy settings</Link></div>
+      <div className="mb-4 flex flex-wrap gap-3"><Link className="px-4 py-2 rounded-md border border-blue-600 text-blue-700" to="/admin/payment-requests/booking-review">Booking link review</Link><Link className="px-4 py-2 rounded-md bg-teal-700 text-white" to="/admin/payment-requests/services/new">New standalone service request</Link><span className="text-sm text-gray-600 self-center">Itemized · no booking required</span><Link className="px-4 py-2 rounded-md border border-gray-300" to="/admin/payment-requests/services/settings">Service & policy settings</Link></div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm font-medium">Document kind<select aria-label="Document kind" value={documentKind} onChange={e=>setDocumentKind(e.target.value)} className="ml-2 rounded-md border border-gray-300 px-3 py-2"><option value="all">All documents</option><option value="booking">Booking payment requests</option><option value="itemized">Itemized requests / invoices</option></select></label>
         <label className="text-sm font-medium">Payment status
           <select aria-label="Payment status" value={paymentFilter} onChange={event => setPaymentFilter(event.target.value)} className="ml-2 rounded-md border border-gray-300 px-3 py-2">
             <option value="all">All payment requests</option>
@@ -329,7 +332,7 @@ const PaymentRequestsGrid: React.FC = () => {
         </label>
         <span className="text-sm text-gray-600" role="status">{filteredRequests.length} of {paymentRequests.length} requests</span>
         {paymentFilter === 'paid-unbooked' && <p className="text-sm text-gray-600">This filter checks saved request links. Use <Link className="text-blue-700 underline" to="/admin/payment-requests/booking-review">Booking link review</Link> to find existing bookings and repair missing links.</p>}
-        {hasFilters && <button type="button" onClick={() => { setPaymentFilter('all'); setSearchTerm(''); setDetails(emptyRequestFilters); }} className="text-sm text-blue-700 underline">Clear filters</button>}
+        {hasFilters && <button type="button" onClick={() => { setDocumentKind('all'); setPaymentFilter('all'); setSearchTerm(''); setDetails(emptyRequestFilters); }} className="text-sm text-blue-700 underline">Clear filters</button>}
       </div>
       <div className="mb-4 relative max-w-xl">
         <Icon icon={SearchIcon} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -389,7 +392,7 @@ const PaymentRequestsGrid: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedRequests.map((request) => {
-                const client = resolveClient(request.clientId);
+                const client = resolveClient(request.clientId || (request.serviceDocument?.client ? {firstName:request.serviceDocument.client.name,email:request.serviceDocument.client.email} : undefined));
                 const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
                 return (
                   <tr key={request._id} className="hover:bg-gray-50">
@@ -402,6 +405,7 @@ const PaymentRequestsGrid: React.FC = () => {
                       >
                         {request.invoiceNumber || (request.display_id ? `#${request.display_id}` : 'n/a')}
                       </button>
+                      <div className="text-xs font-normal text-teal-700">{request.context === 'standalone_service' ? request.invoiceDocument ? `Itemized · ${request.invoiceDocument.number}` : 'Itemized payment request' : 'Booking payment request'}</div>
                     </td>
                     <td data-label="Client" className="w-44 max-w-44 px-3 py-4">
                       <div className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+import { BillingPartyFields } from './BillingPartyFields';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { serviceRequestsApi } from "../services/api";
@@ -66,6 +67,7 @@ export default function ServiceBillingSettingsPage() {
       )}
       {config ? (
         <form onSubmit={save}>
+          <section className="sr-card"><h2>Invoice seller</h2><p>Enter the legal billing identity and exact tax wording to print on invoices. Required before issuing an invoice; existing invoices keep their original details.</p><BillingPartyFields issuer value={config.issuer} onChange={issuer => setSettings((s:any)=>({...s,configuration:{...s.configuration,issuer}}))}/></section>
           <section className="sr-card">
             <h2>Services</h2>
             <p>
