@@ -15,6 +15,7 @@ for (const width of [1440,390]) test(`screening decision save and reopen at ${wi
   if(req.method()==='PUT'&&path===`/clients/${clientId}/screening`){
    const body=req.postDataJSON();writes.push(body);client={...client,...body,screeningData:body};data=client;
   }else if(path===`/clients/${clientId}`)data=client;
+  else if(path==='/room-inventory/options')data=[{key:'shared',active:true,labels:{en:'Shared'},occupancy:'shared',legacyRoomType:'shared'}];
   else if(path==='/environment/status')data={production:true};
   else if(path==='/users/navigation-permissions'||path==='/config-summary')data={};
   else if(path==='/submission-notifications/unread-count')data={count:0};
@@ -28,9 +29,10 @@ for (const width of [1440,390]) test(`screening decision save and reopen at ${wi
   await section.getByRole('button',{name:label,exact:true}).click();
   await expect(section).toContainText(`Screened ${outcome}`);
   await section.locator('textarea').fill(`Synthetic ${outcome} notes`);
+  await page.getByRole('combobox',{name:/Desired accommodation/}).selectOption('shared');
   const saved=page.waitForResponse(r=>r.url().includes(`/clients/${clientId}/screening`)&&r.request().method()==='PUT');
   await page.getByRole('button',{name:'Save Screening',exact:true}).first().click();await saved;
-  expect(writes.at(-1)).toMatchObject({screeningOutcome:outcome,screeningOutcomeNotes:`Synthetic ${outcome} notes`});
+  expect(writes.at(-1)).toMatchObject({desiredAccommodationKey:'shared',screeningOutcome:outcome,screeningOutcomeNotes:`Synthetic ${outcome} notes`});
   await page.goto(path);await expect(section.locator('textarea')).toHaveValue(`Synthetic ${outcome} notes`);
   await expect(section).toContainText(`Screened ${outcome}`);
   await section.scrollIntoViewIfNeeded();await page.screenshot({path:`../screening-artifacts/ppvc861-${width}-${outcome}.png`});

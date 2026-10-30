@@ -26,12 +26,12 @@ async function fixture(page: any, baseURL: string, mode='raw', failFirst=false, 
    if(req.method()==='POST'){saved={...req.postDataJSON(),_id:bookingId};data=saved;}else data=saved?[saved]:[];
   }
   if(path===`/bookings/${bookingId}`){if(req.method()==='PATCH')saved={...saved,...req.postDataJSON()};data=saved;}
-  if(path.startsWith('/room-inventory/'))data=path.endsWith('/options')?[]:{availableToSell:2,rooms:[]};
+  if(path.startsWith('/room-inventory/'))data=path.endsWith('/options')?[{key:'shared',active:true,labels:{en:'Shared'},occupancy:'shared',legacyRoomType:'shared'}]:{availableToSell:2,rooms:[]};
   return route.fulfill({json:data});
  });
  return {get saved(){return saved;},get houseRequests(){return houseRequests;}};
 }
-const open = (page:any)=>page.goto(`/admin/bookings/new?clientId=${clientId}&retreatId=retreat-1&totalAmount=500`);
+const open = async(page:any)=>{await page.goto(`/admin/bookings/new?clientId=${clientId}&retreatId=retreat-1&totalAmount=500`);await page.getByRole('combobox',{name:/^Accommodation/}).selectOption('shared');};
 for(const mode of ['raw','partial','populated'])test(`${mode} house reference offers bedrooms and saves/reloads the selection`,async({page,baseURL})=>{
  const state=await fixture(page,baseURL!,mode);await open(page);
  const bedroom=page.getByRole('combobox',{name:'Bedroom',exact:true});await expect(bedroom).toBeEnabled();await bedroom.selectOption('Garden room');

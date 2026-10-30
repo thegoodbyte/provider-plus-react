@@ -42,7 +42,7 @@ async function fixture(page: Page, baseURL: string, ceremonyRecords = ceremonies
       } else data = saved ? [saved] : [];
     }
     if (path === `/bookings/${bookingId}`) data = saved;
-    if (path.startsWith('/room-inventory/')) data = path.endsWith('/options') ? [] : { availableToSell: 3, rooms: [] };
+    if (path.startsWith('/room-inventory/')) data = path.endsWith('/options') ? [{key:'shared',active:true,labels:{en:'Shared'},occupancy:'shared',legacyRoomType:'shared'}] : { availableToSell: 3, rooms: [] };
     if (path.startsWith('/accommodation')) data = [];
     return route.fulfill({ json: data });
   });
@@ -58,6 +58,7 @@ for (const n of [1, 2]) {
     const { writes } = await fixture(page, baseURL!);
     const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
     await page.goto(`/admin/bookings/new?clientId=${clientId}&retreatId=${retreatId}`);
+    await page.getByRole('combobox',{name:/^Accommodation/}).selectOption('shared');
     await selectWithOption(page, 'booster').selectOption('booster');
     await expect(page.locator('option').filter({ hasText: new RegExp(`Ceremony ${n} —`) })).toHaveCount(1);
     await selectWithOption(page, String(n)).filter({ has: page.locator('option[value=""]').filter({ hasText: 'Select ceremony' }) }).selectOption(String(n));
@@ -85,7 +86,8 @@ for (const n of [1, 2]) {
 test('missing ceremony records prevent a booster booking from being submitted', async ({ page, baseURL }) => {
   const { writes } = await fixture(page, baseURL!, []);
   await page.goto(`/admin/bookings/new?clientId=${clientId}&retreatId=${retreatId}`);
-  await selectWithOption(page, 'booster').selectOption('booster');
+  await page.getByRole('combobox',{name:/^Accommodation/}).selectOption('shared');
+    await selectWithOption(page, 'booster').selectOption('booster');
   await expect(page.getByText('Add ceremonies to this retreat before making a booster booking.')).toBeVisible();
   await selectWithOption(page, '1').filter({ has: page.locator('option[value=""]').filter({ hasText: 'Select ceremony' }) }).selectOption('1');
   await page.locator('input[type=number][required]').fill('450');
