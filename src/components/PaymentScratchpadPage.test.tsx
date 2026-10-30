@@ -19,7 +19,7 @@ const mount=()=>render(<MemoryRouter initialEntries={["/admin/payments/scratchpa
 it('retains the previous snapshot and refresh time after a failed refresh',async()=>{
   mount(); await screen.findByText('Synthetic Payer',{exact:false});
   api.list.mockRejectedValueOnce(new Error('Network down')); fireEvent.click(screen.getByRole('button',{name:'Refresh',exact:true}));
-  await screen.findByText(/Previous snapshot shown below/); expect(screen.getAllByText(/5,?100.00/).length).toBeGreaterThanOrEqual(2); expect(screen.getByText(/Last successful refresh/)).toBeInTheDocument();
+  await screen.findByText(/Previous snapshot is available in View totals/); fireEvent.click(screen.getByRole('button',{name:'View totals'})); expect(screen.getAllByText(/5,?100.00/).length).toBeGreaterThanOrEqual(2); expect(screen.getAllByText(/Last successful refresh/).length).toBeGreaterThan(0);
 });
 it('retains capture fields and the retry key after a failed save',async()=>{
   mount(); fireEvent.click(screen.getByRole('button',{name:'New receipt'}));
@@ -94,8 +94,8 @@ it('filters by account and switches receipt status via the compact status toggle
  expect(screen.getByRole('button',{name:'Converted / linked'})).toHaveAttribute('aria-pressed','true');
  expect(screen.getByRole('button',{name:'Unassigned'})).toHaveAttribute('aria-pressed','false');
 });
-it('shows per-currency totals in the green summary strip',async()=>{
- mount(); const totals = await screen.findByRole('table',{name:'Totals by currency and status'});
+it('shows per-currency totals in the totals overlay',async()=>{
+ mount(); await screen.findByRole('table',{name:'Receipts'}); fireEvent.click(screen.getByRole('button',{name:'View totals'})); const totals = await screen.findByRole('table',{name:'Totals by currency and status'});
  expect(totals).toHaveTextContent('PLN');
  expect(totals).toHaveTextContent('5,100.00');
 });

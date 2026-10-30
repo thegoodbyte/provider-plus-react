@@ -45,3 +45,11 @@
 
 .scratchpad-page .scratchpad-page-header { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; }
 @media (max-width: 760px) { .scratchpad-page .scratchpad-page-header { grid-template-columns: minmax(0,1fr); } }
+
+.scratchpad-view-totals { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid #cddfd2; border-radius: 10px; padding: 9px 12px; background: white; color: #244e37; font-size: .875rem; font-weight: 650; }
+.scratchpad-view-totals:disabled { opacity: .5; cursor: not-allowed; }
+.scratchpad-view-totals:focus-visible { outline: 2px solid #26724a; outline-offset: 2px; }
+.scratchpad-totals-dialog .ant-modal-body { max-height: 70dvh; overflow-y: auto; }
+.scratchpad-totals-dialog .scratchpad-totals-strip { flex-direction: column; border: 1px solid #d6eadb; border-radius: 12px; overflow: hidden; }
+.scratchpad-totals-dialog .scratchpad-totals-help { width: 100%; align-self: stretch; border-top: 1px solid #d6eadb; }
+@media (max-width: 480px) { .scratchpad-totals-dialog.ant-modal { top: 20px; margin-bottom: 20px; } .scratchpad-totals-dialog .ant-modal-body { max-height: calc(100dvh - 180px); } }

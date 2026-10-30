@@ -1,0 +1,7 @@
+# Scratchpad totals overlay
+
+Open Payment scratchpad and select View totals beside the filters. The overlay shows the existing per-currency Logged, Unassigned, Converted/linked and Excluded amounts/counts, last successful refresh time and How totals work explanation. Close with Close totals, X, Escape or the backdrop; focus returns to View totals. The receipt list and filters remain compact by default.
+
+Totals still come from the existing server snapshot across all pages, follow the existing date/provider/account/currency/search filters, and remain independent of the status tab. No currencies are combined or amounts recalculated in the UI. While refreshing or after refresh failure, previous totals remain available and explicitly marked stale. Before the first snapshot, View totals is disabled.
+
+This is presentation-only: no API, persistence, schema, permissions, reconciliation or money changes. Database tests are not applicable. Permanent unit checks cover hidden/open/close, unchanged filters, currency separation and stale states. Run `node scripts/run-scratchpad-totals-e2e.cjs` for desktop/mobile browser checks with synthetic read responses and asserted zero writes; optional SCRATCHPAD_TOTALS_ARTIFACT_DIR saves screenshots. The runner uses an isolated local Vite port and has no fixture skips. Also run full admin Jest, build and contract checks before handoff. A separate production release is required.

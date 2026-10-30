@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import ScratchpadOverview, { scratchpadDateRange } from './ScratchpadOverview';
 const filters = { from: '', to: '', provider: '', account: '', currency: '', search: '', status: 'converted', sort: 'date-desc' };
 const snapshot: any = { refreshedAt: '2026-10-26T10:00:00Z', totals: [
@@ -22,9 +22,12 @@ it('preserves unrelated filters when selecting a date shortcut and supports cust
   fireEvent.change(screen.getByLabelText('From date'), { target: { value: '2026-10-01' } });
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ from: '2026-10-01', provider: 'csob' }));
 });
-it('shows URL custom ranges and never mixes currencies or recomputes totals from rows', () => {
+it('shows URL custom ranges and never mixes currencies or recomputes totals from rows', async () => {
   render(<ScratchpadOverview filters={{ ...filters, from: '2020-01-01' }} onChange={jest.fn()} onClear={jest.fn()} snapshot={snapshot} loading={false} error="" />);
   expect(screen.getByLabelText('From date')).toHaveValue('2020-01-01');
+  expect(screen.queryByRole('table', { name: 'Totals by currency and status' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'View totals'}));
+  await waitFor(()=>expect(screen.getByRole('dialog')).toBeVisible());
   const table = screen.getByRole('table', { name: 'Totals by currency and status' });
   const rows = within(table).getAllByRole('row');
   expect(rows).toHaveLength(3);
@@ -40,4 +43,15 @@ it('focuses search with slash without stealing typing from another input', () =>
   expect(screen.getByLabelText('Search payer, phone, transaction or request number')).toHaveFocus();
   const account = screen.getByLabelText('Filter account'); account.focus(); fireEvent.keyDown(account, { key: '/' });
   expect(account).toHaveFocus();
+});
+
+it('opens totals without changing filters or data and closes through its footer', async () => {
+ const change=jest.fn(),clear=jest.fn();render(<ScratchpadOverview filters={filters} onChange={change} onClear={clear} snapshot={snapshot} loading={false} error=""/>);
+ const trigger=screen.getByRole('button',{name:'View totals'});fireEvent.click(trigger);await waitFor(()=>expect(screen.getByRole('dialog',{name:'Scratchpad totals'})).toBeVisible());expect(change).not.toHaveBeenCalled();expect(clear).not.toHaveBeenCalled();
+ fireEvent.click(screen.getByRole('button',{name:'Close totals'}));await waitFor(()=>expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+it('keeps previous snapshot totals visibly marked stale and disables the trigger before the first snapshot', () => {
+ const {rerender}=render(<ScratchpadOverview filters={filters} onChange={jest.fn()} onClear={jest.fn()} snapshot={null} loading={true} error=""/>);
+ expect(screen.getByRole('button',{name:'View totals'})).toBeDisabled();rerender(<ScratchpadOverview filters={filters} onChange={jest.fn()} onClear={jest.fn()} snapshot={snapshot} loading={false} error="Refresh failed"/>);
+ fireEvent.click(screen.getByRole('button',{name:'View totals'}));const dialog=screen.getByRole('dialog');expect(within(dialog).getByRole('status')).toHaveTextContent('may not match the current filters');expect(within(dialog).getAllByText('56,700.00')[0]).toBeInTheDocument();
 });

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Modal } from 'antd';
 import { ArrowDownUp, Info, RefreshCw, Search } from 'lucide-react';
 import { ScratchpadSnapshot } from '../services/api';
 import './ScratchpadOverview.css';
@@ -25,6 +26,8 @@ export function ScratchpadRefresh({ snapshot, loading, failed, onRefresh }: { sn
 }
 export default function ScratchpadOverview({ filters, onChange, onClear, snapshot, loading, error }: { filters: Filters; onChange: (filters: Filters) => void; onClear: () => void; snapshot: ScratchpadSnapshot | null; loading: boolean; error: string }) {
   const search = useRef<HTMLInputElement>(null);
+  const totalsTrigger = useRef<HTMLButtonElement>(null);
+  const [totalsOpen, setTotalsOpen] = useState(false);
   const [custom, setCustom] = useState(false);
   const preset = presets.find(name => { const range = scratchpadDateRange(name); return range.from === filters.from && range.to === filters.to; });
   const showCustom = custom || !preset;
@@ -50,13 +53,16 @@ export default function ScratchpadOverview({ filters, onChange, onClear, snapsho
       <label className="scratchpad-filter-chip">Currency<select aria-label="Filter currency" value={filters.currency} onChange={event => change('currency', event.target.value)}><option value="">All</option>{currencies.map(currency => <option key={currency}>{currency}</option>)}</select></label>
       <label className="scratchpad-filter-chip scratchpad-account">Account<input aria-label="Filter account" placeholder="any" value={filters.account} onChange={event => change('account', event.target.value)} /></label>
       {changed && <button type="button" className="scratchpad-clear" onClick={() => { setCustom(false); onClear(); }}>Clear filters</button>}
+      <button ref={totalsTrigger} type="button" className="scratchpad-view-totals" aria-haspopup="dialog" disabled={!snapshot} onClick={() => setTotalsOpen(true)}><Info size={16} aria-hidden="true" />View totals</button>
       <label className="scratchpad-sort"><ArrowDownUp size={18} aria-hidden="true" /><select aria-label="Sort receipts" value={filters.sort} onChange={event => change('sort', event.target.value)}><option value="date-desc">Received · newest first</option><option value="date-asc">Received · oldest first</option><option value="amount-desc">Amount · highest first</option><option value="amount-asc">Amount · lowest first</option><option value="payer-asc">Payer · A–Z</option></select></label>
     </div>
-    {error && <p role="alert" className="scratchpad-load-error">{error} {snapshot ? 'Previous snapshot shown below; it may not match the current filters.' : 'No snapshot available.'}</p>}
+    {error && <p role="alert" className="scratchpad-load-error">{error} {snapshot ? 'Previous snapshot is available in View totals; it may not match the current filters.' : 'No snapshot available.'}</p>}
     {loading && <p role="status" className="scratchpad-loading">Loading receipts…</p>}
-    {snapshot && <div className={`scratchpad-totals-strip${loading || error ? ' is-stale' : ''}`}>
+    <Modal title="Scratchpad totals" open={totalsOpen} onCancel={() => setTotalsOpen(false)} afterClose={() => totalsTrigger.current?.focus()} width={1000} className="scratchpad-totals-dialog" destroyOnClose footer={<button type="button" className="scratchpad-view-totals" onClick={() => setTotalsOpen(false)}>Close totals</button>}>
+    {snapshot && <><p className="mb-3 text-sm text-slate-600">Last successful refresh: {new Date(snapshot.refreshedAt).toLocaleString()}</p>{(loading || error) && <p role="status" className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">These totals are from the last successful refresh and may not match the current filters.</p>}<div className={`scratchpad-totals-strip${loading || error ? ' is-stale' : ''}`}>
       <table className="scratchpad-totals"><caption className="sr-only">Totals by currency and status</caption><thead className="sr-only"><tr>{statuses.map(([value, label]) => <th key={value}>{label}</th>)}</tr></thead><tbody>{currencies.filter(currency => snapshot.totals.some(total => total.currency === currency)).map(currency => <tr key={currency} aria-label={currency}>{statuses.map(([status, label]) => { const total = snapshot.totals.find(item => item.currency === currency && item.status === status); return <td key={status}><span className="scratchpad-total-title" aria-hidden="true">{label}</span><div className="scratchpad-total-value"><strong>{amountLabel(total?.amount || '0.00')}</strong><span>{currency}</span><span className="scratchpad-total-count" aria-label={`${total?.count || 0} receipts`}>{total?.count || 0}</span></div></td>; })}</tr>)}</tbody></table>
       <details className="scratchpad-totals-help"><summary><Info size={16} aria-hidden="true" />How totals work</summary><p>Logged receipts only—not a bank balance. Totals use the date, provider, account, currency and search filters across all pages, independently of the status tab. Excluded receipts are shown separately. Currencies are never combined.</p></details>
-    </div>}
+    </div></>}
+    </Modal>
   </section>;
 }
