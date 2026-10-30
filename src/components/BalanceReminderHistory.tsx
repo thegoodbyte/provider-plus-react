@@ -256,7 +256,7 @@ export default function BalanceReminderHistory({
     <Popover
       content={content}
       trigger={["hover", "focus"]}
-      placement="bottomRight"
+      placement="bottom"
       open={open}
       onOpenChange={(next) => {
         if (!next && pinned) return;
