@@ -1,3 +1,4 @@
+import BalanceReminderHistory from "./BalanceReminderHistory";
 import React, { useEffect, useState } from "react";
 import { paymentsApi } from "../services/api";
 import { authService } from "../services/authService";
@@ -13,6 +14,7 @@ export default function BalanceReminderButton({
   clientName?: string;
   disabledReason?: string;
 }) {
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [sending, setSending] = useState(false);
   const [open, setOpen] = useState(false),
     [draft, setDraft] = useState<any>(null),
@@ -52,20 +54,26 @@ export default function BalanceReminderButton({
     return null;
   return (
     <>
-      <button
-        type="button"
-        className="mt-2 block rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50"
-        disabled={!!disabledReason || open}
-        title={disabledReason}
-        aria-label={`Email client about balance${clientName ? ` — ${clientName}` : ""}`}
-        onClick={() => {
-          setTone("auto");
-          setLanguage("");
-          setOpen(true);
-        }}
-      >
-        Email client about balance
-      </button>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="block rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50"
+          disabled={!!disabledReason || open}
+          title={disabledReason}
+          aria-label={`Email client about balance${clientName ? ` — ${clientName}` : ""}`}
+          onClick={() => {
+            setTone("auto");
+            setLanguage("");
+            setOpen(true);
+          }}
+        >
+          Email client about balance
+        </button>
+        <BalanceReminderHistory
+          bookingId={bookingId}
+          refreshKey={historyVersion}
+        />
+      </div>
       {open && !draft && (
         <div
           role="dialog"
@@ -123,6 +131,7 @@ export default function BalanceReminderButton({
               });
             } finally {
               setSending(false);
+              setHistoryVersion((value) => value + 1);
             }
           }}
           extraContent={

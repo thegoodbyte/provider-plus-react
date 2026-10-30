@@ -9,6 +9,12 @@ jest.mock("../services/api", () => ({
     sendBalanceReminder: jest.fn(),
   },
 }));
+jest.mock("./BalanceReminderHistory", () => ({
+  __esModule: true,
+  default: (p: any) => (
+    <span data-testid="reminder-history-version">{p.refreshKey}</span>
+  ),
+}));
 jest.mock("../services/authService", () => ({
   authService: { getUser: jest.fn() },
 }));
@@ -71,6 +77,11 @@ it("opens reviewed current balance without sending and dispatches edits with its
         tone: "overdue",
         language: "en",
       }),
+    ),
+  );
+  await waitFor(() =>
+    expect(screen.getByTestId("reminder-history-version")).toHaveTextContent(
+      "1",
     ),
   );
 });
