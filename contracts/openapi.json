@@ -21964,6 +21964,29 @@
         ]
       }
     },
+    "/payment-requests/{id}/payment-candidates": {
+      "get": {
+        "operationId": "PaymentRequestsController_existingPayments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PaymentRequests"
+        ]
+      }
+    },
     "/payment-requests/{id}/send-reminder": {
       "put": {
         "operationId": "PaymentRequestsController_sendReminder",

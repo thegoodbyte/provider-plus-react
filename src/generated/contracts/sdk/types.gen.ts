@@ -11267,6 +11267,19 @@ export type PaymentRequestsControllerMarkAsPaidResponses = {
 
 export type PaymentRequestsControllerMarkAsPaidResponse = PaymentRequestsControllerMarkAsPaidResponses[keyof PaymentRequestsControllerMarkAsPaidResponses];
 
+export type PaymentRequestsControllerExistingPaymentsData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-requests/{id}/payment-candidates';
+};
+
+export type PaymentRequestsControllerExistingPaymentsResponses = {
+    200: unknown;
+};
+
 export type PaymentRequestsControllerSendReminderData = {
     body?: never;
     path: {

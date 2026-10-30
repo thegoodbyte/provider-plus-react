@@ -1,6 +1,8 @@
 import './PaymentRequestsGrid.css';
 import { Dropdown, Tooltip } from 'antd';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
+import RequestExistingPayment from './RequestExistingPayment';
+import { authService } from '../services/authService';
 import RequestBookingAction from './RequestBookingAction';
 import { requestBookingReferences } from './requestBookingState';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
@@ -73,21 +75,23 @@ const PaymentRequestsGrid: React.FC = () => {
   const currencies = [...new Set(paymentRequests.map(request => paymentRequestFinancialSummary(request).currency).filter(Boolean))].sort();
   const [sortKey, setSortKey] = useState<PaymentRequestSortKey>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [linkingRequest,setLinkingRequest] = useState<any>(null);
   const [cancellingRequest, setCancellingRequest] = useState<any | null>(null);
   const [cancelReason, setCancelReason] = useState('Client did not pay');
   const [cancelling, setCancelling] = useState(false);
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
 
-  const fetchPaymentRequests = async () => {
+  const fetchPaymentRequests = async (failLoud = false) => {
     try {
-      setLoading(true);
+      if (!failLoud) setLoading(true);
       const response = await paymentRequestsApi.getAllFresh();
       setPaymentRequests(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching payment requests:', error);
+      if (failLoud) throw error;
       setPaymentRequests([]);
     } finally {
-      setLoading(false);
+      if (!failLoud) setLoading(false);
     }
   };
 
@@ -472,6 +476,7 @@ const PaymentRequestsGrid: React.FC = () => {
                         >
                           <Icon icon={DollarSign} />
                         </button>
+                        {authService.getUser()?.role === 'admin' && request.status !== 'cancelled' && !request.participantBookings?.length && <button type="button" className="rounded border border-blue-300 px-3 py-2 text-sm text-blue-700" onClick={()=>setLinkingRequest(request)}>Link existing payment</button>}
                         <button
                           onClick={() => handleSendPaymentRequest(request)}
                           className="icon-action-btn icon-action-btn-view disabled:opacity-50"
@@ -585,6 +590,7 @@ const PaymentRequestsGrid: React.FC = () => {
         />
       )}
 
+      {linkingRequest && <RequestExistingPayment key={linkingRequest._id} request={linkingRequest} onClose={()=>setLinkingRequest(null)} onLinked={()=>fetchPaymentRequests(true)} />}
       {cancellingRequest && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
