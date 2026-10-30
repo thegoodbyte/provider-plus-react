@@ -1,6 +1,7 @@
+import {emptyPaymentFilters,readPaymentFilters,paymentFilterError,paymentMatchesFilters,paymentRecordId,paymentConfirmationPath} from './paymentListFilters';
 import { ChevronDown, DollarSign, Edit2, Plus, Search as SearchIcon, Trash2, X } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { paymentsApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
 import { Payment, Client, Retreat, RetreatClient } from '../types';
 import CurrencyDisplay from './CurrencyDisplay';
@@ -20,6 +21,8 @@ interface PaymentWithDetails extends Payment {
   clientDisplayId?: number;
   retreatName?: string;
   bookingNumber?: number;
+  bookingAvailable?: boolean;
+  canConfirmBooking?: boolean;
   clientEmail?: string;
   clientPhone?: string;
   clientRecord?: Client;
@@ -40,16 +43,26 @@ const PaymentsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sortKey, setSortKey] = useState<PaymentSortKey>('display');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [params,setParams] = useSearchParams();
+  const location=useLocation();
+  const filters=useMemo(()=>readPaymentFilters(params),[params]);
+  const searchTerm=filters.q;
+  const filterError=paymentFilterError(filters);
+  const hasFilters=Object.values(filters).some(Boolean);
+  const paramsRef=useRef(params);
+  useEffect(()=>{paramsRef.current=params;},[params]);
+  const updateFilters=(changes:Partial<typeof filters>)=>{const next=new URLSearchParams(paramsRef.current);for(const [key,value]of Object.entries(changes)){if(value)next.set(key,value);else next.delete(key);}paramsRef.current=next;setParams(next,{replace:true});};
+  const setSearchTerm=(q:string)=>updateFilters({q});
+  const [loadError,setLoadError]=useState('');
 
   const fetchPayments = useCallback(async () => {
     try {
-      setIsLoading(true);
+      setIsLoading(true); setLoadError('');
       const [paymentsResponse, clientsResponse, retreatsResponse, bookingsResponse] = await Promise.all([
-        paymentsApi.getAll(),
+        paymentsApi.getAllFresh(),
         clientsApi.getAll(),
         retreatsApi.getAll(),
-        bookingsApi.getAll(),
+        bookingsApi.getAllFresh(),
       ]);
 
       const clientsMap = new Map<string, Client>(
@@ -71,10 +84,10 @@ const PaymentsPage: React.FC = () => {
       );
 
       const enrichedPayments: PaymentWithDetails[] = (paymentsResponse.data || []).map((payment: Payment) => {
-        const clientId = typeof payment.clientId === 'string' ? payment.clientId : payment.clientId?._id;
-        const retreatId = typeof payment.retreatId === 'string' ? payment.retreatId : payment.retreatId?._id;
-        const bookingId = typeof payment.bookingId === 'string' ? payment.bookingId : payment.bookingId?._id;
-        const client = clientId ? clientsMap.get(clientId) : undefined;
+        const clientId = paymentRecordId(payment.clientId);
+        const retreatId = paymentRecordId(payment.retreatId);
+        const bookingId = paymentRecordId(payment.bookingId);
+        const client = (clientId ? clientsMap.get(clientId) : undefined) || (typeof payment.clientId === 'object' ? payment.clientId as Client : undefined);
         const retreat = retreatId ? retreatsMap.get(retreatId) : undefined;
         const booking = bookingId ? bookingsMap.get(bookingId) : undefined;
 
@@ -83,7 +96,9 @@ const PaymentsPage: React.FC = () => {
           clientId,
           retreatId,
           bookingId,
-          clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
+          bookingAvailable: Boolean(booking),
+          canConfirmBooking: Boolean(clientId && booking && paymentRecordId(booking.clientId)===clientId && !['cancelled','canceled','moved'].includes(booking.status || '')),
+          clientName: client ? [client.firstName,client.lastName].filter(Boolean).join(' ') || 'Unknown Client' : 'Unknown Client',
           clientRecord: client,
           clientDisplayId: client?.display_id,
           clientEmail: client?.email,
@@ -97,6 +112,7 @@ const PaymentsPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching payments:', error);
       setPayments([]);
+      setLoadError(apiErrorMessage(error,'Could not load payments. Retry before reviewing missing links.'));
     } finally {
       setIsLoading(false);
     }
@@ -134,14 +150,15 @@ const PaymentsPage: React.FC = () => {
 
   const filteredPayments = useMemo(() => {
     const terms = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return payments;
+    if (filterError) return [];
     return payments.filter((payment) => {
+      if (!paymentMatchesFilters(payment,filters)) return false;
       const receipt = typeof payment.receiptId === 'object' ? payment.receiptId : null;
       const haystack = [payment.display_id, payment._id, typeof payment.receiptId === 'string' ? payment.receiptId : receipt?._id, receipt?.payerName, receipt?.transactionReference, payment.clientDisplayId, payment.clientId, payment.clientName, payment.clientEmail, payment.clientPhone, payment.bookingNumber, payment.bookingId, payment.bookingHash, payment.retreatId, payment.retreatName, payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?._id : payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.display_id : undefined, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.invoiceNumber : undefined, payment.transactionId, payment.transactionReference, payment.allocationGroupId, payment.payerName, payment.description, payment.notes, payment.status, payment.paymentMethod, payment.paymentType, payment.currency, payment.amount, payment.usd_amount, payment.paymentDate, payment.processedDate, payment.processedBy]
         .filter((value) => value !== undefined && value !== null).join(' ').toLowerCase();
       return terms.every((term) => haystack.includes(term.replace(/^#/, '')));
     });
-  }, [payments, searchTerm]);
+  }, [payments, searchTerm, filters, filterError]);
 
   const totalCompleted = useMemo(() => filteredPayments.filter((payment) => payment.status === 'completed').length, [filteredPayments]);
   const totalPending = useMemo(() => filteredPayments.filter((payment) => payment.status === 'pending').length, [filteredPayments]);
@@ -237,6 +254,24 @@ const PaymentsPage: React.FC = () => {
         </div>
       </div>
 
+      <section aria-label="Payment filters" className="mb-4 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">Find payments to finish</h2><button type="button" className="rounded border px-3 py-2 text-sm disabled:opacity-40" disabled={!hasFilters} onClick={()=>updateFilters(emptyPaymentFilters)}>Clear all payment filters</button></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="grid gap-1 text-sm">Booking link<select className="rounded border p-2" value={filters.booking} onChange={e=>updateFilters({booking:e.target.value})}><option value="">All booking links</option><option value="without">Without a booking</option><option value="with">With a booking link</option><option value="unavailable">Booking record unavailable</option></select></label>
+          <label className="grid gap-1 text-sm">Payment request link<select className="rounded border p-2" value={filters.request} onChange={e=>updateFilters({request:e.target.value})}><option value="">All PR links</option><option value="without">Without a PR</option><option value="with">With a PR</option></select></label>
+          <label className="grid gap-1 text-sm">Payment status<select className="rounded border p-2" value={filters.status} onChange={e=>updateFilters({status:e.target.value})}><option value="">All statuses</option>{['completed','pending','failed','refunded'].map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+          <label className="grid gap-1 text-sm">Payment method<select className="rounded border p-2" value={filters.method} onChange={e=>updateFilters({method:e.target.value})}><option value="">All methods</option>{[...new Set([...payments.map(p=>p.paymentMethod),filters.method].filter(Boolean))].sort().map(v=><option key={v} value={v}>{v.replace(/_/g,' ')}</option>)}</select></label>
+          <label className="grid gap-1 text-sm">Currency<select className="rounded border p-2" value={filters.currency} onChange={e=>updateFilters({currency:e.target.value})}><option value="">All currencies</option>{[...new Set([...payments.map(p=>p.currency),filters.currency].filter(Boolean))].sort().map(v=><option key={v} value={v}>{v}</option>)}</select></label>
+          <label className="grid gap-1 text-sm">Payment date from<input type="date" className="rounded border p-2" value={filters.from} onChange={e=>updateFilters({from:e.target.value})}/></label>
+          <label className="grid gap-1 text-sm">Payment date to<input type="date" className="rounded border p-2" value={filters.to} onChange={e=>updateFilters({to:e.target.value})}/></label>
+          <label className="grid gap-1 text-sm">Minimum amount<input type="number" min="0" step="0.01" className="rounded border p-2" value={filters.min} onChange={e=>updateFilters({min:e.target.value})}/></label>
+          <label className="grid gap-1 text-sm">Maximum amount<input type="number" min="0" step="0.01" className="rounded border p-2" value={filters.max} onChange={e=>updateFilters({max:e.target.value})}/></label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={filters.repair==='yes'} onChange={e=>updateFilters({repair:e.target.checked?'yes':''})}/>Unfinished payment updates only</label>
+        </div>
+        <p className="text-xs text-gray-600">Combine filters with search. Dates include the whole day in UTC. Amount ranges use each payment’s currency; choose a currency to compare like amounts. Missing links do not change payment status.</p>
+        {filterError&&<p role="alert" className="text-red-800">{filterError}</p>}
+      </section>
+      {loadError&&<p role="alert" aria-label="Payment load error" className="mb-4 rounded border border-red-200 p-3 text-red-800">{loadError} <button type="button" className="underline" onClick={()=>void fetchPayments()}>Retry payments</button></p>}
       <div className="workspace-mobile-sort"><label htmlFor="mobile-payment-sort">Sort by</label><select id="mobile-payment-sort" value={sortKey} onChange={event => setSortKey(event.target.value as PaymentSortKey)}><option value="display">Payment number</option><option value="date">Date</option><option value="client">Client</option><option value="retreat">Retreat</option><option value="booking">Booking</option><option value="request">Payment request</option><option value="amount">Amount</option><option value="usd">USD amount</option><option value="method">Method</option><option value="status">Status</option><option value="type">Type</option></select><button type="button" onClick={() => setSortDirection(value => value === 'asc' ? 'desc' : 'asc')} aria-label="Reverse payment sort order">{sortDirection === 'asc' ? '↑' : '↓'}</button></div>
       <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
         <div className="relative min-w-0 flex-1">
@@ -244,7 +279,7 @@ const PaymentsPage: React.FC = () => {
           <input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search client, client ID, booking, payment ID, reference, amount, status, notes..." className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" aria-label="Search payments" />
           {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Clear search" aria-label="Clear payment search"><Icon icon={X} className="h-4 w-4" /></button>}
         </div>
-        <span className="shrink-0 text-sm text-gray-500">{filteredPayments.length} of {payments.length}</span>
+        <span className="shrink-0 text-sm text-gray-500">{loadError ? 'Results unavailable' : `${filteredPayments.length} of ${payments.length}`}</span>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -354,7 +389,8 @@ const PaymentsPage: React.FC = () => {
                     {payment.paymentType?.replace(/_/g, ' ') || 'regular'}
                   </td>
                   <td data-label="Actions" className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {payment.canConfirmBooking ? <Link className="rounded border border-blue-300 px-3 py-2 text-blue-700" to={paymentConfirmationPath(payment.bookingId as string,location.pathname+location.search)}>Booking confirmation</Link> : payment.bookingId ? <Link className="text-amber-800 underline" to={`/admin/payments/${payment._id}/edit`}>Review booking link</Link> : <Link className="rounded border px-3 py-2 text-blue-700" to={`/admin/payments/${payment._id}/edit`}>Create / link booking</Link>}
                       <button
                         onClick={() => handleEdit(payment)}
                         className="text-indigo-600 hover:text-indigo-900"
@@ -384,7 +420,7 @@ const PaymentsPage: React.FC = () => {
               ))}
             </tbody>
           </table>
-          {sortedPayments.length === 0 && (
+          {!loadError && sortedPayments.length === 0 && (
             <div className="text-center py-8 text-gray-500">{searchTerm ? 'No payments match your search' : 'No payments found'}</div>
           )}
         </div>

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { safePaymentReturn } from './paymentListFilters';
 import BookingStayAlignment from './BookingStayAlignment';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -88,6 +90,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [retreatBookings, setRetreatBookings] = useState<any[]>([]);
   const [rescheduleOpen, setRescheduleOpen] = useState(false); const [rescheduleRetreats, setRescheduleRetreats] = useState<any[]>([]); const [rescheduling, setRescheduling] = useState(false); const [rescheduleError, setRescheduleError] = useState('');
   const pdfRef = useRef<HTMLDivElement>(null);
+  const confirmationEntryRef=useRef<HTMLElement>(null);
+  useEffect(()=>{if(!isLoading && new URLSearchParams(location.search).get('confirmation')==='1') confirmationEntryRef.current?.scrollIntoView?.({block:'start'});},[isLoading,bookingId,location.search]);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
@@ -246,6 +250,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   });
   return (
     <div className="booking-detail-container">
+      {new URLSearchParams(location.search).get('confirmation')==='1' && <section ref={confirmationEntryRef} aria-label="Booking confirmation entry" className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4"><h2 className="font-semibold">Booking confirmation</h2><p className="my-2 text-sm">Use Preview to check the booking confirmation, or Review to prepare its email. Review the booking details and recipient before sending. Opening this screen sends nothing.</p><Link className="text-blue-700 underline" to={safePaymentReturn(new URLSearchParams(location.search).get('returnPayments'),routePrefix,window.location.origin)}>Return to filtered payments</Link></section>}
       <BookingDetailShell
         canManageIntegration={['admin', 'facilitator'].includes(user?.role || '')}
         nextActionSummary={<BookingNextActionSummary bookingId={bookingId} bookingStatus={booking.status} source={readinessSource} onRetry={refreshReadiness} onOpen={(tab, itemId) => { setFocusedStepId(itemId); setActiveTab(tab); }} />}
