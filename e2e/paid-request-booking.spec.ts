@@ -58,12 +58,14 @@ for (const width of [1440, 390])
           json: [
             {
               key: "shared",
+              legacyRoomType: "shared",
               labels: { en: "Shared room" },
               occupancy: "shared",
               active: true,
             },
             {
               key: "private",
+              legacyRoomType: "private",
               labels: { en: "Private room" },
               occupancy: "private",
               active: true,
@@ -119,12 +121,16 @@ for (const width of [1440, 390])
     await expect(
       page.getByRole("button", { name: "Add Booking", exact: true }),
     ).toBeVisible();
+    const room = page.getByRole("combobox", { name: /^Accommodation/ });
+    await expect(room).toHaveValue("shared");
+    if (width === 390) await room.selectOption("private");
     await page
       .getByRole("button", { name: "Add Booking", exact: true })
       .click();
     await expect.poll(async () => (await snapshot()).bookings.length).toBe(1);
     saved = await snapshot();
     const booking = saved.bookings[0];
+    expect(booking.roomType).toBe(width === 390 ? "private" : "shared");
     expect(booking.totalAmount).toBe(2500);
     expect(booking.amountPaid).toBe(1000);
     expect(booking.paymentPlanEnabled).toBe(false);

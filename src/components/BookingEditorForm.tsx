@@ -312,11 +312,26 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       return;
     }
     let active = true;
-    paymentRequestsApi.getOne(formData.paymentRequestId)
-      .then(response => { if (active) setSelectedRequest(response.data); })
+    const requestedId = formData.paymentRequestId;
+    paymentRequestsApi.getOne(requestedId)
+      .then(response => {
+        if (!active) return;
+        const request = response.data;
+        setSelectedRequest(request);
+        if (mode !== 'create') return;
+        const requestRoomType = request?.roomType || request?.accommodationKey;
+        if (!['shared', 'private', 'private_ensuite'].includes(requestRoomType)) return;
+        const requestClientId = typeof request?.clientId === 'object' ? request.clientId?._id : request?.clientId;
+        // A URL-linked request resolves asynchronously. Fill only a still-empty
+        // agreement for its own client; never replace a staff choice or edit.
+        setFormData(prev => prev.paymentRequestId === requestedId && prev.clientId &&
+          requestClientId === prev.clientId && !prev.accommodationKey && prev.roomType === 'unspecified'
+          ? { ...prev, accommodationKey: request.accommodationKey || requestRoomType, roomType: requestRoomType as BookingFormData['roomType'] }
+          : prev);
+      })
       .catch(() => { if (active) setSelectedRequest(undefined); });
     return () => { active = false; };
-  }, [formData.paymentRequestId]);
+  }, [formData.paymentRequestId, mode]);
 
   const resolveId = (value: any) => {
     if (!value) return '';
