@@ -410,7 +410,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       const bookingNumberValue = formData.bookingNumber.trim();
       const bookingNumber = bookingNumberValue ? Number(bookingNumberValue) : undefined;
       if (lockedClientId && formData.clientId !== lockedClientId) throw new Error('The booking client changed. Reopen the booking form.');
-      if (mode === 'create' && formData.paymentRequestId && !(Number(formData.totalAmount) > 0)) throw new Error('Enter the full agreed booking price. A payment request may only cover a deposit.');
+      if (mode === 'create' && formData.paymentRequestId && !(Number(formData.totalAmount) > 0)) { showError('Enter the full agreed booking price. A payment request may only cover a deposit.'); return; }
       const payload = {
         ...(formData.paymentPlanEnabled === false ? { paymentPlanEnabled: false } : {}),
         ...(authService.getUser()?.role === 'admin' ? { referralAttribution: formData.referralAttribution, referralPartnerId: ['direct', 'influenced'].includes(formData.referralAttribution) ? formData.referralPartnerId : null, referralEvidence: formData.referralEvidence } : {}),
