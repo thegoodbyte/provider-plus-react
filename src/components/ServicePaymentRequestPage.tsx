@@ -272,8 +272,7 @@ Loading service billing…</div>;
             <p>{request.serviceDocument.policy.paymentTerms}</p>
             <p>{request.serviceDocument.policy.cancellationTerms}</p>
             <p className="sr-muted">
-              Issued terms are preserved. To correct items, cancel this request
-              and issue a replacement.
+              {request.invoiceDocument ? 'Issued invoice details and totals are preserved. Use an audited financial correction; the original invoice cannot be overwritten.' : 'Issued terms are preserved. To correct items, cancel this request and issue a replacement.'}
             </p>
           </section>
           <section className="sr-card">
