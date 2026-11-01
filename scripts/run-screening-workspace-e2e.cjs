@@ -64,7 +64,8 @@ const fs = require("node:fs"),
       child.once("error", reject);
       child.once("exit", (c, s) => resolve(s ? 1 : c));
     });
-    if (code) throw Error("Screening workspace browser regression failed: " + code);
+    if (code)
+      throw Error("Screening workspace browser regression failed: " + code);
   } finally {
     if (server) await server.close();
     if (f) await f.close();
