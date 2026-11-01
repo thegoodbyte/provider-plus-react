@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useId, useState } from "react";
 import {
   AccommodationOption,
   roomInventoryApi,
@@ -12,6 +12,7 @@ export default function AccommodationSelect({
   preference = false,
   offeredOptions,
   optionDescriptions,
+  validationError,
 }: {
   value?: string;
   clientId?: string;
@@ -21,7 +22,9 @@ export default function AccommodationSelect({
   preference?: boolean;
   offeredOptions?: AccommodationOption[];
   optionDescriptions?: Record<string, string>;
+  validationError?: string;
 }) {
+  const validationId = useId();
   const [options, setOptions] = useState<AccommodationOption[]>([]);
   const [suggested, setSuggested] = useState<{
     key: string;
@@ -74,6 +77,8 @@ export default function AccommodationSelect({
       <select
         className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
         required={required}
+        aria-invalid={validationError ? true : undefined}
+        aria-describedby={validationError ? validationId : undefined}
         value={selected}
         disabled={disabled}
         onChange={(event) => {
@@ -101,6 +106,7 @@ export default function AccommodationSelect({
           </option>
         )}
       </select>
+      {validationError && <small id={validationId} role="alert" className="mt-2 block font-semibold text-red-800">{validationError}</small>}
       {value === undefined && suggested?.key && (
         <small>
           From screening: {suggested.label}. Preference only; availability must

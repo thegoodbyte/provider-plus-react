@@ -280,6 +280,9 @@ const ClientScreening: React.FC = () => {
   const [pdfOpen, setPdfOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [saveMessageIsError, setSaveMessageIsError] = useState(false);
+  const [accommodationError, setAccommodationError] = useState('');
+  const accommodationRef = useRef<HTMLElement | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
@@ -944,8 +947,19 @@ const ClientScreening: React.FC = () => {
     }));
   };
 
-  const persistScreening = async () => {
-    if (!formData.desiredAccommodationKey) throw new Error('Choose a Shared or Private room type before saving.');
+  const focusAccommodation = () => {
+    accommodationRef.current?.scrollIntoView?.({ block: 'center', behavior: 'instant' });
+    accommodationRef.current?.querySelector('select')?.focus({ preventScroll: true });
+  };
+
+  const persistScreening = async (focusInvalid = false) => {
+    if (!formData.desiredAccommodationKey) {
+      const message = 'Choose a Shared or Private room type before saving.';
+      setAccommodationError(message);
+      if (focusInvalid) focusAccommodation();
+      throw new Error(message);
+    }
+    setAccommodationError('');
     const birthError = validateScreeningBirth(formData.year_of_birth, formData.month_of_birth, formData.day_of_birth);
     if (birthError) throw new Error(birthError);
     const { referralId, referralClientId: rawReferralClientId, ...screeningFields } = formData;
@@ -1012,8 +1026,9 @@ const ClientScreening: React.FC = () => {
     });
   };
 
-  const flashSaveMessage = (message: string) => {
+  const flashSaveMessage = (message: string, isError = false) => {
     setSaveMessage(message);
+    setSaveMessageIsError(isError);
     if (saveMessageTimeoutRef.current) {
       window.clearTimeout(saveMessageTimeoutRef.current);
     }
@@ -1026,13 +1041,13 @@ const ClientScreening: React.FC = () => {
   const handleFloatingSave = async () => {
     setSaving(true);
     try {
-      const response = await persistScreening();
+      const response = await persistScreening(true);
       setClient(response.data);
       setHasChanges(false);
       flashSaveMessage('Screening saved.');
     } catch (error) {
       console.error('Error saving screening:', error);
-      flashSaveMessage(error instanceof Error ? error.message : 'Could not save screening.');
+      flashSaveMessage(error instanceof Error ? error.message : 'Could not save screening.', true);
     } finally {
       setSaving(false);
     }
@@ -1048,13 +1063,13 @@ const ClientScreening: React.FC = () => {
   const handleSaveScreening = async () => {
     setSaving(true);
     try {
-      const response = await persistScreening();
+      const response = await persistScreening(true);
       setClient(response.data);
       setHasChanges(false);
       navigate(getClientProfilePath());
     } catch (error) {
       console.error('Error saving screening:', error);
-      flashSaveMessage(error instanceof Error ? error.message : 'Could not save screening.');
+      flashSaveMessage(error instanceof Error ? error.message : 'Could not save screening.', true);
     } finally {
       setSaving(false);
     }
@@ -1069,7 +1084,7 @@ const ClientScreening: React.FC = () => {
       flashSaveMessage('Auto-saved.');
     } catch (error) {
       console.error('Error auto-saving screening:', error);
-      flashSaveMessage(error instanceof Error ? error.message : 'Could not auto-save screening.');
+      flashSaveMessage(error instanceof Error ? error.message : 'Could not auto-save screening.', true);
     } finally {
       setSaving(false);
     }
@@ -1099,6 +1114,7 @@ const ClientScreening: React.FC = () => {
           </AppleButton>
         </div>
       </div>
+
 
       <section aria-label="Screening history" className="my-4 rounded-lg border bg-gray-50 p-3 text-sm text-gray-700">
           <p>Completed: {(client as any)?.screeningCompletedDate ? new Date((client as any).screeningCompletedDate).toLocaleString() : 'Not completed'}</p>
@@ -2053,7 +2069,22 @@ const ClientScreening: React.FC = () => {
         </div>
       </div>
 
-      <section className="rounded-lg border p-4"><AccommodationSelect required preference value={formData.desiredAccommodationKey} onChange={key => { setHasChanges(true); setFormData(prev => ({ ...prev, desiredAccommodationKey: key })); }} /></section>
+      <section
+        ref={accommodationRef}
+        aria-label="Screening accommodation"
+        className={'scroll-mt-40 rounded-lg border p-4 ' + (accommodationError ? 'border-red-500 bg-red-50' : '')}
+      >
+        {accommodationError && <p className="mb-2 font-semibold text-red-800">Screening has not been saved</p>}
+        <AccommodationSelect
+          required preference validationError={accommodationError}
+          value={formData.desiredAccommodationKey}
+          onChange={key => {
+            if (key) { setAccommodationError(''); setSaveMessage(''); }
+            setHasChanges(true);
+            setFormData(prev => ({ ...prev, desiredAccommodationKey: key }));
+          }}
+        />
+      </section>
       {/* Additional Notes */}
       <div className={sectionStyles.notes.container}>
         <h2 className={sectionStyles.notes.heading}>Additional Information</h2>
@@ -2236,15 +2267,16 @@ const ClientScreening: React.FC = () => {
         )}
       </div>
 
-      <div className="fixed bottom-5 right-5 z-40 flex items-center gap-3">
-        {hasChanges && !saveMessage && (
+      <div className="fixed bottom-5 right-5 z-40 flex max-w-[calc(100vw-2.5rem)] flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+        {accommodationError && <button type="button" onClick={focusAccommodation} className="min-h-11 rounded-md border border-red-400 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800 shadow-lg">Room type required — choose room</button>}
+        {hasChanges && !saveMessage && !accommodationError && (
           <div className="rounded-md border border-amber-200 bg-amber-50 text-amber-700 px-3 py-2 text-sm shadow-lg animate-pulse">
             Auto-save pending...
           </div>
         )}
-        {saveMessage && (
+        {saveMessage && !accommodationError && (
           <div className={`rounded-md border px-3 py-2 text-sm shadow-lg ${
-            saveMessage.includes('Could not')
+            saveMessageIsError
               ? 'border-red-200 bg-red-50 text-red-700'
               : 'border-green-200 bg-green-50 text-green-700'
           }`}>

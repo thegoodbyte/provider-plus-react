@@ -62,6 +62,23 @@ describe('ClientScreening referral capture', () => {
     expect(screen.getByRole('button', { name: /Add Task/ })).toBeInTheDocument();
   });
 
+  it.each(['header', 'floating'])('keeps a missing-room error visible and focuses the field on %s save without sending or losing edits', async (save) => {
+    mockedClientsApi.getOne.mockResolvedValue({data:{...client,screeningData:{mainIntent:'Keep this intention'}}} as any);
+    renderPage();await screen.findByDisplayValue('Eva');
+    const room=screen.getByRole('combobox',{name:/Desired accommodation/});
+    fireEvent.click(save==='header'?screen.getAllByRole('button',{name:'Save Screening'})[0]:screen.getAllByTitle('Save screening without leaving this page')[0]);
+    await waitFor(()=>expect(room).toHaveAttribute('aria-invalid','true'));
+    expect(room).toHaveFocus();expect(mockedScreeningApi.create).not.toHaveBeenCalled();
+    expect(screen.getByText('Screening has not been saved')).toBeVisible();
+    expect(screen.getByRole('button',{name:'Room type required — choose room'})).toBeVisible();
+    expect(screen.getByRole('textbox',{name:'Main intent / motivation'})).toHaveValue('Keep this intention');
+    fireEvent.change(room,{target:{value:'shared'}});
+    expect(room).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByText('Screening has not been saved')).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByTitle('Save screening without leaving this page')[0]);
+    await waitFor(()=>expect(mockedScreeningApi.create).toHaveBeenCalledWith(expect.objectContaining({desiredAccommodationKey:'shared',mainIntent:'Keep this intention'})));
+  });
+
   it('uses the shared ClientReferralFields component (searchable referral + friend capture) instead of a plain select', async () => {
     renderPage();
     await screen.findByText('Referral');
