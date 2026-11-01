@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Edit2, Eye, Mail, Phone as PhoneIcon, Plus, Search as SearchIcon, Trash2, User, UserCheck } from 'lucide-react';
+import { ArrowDown, ArrowUp, Edit2, Eye, Phone as PhoneIcon, Plus, Search as SearchIcon, Trash2, User, UserCheck } from 'lucide-react';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientsApi, notesApi } from '../services/api';
@@ -22,7 +22,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 // This is the date entered on the screening form. Completion timestamps are
-// updated by autosave; scheduled calls have their own separate date/time.
+// belong to completed outcomes; scheduled calls have their own separate date/time.
 const recordedScreeningDate = (client: any): Date | null => {
   for (const raw of [client.screeningData?.screeningDate, client.screeningDate]) {
     const date = parseCalendarDate(raw);
@@ -44,7 +44,7 @@ const ScreeningClientsGrid: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
-  const [screeningDateOrder, setScreeningDateOrder] = useState<'asc' | 'desc'>('desc');
+  const [sort, setSort] = useState({ key: 'screeningDate', order: 'desc' as 'asc' | 'desc' });
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
 
@@ -53,14 +53,14 @@ const ScreeningClientsGrid: React.FC = () => {
       setIsLoading(true);
       setApiError(false);
       const [clientsResponse, notesResponse] = await Promise.all([
-        clientsApi.getAll(),
+        clientsApi.getScreeningClients(),
         notesApi.getAll().catch(() => ({ data: [] })),
       ]);
       // Filter for clients that are in the screening workflow
       const allClients = clientsResponse.data || [];
       const screeningClients = allClients.filter((client: any) =>
         leadWorkflowStatuses.has(normalizeClientWorkflowStatus(client.workflowStatus)) ||
-        ['screened_accepted', 'screened_declined'].includes(normalizeClientWorkflowStatus(client.workflowStatus))
+        ['screened_accepted', 'screened_conditional', 'screened_declined'].includes(normalizeClientWorkflowStatus(client.workflowStatus))
       );
       setScreeningClients(screeningClients);
       setNotes(notesResponse?.data || []);
@@ -119,15 +119,27 @@ const ScreeningClientsGrid: React.FC = () => {
       }
       return true;
     });
+    const value = (c: any): string | number | undefined => {
+      if (sort.key === 'screeningDate') return recordedScreeningDate(c)?.getTime();
+      if (sort.key === 'completed' || sort.key === 'updated') {
+        const raw = sort.key === 'completed' ? c.screeningCompletedDate : c.screeningUpdatedAt;
+        const n = raw ? new Date(raw).getTime() : NaN;
+        return Number.isFinite(n) ? n : undefined;
+      }
+      if (sort.key === 'id') return c.display_id == null ? undefined : Number(c.display_id);
+      if (sort.key === 'name') return `${c.firstName || ''} ${c.lastName || ''}`.trim() || undefined;
+      if (sort.key === 'status') return clientWorkflowStatusLabels[normalizeClientWorkflowStatus(c.workflowStatus)] || c.workflowStatus;
+      return c[sort.key] || undefined;
+    };
     filtered.sort((left, right) => {
-      const a = recordedScreeningDate(left)?.getTime();
-      const b = recordedScreeningDate(right)?.getTime();
+      const a = value(left), b = value(right);
       if (a === undefined) return b === undefined ? 0 : 1;
       if (b === undefined) return -1;
-      return screeningDateOrder === 'asc' ? a - b : b - a;
+      const result = typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+      return sort.order === 'asc' ? result : -result;
     });
     return { filteredClients: filtered, searchMatches: matchesMap };
-  }, [screeningClients, filterStatus, searchTerm, notes, screeningDateOrder]);
+  }, [screeningClients, filterStatus, searchTerm, notes, sort]);
 
   const formatDate = (date: Date | string | undefined) => formatCalendarDate(date);
 
@@ -169,6 +181,7 @@ const ScreeningClientsGrid: React.FC = () => {
           <option value="entered">Entered</option>
           <option value="screening_scheduled">Screening scheduled</option>
           <option value="screened_accepted">Screened accepted</option>
+          <option value="screened_conditional">Screened conditional</option>
           <option value="screened_declined">Screened declined</option>
         </select>
       </div>
@@ -181,49 +194,17 @@ const ScreeningClientsGrid: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-[1480px] divide-y divide-gray-200">
+          <table className="w-full min-w-[1050px] divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-                <th aria-sort={screeningDateOrder === 'desc' ? 'descending' : 'ascending'} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1 py-1 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
-                    title={screeningDateOrder === 'desc' ? 'Show oldest screening dates first' : 'Show newest screening dates first'}
-                    onClick={() => setScreeningDateOrder(order => order === 'desc' ? 'asc' : 'desc')}>
-                    Screening date<Icon icon={screeningDateOrder === 'desc' ? ArrowDown : ArrowUp} className="h-3 w-3" />
-                  </button>
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Country
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  First Contact
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Completed
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Motivation
-                </th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                {([['name','Name'],['id','ID'],['screeningDate','Screening date'],['country','Country'],['phone','Phone'],['status','Status'],['completed','Completed'],['updated','Updated']] as const).map(([key,label]) => (
+                  <th key={key} aria-sort={sort.key === key ? (sort.order === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1 py-1 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600" onClick={() => setSort(previous => ({ key, order: previous.key === key && previous.order === 'asc' ? 'desc' : 'asc' }))}>
+                      {label}{sort.key === key && <Icon icon={sort.order === 'desc' ? ArrowDown : ArrowUp} className="h-3 w-3" />}
+                    </button>
+                  </th>
+                ))}
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -264,14 +245,7 @@ const ScreeningClientsGrid: React.FC = () => {
                       <span className="truncate">{client.phone || 'N/A'}</span>
                     </span>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {client.email ? (
-                      <span className="inline-flex max-w-[230px] items-center gap-1 truncate">
-                        <Icon icon={Mail} className="h-4 w-4 shrink-0 text-gray-400" />
-                        <span className="truncate">{client.email}</span>
-                      </span>
-                    ) : 'N/A'}
-                  </td>
+
                   <td className="px-3 py-2 whitespace-nowrap">
                     {(() => {
                       const normalized = normalizeClientWorkflowStatus(client.workflowStatus);
@@ -282,37 +256,18 @@ const ScreeningClientsGrid: React.FC = () => {
                       );
                     })()}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                      client.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                      client.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                      client.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {client.priority || 'normal'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                    {formatDate(client.firstContactDate)}
-                  </td>
+
+
                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(client.screeningCompletedDate)}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    <div className="max-w-[260px] truncate text-sm text-gray-900">
-                      {client.whySeekingIboga ?
-                        (client.whySeekingIboga.length > 50 ?
-                          client.whySeekingIboga.substring(0, 50) + '...' :
-                          client.whySeekingIboga) :
-                        'No details'
-                      }
-                    </div>
-                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatDate(client.screeningUpdatedAt)}</td>
+
                   <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-2">
                       <div title="View Details">
                         <button
-                          onClick={() => {/* TODO: View details */}}
+                          aria-label={`View ${client.firstName} ${client.lastName}`} onClick={() => navigate(`/clients/${client._id}`)}
                           className="icon-action-btn icon-action-btn-view"
                         >
                           <Icon icon={Eye} />
@@ -320,7 +275,7 @@ const ScreeningClientsGrid: React.FC = () => {
                       </div>
                       <div title="Edit">
                         <button
-                          onClick={() => {/* TODO: Edit client */}}
+                          aria-label={`Screen ${client.firstName} ${client.lastName}`} onClick={() => navigate(`/clients/${client._id}/screening`)}
                           className="icon-action-btn icon-action-btn-edit"
                         >
                           <Icon icon={Edit2} />

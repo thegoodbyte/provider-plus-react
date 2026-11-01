@@ -11967,6 +11967,30 @@
         ]
       }
     },
+    "/clients/screening-grid": {
+      "get": {
+        "operationId": "ClientsController_findScreeningClients",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Client"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Clients"
+        ]
+      }
+    },
     "/clients/search": {
       "get": {
         "operationId": "ClientsController_search",

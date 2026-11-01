@@ -5661,6 +5661,19 @@ export type ClientsControllerQuickAddResponses = {
 
 export type ClientsControllerQuickAddResponse = ClientsControllerQuickAddResponses[keyof ClientsControllerQuickAddResponses];
 
+export type ClientsControllerFindScreeningClientsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/clients/screening-grid';
+};
+
+export type ClientsControllerFindScreeningClientsResponses = {
+    200: Array<Client>;
+};
+
+export type ClientsControllerFindScreeningClientsResponse = ClientsControllerFindScreeningClientsResponses[keyof ClientsControllerFindScreeningClientsResponses];
+
 export type ClientsControllerSearchData = {
     body?: never;
     path?: never;

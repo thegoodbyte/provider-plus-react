@@ -275,7 +275,7 @@ const ClientScreening: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const [, setClient] = useState<Client | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [pdfOpen, setPdfOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -307,7 +307,7 @@ const ClientScreening: React.FC = () => {
     year_of_birth: undefined as any,
     city: '',
     country: '',
-    screeningDate: new Date().toISOString().split('T')[0],
+    screeningDate: '',
     riskLevel: 1,
     heartConditionOk: false,
     heartCondition: '',
@@ -603,9 +603,7 @@ const ClientScreening: React.FC = () => {
         desiredAccommodationKey: existingValue('desiredAccommodationKey') ?? prev.desiredAccommodationKey,
         nextSteps: existingValue('nextSteps') ?? prev.nextSteps,
         handwritingImageUrl: existingValue('handwritingImageUrl', 'handwritingImageUrl') ?? prev.handwritingImageUrl,
-        screeningDate: existingValue('screeningDate', 'screeningCompletedDate')
-          ? new Date(existingValue('screeningDate', 'screeningCompletedDate') as string).toISOString().split('T')[0]
-          : prev.screeningDate,
+        screeningDate: String(existingValue('screeningDate') || '').slice(0, 10),
       }));
 
       setLoading(false);
@@ -1102,6 +1100,12 @@ const ClientScreening: React.FC = () => {
         </div>
       </div>
 
+      <section aria-label="Screening history" className="my-4 rounded-lg border bg-gray-50 p-3 text-sm text-gray-700">
+          <p>Completed: {(client as any)?.screeningCompletedDate ? new Date((client as any).screeningCompletedDate).toLocaleString() : 'Not completed'}</p>
+          <p>Updated: {(client as any)?.screeningUpdatedAt ? new Date((client as any).screeningUpdatedAt).toLocaleString() : 'Not recorded'}</p>
+          <p>Choosing an accepted, conditional or declined outcome records completion. Later edits keep the first completion time.</p>
+        </section>
+
       {/* Client Info Section */}
       <div className={sectionStyles.client.container}>
         <h2 className={sectionStyles.client.heading}>Client Information</h2>
@@ -1196,7 +1200,7 @@ const ClientScreening: React.FC = () => {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Main Intent</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="screening-main-intent">Main intent / motivation</label>
             <div className="mb-2 inline-flex w-auto flex-wrap gap-1 rounded-md border border-gray-200 bg-gray-50 p-1">
               <button type="button" onClick={() => applyTextFormat('bold')} className={`${formatButtonClass} font-bold`} title="Bold">
                 B
@@ -1218,6 +1222,7 @@ const ClientScreening: React.FC = () => {
               </button>
             </div>
             <textarea
+              id="screening-main-intent"
               ref={mainIntentRef}
               name="mainIntent"
               value={formData.mainIntent}
@@ -1345,6 +1350,7 @@ const ClientScreening: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Screening Date</label>
               <input
                 type="date"
+                aria-label="Screening date"
                 name="screeningDate"
                 value={formData.screeningDate}
                 onChange={handleInputChange}

@@ -223,3 +223,19 @@ describe('ClientScreening referral capture', () => {
     });
   });
 });
+
+test('screening date is not inferred from completion; legacy motivation is editable and sent with recorded date', async () => {
+  mockedTaskService.getTasks.mockResolvedValue([]);
+  mockedClientsApi.getOne.mockResolvedValue({data:{...client,whySeekingIboga:'Legacy family intention',screeningCompletedDate:'2026-10-01T12:00:00Z',screeningUpdatedAt:'2026-11-01T12:00:00Z'}} as any);
+  mockedReferralsApi.getAll.mockResolvedValue({data:[]} as any);
+  mockedUseAuth.mockReturnValue({user:{role:'admin'}});
+  mockedScreeningApi.create.mockResolvedValue({data:{...client,screeningCompletedDate:'2026-10-01T12:00:00Z',screeningUpdatedAt:'2026-11-01T13:00:00Z'}} as any);
+  renderPage();await screen.findByDisplayValue('Eva');
+  expect(screen.getByRole('textbox',{name:'Main intent / motivation'})).toHaveValue('Legacy family intention');
+  expect(screen.getByLabelText('Screening date')).toHaveValue('');
+  fireEvent.change(screen.getByLabelText('Screening date'),{target:{value:'2024-02-29'}});
+  fireEvent.change(screen.getByRole('textbox',{name:'Main intent / motivation'}),{target:{value:'Reconnect with family'}});
+  fireEvent.click(screen.getAllByTitle('Save screening without leaving this page')[0]);
+  await waitFor(()=>expect(mockedScreeningApi.create).toHaveBeenCalledWith(expect.objectContaining({screeningDate:'2024-02-29',mainIntent:'Reconnect with family'})));
+  expect(screen.getByRole('region',{name:'Screening history'})).toHaveTextContent('Completed:');
+});

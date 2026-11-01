@@ -4,7 +4,7 @@ const clients=[{_id:clientId,display_id:1501,firstName:'Synthetic',lastName:'Mat
 test.beforeEach(async({page,baseURL})=>{
  await page.route('**/*',async route=>{
   const u=new URL(route.request().url());if(u.origin===new URL(baseURL!).origin)return route.continue();const path=u.pathname.replace(/^\/api/,'');
-  if(path==='/clients')return route.fulfill({json:clients});
+  if((path==='/clients'||path==='/clients/screening-grid'))return route.fulfill({json:clients});
   if(path===`/clients/${clientId}`)return route.fulfill({json:clients[0]});
   if(path==='/notes')return route.fulfill({json:[{_id:'507f1f77bcf86cd799439111',clientId,title:'Quartz note',content:'quartz linked-note marker',tags:['amber']}]});
   if(path==='/environment/status')return route.fulfill({json:{production:true}});

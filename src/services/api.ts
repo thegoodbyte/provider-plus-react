@@ -189,6 +189,7 @@ export const housesApi = {
 };
 
 export const clientsApi = {
+  getScreeningClients: () => api.get<Client[]>('/clients/screening-grid'),
   getAll: () => cachedGet<Client[]>('clients:all', () => api.get<Client[]>('/clients')),
   getBookingOptions: () => cachedGet<Client[]>('clients:booking-options', () => api.get<Client[]>('/clients/booking-options'), 30000),
   getOne: (id: string, options?: ReadOptions) => readGet<Client>(`clients:${id}`, `/clients/${id}`, options),

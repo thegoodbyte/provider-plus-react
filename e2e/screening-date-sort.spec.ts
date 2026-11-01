@@ -13,7 +13,7 @@ for(const [width,timeZone] of [[1440,'America/Los_Angeles'],[390,'Pacific/Kiriti
   const request=route.request(),url=new URL(request.url());
   if(!['xhr','fetch'].includes(request.resourceType()))return route.continue();
   if(!['GET','HEAD'].includes(request.method()))writes++;
-  if(url.pathname==='/clients')return route.fulfill({json:clients});
+  if((url.pathname==='/clients'||url.pathname==='/clients/screening-grid'))return route.fulfill({json:clients});
   if(url.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
   return route.fulfill({json:[]});
  });

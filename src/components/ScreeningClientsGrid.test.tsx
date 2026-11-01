@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 jest.mock('../services/api', () => ({
   clientsApi: {
     getAll: jest.fn(),
+    getScreeningClients: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
   },
@@ -18,7 +19,7 @@ jest.mock('../services/api', () => ({
 describe('ScreeningClientsGrid', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (clientsApi.getAll as jest.Mock).mockResolvedValue({
+    (clientsApi.getScreeningClients as jest.Mock).mockResolvedValue({
       data: [
         {
           _id: 'client-1',
@@ -90,7 +91,7 @@ test('shows recorded screening dates, prefers the form date and never substitute
     client('2', undefined, { screeningDate: '2026-02-28T00:00:00.000Z' }),
     client('3', undefined, { screeningCompletedDate: '2026-10-26', screeningCallAt: '2026-10-28T15:00:00Z' }),
   ];
-  (clientsApi.getAll as jest.Mock).mockResolvedValue({ data: clients });
+  (clientsApi.getScreeningClients as jest.Mock).mockResolvedValue({ data: clients });
   (notesApi.getAll as jest.Mock).mockResolvedValue({ data: [] });
   render(<BrowserRouter><ScreeningClientsGrid /></BrowserRouter>);
   await screen.findByRole('button', { name: 'Screening date' });
@@ -104,7 +105,7 @@ test('shows recorded screening dates, prefers the form date and never substitute
 test('sorts newest and oldest while keeping missing/impossible dates last, ties stable and source records unchanged', async () => {
   const clients = [client('1','2026-10-20'),client('2',undefined),client('3','2026-10-27'),client('4','2026-02-30'),client('5','2026-10-27')];
   const before = JSON.stringify(clients);
-  (clientsApi.getAll as jest.Mock).mockResolvedValue({ data: clients });
+  (clientsApi.getScreeningClients as jest.Mock).mockResolvedValue({ data: clients });
   (notesApi.getAll as jest.Mock).mockResolvedValue({ data: [] });
   render(<BrowserRouter><ScreeningClientsGrid /></BrowserRouter>);
   const sort = await screen.findByRole('button',{ name: 'Screening date' });
@@ -119,7 +120,7 @@ test('sorts newest and oldest while keeping missing/impossible dates last, ties 
 });
 
 test('retains date order through search and status filters and supports valid legacy fallback and leap days', async () => {
-  (clientsApi.getAll as jest.Mock).mockResolvedValue({ data: [
+  (clientsApi.getScreeningClients as jest.Mock).mockResolvedValue({ data: [
     client('1','2024-02-29',{firstName:'Early',workflowStatus:'screened_accepted'}),
     client('2','invalid',{firstName:'Later',screeningDate:'2026-03-01',workflowStatus:'screened_accepted'}),
     client('3','2026-10-27',{firstName:'Scheduled'}),
@@ -134,4 +135,29 @@ test('retains date order through search and status filters and supports valid le
   fireEvent.change(screen.getByRole('textbox',{name:'Search screening clients'}),{target:{value:''}});
   expect(screeningRows()).toEqual(['#1','#2']);
   expect(document.querySelector('time[datetime="2024-02-29"]')).not.toBeNull();
+});
+
+test('compact headers all sort, numeric IDs and missing edit dates stay last; hidden email/intent remain searchable', async () => {
+  (clientsApi.getScreeningClients as jest.Mock).mockResolvedValue({data:[
+    client('10','2026-11-01',{firstName:'Zoe',country:'Poland',email:'hidden@example.invalid',screeningData:{screeningDate:'2026-11-01',mainIntent:'Family reconnection'},screeningUpdatedAt:'2026-11-01T10:00:00Z'}),
+    client('2','2026-10-01',{firstName:'Adam',country:'Czechia',screeningUpdatedAt:'2026-11-01T12:00:00Z'}),
+    client('3',undefined,{firstName:'Bea',country:'Austria'}),
+  ]});
+  (notesApi.getAll as jest.Mock).mockResolvedValue({data:[]});
+  render(<BrowserRouter><ScreeningClientsGrid /></BrowserRouter>);
+  await screen.findByRole('button',{name:'Screening date',exact:true});
+  for(const name of ['Email','Priority','First Contact','Motivation'])expect(screen.queryByRole('columnheader',{name})).not.toBeInTheDocument();
+  for(const name of ['Name','ID','Country','Phone','Status','Completed','Updated']){
+    fireEvent.click(screen.getByRole('button',{name,exact:true}));
+    expect(screen.getByRole('columnheader',{name,exact:true})).toHaveAttribute('aria-sort','ascending');
+    fireEvent.click(screen.getByRole('button',{name,exact:true}));
+    expect(screen.getByRole('columnheader',{name,exact:true})).toHaveAttribute('aria-sort','descending');
+  }
+  fireEvent.click(screen.getByRole('button',{name:'ID',exact:true}));expect(screeningRows()).toEqual(['#2','#3','#10']);
+  fireEvent.click(screen.getByRole('button',{name:'Updated',exact:true}));expect(screeningRows()).toEqual(['#10','#2','#3']);
+  fireEvent.click(screen.getByRole('button',{name:'Updated',exact:true}));expect(screeningRows()).toEqual(['#2','#10','#3']);
+  const search=screen.getByRole('textbox',{name:'Search screening clients'});
+  fireEvent.change(search,{target:{value:'reconnection'}});expect(screeningRows()).toEqual(['#10']);
+  fireEvent.change(search,{target:{value:'hidden@example.invalid'}});expect(screeningRows()).toEqual(['#10']);
+  expect(clientsApi.update).not.toHaveBeenCalled();
 });
