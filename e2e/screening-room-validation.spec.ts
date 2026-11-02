@@ -22,6 +22,7 @@ for(const width of [1440,390])test(`missing room remains visible, preserves edit
  await expect(warning).toBeVisible();await expect(intent).toBeFocused();expect(await page.evaluate(()=>window.scrollY)).toBe(scroll);expect(writes).toBe(0);
  // The old notification disappeared after2.4 seconds; required guidance must persist beyond it.
  await page.waitForTimeout(2700);await expect(warning).toBeVisible();expect(writes).toBe(0);
+ for(const fraction of [.1,.5,.9]) expect(await warning.evaluate((button,fraction)=>{const b=button.getBoundingClientRect();return button.contains(document.elementFromPoint(b.x+b.width*fraction,b.y+b.height/2));},fraction)).toBe(true);
  await page.getByRole('button',{name:'Save Screening',exact:true}).first().click();await expect(room).toBeFocused();await expect(room).toHaveAttribute('aria-invalid','true');
  const box=await room.boundingBox();expect(box).not.toBeNull();expect(box!.y).toBeGreaterThanOrEqual(0);expect(box!.y+box!.height).toBeLessThan(850);
  await expect(intent).toHaveValue('Keep my unsaved intention '+width);expect(writes).toBe(0);expect(await snapshot()).toEqual(before);
