@@ -1,4 +1,4 @@
-import { buildRetreatMedicalGridData, mergeMedicalReviewRequests, stageBookingFlowItemKey } from './RetreatMedicalGrid.helpers';
+import { getRetreatMedicalNotes, buildRetreatMedicalGridData, mergeMedicalReviewRequests, stageBookingFlowItemKey } from './RetreatMedicalGrid.helpers';
 
 describe('RetreatMedicalGrid helpers', () => {
   it('merges retreat and artifact-linked MRR results without duplicates', () => {
@@ -303,5 +303,39 @@ describe('RetreatMedicalGrid helpers', () => {
 
     expect(data.rows.find((row) => row.key === 'liver')?.cells[0].status).toBe('missing');
     expect(data.rows.find((row) => row.key === 'ekg')?.cells[0].status).toBe('missing');
+  });
+});
+
+
+describe('compact WhatsApp notes in the retreat medical grid', () => {
+  const review = { reviewChannel: 'whatsapp', status: 'approved', whatsappStatus: 'responded', whatsappDecision: 'OK' } as any;
+  it.each([
+    ['Advisor response received via WhatsApp: Can stay on it but check with advisor.', 'WA: Can stay on it but check with advisor.'],
+    ['Actual clinical note', 'WA: Actual clinical note'],
+    ['Advisor response received via WhatsApp', 'WA: OK'],
+    ['OK — medical advisor via WhatsApp', 'WA: OK'],
+    ['', 'WA: OK'],
+  ])('shows actual response from %s without modifying history', (reviewNotes, expected) => {
+    const record = { ...review, reviewNotes }; const original = JSON.stringify(record);
+    expect(getRetreatMedicalNotes(record)).toBe(expected);
+    expect(JSON.stringify(record)).toBe(original);
+  });
+  it.each([['OK','OK'], ['caution','Caution'], ['more_info_needed','More Info Needed'], ['NOT OK','Declined'], ['WONT_DO',"Won't do"]])('keeps decision %s distinct', (whatsappDecision, label) => {
+    expect(getRetreatMedicalNotes({ ...review, whatsappDecision, reviewNotes: 'Advisor response received via WhatsApp' })).toBe(`WA: ${label}`);
+  });
+  it('handles legacy channel-less notes without altering explicit internal notes', () => {
+    const reviewNotes = 'Advisor response received via WhatsApp: Legacy note';
+    expect(getRetreatMedicalNotes({ ...review, reviewChannel: undefined, reviewNotes })).toBe('WA: Legacy note');
+    expect(getRetreatMedicalNotes({ ...review, reviewChannel: 'internal', reviewNotes })).toBe(reviewNotes);
+  });
+  it('never infers approval from a generic receipt or pending state', () => {
+    expect(getRetreatMedicalNotes({ ...review, status:'in_review', whatsappDecision:undefined, reviewNotes:'' })).toBe('WA: Response recorded; decision not recorded');
+    expect(getRetreatMedicalNotes({ ...review, status:'awaiting_whatsapp', whatsappDecision:undefined, whatsappStatus:'awaiting_response' })).toBe('WA: Awaiting response');
+  });
+  it('preserves non-WA and artifact notes, including full long responses', () => {
+    expect(getRetreatMedicalNotes({ status:'approved', reviewNotes:'Internal note' } as any)).toBe('Internal note');
+    expect(getRetreatMedicalNotes(null, { notes:'Artifact note' } as any)).toBe('Artifact note');
+    const note='Full response '.repeat(80);
+    expect(getRetreatMedicalNotes({ ...review, reviewNotes:note })).toBe('WA: '+note.trim());
   });
 });

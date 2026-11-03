@@ -33,6 +33,19 @@ describe('RetreatTrackingGrid MRR actions', () => {
     (bookingFlowApi.getItems as jest.Mock).mockResolvedValue({ data: [] });
   });
 
+  it('shows full compact WhatsApp responses and retains review links in both layouts', async () => {
+    const note = 'Can stay on it but review the following precautions. '.repeat(8) + 'End of response.';
+    (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({ data: [{
+      _id:'review-ekg', display_id:1105, clientId:'client-1', artifactIds:['artifact-ekg'], requestType:'ekg_review', status:'caution', reviewChannel:'whatsapp', whatsappDecision:'caution', reviewNotes:'Advisor response received via WhatsApp: '+note,
+    }] });
+    render(<MemoryRouter initialEntries={['/admin/retreats/retreat-1']}><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
+    const notes = await screen.findAllByText('WA: '+note);
+    expect(notes).toHaveLength(2);
+    notes.forEach(el => expect(el).toHaveAttribute('title','WA: '+note));
+    expect(screen.queryByText(/Advisor response received via WhatsApp/)).not.toBeInTheDocument();
+    screen.getAllByRole('link',{name:'MRR #1105'}).forEach(link => expect(link).toHaveAttribute('href','/admin/medical-review-requests/review-ekg'));
+  });
+
   it('shows the MRR number or a create action linked to the source artifact', async () => {
     render(<MemoryRouter initialEntries={['/admin/retreats/retreat-1']}><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
 

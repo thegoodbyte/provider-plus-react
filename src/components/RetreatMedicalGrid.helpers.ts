@@ -1,4 +1,5 @@
 import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
+import { extractWhatsappNotes, medicalReviewDecisionLabels, normalizeMedicalReviewDecision, WHATSAPP_NOTES_PREFIX } from './MedicalReviewRequestsPage.helpers';
 import { formatCalendarDate } from '../utils/dateFormat';
 
 export type RetreatMedicalStageKey = 'ekg' | 'liver' | 'medications';
@@ -259,6 +260,22 @@ const pickMatchingArtifact = (
   return latestBySortKey(stageArtifacts, getArtifactSortKey);
 };
 
+/** Compact read-only copy; retain the stored clinical history verbatim. */
+export const getRetreatMedicalNotes = (review?: MedicalReviewRequest | null, artifact?: MedicalArtifact | null): string => {
+  const notes = review?.reviewNotes || review?.overallNotes || review?.medicalStaffNotes || artifact?.notes || '';
+  if (!review) return notes;
+  const legacyWhatsapp = !review.reviewChannel && (notes === 'Advisor response received via WhatsApp' || notes.startsWith(WHATSAPP_NOTES_PREFIX));
+  if (review.reviewChannel !== 'whatsapp' && !legacyWhatsapp) return notes;
+  const responseNotes = review.reviewNotes || review.overallNotes || review.medicalStaffNotes || '';
+  const response = extractWhatsappNotes({ reviewChannel: 'whatsapp', reviewNotes: responseNotes }).trim();
+  if (response) return `WA: ${response}`;
+  const decision = normalizeMedicalReviewDecision(review.whatsappDecision || review.reviewDecision);
+  if (decision) return `WA: ${medicalReviewDecisionLabels[decision]}`;
+  const statusLabels: Record<string, string> = { approved: 'OK', completed: 'OK', caution: 'Caution', needs_resubmission: 'More Info Needed', rejected: 'Declined', wont_do: "Won't do" };
+  // Never guess approval for a response whose result was not recorded.
+  return `WA: ${statusLabels[review.status] || (review.whatsappStatus === 'responded' ? 'Response recorded; decision not recorded' : 'Awaiting response')}`;
+};
+
 export const buildRetreatMedicalGridData = (
   bookings: RetreatClient[],
   artifacts: MedicalArtifact[],
@@ -306,7 +323,7 @@ export const buildRetreatMedicalGridData = (
             || (item.artifactIds || []).some((id) => matchingArtifacts.some((entry) => getObjectId(entry) === getObjectId(id)))))
         .sort((a, b) => getRequestSortKey(b) - getRequestSortKey(a));
       const decision = getReviewDecision(review);
-      const notes = review?.reviewNotes || review?.overallNotes || review?.medicalStaffNotes || artifact?.notes || '';
+      const notes = getRetreatMedicalNotes(review, artifact);
       const submittedAt = review?.requestedAt || review?.assignedDate || review?.createdAt || artifact?.receivedAt || '';
       const reviewLabel = review ? `MRR #${review.display_id || review._id?.slice(-6) || 'linked'}` : '';
       const artifactLabel = artifact ? `Artifact #${artifact.display_id || artifact._id?.slice(-6) || 'linked'}` : '';
