@@ -205,9 +205,14 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         setBookingDefaultsMessage('No active booking found for this client.');
         return;
       }
-      const booking = [...activeBookings].sort((a, b) =>
-        new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime(),
-      )[0];
+      const explicitBookingId = resolveId(paymentRequest?.bookingId);
+      const booking = explicitBookingId && resolveId(paymentRequest?.clientId) === formData.clientId
+        ? activeBookings.find(candidate => candidate._id === explicitBookingId)
+        : [...activeBookings].sort((a, b) => new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime())[0];
+      if (!booking) {
+        setBookingDefaultsMessage('The selected booking is unavailable. Review the booking before creating a request.');
+        return;
+      }
       const bookingId = booking._id || '';
       const bookingPayments = (paymentsResponse.data || []).filter((payment: any) => {
         const paymentBookingId = resolveId(payment.bookingId);

@@ -155,3 +155,13 @@ describe('PPVC-901 independently loaded payment requests',()=>{
   fireEvent.click(screen.getByRole('button',{name:'Retry payment requests'}));expect(await screen.findByText(/Request #1392/)).toBeVisible();
  });
 });
+
+test('an existing issued manual balance is reviewed instead of offering another automatic balance',async()=>{
+ (configSummaryApi.get as jest.Mock).mockResolvedValue({data:{}});
+ (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({data:{usd_amount:0}});
+ (paymentsApi.getFinancialSummary as jest.Mock).mockResolvedValue({data:{price:7500,currency:'PLN',netPaid:3000,balance:4500,paidInFull:false,sourceState:'verified_ledger'}});
+ (paymentsApi.getBookingPlan as jest.Mock).mockResolvedValue({data:null});
+ (paymentRequestsApi.getByBooking as jest.Mock).mockResolvedValue({data:[{_id:'balance',display_id:1402,invoiceNumber:'1402',requestType:'balance',requestedAmount:4500,currency:'PLN',status:'sent',dueDate:'2026-12-01'}]});
+ (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({data:[]});(paymentsApi.getByBooking as jest.Mock).mockResolvedValue({data:[]});(paymentsApi.getTypes as jest.Mock).mockResolvedValue({data:[]});
+ renderPage();expect(await screen.findByRole('link',{name:'Review existing balance request #1402'})).toHaveAttribute('href','/admin/payment-requests/balance');expect(screen.queryByRole('button',{name:'Create balance request'})).not.toBeInTheDocument();expect(paymentsApi.updateBookingPlan).not.toHaveBeenCalled();
+});

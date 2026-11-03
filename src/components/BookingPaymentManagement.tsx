@@ -262,6 +262,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   }, [newPayment.amount, newPayment.currency]);
 
   const bookingCurrency = (currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN';
+  const existingFinalBalance = bookingPaymentRequests.find(request => request.requestType === 'balance' && request.status !== 'cancelled') || paymentPlan;
   const linkedRequest = bookingPaymentRequests.find(request => request._id === newPayment.paymentRequestId);
   const mixedRequestCurrency = Boolean(linkedRequest && linkedRequest.currency !== newPayment.currency);
   const isMixedBookingCurrencyPayment = Boolean(newPayment.currency && bookingCurrency && newPayment.currency !== bookingCurrency && (!linkedRequest || linkedRequest.currency !== bookingCurrency));
@@ -777,12 +778,13 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         <div className="payment-requests-heading">
           <div><h4>Payment requests</h4><p>Requests linked to this booking, including payments received before booking.</p></div>
           <button type="button" className="new-payment-request-link" onClick={() => navigate(`${routePrefix}/payment-requests/new?bookingId=${encodeURIComponent(bookingId)}&clientId=${encodeURIComponent(clientId)}&retreatId=${encodeURIComponent(retreatId)}&currency=${encodeURIComponent(bookingCurrency)}&fullPrice=${encodeURIComponent(totalAmount)}`)}>New request</button>
-          {!paymentPlan && !isPaidInFull && <div className="payment-request-create">
+          {!existingFinalBalance && !isPaidInFull && !requestsLoading && !requestsError && <div className="payment-request-create">
             <label>Final payment due<input type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /></label>
             <button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button>
           </div>}
         </div>
-        {requestsLoading ? <p role="status">Loading payment requests…</p> : requestsError ? <div role="alert"><p>{requestsError}</p><button type="button" onClick={() => void syncPaymentPlan()}>Retry payment requests</button></div> : bookingPaymentRequests.length === 0 ? <div className="payment-requests-empty"><strong>No payment request yet</strong><span>The client has nothing to pay against. Create the balance request to send them a link.</span>{!paymentPlan && !isPaidInFull && <div className="mobile-balance-request"><input aria-label="Final payment due" type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /><button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button></div>}</div> : bookingPaymentRequests.map(request => {
+        {existingFinalBalance && <p aria-label="Existing final balance" className="mx-5 mb-3 rounded border border-blue-200 bg-blue-50 p-3 text-sm">A final balance request already exists for this booking. <Link className="font-semibold underline" to={`${routePrefix}/payment-requests/${existingFinalBalance._id}`}>Review existing balance request #{existingFinalBalance.invoiceNumber || existingFinalBalance.display_id}</Link>. Keep its original amount and due date unless you explicitly agree a change.</p>}
+        {requestsLoading ? <p role="status">Loading payment requests…</p> : requestsError ? <div role="alert"><p>{requestsError}</p><button type="button" onClick={() => void syncPaymentPlan()}>Retry payment requests</button></div> : bookingPaymentRequests.length === 0 ? <div className="payment-requests-empty"><strong>No payment request yet</strong><span>The client has nothing to pay against. Create the balance request to send them a link.</span>{!existingFinalBalance && !isPaidInFull && !requestsLoading && !requestsError && <div className="mobile-balance-request"><input aria-label="Final payment due" type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /><button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button></div>}</div> : bookingPaymentRequests.map(request => {
           const linkedPaymentId = typeof request.paymentId === 'object' ? request.paymentId?._id : request.paymentId;
           const requestNumber = request.invoiceNumber || request.display_id || request._id?.slice(-8);
           const canAct = !['paid', 'cancelled'].includes(request.status);
