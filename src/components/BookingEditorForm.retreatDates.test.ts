@@ -28,3 +28,8 @@ describe('retreatBookingDateTimes', () => {
     })).toEqual({ checkInDate: '2026-11-01T17:00', checkOutDate: '2026-11-08T10:00' });
   });
 });
+
+test('ceremony defaults cross leap day and year boundaries as calendar days',()=>{
+ expect(ceremonyBookingDateTimes({date:'2028-03-01'})).toEqual({checkInDate:'2028-02-29T00:00',checkOutDate:'2028-03-01T00:00'});
+ expect(ceremonyBookingDateTimes({date:'2028-01-01'})).toEqual({checkInDate:'2027-12-31T00:00',checkOutDate:'2028-01-01T00:00'});
+});

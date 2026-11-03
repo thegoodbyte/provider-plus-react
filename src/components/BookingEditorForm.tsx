@@ -277,9 +277,13 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           roomAdjustmentAmount: Number(currentBooking.roomAdjustmentAmount || 0),
         });
       } else {
+        const initial = { ...emptyForm(), ...initialBookingData };
+        const schedule = initial.bookingType === BookingType.BOOSTER
+          ? {checkInDate:'',checkOutDate:''} : retreatBookingDateTimes((retreatsResponse.data || []).find((retreat: Retreat) => retreat._id === initial.retreatId));
         setFormData({
-          ...emptyForm(),
-          ...initialBookingData,
+          ...initial,
+          checkInDate: initial.checkInDate || schedule.checkInDate || '',
+          checkOutDate: initial.checkOutDate || schedule.checkOutDate || '',
           bookingNumber: nextNumberResponse.data ? String(nextNumberResponse.data) : '',
         });
       }
@@ -297,14 +301,27 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       setCeremonies([]);
       return;
     }
-    ceremoniesApi.getByRetreat(formData.retreatId)
-      .then((response) => setCeremonies((response.data || []).sort((a, b) =>
-        new Date(a.date).getTime() - new Date(b.date).getTime())))
+    let active = true;
+    const retreatId = formData.retreatId;
+    ceremoniesApi.getByRetreat(retreatId)
+      .then((response) => {
+        if (!active) return;
+        const rows = (response.data || []).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        setCeremonies(rows);
+        if (mode === 'create') setFormData(prev => {
+          if (prev.retreatId !== retreatId || prev.bookingType !== BookingType.BOOSTER) return prev;
+          const ceremony = prev.ceremonyId ? rows.find(row => row._id === prev.ceremonyId) : rows[Number(prev.ceremonyNumber) - 1];
+          const dates = ceremonyBookingDateTimes(ceremony);
+          return { ...prev, ceremonyId: prev.ceremonyId || ceremony?._id || '', ceremonyNumber: prev.ceremonyNumber || (ceremony ? String(rows.indexOf(ceremony) + 1) : ''), checkInDate: prev.checkInDate || dates.checkInDate || '', checkOutDate: prev.checkOutDate || dates.checkOutDate || '' };
+        });
+      })
       .catch((error) => {
+        if (!active) return;
         console.error('Error loading retreat ceremonies:', error);
         setCeremonies([]);
       });
-  }, [formData.retreatId]);
+    return () => { active = false; };
+  }, [formData.retreatId, mode]);
 
   useEffect(() => {
     if (!formData.paymentRequestId) {
@@ -352,8 +369,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         paymentRequestId,
         clientId: selectedClientId,
         retreatId: paymentRetreatId || prev.retreatId,
-        checkInDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkInDate : prev.checkInDate,
-        checkOutDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkOutDate : prev.checkOutDate,
+        checkInDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkInDate : prev.checkInDate || retreatDefaults.checkInDate,
+        checkOutDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkOutDate : prev.checkOutDate || retreatDefaults.checkOutDate,
         totalAmount: bookingPriceFromPaymentRequest(paymentRequest, selectedClientId) ?? prev.totalAmount,
         amountPaid: prev.amountPaid,
         currency: paymentRequest?.currency ? paymentRequest.currency : prev.currency,
@@ -730,13 +747,13 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Arrival</label>
-            <input type="datetime-local" value={formData.checkInDate}
+            <input aria-label="Arrival" type="datetime-local" value={formData.checkInDate}
               onChange={(e) => setFormData((prev) => ({ ...prev, checkInDate: e.target.value }))}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Departure</label>
-            <input type="datetime-local" value={formData.checkOutDate}
+            <input aria-label="Departure" type="datetime-local" value={formData.checkOutDate}
               onChange={(e) => setFormData((prev) => ({ ...prev, checkOutDate: e.target.value }))}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>

@@ -1,9 +1,9 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import BookingEditorForm from './BookingEditorForm';
-import { bookingsApi, clientsApi, paymentRequestsApi, ceremoniesApi } from '../services/api';
+import { bookingsApi, clientsApi, paymentRequestsApi, ceremoniesApi, retreatsApi } from '../services/api';
 import { roomInventoryApi } from '../services/roomInventoryApi';
 jest.mock('../services/authService', () => ({ authService: { getUser: () => ({ role: 'staff' }) } }));
-jest.mock('../services/api', () => ({ bookingsApi: { getNextBookingNumber: jest.fn().mockResolvedValue({data:9500}), create: jest.fn(), update: jest.fn(), getOne: jest.fn(), isBookingNumberAvailable: jest.fn() }, clientsApi: { getBookingOptions: jest.fn() }, ceremoniesApi: { getByRetreat: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getAllFresh: jest.fn() }, referralsApi: { getAll: jest.fn() } }));
+jest.mock('../services/api', () => ({ retreatsApi:{getAll:jest.fn()}, bookingsApi: { getNextBookingNumber: jest.fn().mockResolvedValue({data:9500}), create: jest.fn(), update: jest.fn(), getOne: jest.fn(), isBookingNumberAvailable: jest.fn() }, clientsApi: { getBookingOptions: jest.fn() }, ceremoniesApi: { getByRetreat: jest.fn() }, paymentRequestsApi: { getOne: jest.fn(), getAllFresh: jest.fn() }, referralsApi: { getAll: jest.fn() } }));
 jest.mock('../services/roomInventoryApi', () => ({ roomInventoryApi: { view: jest.fn(), options: jest.fn(), preference: jest.fn() } }));
 jest.mock('./SearchablePaymentRequestSelect', () => ({ __esModule: true, default: ({ onPaymentRequestSelect }: any) => <button type="button" onClick={() => onPaymentRequestSelect('new-request', { _id: 'new-request', retreatId: 'other-retreat', currency: 'USD', fullPrice: 9999, roomType: 'single' })}>Choose replacement request</button> }));
 const booking: any = { _id: 'booking', bookingNumber: 1902, clientId: 'client', retreatId: 'retreat', paymentRequestId: 'old-request', totalAmount: 1000, amountPaid: 400, currency: 'PLN', status: 'confirmed', registrationDate: '2026-10-20', bookingType: 'full_retreat', roomType: 'private' };
@@ -44,4 +44,30 @@ it('does not borrow a different client room preference from a URL-linked request
  let finish!:(value:any)=>void;(paymentRequestsApi.getOne as jest.Mock).mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
  (roomInventoryApi.options as jest.Mock).mockResolvedValue({data:roomOptions});openNewFromRequest();const field=await screen.findByRole('combobox',{name:/^Accommodation/});
  await act(async()=>{finish({data:{_id:'old-request',clientId:'another-client',roomType:'shared',accommodationKey:'shared'}});});expect(field).toHaveValue('');
+});
+
+const schedule:any={_id:'retreat',name:'Scheduled retreat',startDate:'2028-02-29',endDate:'2028-03-07',startTime:'18:30',endTime:'09:15'};
+const createWithDates=(initial:any={},retreats:any[]=[schedule])=>render(<BookingEditorForm mode="create" initialBookingData={{clientId:'client',retreatId:'retreat',...initial}} initialRetreats={retreats} onSaved={jest.fn()} onCancel={jest.fn()}/>);
+it('fills both dates for a URL-prefilled retreat after async list loading',async()=>{
+ let finish!:(v:any)=>void;(retreatsApi.getAll as jest.Mock).mockImplementation(()=>new Promise(r=>{finish=r;}));
+ createWithDates({},[]);await act(async()=>finish({data:[schedule]}));
+ expect(await screen.findByLabelText('Arrival')).toHaveValue('2028-02-29T18:30');expect(screen.getByLabelText('Departure')).toHaveValue('2028-03-07T09:15');
+});
+it('preserves each explicitly supplied date and later staff edits when the linked request resolves',async()=>{
+ let finish!:(v:any)=>void;(paymentRequestsApi.getOne as jest.Mock).mockImplementation(()=>new Promise(r=>{finish=r;}));
+ createWithDates({paymentRequestId:'old-request',checkInDate:'2028-02-28T19:00'});const arrival=await screen.findByLabelText('Arrival');expect(arrival).toHaveValue('2028-02-28T19:00');expect(screen.getByLabelText('Departure')).toHaveValue('2028-03-07T09:15');
+ fireEvent.change(arrival,{target:{value:'2028-03-01T12:00'}});await act(async()=>finish({data:{_id:'old-request',clientId:'client',retreatId:'retreat'}}));expect(arrival).toHaveValue('2028-03-01T12:00');
+});
+it('does not infer unknown dates or refill an existing booking with missing dates',async()=>{
+ const view=createWithDates({},[{_id:'retreat',name:'No dates'}]);expect(await screen.findByLabelText('Arrival')).toHaveValue('');expect(screen.getByLabelText('Departure')).toHaveValue('');view.unmount();
+ render(<BookingEditorForm mode="edit" initialBooking={{...booking,checkInDate:null,checkOutDate:null}} initialRetreats={[schedule]} onSaved={jest.fn()} onCancel={jest.fn()}/>);expect(await screen.findByLabelText('Arrival')).toHaveValue('');expect(screen.getByLabelText('Departure')).toHaveValue('');
+});
+it('booster links use their selected ceremony after loading, not the full retreat dates',async()=>{
+ (ceremoniesApi.getByRetreat as jest.Mock).mockResolvedValue({data:[{_id:'ceremony',date:'2028-03-03T00:00:00.000Z'}]});
+ createWithDates({bookingType:'booster',ceremonyId:'ceremony',ceremonyNumber:'1'});await waitFor(()=>expect(screen.getByLabelText('Arrival')).toHaveValue('2028-03-02T00:00'));expect(screen.getByLabelText('Departure')).toHaveValue('2028-03-03T00:00');
+});
+
+it('keeps custom departure while filling arrival and resolves a number-only booster record',async()=>{
+ const view=createWithDates({checkOutDate:'2028-03-08T10:00'});expect(await screen.findByLabelText('Arrival')).toHaveValue('2028-02-29T18:30');expect(screen.getByLabelText('Departure')).toHaveValue('2028-03-08T10:00');view.unmount();
+ (ceremoniesApi.getByRetreat as jest.Mock).mockResolvedValue({data:[{_id:'ceremony',date:'2028-03-03'}]});createWithDates({bookingType:'booster',ceremonyNumber:'1'});await waitFor(()=>expect(screen.getByLabelText('Arrival')).toHaveValue('2028-03-02T00:00'));expect(screen.queryByText(/doesn't have a ceremony record/)).not.toBeInTheDocument();
 });
