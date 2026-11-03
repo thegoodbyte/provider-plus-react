@@ -20,11 +20,11 @@ async function fixture(page:Page,baseURL:string,options:{overpaid?:boolean;failS
 for(const width of [1440,768,390])test(`booking overview summary and navigation at ${width}px`,async({page,baseURL},info)=>{
  await page.setViewportSize({width,height:1100});const calls=await fixture(page,baseURL!);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`/admin/bookings/${bookingId}`);const overview=page.getByRole('region',{name:'Booking overview',exact:true});await expect(overview.getByText('40% paid')).toBeVisible();
- await expect(overview.getByRole('region',{name:'Retreat & dates'})).toContainText('Nov 6, 2026');await expect(overview.getByRole('region',{name:'Client',exact:true})).toContainText('denis@example.invalid');
+ await expect(overview.getByRole('region',{name:'Retreat stay'})).toContainText('Nov 6, 2026');await expect(overview.getByRole('region',{name:'Contact',exact:true})).toContainText('denis@example.invalid');
  await expect(overview.getByRole('region',{name:'Requirements',exact:true})).toContainText('required');
  await overview.getByRole('button',{name:'Refresh payment summary'}).click();await expect.poll(()=>calls.summary).toBe(2);await expect(overview.getByText('40% paid')).toBeVisible();
  const artifact=process.env.BOOKING_OVERVIEW_ARTIFACTS?path.join(process.env.BOOKING_OVERVIEW_ARTIFACTS,`overview-${width}.png`):info.outputPath(`overview-${width}.png`);await page.screenshot({path:artifact,fullPage:true});
- await overview.getByRole('region',{name:'Confirmation',exact:true}).scrollIntoViewIfNeeded();await expect(overview.getByRole('region',{name:'Confirmation',exact:true})).toBeVisible();await page.screenshot({path:process.env.BOOKING_OVERVIEW_ARTIFACTS?path.join(process.env.BOOKING_OVERVIEW_ARTIFACTS,`overview-${width}-details.png`):info.outputPath(`overview-${width}-details.png`),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ const confirmation=overview.getByRole('region',{name:'Contact',exact:true}).getByRole('heading',{name:'Confirmation',exact:true});await confirmation.scrollIntoViewIfNeeded();await expect(confirmation).toBeVisible();await page.screenshot({path:process.env.BOOKING_OVERVIEW_ARTIFACTS?path.join(process.env.BOOKING_OVERVIEW_ARTIFACTS,`overview-${width}-details.png`):info.outputPath(`overview-${width}-details.png`),fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await overview.getByRole('button',{name:'Open all requirements'}).click();await expect(overview).toHaveCount(0);await page.getByRole('tab',{name:'Overview',exact:true}).click();
  await page.getByRole('region',{name:'Booking overview'}).getByRole('button',{name:'View payments'}).click();await expect(page.getByRole('region',{name:'Booking overview'})).toHaveCount(0);
  await page.getByRole('button',{name:'Record a payment',exact:true}).click();await expect(page).toHaveURL(new RegExp(`/admin/payments/new\\?bookingId=${bookingId}&clientId=${clientId}`));expect(calls.writes).toEqual([]);expect(errors).toEqual([]);
@@ -35,6 +35,6 @@ test('summary read failure can retry; overpayment is fully paid credit',async({p
 });
 test('booster displays its own dates and opening confirmation does not send',async({page,baseURL})=>{
  const calls=await fixture(page,baseURL!,{booster:true});await page.goto(`/admin/bookings/${bookingId}`);const overview=page.getByRole('region',{name:'Booking overview'});await expect(overview.getByText('40% paid')).toBeVisible();
- const dates=overview.getByRole('region',{name:'Retreat & dates'});await expect(dates).toContainText('Nov 8, 2026');await expect(dates).toContainText('Nov 9, 2026');
+ const dates=overview.getByRole('region',{name:'Booster stay'});await expect(dates).toContainText('Nov 8, 2026');await expect(dates).toContainText('Nov 9, 2026');
  await overview.getByRole('button',{name:'Send confirmation',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();expect(calls.writes).toEqual([]);
 });

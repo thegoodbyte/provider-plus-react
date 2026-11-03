@@ -127,6 +127,7 @@ test.describe('Booking confirmation history', () => {
     await expect(latestHistoryEntry.getByText('BEN-10-01-26')).toBeVisible();
     await expect(latestHistoryEntry.getByText('Payment request #1181')).toBeVisible();
 
+    await page.getByLabel('More booking actions').click();
     await page.getByRole('button', { name: 'Send email with PDF attachment' }).click();
     const dialog = page.getByRole('dialog', { name: 'Send booking confirmation?' });
     await expect(dialog).toBeVisible();

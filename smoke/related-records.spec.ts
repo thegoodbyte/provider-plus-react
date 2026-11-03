@@ -38,6 +38,9 @@ test('payment footer opens the exact numbered client', async ({ page }) => {
 
 test('booking footer links to its client, retreat and payment request', async ({ page }) => {
   await page.goto(`/admin/bookings/${booking._id}`);
+  const details = page.locator('details.booking-reference-records');
+  await expect(details).not.toHaveAttribute('open', '');
+  await details.locator('summary').click();
   const related = page.getByRole('navigation', { name: 'Related records' });
   await expect(related.getByRole('link', { name: 'Client #1851 · Direct Link' })).toBeVisible();
   await expect(related.getByRole('link', { name: 'Retreat #F-851' })).toHaveAttribute('href', '/admin/retreats/retreat-851');
