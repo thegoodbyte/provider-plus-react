@@ -138,7 +138,7 @@ for (const width of [1440, 390])
       await expect(client).toHaveURL(/\/support\?request=SUP-/);
       const reference = new URL(client.url()).searchParams.get("request")!;
       await expect(
-        client.getByRole("heading", { name: reference, exact: true }),
+        client.getByRole("heading", { name: reference + " · I have paid — please check", exact: true }),
       ).toBeVisible();
       await client.reload();
       await expect(
