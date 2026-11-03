@@ -272,7 +272,7 @@ const AppleLayout: React.FC = () => {
   const getDefaultRoute = () => {
     switch (user?.role) {
       case 'admin':
-        return 'launcher';
+        return 'focus';
       case 'medical_staff':
         return 'launcher';
       case 'medical_advisor':
