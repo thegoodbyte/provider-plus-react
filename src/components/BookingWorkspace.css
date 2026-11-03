@@ -1,0 +1,111 @@
+/* PPVC-984: booking-specific workspace, isolated from legacy detail styles. */
+.booking-workspace { max-width: 1440px; width: 100%; padding: 20px 28px 32px; color: #172c31; }
+.booking-workspace .detail-header { position: static; display: flex; flex-wrap: wrap; gap: 16px; padding: 0 0 18px; margin: 0; background: white; backdrop-filter: none; }
+.booking-workspace .booking-title-block { flex: 1; min-width: 240px; }
+.booking-workspace .detail-header h1 { font-size: 24px; line-height: 1.3; margin: 0 0 5px; letter-spacing: -.03em; }
+.booking-workspace .booking-title-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; white-space: normal; font-size: 12px; }
+.booking-workspace .booking-title-meta strong { color: #334155; }
+.booking-workspace .booking-title-meta button { color: #17695f; }
+.booking-workspace .back-btn { width: 32px; height: 36px; flex: 0 0 32px; border: 1px solid #e2e8f0; border-radius: 8px; }
+.booking-workspace .back-btn svg { width: 16px; height: 16px; }
+.booking-workspace .booking-sibling-navigation { display: flex; width: auto; order: initial; }
+.booking-workspace .booking-sibling-button { min-width: 64px; height: 40px; padding: 6px 8px; border-radius: 8px; box-shadow: none; font-size: 11px; }
+.booking-workspace .booking-sibling-button small { font-size: 8px; }
+.booking-workspace .header-actions { display: flex; flex-wrap: nowrap; grid-column: auto; width: auto; gap: 8px; padding: 0; margin-left: 0; overflow: visible; }
+.booking-workspace .header-actions .pdf-btn { display: inline-flex; align-items: center; justify-content: center; width: auto; height: 40px; padding: 0 12px; border: 1px solid #d8e1e4; border-radius: 8px; box-shadow: none; color: #334155; background: white; }
+.booking-workspace .header-actions .pdf-btn svg { display: block; width: 15px; height: 15px; }
+.booking-workspace .header-actions .pdf-btn span { position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip: auto !important; font-size: 12px; }
+.booking-workspace .header-actions .primary-action { background: #17695f; color: white; border-color: #17695f; }
+.booking-workspace .booking-more-button { position: static; min-width: 0; padding: 0 10px; }
+.booking-workspace .booking-more-menu { position: relative; }
+.booking-workspace .booking-more-menu-popover { z-index: 40; top: calc(100% + 8px); right: 0; left: auto; width: 240px; max-width: calc(100vw - 32px); border-radius: 10px; box-shadow: 0 12px 32px #172c3126; }
+.booking-workspace .booking-more-language { display: block; font-size: 11px; text-transform: none; }
+.booking-workspace .booking-more-language select { display: block; width: 100%; margin-top: 6px; min-height: 36px; background: white; }
+.booking-workspace .booking-detail-tabs { position: static; display: flex; gap: 4px; margin: 0 0 18px; padding: 12px 0 0; border-bottom: 1px solid #e2e8f0; background: white; overflow-x: auto; scrollbar-width: thin; }
+.booking-workspace .booking-detail-tab { border: 0; border-bottom: 3px solid transparent; background: transparent; border-radius: 0; min-height: 44px; padding: 0 12px 9px; color: #64748b; font-size: 13px; white-space: nowrap; box-shadow: none; }
+.booking-workspace .booking-detail-tab.active { border-bottom-color: #17695f; color: #17695f; background: transparent; font-weight: 750; }
+.booking-workspace .booking-requirements-tab-badge { min-width: 18px; height: 18px; font-size: 10px; }
+.booking-workspace .detail-content { padding: 0; }
+.booking-workspace .booking-next-action { margin: 0 0 20px; padding: 14px 18px; border: 1px solid #dbe5e7; border-left: 3px solid #17695f; border-radius: 10px; background: #f7faf9; }
+.booking-workspace .booking-next-action-heading { gap: 8px; }
+.booking-workspace .booking-next-action-heading h2 { font-size: 12px; color: #52656c; }
+.booking-workspace .booking-next-action-heading strong { font-size: 11px; margin-right: auto; padding: 2px 8px; }
+.booking-workspace .booking-next-action .edit-btn { background: white; color: #17695f; border: 1px solid #ccdbd7; border-radius: 7px; padding: 7px 10px; font-size: 12px; box-shadow: none; }
+.booking-workspace .booking-next-action-heading > button { font-size: 11px; border: 0; background: none; padding: 4px; }
+.booking-workspace .booking-next-action-progress { margin: 5px 0; padding: 0; font-size: 11px; color: #64748b; }
+.booking-workspace .booking-next-action-main { padding: 8px 0 2px; border: 0; border-radius: 0; background: none; gap: 12px; }
+.booking-workspace .booking-next-action-main-icon { display: none; }
+.booking-workspace .booking-next-action-main > div:not(.booking-next-action-main-icon) { flex: 1; min-width: 0; }
+.booking-workspace .booking-next-action-main h3 { font-size: 15px; margin: 0 0 4px; color: #243b42; }
+.booking-workspace .booking-next-action-main small { display: none; }
+.booking-workspace .booking-next-action-main p { font-size: 12px; margin: 3px 0; }
+.booking-workspace .booking-next-action-main p:last-child { font-size: 11px; color: #64748b; }
+.booking-workspace .booking-next-action-waiting { padding: 0; border: 0; background: none; margin-top: 9px; font-size: 12px; }
+.booking-workspace .booking-next-action-blockers { margin-top: 6px; font-size: 12px; }
+.booking-workspace .booking-next-action details > summary { cursor: pointer; color: #52656c; font-weight: 600; }
+.booking-workspace .booking-next-action-waiting-group { margin-top: 12px; }
+.booking-workspace .booking-overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 20px; }
+.booking-workspace .booking-overview-main { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-content: start; }
+.booking-workspace .booking-overview-main > section, .booking-workspace .booking-overview-contact > section { padding: 18px; border: 1px solid #e0e7e9; border-radius: 10px; min-width: 0; }
+.booking-workspace .booking-overview-main > section > div:first-child { margin-bottom: 14px; }
+.booking-workspace .booking-stay-card { grid-column: 1 / -1; }
+.booking-workspace .booking-stay-dates { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 0; }
+.booking-workspace .booking-stay-dates dt, .booking-workspace .booking-extra-details dt { color: #64748b; font-size: 11px; margin-bottom: 4px; }
+.booking-workspace .booking-stay-dates dd, .booking-workspace .booking-extra-details dd { color: #243b42; font-size: 13px; margin: 0; font-weight: 550; }
+.booking-workspace .booking-start-countdown { font-size: 11px; color: #52656c; background: #f1f5f4; padding: 4px 8px; border-radius: 5px; }
+.booking-workspace .booking-extra-details { margin-top: 14px; padding-top: 10px; border-top: 1px solid #edf1f2; font-size: 12px; color: #64748b; }
+.booking-workspace .booking-extra-details summary { cursor: pointer; }
+.booking-workspace .booking-extra-details dl { display: grid; gap: 12px; margin-top: 12px; }
+.booking-workspace .booking-confirmation-status { margin-top: 18px; padding-top: 14px; border-top: 1px solid #edf1f2; }
+.booking-workspace .booking-confirmation-status h4 { font-size: 12px; margin: 0 0 8px; }
+.booking-workspace .booking-confirmation-status button { background: white; color: #17695f; border: 1px solid #cbded8; font-size: 12px; }
+.booking-workspace .booking-reference-records { margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px; color: #64748b; font-size: 12px; }
+.booking-workspace .booking-reference-records > summary { cursor: pointer; }
+.booking-workspace :is(button,summary,a,select):focus-visible { outline: 2px solid #17695f; outline-offset: 3px; }
+@media (max-width: 1100px) {
+ .booking-workspace .booking-overview-grid { grid-template-columns: minmax(0,1fr) 250px; }
+ .booking-workspace .booking-overview-main { grid-template-columns: minmax(0,1fr); }
+ .booking-workspace .booking-sibling-navigation { order: 3; }
+}
+@media (max-width: 700px) {
+ .booking-workspace { padding: 14px 14px 24px; max-width: 100%; }
+ .booking-workspace .detail-header { gap: 10px; padding-bottom: 14px; }
+ .booking-workspace .booking-title-block { min-width: 0; }
+ .booking-workspace .detail-header h1 { font-size: 21px; }
+ .booking-workspace .booking-title-meta { font-size: 11px; gap: 4px 10px; }
+ .booking-workspace .header-actions { width: 100%; order: 3; }
+ .booking-workspace .header-actions .primary-action { flex: 1; }
+ .booking-workspace .header-actions .pdf-btn { height: 42px; }
+ .booking-workspace .booking-more-menu { margin-left: auto; }
+ .booking-workspace .booking-sibling-navigation { order: 4; width: 100%; justify-content: space-between; }
+ .booking-workspace .booking-sibling-button { flex: 0 1 auto; height: 32px; min-width: 90px; }
+ .booking-workspace .booking-sibling-button span { flex-direction: row; gap: 6px; align-items: center; }
+ .booking-workspace .booking-overview-grid { grid-template-columns: minmax(0,1fr); gap: 16px; }
+ .booking-workspace .booking-overview-main { gap: 16px; }
+ .booking-workspace .booking-stay-dates { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .booking-workspace .booking-next-action { padding: 12px; margin-bottom: 16px; }
+ .booking-workspace .booking-next-action-main { flex-direction: column; align-items: stretch; }
+ .booking-workspace .booking-next-action-button { justify-content: center; min-height: 40px; }
+ .booking-workspace .booking-next-action-waiting-group li { flex-direction: column; align-items: stretch; }
+ .booking-workspace .booking-detail-tabs { margin-bottom: 14px; }
+}
+
+.booking-workspace .booking-more-menu { top: auto; right: auto; }
+.booking-workspace .header-actions .booking-more-button { width: auto !important; }
+.booking-workspace .back-btn { color: #334155; }
+.booking-workspace .back-btn svg { display: block; }
+.booking-workspace .booking-sibling-navigation[hidden] { display: none; }
+.booking-workspace .header-actions .primary-action small { font-size: 9px; opacity: .8; }
+.booking-workspace .back-btn { padding: 0; }
+.booking-workspace .header-actions { flex: 0 0 auto; flex-flow: row nowrap; min-width: 0; }
+.booking-workspace .header-actions > .pdf-btn { flex: 0 0 auto; }
+@media (max-width: 1100px) and (min-width: 701px) {
+ .booking-workspace .header-actions { margin-left: 48px; }
+}
+@media (max-width: 700px) {
+ .booking-workspace .header-actions { flex: 1 0 100%; }
+ .booking-workspace .header-actions > .primary-action { flex: 1 1 0; min-width: 0; padding: 0 8px; }
+ .booking-workspace .header-actions .primary-action span { font-size: 11px; }
+ .booking-workspace .header-actions .booking-more-button { min-width: 42px; width: 42px !important; padding: 0; }
+ .booking-workspace .header-actions .booking-more-button span { display: none; }
+}

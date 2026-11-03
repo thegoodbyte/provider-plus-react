@@ -16,3 +16,16 @@ describe('BookingDetailShell', () => {
 });
 
 it('keeps unavailable requirements distinct from missing and complete',()=>{render(<BookingDetailShell {...props({requirementsStatus:{missing:0,total:1,unavailable:1}})}/>);expect(screen.getByLabelText('Requirement status unavailable')).toBeInTheDocument();expect(screen.queryByLabelText('All requirements complete')).not.toBeInTheDocument();expect(screen.queryByLabelText('1 missing requirements')).not.toBeInTheDocument();});
+
+it('puts tabs before readiness, hides overview summary on other tabs and discloses secondary actions',()=>{
+ const values=props({nextActionSummary:<section>Readiness content</section>});
+ const view=render(<BookingDetailShell {...values}/>);
+ const tabs=screen.getByRole('tablist'); const summary=screen.getByText('Readiness content');
+ expect(tabs.compareDocumentPosition(summary)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ expect(screen.getByLabelText('Preview PDF')).not.toBeVisible();
+ fireEvent.click(screen.getByLabelText('More booking actions'));
+ expect(screen.getByRole('button',{name:'Preview PDF'})).toBeVisible();
+ expect(screen.getByRole('combobox',{name:'Confirmation language'})).toBeVisible();
+ view.rerender(<BookingDetailShell {...values} activeTab="payments"/>);
+ expect(screen.queryByText('Readiness content')).not.toBeInTheDocument();
+});

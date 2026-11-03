@@ -52,6 +52,8 @@ test('separates the next action from work waiting on the client and medical team
   };
   render(<BookingNextActionSummary {...props} source={sourceWithWaiting} />);
   expect(screen.getByRole('heading', { name: 'Next step from me' })).toBeInTheDocument();
-  expect(screen.getByText('Waiting on client')).toBeInTheDocument();
+  expect(screen.getByText('Waiting on client')).not.toBeVisible();
+  fireEvent.click(screen.getByText('Waiting for others · 2'));
+  expect(screen.getByText('Waiting on client')).toBeVisible();
   expect(screen.getByText('Waiting on medical team')).toBeInTheDocument();
 });

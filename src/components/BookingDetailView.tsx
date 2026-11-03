@@ -28,6 +28,7 @@ import { formatRetreatCalendarDate } from './RetreatsGrid.helpers';
 import { useBookingConfirmationPdf } from './useBookingConfirmationPdf';
 import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
 import './BookingDetailView.css';
+import './BookingWorkspace.css';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useAuth } from '../context/AuthContext';
 
@@ -249,8 +250,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     clientName: getClientName(item?.clientId || item?.clientDetails),
   });
   return (
-    <div className="booking-detail-container">
-      {new URLSearchParams(location.search).get('confirmation')==='1' && <section ref={confirmationEntryRef} aria-label="Booking confirmation entry" className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4"><h2 className="font-semibold">Booking confirmation</h2><p className="my-2 text-sm">Use Preview to check the booking confirmation, or Review to prepare its email. On mobile, find Review email under More. Check the booking details and recipient before sending. Opening this screen sends nothing.</p><Link className="text-blue-700 underline" to={safePaymentReturn(new URLSearchParams(location.search).get('returnPayments'),routePrefix,window.location.origin)}>Return to filtered payments</Link></section>}
+    <div className="booking-detail-container booking-workspace">
+      {new URLSearchParams(location.search).get('confirmation')==='1' && <section ref={confirmationEntryRef} aria-label="Booking confirmation entry" className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4"><h2 className="font-semibold">Booking confirmation</h2><p className="my-2 text-sm">Use Review confirmation to prepare its email. PDF preview, download and language are under More. Check the booking details and recipient before sending. Opening this screen sends nothing.</p><Link className="text-blue-700 underline" to={safePaymentReturn(new URLSearchParams(location.search).get('returnPayments'),routePrefix,window.location.origin)}>Return to filtered payments</Link></section>}
       <BookingDetailShell
         canManageIntegration={['admin', 'facilitator'].includes(user?.role || '')}
         nextActionSummary={<BookingNextActionSummary bookingId={bookingId} bookingStatus={booking.status} source={readinessSource} onRetry={refreshReadiness} onOpen={(tab, itemId) => { setFocusedStepId(itemId); setActiveTab(tab); }} />}
@@ -436,7 +437,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         )}
       </div>
 
-      <RelatedRecords records={recordRelations(booking)} />
+      <details className="booking-reference-records"><summary>Related records</summary><RelatedRecords records={recordRelations(booking)} /></details>
 
       <BookingConfirmationEmailDialogs
         booking={booking}

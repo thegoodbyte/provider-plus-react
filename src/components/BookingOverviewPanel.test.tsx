@@ -31,10 +31,12 @@ it('fetches a condensed payment summary for the exact booking, and refreshes it 
   await waitFor(() => expect(paymentsApi.getFinancialSummary).toHaveBeenCalledTimes(2));
 });
 
-it('shows every reference section expanded, with no clicks needed, and opens the requirements tab deliberately', async () => {
+it('discloses secondary location details and opens the requirements tab deliberately', async () => {
   render(<BookingOverviewPanel {...base} retreatAddress="123 Main St" />);
   await screen.findByText('$60.00');
   expect(screen.getByText('Entry EKG')).toBeVisible();
+  expect(screen.getByText('123 Main St')).not.toBeVisible();
+  fireEvent.click(screen.getByText('Location & booking details'));
   expect(screen.getByText('123 Main St')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Open all requirements' })); expect(base.onOpenTab).toHaveBeenCalledWith('requirements');
 });
@@ -64,7 +66,7 @@ it('preserves client contact, referral and accommodation details and edit/confir
   await screen.findByText('$60.00');
   const rail = within(screen.getByRole('complementary', { name: 'Booking client summary' }));
   expect(rail.getByRole('link', { name: 'a@b.com' })).toHaveAttribute('href', 'mailto:a@b.com'); expect(rail.getByText('Friend · Self-identified')).toBeInTheDocument();
-  expect(rail.getByText('Private room, private bathroom · Room 3')).toBeInTheDocument();
+  expect(screen.getByText('Private room, private bathroom · Room 3')).toBeInTheDocument();
   fireEvent.click(rail.getByRole('button', { name: 'Edit' })); expect(base.onEditClient).toHaveBeenCalled();
   fireEvent.click(rail.getByRole('button', { name: 'Send confirmation' })); expect(base.onSendConfirmation).toHaveBeenCalled();
 });
@@ -137,10 +139,10 @@ it('uses calendar days for countdown across midnight, month end and DST',()=>{
   expect(bookingStartDays('bad')).toBeNull();
 });
 
-it('shows the complete outstanding count when only the first five labels fit',async()=>{
+it('shows the complete outstanding count when only the first three labels fit',async()=>{
   (useBookingRequirements as jest.Mock).mockReturnValue({rows:Array.from({length:7},(_,n)=>({...requirement,key:String(n),label:`Required ${n}`})),items:[],loading:false,error:'',reload:jest.fn()});
   render(<BookingOverviewPanel {...base}/>);await screen.findByText('$60.00');
-  expect(screen.getByText('7 required items need attention.')).toBeVisible();expect(screen.getByText('+2 more · open all requirements to review.')).toBeVisible();
+  expect(screen.getByText('7 required items need attention.')).toBeVisible();expect(screen.getByText('+4 more · open all requirements to review.')).toBeVisible();
 });
 
 it('never calls unreconciled cached history fully paid, even if it has a zero displayed balance',async()=>{
