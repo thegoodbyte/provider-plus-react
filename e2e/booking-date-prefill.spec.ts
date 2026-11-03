@@ -206,7 +206,7 @@ for (const width of [1440, 390])
       await expect(page.getByLabel("Arrival", { exact: true })).toHaveValue(
         "2099-01-01T00:00",
       );
-      await page.getByDisplayValue("9500", { exact: true }).fill("9501");
+      await page.locator('input[type="number"][value="9500"]').fill("9501");
       await page
         .getByLabel("Departure", { exact: true })
         .fill("2099-01-08T10:00");
