@@ -10994,8 +10994,64 @@
       }
     },
     "/client-portal/support/requests/{id}": {
+      "delete": {
+        "operationId": "ClientSupportController_remove",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientSupport"
+        ]
+      },
       "get": {
         "operationId": "ClientSupportController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientSupport"
+        ]
+      },
+      "patch": {
+        "operationId": "ClientSupportController_edit",
         "parameters": [
           {
             "in": "path",

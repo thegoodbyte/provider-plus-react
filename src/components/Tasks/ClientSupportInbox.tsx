@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   clientSupportApi as api,
@@ -73,6 +73,7 @@ export default function ClientSupportInbox() {
   if (linkTopic) link.searchParams.set("topic", linkTopic);
   if (linkIssue) link.searchParams.set("issue", linkIssue);
   if (linkBooking.trim()) link.searchParams.set("booking", linkBooking.trim());
+  const whatsappReply = `For the fastest handling of your request, please use this link to create a task in IbogaReady: ${link.toString()}\n\nYou will receive email notifications with updates and the resolution. You can also follow your request in IbogaReady. Thank you!`;
   const load = async () => {
     const { data } = await api.list({
       view,
@@ -85,7 +86,11 @@ export default function ClientSupportInbox() {
     setRows(data.items);
     setTotal(data.total);
   };
+  const requestScope = useRef(reference); requestScope.current=reference;
+  const activeCase = useRef('');
   const apply = (r: any) => {
+    if(![String(r._id),r.supportReference].includes(requestScope.current)) return;
+    if(activeCase.current !== String(r._id)){setDrafts({reply:'',internal:''});setResolve(false);setNotify(true);setPreview(false);setMessageKey(crypto.randomUUID());activeCase.current=String(r._id);}
     setCurrent(r);
     setOwner(r.assignedTo || "");
     setDue(String(r.dueDate || "").slice(0, 10));
@@ -182,6 +187,7 @@ export default function ClientSupportInbox() {
     current && api.detail(current._id).then((r) => apply(r.data));
   const send = () =>
     void mutate(async () => {
+      const scope=requestScope.current;
       const { data } = await api.message(current._id, {
         revision: current.support.revision,
         message: drafts[mode],
@@ -190,10 +196,11 @@ export default function ClientSupportInbox() {
         resolve: mode === "reply" && resolve,
         requestKey: messageKey,
       });
+      if(requestScope.current!==scope)return;
       apply(data);
       setDrafts((d) => ({ ...d, [mode]: "" }));
       setMessageKey(crypto.randomUUID());
-      setPreview(false);
+      setPreview(false); setResolve(false); setNotify(true);
       setNotice(
         mode === "internal"
           ? "Private note saved. No client notification."
@@ -330,6 +337,7 @@ export default function ClientSupportInbox() {
           request or grant access to another client’s booking.
         </p>
       </details>
+      <details className="support-box"><summary>WhatsApp quick reply</summary><label>Message to copy<textarea aria-label="WhatsApp quick reply" value={whatsappReply} readOnly rows={5}/></label><button onClick={()=>void navigator.clipboard.writeText(whatsappReply).then(()=>setCopied('Message copied.')).catch(()=>setCopied('Select and copy the message above.'))}>Copy WhatsApp reply</button><p role="status">{copied}</p></details>
       {showSettings && (
         <section className="support-box">
           <h2>Support notifications</h2>
@@ -598,18 +606,19 @@ export default function ClientSupportInbox() {
                   <label className="support-check">
                     <input
                       type="checkbox"
-                      checked={notify}
+                      checked={notify || resolve}
+                      disabled={resolve}
                       onChange={(e) => setNotify(e.target.checked)}
                     />
-                    Notify client by email with a secure link
+                    Email the client this reply and a secure link
                   </label>
                   <label className="support-check">
                     <input
                       type="checkbox"
                       checked={resolve}
-                      onChange={(e) => setResolve(e.target.checked)}
+                      onChange={(e) => { setResolve(e.target.checked); if(e.target.checked) setNotify(true); }}
                     />
-                    Resolve request with this reply
+                    Resolve request with this reply (emails the resolution)
                   </label>
                 </>
               )}

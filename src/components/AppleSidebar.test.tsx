@@ -114,10 +114,10 @@ describe('AppleSidebar impersonation navigation', () => {
 
     fireEvent.change(screen.getByLabelText('Search menu'), { target: { value: 'booking' } });
 
-    expect(screen.getByText('Bookings')).toBeInTheDocument();
-    expect(screen.getByText('Booking Step Library')).toBeInTheDocument();
+    expect(screen.getAllByText('Bookings').length).toBeGreaterThan(0);
+    expect(screen.getByText('Booking settings')).toBeInTheDocument();
     expect(screen.getByText('Booking Requirements')).toBeInTheDocument();
-    expect(screen.getByText('Document Types & Libraries')).toBeInTheDocument();
+    expect(screen.queryByText('Document Types & Libraries')).not.toBeInTheDocument();
     expect(screen.queryByText('Clients')).not.toBeInTheDocument();
     expect(screen.queryByText('Payments')).not.toBeInTheDocument();
   });
@@ -140,4 +140,12 @@ describe('AppleSidebar impersonation navigation', () => {
     fireEvent.click(screen.getByLabelText('Clear menu search'));
     expect(screen.getByText('Clients')).toBeInTheDocument();
   });
+});
+
+it('limits payment focus to its permitted tools without exposing settings, and preserves medical session navigation',()=>{
+ const p={activeItem:'payments',isOpen:true,onClose:jest.fn(),onItemClick:jest.fn(),onLogout:jest.fn(),userRole:'admin'};
+ const v=render(<AppleSidebar {...p} staffFocus="payments"/>);
+ expect(screen.getByText('Process payments')).toBeVisible();expect(screen.getByText('Choose work mode')).toBeVisible();expect(screen.queryByText('User Management')).not.toBeInTheDocument();
+ v.rerender(<AppleSidebar {...p} staffFocus="tasks" focusedWorkMode/>);
+ expect(screen.getByText('Medical work mode')).toBeVisible();expect(screen.queryByText('Process payments')).not.toBeInTheDocument();
 });

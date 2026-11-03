@@ -5158,6 +5158,23 @@ export type ClientSupportControllerCreateResponses = {
 
 export type ClientSupportControllerCreateResponse = ClientSupportControllerCreateResponses[keyof ClientSupportControllerCreateResponses];
 
+export type ClientSupportControllerRemoveData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/client-portal/support/requests/{id}';
+};
+
+export type ClientSupportControllerRemoveResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ClientSupportControllerRemoveResponse = ClientSupportControllerRemoveResponses[keyof ClientSupportControllerRemoveResponses];
+
 export type ClientSupportControllerGetData = {
     body?: never;
     path: {
@@ -5174,6 +5191,23 @@ export type ClientSupportControllerGetResponses = {
 };
 
 export type ClientSupportControllerGetResponse = ClientSupportControllerGetResponses[keyof ClientSupportControllerGetResponses];
+
+export type ClientSupportControllerEditData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/client-portal/support/requests/{id}';
+};
+
+export type ClientSupportControllerEditResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ClientSupportControllerEditResponse = ClientSupportControllerEditResponses[keyof ClientSupportControllerEditResponses];
 
 export type ClientSupportControllerMessageData = {
     body?: never;

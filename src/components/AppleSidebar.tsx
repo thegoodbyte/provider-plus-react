@@ -1,3 +1,4 @@
+import { StaffFocus, staffFocusModes } from '../workModes/staffFocus';
 import { Activity as FiActivity, AlertTriangle as FiAlertTriangle, BarChart as FiBarChart, Bell as FiBell, Book as FiBook, BookOpen as FiBookOpen, Bookmark as FiBookmark, Briefcase as FiBriefcase, Calendar as FiCalendar, Camera as FiCamera, CheckSquare as FiCheckSquare, ChevronDown as FiChevronDown, ChevronLeft as FiChevronLeft, Clipboard as FiClipboard, Clock as FiClock, Cpu as FiCpu, CreditCard as FiCreditCard, Database as FiDatabase, DollarSign as FiDollarSign, Edit3 as FiEdit3, FileText as FiFileText, Folder as FiFolder, Globe as FiGlobe, Grid as FiGrid, Heart as FiHeart, Home as FiHome, Inbox as FiInbox, Layers as FiLayers, Link as FiLink, LogOut as FiLogOut, Mail as FiMail, Monitor as FiMonitor, MoreHorizontal as FiMoreHorizontal, Search as FiSearch, Settings as FiSettings, Share2 as FiShare2, Shield as FiShield, ShoppingBag as FiShoppingBag, User as FiUser, Users as FiUsers, X as FiX, Zap as FiZap } from 'lucide-react';
 import { NAVIGATION, SETTINGS_LABEL, canShowNavigation, useNavigationPreferences } from '../navigation/navigation';
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
@@ -23,6 +24,7 @@ interface AppleSidebarProps {
   appMode?: 'normal' | 'retreat' | 'shopping';
   selectedRetreatLabel?: string;
   focusedWorkMode?: boolean;
+  staffFocus?: StaffFocus;
 }
 
 type MenuItem = {
@@ -195,7 +197,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   user,
   appMode = 'normal',
   selectedRetreatLabel,
-  focusedWorkMode = false
+  focusedWorkMode = false,
+  staffFocus = 'all'
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -356,6 +359,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
       { id: 'work-modes', label: 'Work sessions', Icon: FiCheckSquare },
       ...['medical-artifacts', 'medical-review-requests'].filter(id => canShowNavigation(id, navigationRole, preferences)).map(id => ({ id, label: NAVIGATION[id]?.label || id, Icon: FiFileText }))
     ] }];
+    if (navigationRole === 'admin' && staffFocus !== 'all') return [{ id:'staff-focus',label:staffFocusModes[staffFocus].label,Icon:FiLayers,items:[{id:'focus',label:'Choose work mode',Icon:FiGrid},...staffFocusModes[staffFocus].items.filter(id=>canShowNavigation(id,navigationRole,preferences)).map(id=>({id,label:NAVIGATION[id]?.label || ({'work-modes':'Medical work sessions','payment-scratchpad':'Scratchpad','payment-receipts':'Receipts','bookings':'Bookings','retreats':'Retreats','booking-step-deadlines':'Step deadlines','scheduled-reminders':'Scheduled reminders','booking-documents':'Document library','needs-attention':'Needs attention'} as Record<string,string>)[id] || id,Icon:FiCheckSquare}))] }];
     const roleSections = getMenuSectionsForRole();
     if (appMode === 'shopping') {
       return [{
@@ -385,10 +389,19 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         return true;
       })
     })).filter(section => section.items.length);
-    if (navigationRole === 'admin') daily.unshift({ id: 'work-mode-launcher', label: 'Focused work', Icon: FiLayers, items: [{ id: 'work-modes', label: 'Work modes', Icon: FiCheckSquare }] });
+    if (navigationRole === 'admin') daily.unshift({ id: 'work-mode-launcher', label: 'Focused work', Icon: FiLayers, items: [{ id: 'focus', label: 'Choose work mode', Icon: FiCheckSquare }] });
     if (readiness.length) daily.splice(Math.min(3, daily.length), 0, { id: 'workflow', label: 'Booking Readiness', Icon: FiLayers, items: readiness.sort((a, b) => Number(b.id === 'workflow') - Number(a.id === 'workflow')) });
-    return [...daily, ...(setup.length ? [{ id: 'setup', label: SETTINGS_LABEL, Icon: FiSettings, items: setup }] : [])];
-  }, [focusedWorkMode, appMode, getMenuSectionsForRole, selectedRetreatLabel, navigationRole, preferences]);
+    if (navigationRole === 'admin') {
+      const bookingIds=['bookings','workflow','booking-flow','booking-step-deadlines','scheduled-reminders','booking-documents'];
+      const bookingItems:MenuItem[]=[];
+      for(const section of daily) section.items=section.items.filter(item=>{if(bookingIds.includes(item.id)){bookingItems.push(item);return false;}return true;});
+      for(let i=setup.length-1;i>=0;i--)if(['retreat-flow','retreat-flow-library','booking-document-types','requirements','announcements'].includes(setup[i].id))setup.splice(i,1);
+      bookingItems.sort((a,b)=>bookingIds.indexOf(a.id)-bookingIds.indexOf(b.id));
+      bookingItems.push({id:'booking-settings',label:'Booking settings',Icon:FiSettings});
+      daily.splice(2,0,{id:'bookings-group',label:'Bookings',Icon:FiBookOpen,items:bookingItems});
+    }
+    return [...daily.filter(section=>section.items.length), ...(setup.length ? [{ id: 'setup', label: SETTINGS_LABEL, Icon: FiSettings, items: setup }] : [])];
+  }, [focusedWorkMode, staffFocus, appMode, getMenuSectionsForRole, selectedRetreatLabel, navigationRole, preferences]);
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase();
   const visibleMenuSections = useMemo(() => {

@@ -147,7 +147,7 @@ it("shows waiting-only queues without allowing an empty batch", async () => {
   expect(
     screen.getByRole("button", { name: "Start all actionable" }),
   ).toBeDisabled();
-  expect(screen.getAllByText("Not available yet")).toHaveLength(2);
+  expect(screen.getByRole("link", {name:"Choose work mode"})).toHaveAttribute("href", "/admin/focus");
 });
 
 it('keeps completed medical actions linked to their saved source for follow-up', async () => {

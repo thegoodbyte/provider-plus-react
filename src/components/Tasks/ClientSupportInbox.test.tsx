@@ -130,7 +130,7 @@ it("keeps internal and public drafts separate and never notifies clients about a
     target: { value: "PRIVATE STAFF NOTE" },
   });
   expect(
-    screen.queryByLabelText("Notify client by email with a secure link"),
+    screen.queryByLabelText("Email the client this reply and a secure link"),
   ).not.toBeInTheDocument();
   fireEvent.click(
     screen.getByRole("button", { name: "Preview internal note" }),
@@ -166,7 +166,7 @@ it("previews the client reply and honors the no-email option, preserving content
     target: { value: "Checked your transaction." },
   });
   fireEvent.click(
-    screen.getByLabelText("Notify client by email with a secure link"),
+    screen.getByLabelText("Email the client this reply and a secure link"),
   );
   fireEvent.click(screen.getByRole("button", { name: "Preview reply" }));
   expect(a.message).not.toHaveBeenCalled();
@@ -221,4 +221,8 @@ it("reports a queue-refresh failure separately after the reply is already saved"
   );
   expect(screen.getByLabelText("Client-visible reply")).toHaveValue("");
   expect(a.message).toHaveBeenCalledTimes(1);
+});
+
+it('provides a complete WhatsApp quick reply with the secure portal link',async()=>{
+ mount('/admin/tasks?support=all');await screen.findByText('Copy a support link to send to a client');fireEvent.click(screen.getByText('WhatsApp quick reply'));const message=screen.getByLabelText('WhatsApp quick reply') as HTMLTextAreaElement;expect(message.value).toContain('For the fastest handling of your request');expect(message.value).toContain('https://www.ibogaready.com/support');expect(message.value).toContain('email notifications');fireEvent.click(screen.getByRole('button',{name:'Copy WhatsApp reply'}));expect(navigator.clipboard.writeText).toHaveBeenCalledWith(message.value);
 });

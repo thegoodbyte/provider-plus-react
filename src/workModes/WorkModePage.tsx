@@ -184,7 +184,7 @@ export default function WorkModePage() {
         <button disabled={busy} onClick={() => void refresh()}>
           Refresh queue and progress
         </button>
-        <Link to="/admin/work-modes">Choose mode or session</Link>
+        <Link to="/admin/focus">Choose another work mode</Link>
       </div>
       {!sessionId && (
         <>
@@ -208,14 +208,7 @@ export default function WorkModePage() {
                 Enter focused navigation
               </button>
             </article>
-            <article>
-              <h2>Payment processing</h2>
-              <p>Not available yet</p>
-            </article>
-            <article>
-              <h2>Upcoming retreat review</h2>
-              <p>Not available yet</p>
-            </article>
+            <article><h2>Other work areas</h2><p>Payments, retreat readiness and task reviews are available from the work-mode chooser.</p><Link to="/admin/focus">Choose work mode</Link></article>
           </div>
           {queue && (
             <>

@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import ClientSupportInbox from '../../components/Tasks/ClientSupportInbox';
 import React, { useState, useEffect, useMemo } from 'react';
 import { BookingFlowItem } from '../../types';
@@ -11,8 +11,10 @@ import TasksCalendarView from '../../components/Tasks/TasksCalendarView';
 import { SprintBoard } from '../../components/Tasks/SprintBoard';
 import './Tasks.css';
 
+const TaskWorkspaceTabs = ({support}:{support:boolean}) => <nav className="task-workspace-tabs" aria-label="Task workspaces"><Link aria-current={!support?'page':undefined} to="/admin/tasks">Operational tasks</Link><Link aria-current={support?'page':undefined} to="/admin/tasks?support=all">IbogaReady tasks</Link></nav>;
 export const Tasks: React.FC = () => {
   const supportLocation = useLocation();
+  const isSupport = new URLSearchParams(supportLocation.search).has('support');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [deadlines, setDeadlines] = useState<BookingFlowItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,8 +51,8 @@ export const Tasks: React.FC = () => {
   };
 
   useEffect(() => {
-    loadTasks();
-  }, [filters]);
+    if (!isSupport) loadTasks();
+  }, [filters, isSupport]);
 
   const handleCreateTask = (context = activeContext, sprint: string | null = null) => {
     setEditingTask(null);
@@ -160,7 +162,7 @@ export const Tasks: React.FC = () => {
 
   const stats = getTaskStats();
 
-  if (new URLSearchParams(supportLocation.search).has('support')) return <ClientSupportInbox />;
+  if (isSupport) return <><TaskWorkspaceTabs support/><ClientSupportInbox /></>;
 
   if (loading) {
     return (
@@ -174,7 +176,7 @@ export const Tasks: React.FC = () => {
     <div className="tasks-page">
       <div className="tasks-header">
         <div className="header-content">
-          <div><a href="/admin/tasks?support=all" className="btn btn-primary">Client support inbox / Copy support links</a><h1>Tasks</h1><p className="tasks-subtitle">One clear place for what needs your attention.</p></div>
+          <div><TaskWorkspaceTabs support={false}/><h1>Tasks</h1><p className="tasks-subtitle">One clear place for what needs your attention.</p></div>
           <div className="task-header-actions">
             <div className="tasks-view-toggle" aria-label="Task view">
               <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>

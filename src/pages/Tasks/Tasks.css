@@ -177,3 +177,7 @@
   .task-context-tabs { grid-template-columns: repeat(2, 1fr); }
   .task-origin-bar { display: grid; }
 }
+
+.task-workspace-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
+.task-workspace-tabs a { border:1px solid #cbded5; border-radius:8px; padding:10px 16px; color:#265a49; text-decoration:none; }
+.task-workspace-tabs a[aria-current="page"] { background:#17695f;color:white; }

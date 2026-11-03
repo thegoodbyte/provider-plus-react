@@ -1,3 +1,6 @@
+import StaffFocusHome from '../workModes/StaffFocusHome';
+import { useStaffFocus, staffFocusModes } from '../workModes/staffFocus';
+import BookingSettingsHome from './BookingSettingsHome';
 import { useWorkMode } from '../workModes/WorkModeContext';
 import WorkModePage from '../workModes/WorkModePage';
 import { BookOpen, Calendar, ChevronDown, CreditCard, Grid, Menu as MenuIcon, ShoppingBag, Users, X } from 'lucide-react';
@@ -183,8 +186,9 @@ const AppleLayout: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const { logout, user, startMedicalStaffPreview, stopImpersonation } = useAuth();
   const workMode = useWorkMode();
+  const staffFocus = useStaffFocus(user);
   const focusedWorkMode = user?.role === 'admin' && workMode.active;
-  useEffect(() => { if (focusedWorkMode) setAppMode({ mode: 'normal' }); }, [focusedWorkMode]);
+  useEffect(() => { if (focusedWorkMode || staffFocus.mode !== 'all') setAppMode({ mode: 'normal' }); }, [focusedWorkMode, staffFocus.mode]);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -217,6 +221,8 @@ const AppleLayout: React.FC = () => {
     if (route === 'medical-dashboard') return 'medical-dashboard';
     if (route === 'medical-review') return 'medical-dashboard';
     if (route === 'medical-retreats') return 'medical-retreats';
+    if (route === 'focus') return 'focus';
+    if (location.pathname.endsWith('/bookings/settings')) return 'booking-settings';
     if (route === 'work-modes') return 'work-modes';
     if (route === 'medical-artifacts') return 'medical-artifacts';
     if (route === 'medical-tracking') return 'medical-tracking';
@@ -366,7 +372,7 @@ const AppleLayout: React.FC = () => {
   }, [defaultRoute, isMedicalQuickAccessSession, location.pathname, navigate, routePrefix, user?.medicalReviewRequestId]);
 
   useEffect(() => {
-    if (isMedicalQuickAccessSession || focusedWorkMode || location.pathname.startsWith('/admin/work-modes') || appMode.mode === 'normal') return;
+    if (isMedicalQuickAccessSession || focusedWorkMode || staffFocus.mode !== 'all' || location.pathname.startsWith('/admin/work-modes') || appMode.mode === 'normal') return;
     const prefix = `/${routePrefix}`;
     const path = location.pathname;
 
@@ -396,6 +402,7 @@ const AppleLayout: React.FC = () => {
     allowedClientIds,
     appMode,
     focusedWorkMode,
+    staffFocus.mode,
     isMedicalQuickAccessSession,
     location.pathname,
     navigate,
@@ -412,6 +419,7 @@ const AppleLayout: React.FC = () => {
     }
     const retreatSectionRoutes: Record<string, string> = {
       ceremonies: 'retreat/ceremonies',
+      'booking-settings': 'bookings/settings',
       bookings: 'retreat/bookings',
       houses: 'retreat/houses',
       'booster-offers': 'retreat/booster-offers',
@@ -649,6 +657,7 @@ const AppleLayout: React.FC = () => {
         user={user}
         appMode={appMode.mode}
         focusedWorkMode={focusedWorkMode}
+        staffFocus={staffFocus.mode}
         selectedRetreatLabel={appMode.retreatLabel}
       />
 
@@ -664,7 +673,7 @@ const AppleLayout: React.FC = () => {
           </div>
           {!focusedWorkMode && <div className="workspace-search"><GlobalSearch routePrefix={routePrefix} onNavigate={navigate} /></div>}
           <div className="workspace-header-tools">
-            {!focusedWorkMode && renderQuickMenu()}
+            {!focusedWorkMode && staffFocus.mode === 'all' && renderQuickMenu()}
             <details ref={accountRef} className="workspace-account" key={location.pathname}>
               <summary aria-label="Account and tools" title="Account and tools"><span>{(user?.firstName || userEmail || 'A')[0].toUpperCase()}</span><HeaderIcon icon={ChevronDown} className="h-3 w-3" /></summary>
               <div className="workspace-account-menu" onClick={(event) => { if ((event.target as HTMLElement).closest('button')) accountRef.current?.removeAttribute('open'); }}>
@@ -702,7 +711,8 @@ const AppleLayout: React.FC = () => {
           </div>
         )}
 
-        {focusedWorkMode && <div className="wm-mode-banner" aria-label="Active work mode"><strong>Medical work mode</strong><a href={workMode.data?.workspace?.sessionId ? `/admin/work-modes/sessions/${workMode.data.workspace.sessionId}` : '/admin/work-modes'}>Return to work session</a><button onClick={() => navigate('/admin/work-modes')}>Switch mode or session</button><button onClick={() => void workMode.exit().catch(() => {})}>Exit work mode</button>{workMode.error && <span role="alert">{workMode.error}</span>}</div>}
+        {focusedWorkMode && <div className="wm-mode-banner" aria-label="Active work mode"><strong>Medical work mode</strong><a href={workMode.data?.workspace?.sessionId ? `/admin/work-modes/sessions/${workMode.data.workspace.sessionId}` : '/admin/work-modes'}>Return to work session</a><button onClick={() => navigate('/admin/focus')}>Switch mode or session</button><button onClick={() => void workMode.exit().catch(() => {})}>Exit work mode</button>{workMode.error && <span role="alert">{workMode.error}</span>}</div>}
+        {user?.role === 'admin' && !focusedWorkMode && <div className="staff-focus-banner" aria-label="Staff focus"><strong>{staffFocusModes[staffFocus.mode].label}</strong>{staffFocus.mode!=='all' && <button onClick={()=>navigate(staffFocusModes[staffFocus.mode].route)}>Return to focus</button>}<button onClick={()=>navigate('/admin/focus')}>Choose work mode</button><button onClick={()=>{staffFocus.setMode('all');navigate('/admin/launcher');}}>All tools</button></div>}
         <StorageOverrideBanner />
         <AiHealthBanner />
 
@@ -726,8 +736,10 @@ const AppleLayout: React.FC = () => {
                 <Route path="/admin/*" element={
                   <ProtectedRoute requiredRole={['admin']}>
                     <Routes>
-                      <Route index element={<ModuleLauncherPage />} />
+                      <Route index element={<StaffFocusHome />} />
                       <Route path="launcher" element={<ModuleLauncherPage />} />
+                      <Route path="focus" element={<StaffFocusHome />} />
+                      <Route path="bookings/settings" element={<BookingSettingsHome />} />
                       <Route path="work-modes" element={<WorkModePage />} />
                       <Route path="work-modes/sessions/:sessionId" element={<WorkModePage />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
