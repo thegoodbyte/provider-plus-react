@@ -43,3 +43,24 @@ it('saved client-only context takes precedence over old PR/phone hints when maki
  await waitFor(()=>expect(api.matches).toHaveBeenCalledWith('receipt',expect.objectContaining({mode:'client',q:'',clientId:'saved-client'})));
  expect(screen.getByRole('button',{name:'Create client payment without a PR'})).toBeEnabled();expect(api.confirmMatch).not.toHaveBeenCalled();
 });
+
+it('takes a settled PR directly to its existing payments and links the original without another conversion',async()=>{
+ const paid={...request,display_id:1402,settled:true,amountOutstanding:0,unavailableReason:'Already settled; link the existing payment instead'};
+ const payment={_id:'paid-payment',display_id:1211,clientId:'client-a',paymentRequestId:'request-a',bookingId:'booking-a',amount:600,currency:'PLN',clientName:'Ewa Franus'};
+ api.matches.mockImplementation(async(_id,query:any)=>({data:query.mode==='payment'?{payments:[payment],requests:[]}:{clients:[client],requests:[paid],suggestedRequestId:''}} as any));
+ mount(receipt,'request');expect(await screen.findByRole('checkbox',{name:'Select PR #1402'})).toBeDisabled();
+ fireEvent.click(screen.getByRole('button',{name:'Find existing payments for PR #1402'}));
+ await waitFor(()=>expect(api.matches).toHaveBeenLastCalledWith('receipt',expect.objectContaining({mode:'payment',term:'',amount:'600.00',paymentRequestId:'request-a'})));
+ fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1211'}));fireEvent.click(screen.getByRole('button',{name:'Confirm link to existing payment'}));
+ await waitFor(()=>expect(api.confirmMatch).toHaveBeenCalledWith('receipt',expect.objectContaining({action:'link',paymentId:'paid-payment',paymentRequestId:'request-a'})));
+ expect(paymentsApi.linkRequest).not.toHaveBeenCalled();
+});
+it('existing payment name/reference query and amount are independent, changes clear selection',async()=>{
+ api.matches.mockResolvedValue({data:{requests:[],payments:[{_id:'payment',display_id:1211,amount:600,currency:'PLN',clientId:'client-a'}]}} as any);
+ mount(receipt,'payment');fireEvent.click(await screen.findByRole('checkbox',{name:'Select payment #1211'}));
+ fireEvent.change(screen.getByRole('textbox',{name:'Client name, payment / PR / booking number or reference'}),{target:{value:'Ewa Franus'}});
+ await waitFor(()=>expect(api.matches).toHaveBeenLastCalledWith('receipt',expect.objectContaining({term:'Ewa Franus',amount:'600.00'})));
+ expect(screen.getByRole('button',{name:'Confirm payment from scratchpad'})).toBeDisabled();
+ fireEvent.change(screen.getByLabelText('Payment amount (optional)'),{target:{value:''}});
+ await waitFor(()=>expect(api.matches).toHaveBeenLastCalledWith('receipt',expect.objectContaining({term:'Ewa Franus',amount:''})));
+});

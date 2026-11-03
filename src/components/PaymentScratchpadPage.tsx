@@ -79,7 +79,7 @@ export default function PaymentScratchpadPage() {
   // path (candidate search, confirm-match checkbox) behind an explicit
   // opt-in, instead of showing it by default for every receipt.
   const [linkMode, setLinkMode] = useState(false);
-  const emptyPaymentSearch = { clientId: '', bookingId: '', amount: '', dateFrom: '', dateTo: '', matchMode: 'all', page: 1 };
+  const emptyPaymentSearch = { term: '', clientId: '', bookingId: '', amount: '', dateFrom: '', dateTo: '', matchMode: 'all', page: 1 };
   const [paymentSearch, setPaymentSearch] = useState(emptyPaymentSearch);
   const changePaymentSearch = (changes: Partial<typeof emptyPaymentSearch>) => {
     setError('');
@@ -342,7 +342,7 @@ export default function PaymentScratchpadPage() {
             <label htmlFor="scratchpad-booking">Booking (optional)</label><SearchableSelect id="scratchpad-booking" name="bookingId" value={linkMode ? paymentSearch.bookingId : target.bookingId} options={[{ id: '', label: linkMode ? 'All bookings' : 'No booking' }, ...bookingOptions]} placeholder="Search booking number" onChange={bookingId => { if (linkMode) { changePaymentSearch({ bookingId }); return; } const b = bookings.find(item => item._id === bookingId); setTarget(v => ({ ...v, bookingId, clientId: b ? resolveId(b.clientId) : v.clientId, paymentRequestId: '', paymentId: '', confirmAccount: false })); setConfirmed(false); }} />
             {linkMode && <>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <label className="grid gap-1 text-sm">Payment amount<input className="rounded border p-2" type="number" min="0.01" step="0.01" value={paymentSearch.amount} onChange={event => changePaymentSearch({ amount: event.target.value })} /></label>
+                <label className="grid gap-1 text-sm">Client name, payment / PR / booking number or reference<input className="rounded border p-2" value={paymentSearch.term} onChange={event => changePaymentSearch({ term: event.target.value })} /></label><label className="grid gap-1 text-sm">Payment amount<input className="rounded border p-2" type="number" min="0.01" step="0.01" value={paymentSearch.amount} onChange={event => changePaymentSearch({ amount: event.target.value })} /></label>
                 <label className="grid gap-1 text-sm">Match filters<select className="rounded border p-2" value={paymentSearch.matchMode} onChange={event => changePaymentSearch({ matchMode: event.target.value })}><option value="all">Match all filters</option><option value="any">Match any filter</option></select></label>
                 <label className="grid gap-1 text-sm">Payment date from<input className="rounded border p-2" type="date" value={paymentSearch.dateFrom} onChange={event => changePaymentSearch({ dateFrom: event.target.value })} /></label>
                 <label className="grid gap-1 text-sm">Payment date to<input className="rounded border p-2" type="date" value={paymentSearch.dateTo} onChange={event => changePaymentSearch({ dateTo: event.target.value })} /></label>
