@@ -7,7 +7,7 @@ test.skip(
   "Use scripts/run-paid-request-booking-e2e.cjs for the required no-skip real Mongo/API journey.",
 );
 test.describe.configure({ mode: "serial" });
-test.use({timezoneId:"America/Los_Angeles"});
+test.use({ timezoneId: "America/Los_Angeles" });
 for (const width of [1440, 390])
   for (const entry of ["request", "scratchpad"])
     test(`${entry} prefills and persists retreat dates at ${width}px`, async ({
@@ -193,6 +193,42 @@ for (const width of [1440, 390])
       await next.screenshot({
         path: `${process.env.PAID_BOOKING_ARTIFACT_DIR || "test-results"}/linked-${width}.png`,
       });
-      expect(writes.filter((v) => v === "POST /bookings")).toHaveLength(1);
+      // A sibling booking must retain its independent stay and not rewrite the first.
+      const siblingQuery = new URLSearchParams({
+        clientId: ids.clients[1],
+        retreatId: ids.retreat,
+        paymentRequestId: ids.requests[1],
+        currency: "PLN",
+        totalAmount: "2500",
+        paymentPlanEnabled: "false",
+      });
+      await page.goto("/admin/bookings/new?" + siblingQuery);
+      await expect(page.getByLabel("Arrival", { exact: true })).toHaveValue(
+        "2099-01-01T00:00",
+      );
+      await page.getByDisplayValue("9500", { exact: true }).fill("9501");
+      await page
+        .getByLabel("Departure", { exact: true })
+        .fill("2099-01-08T10:00");
+      await expect(
+        page.getByRole("combobox", { name: /^Accommodation/ }),
+      ).toHaveValue("shared");
+      await page
+        .getByRole("button", { name: "Add Booking", exact: true })
+        .click();
+      await expect.poll(async () => (await snapshot()).bookings.length).toBe(2);
+      const siblings = await snapshot();
+      expect(siblings.bookings.find((b: any) => b._id === booking._id)).toEqual(
+        booking,
+      );
+      expect(
+        siblings.bookings.find((b: any) => b.clientId === ids.clients[1])
+          .checkOutDate,
+      ).toBe(
+        await page.evaluate(() => new Date("2099-01-08T10:00").toISOString()),
+      );
+      expect(siblings.payments.length).toBe(saved.payments.length);
+      expect(siblings.emails).toEqual([]);
+      expect(writes.filter((v) => v === "POST /bookings")).toHaveLength(2);
       expect(writes.filter((v) => /^POST \/payments/.test(v))).toHaveLength(0);
     });
