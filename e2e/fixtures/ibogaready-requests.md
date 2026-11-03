@@ -17,3 +17,5 @@ PLAYWRIGHT_SKIP_WEB_SERVER=1 npx playwright test e2e/ibogaready-request-lifecycl
 ```
 
 Optional `CLIENT_SUPPORT_ARTIFACT_DIR` chooses screenshot destination. The native journey covers create/edit/lost-response retry/reload, sibling isolation, staff progress email, internal-note privacy, resolution email and confirmed removal. Focus tests use read-only synthetic queue reads and verify navigation/preferences, not payment or medical decisions. All four dedicated cases must execute: a missing fixture skips native cases and is not a passing gate. Provider inbox delivery and WhatsApp sending are not exercised.
+
+For concurrent broad runs alongside `client-support.spec.ts`, start a second support fixture with a different output/port and set `IBOGAREADY_REQUEST_FIXTURE` for the lifecycle file. Keep `CLIENT_SUPPORT_FIXTURE` for the legacy support file. Both use production services/indexes but must not reset the same database concurrently. Standalone sequential runs may use the fallback `CLIENT_SUPPORT_FIXTURE`.

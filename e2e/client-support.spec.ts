@@ -164,7 +164,7 @@ for (const width of [1440, 390])
         .getByLabel("Private staff note")
         .fill("PRIVATE STAFF NOTE: compare original transaction.");
       await expect(
-        staff.getByLabel("Notify client by email with a secure link"),
+        staff.getByLabel("Email the client this reply and a secure link"),
       ).toHaveCount(0);
       await staff
         .getByRole("button", { name: "Preview internal note" })
@@ -287,7 +287,8 @@ for (const width of [1440, 390])
       expect(after.tasks[0].support.messages).toHaveLength(4);
       expect(after.bookings).toEqual(before.bookings);
       expect(after.clients).toEqual(before.clients);
-      expect(after.emails).toHaveLength(4);
+      expect(after.emails).toHaveLength(5);
+      expect(after.emails.filter((e: any) => e.bodyText.includes('Your request is with our team.'))).toHaveLength(1);
       expect(
         after.emails.every(
           (e: any) => !e.bodyText.includes("PRIVATE STAFF NOTE"),

@@ -28,11 +28,14 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.screenshot({ path: `/tmp/ppvc-634-setup-${viewport.width}.png`, fullPage: true });
     if (viewport.width < 768) await page.getByRole('button', { name: 'Toggle menu', exact: true }).first().click();
     const nav = page.getByRole('navigation', { name: 'Main navigation' });
-    await nav.getByRole('button', { name: 'Settings & Setup', exact: true }).click();
-    await expect(nav.getByRole('button', { name: 'Booking Step Library', exact: true })).toBeVisible();
-    await nav.getByRole('button', { name: 'Booking Step Library', exact: true }).scrollIntoViewIfNeeded();
+    const bookingGroup = nav.getByRole('button', { name: 'Bookings', exact: true }).first();
+    if (await bookingGroup.getAttribute('aria-expanded') === 'false') await bookingGroup.click();
+    await nav.getByRole('button', { name: 'Booking settings', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Booking settings', exact: true })).toBeVisible();
+    const library = page.getByRole('link', { name: /^Booking Step Library/ });
+    await expect(library).toBeVisible();
     await page.screenshot({ path: `/tmp/ppvc-634-menu-${viewport.width}.png`, fullPage: true });
-    await nav.getByRole('button', { name: 'Booking Step Library', exact: true }).click();
+    await library.click();
     await expect(page.getByRole('heading', { name: 'Booking Step Library', exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/retreat-flow-library$/);
     if (viewport.width < 768) await expect(nav).not.toBeInViewport();
