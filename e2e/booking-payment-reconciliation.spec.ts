@@ -1,6 +1,8 @@
 import {test,expect} from '@playwright/test';
 import fs from 'node:fs';
 const fixturePath=process.env.BOOKING_RECONCILIATION_FIXTURE;
+// Width journeys reset the same real fixture; keep their financial records isolated.
+test.describe.configure({ mode: 'serial' });
 test.skip(!fixturePath,'Requires real API/Mongo booking reconciliation fixture');
 for(const width of [1440,390]) test(`receive before booking, warn after PR edit, reconcile and reload at ${width}px`,async({page,request})=>{
  const f=JSON.parse(fs.readFileSync(fixturePath!,'utf8'));const reset=await request.post(f.url+'/fixture/reconciliation-reset',{data:{scenario:'receive-first'}});expect(reset.ok()).toBe(true);f.ids=(await reset.json()).ids;
