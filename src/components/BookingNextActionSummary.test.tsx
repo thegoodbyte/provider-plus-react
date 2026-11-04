@@ -51,9 +51,19 @@ test('separates the next action from work waiting on the client and medical team
     ],
   };
   render(<BookingNextActionSummary {...props} source={sourceWithWaiting} />);
-  expect(screen.getByRole('heading', { name: 'Next step from me' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Booking readiness' })).toBeInTheDocument();
   expect(screen.getByText('Waiting on client')).not.toBeVisible();
   fireEvent.click(screen.getByText('Waiting for others · 2'));
   expect(screen.getByText('Waiting on client')).toBeVisible();
   expect(screen.getByText('Waiting on medical team')).toBeInTheDocument();
+});
+
+test('client-owned received-but-unsatisfied evidence is a follow-up, not a completed staff action', () => {
+ const clientSource: BookingReadinessSource = {...source,items:[{...source.items[0],key:'ekg_received',title:'Entry EKG received',description:'Entry EKG document has been received from the client.',category:'medical',status:'received'}],requirements:[{itemId:'step',key:'ekg_received',state:'expired',requiredFromClient:true,reviewRequired:true}]};
+ render(<BookingNextActionSummary {...props} source={clientSource}/>);
+ expect(screen.getByRole('heading',{name:'Booking readiness'})).toBeVisible();
+ expect(screen.getByText('Client requirement to follow up')).toBeVisible();
+ expect(screen.queryByText('Entry EKG document has been received from the client.')).not.toBeInTheDocument();
+ fireEvent.click(screen.getAllByRole('button',{name:'Open requirements: Entry EKG received'})[0]);
+ expect(props.onOpen).toHaveBeenCalledWith('requirements','step');
 });

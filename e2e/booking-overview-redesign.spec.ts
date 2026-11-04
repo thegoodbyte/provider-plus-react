@@ -26,7 +26,7 @@ async function fixture(page:Page, failed=false) {
 for(const width of [1440,1024,390]) test(`booking overview hierarchy and navigation at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:1000});const f=await fixture(page);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`/admin/bookings/${id}`);
- const tabs=page.getByRole('tablist',{name:'Booking sections'});const next=page.getByRole('region',{name:'Next step from me'});const overview=page.getByRole('region',{name:'Booking overview'});
+ const tabs=page.getByRole('tablist',{name:'Booking sections'});const next=page.getByRole('region',{name:'Booking readiness'});const overview=page.getByRole('region',{name:'Booking overview'});
  await expect(next.getByRole('status')).toHaveText('Blocked');await expect(overview.getByText('40% paid')).toBeVisible();
  const bounds=await tabs.boundingBox(); const nextBounds=await next.boundingBox();expect(bounds!.y+bounds!.height).toBeLessThanOrEqual(nextBounds!.y+1);const workspaceBounds=await page.locator('.booking-workspace').boundingBox();expect(bounds!.y-workspaceBounds!.y).toBeLessThan(width<700?260:200);
  expect(await page.locator('.detail-header').evaluate(e=>getComputedStyle(e).position)).toBe('static');
@@ -43,6 +43,6 @@ for(const width of [1440,1024,390]) test(`booking overview hierarchy and navigat
 });
 test('unavailable financial and readiness sources stay explicit and recover',async({page})=>{
  await page.setViewportSize({width:390,height:1000});const f=await fixture(page,true);await page.goto(`/admin/bookings/${id}`);
- const next=page.getByRole('region',{name:'Next step from me'});await expect(next.getByRole('status')).toHaveText('Readiness unknown');await expect(page.getByRole('region',{name:'Payment summary'})).toContainText('Financial summary unavailable');expect(await page.getByRole('progressbar').count()).toBe(0);
+ const next=page.getByRole('region',{name:'Booking readiness'});await expect(next.getByRole('status')).toHaveText('Readiness unknown');await expect(page.getByRole('region',{name:'Payment summary'})).toContainText('Financial summary unavailable');expect(await page.getByRole('progressbar').count()).toBe(0);
  f.recover();await page.getByRole('button',{name:'Retry payment summary'}).click();await next.getByRole('button',{name:'Retry readiness'}).click();await expect(next.getByRole('status')).toHaveText('Blocked');await expect(page.getByText('40% paid')).toBeVisible();expect(f.writes).toEqual([]);
 });

@@ -603,3 +603,71 @@
   .authoritative-financial-summary .booking-balance-metric strong,
   .authoritative-financial-summary .booking-balance-metric strong span { font-size: 18px; }
 }
+
+/* Request and transaction roles stay distinct without duplicating totals. */
+.booking-payment-explainer { margin: 16px 22px; padding: 12px 16px; border-radius: 10px; background: #f0f7f5; color: #334155; font-size: 13px; line-height: 1.6; }
+.booking-payment-management .booking-balance-summary { border-left-color: #16736a; border-radius: 12px; }
+.booking-payment-management .booking-balance-metric.outstanding { text-align: left; }
+.booking-payment-management .booking-payment-request-row { border-left-color: #64748b !important; border-radius: 10px; grid-template-columns: minmax(170px,1.2fr) minmax(110px,.7fr) minmax(140px,.8fr) minmax(120px,.7fr) auto; }
+.payment-record-link { color: #075985; text-decoration: underline; font-weight: 650; overflow-wrap: anywhere; }
+.payment-history-header > .payment-history-title { display: block !important; }
+.payment-history-title h4 { margin: 0; }
+.payment-history-title p { margin: 5px 0 0; color: #64748b; font-size: 12px; }
+.payment-record-more { position: relative; }
+.payment-record-more summary { display: flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; list-style: none; }
+.payment-record-more summary::-webkit-details-marker { display: none; }
+.payment-record-more > div { position: absolute; z-index: 20; right: 0; bottom: 100%; min-width: 150px; display: grid; gap: 4px; padding: 6px; background: white; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 6px 18px #0f172a26; }
+.payment-record-more button { width: 100%; text-align: left; min-height: 40px; border: 0; background: white; }
+.payment-record-more .delete-payment-btn { color: #b91c1c; }
+.mobile-payment-label { display: none; }
+.booking-payment-management .payment-actions { display: flex; flex-wrap: nowrap; }
+.booking-payment-management .view-payment-btn { min-height: 40px; white-space: nowrap; border-radius: 6px; }
+@media (max-width: 1150px) {
+  .booking-payment-management .booking-payment-request-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .booking-payment-management .payment-request-identity { grid-column: 1 / -1; }
+  .booking-payment-management .payment-request-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+@media (max-width: 760px) {
+  .booking-payment-explainer { margin: 12px; }
+  .booking-payment-management .payment-summary-header { flex-wrap: wrap; padding: 14px; }
+  .booking-payment-management .booking-payment-request-row { grid-template-columns: minmax(0,1fr); }
+  .booking-payment-management .payment-requests-heading { flex-direction: column; align-items: stretch; gap: 12px; }
+  .booking-payment-management .payment-requests-heading p { display: block; }
+  .booking-payment-management .new-payment-request-link { display: block; margin-left: 0; align-self: flex-start; min-height: 40px; }
+  .booking-payment-management .payment-request-create { display: flex; flex-direction: column; align-items: stretch; }
+  .booking-payment-management .mobile-balance-request { display: none; }
+  .booking-payment-management .payment-request-actions { display: flex; flex-wrap: wrap; }
+  .booking-payment-management .payment-history-total { display: block; margin-left: 0; flex-basis: 100%; }
+  .booking-payment-management .mobile-history-add { display: none; }
+  .booking-payment-management .payments-table tr { margin-bottom: 12px; border-radius: 10px; padding-top: 14px; }
+  .booking-payment-management .payments-table td:nth-child(1) { display: block; padding-right: 110px; font-weight: 700; }
+  .booking-payment-management .payments-table td:nth-child(4) { display: block; margin: 6px 0; }
+  .booking-payment-management .payments-table td:nth-child(7) { max-width: 105px; }
+  .booking-payment-management .payments-table td:nth-child(9) { margin-top: 12px; }
+  .booking-payment-management .payment-actions { justify-content: flex-start; }
+  .booking-payment-management .payment-record-more .refund-btn { display: block; }
+  .mobile-payment-label { display: inline; }
+}
+.booking-payment-management .payment-request-create { display: block; flex: 0 0 auto; }
+.payment-request-create summary { min-height: 40px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; color: #075985; font-size: 13px; font-weight: 650; cursor: pointer; }
+.payment-request-create[open] label { margin: 12px 0 8px; }
+.request-due-date time { color: #334155; font-size: 13px; }
+@media (max-width: 1150px) {
+ .booking-payment-management .payments-table-container { overflow: visible; }
+ .booking-payment-management .payments-table,.booking-payment-management .payments-table tbody,.booking-payment-management .payments-table tr,.booking-payment-management .payments-table td { display: block; width: 100%; }
+ .booking-payment-management .payments-table thead { display: none; }
+ .booking-payment-management .payments-table tr { position: relative; padding: 14px; margin-bottom: 12px; border: 1px solid #d1d5db; border-radius: 10px; }
+ .booking-payment-management .payments-table td { padding: 3px 0; border: 0; white-space: normal; }
+ .booking-payment-management .payments-table td:nth-child(1) { display: block; padding-right: 115px; font-weight: 700; }
+ .booking-payment-management .payments-table td:nth-child(2),.booking-payment-management .payments-table td:nth-child(3),.booking-payment-management .payments-table td:nth-child(5),.booking-payment-management .payments-table td:nth-child(6) { display: inline; margin-right: 6px; }
+ .booking-payment-management .payments-table td:nth-child(4) { display: block; margin: 6px 0; }
+ .booking-payment-management .payments-table td:nth-child(7) { position: absolute; right: 12px; top: 12px; width: auto; }
+ .booking-payment-management .payments-table td:nth-child(8) { display: none; }
+ .booking-payment-management .payments-table td:nth-child(9) { margin-top: 12px; }
+ .booking-payment-management .payment-actions { justify-content: flex-start; }
+ .booking-payment-management .payment-record-more .refund-btn { display: block; }
+ .mobile-payment-label { display: inline; }
+}
+/* Menus must escape the table's paint box to remain clickable. */
+.booking-payment-management .payments-table,
+.booking-payment-management .payments-table-container { overflow: visible; }

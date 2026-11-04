@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import { configSummaryApi, paymentRequestsApi, paymentsApi } from '../services/api';
@@ -82,7 +82,7 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     expect(screen.getByText('Booking #1186 · Arkadiusz Bujak')).toBeInTheDocument();
     expect(screen.getByText(/Not fully paid/)).toBeInTheDocument();
     expect(screen.getByText('No payment request yet')).toBeInTheDocument();
-    expect(screen.getByText('Payment history')).toBeInTheDocument();
+    expect(screen.getByText('Payment transactions')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /view payment/i })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Record a payment' })).toHaveLength(2);
   });
@@ -164,4 +164,52 @@ test('an existing issued manual balance is reviewed instead of offering another 
  (paymentRequestsApi.getByBooking as jest.Mock).mockResolvedValue({data:[{_id:'balance',display_id:1402,invoiceNumber:'1402',requestType:'balance',requestedAmount:4500,currency:'PLN',status:'sent',dueDate:'2026-12-01'}]});
  (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({data:[]});(paymentsApi.getByBooking as jest.Mock).mockResolvedValue({data:[]});(paymentsApi.getTypes as jest.Mock).mockResolvedValue({data:[]});
  renderPage();expect(await screen.findByRole('link',{name:'Review existing balance request #1402'})).toHaveAttribute('href','/admin/payment-requests/balance');expect(screen.queryByRole('button',{name:'Create balance request'})).not.toBeInTheDocument();expect(paymentsApi.updateBookingPlan).not.toHaveBeenCalled();
+});
+
+describe('PPVC-989 request versus transaction clarity', () => {
+ beforeEach(() => {
+  jest.clearAllMocks();
+  (configSummaryApi.get as jest.Mock).mockResolvedValue({data:{}});
+  (paymentsApi.getTypes as jest.Mock).mockResolvedValue({data:[]});
+  (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({data:{usd_amount:962.03}});
+  (paymentsApi.getBookingPlan as jest.Mock).mockResolvedValue({data:null});
+  (paymentsApi.getFinancialSummary as jest.Mock).mockResolvedValue({data:{price:9500,currency:'PLN',grossReceived:3800,refunded:0,netPaid:3800,balance:5700,overpayment:0,paidInFull:false,sourceState:'verified_ledger'}});
+  const receipt={...payment,_id:'p1216',display_id:1216,amount:3800,isRefundable:true,paymentRequestId:{_id:'q1417',invoiceNumber:'1417'}};
+  (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({data:[receipt]});
+  (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({data:[receipt]});
+  (paymentRequestsApi.getByBooking as jest.Mock).mockResolvedValue({data:[{_id:'q1417',invoiceNumber:'1417',requestedAmount:3800,currency:'PLN',status:'paid',usd_amount:967.88,paymentId:receipt}]});
+ });
+ it('shows one ledger total and bidirectional identities without adding a paid request again',async()=>{
+  renderPage();
+  const requests=await screen.findByRole('region',{name:'Payment requests — money requested'});
+  const transactions=screen.getByRole('region',{name:'Payments — recorded transactions'});
+  expect(within(requests).getByRole('link',{name:'Payment #1216'})).toHaveAttribute('href','/admin/payments/p1216');
+  fireEvent.click(within(transactions).getByRole('button',{name:'Request #1417'}));
+  expect(screen.getByTestId('location')).toHaveTextContent('/admin/payment-requests/q1417');
+  expect(screen.getByText('Paid after refunds').parentElement).toHaveTextContent('PLN 3800.00');
+  expect(screen.getByText('Balance outstanding').parentElement).toHaveTextContent('PLN 5700.00');
+  expect(screen.getByText(/same money, counted once/)).toBeVisible();
+  expect(screen.queryByText(/967.88|962.03|7600.00/)).not.toBeInTheDocument();
+ });
+ it('keeps refund/edit/delete inside an explicitly opened secondary menu',async()=>{
+  renderPage();
+  await screen.findByRole('button',{name:/View payment/i});
+  expect(screen.getByText('Delete')).not.toBeVisible();
+  fireEvent.click(screen.getByLabelText('More actions for payment 1216'));
+  expect(screen.getByText('Refund',{exact:true})).toBeVisible();
+  expect(screen.getByText('Delete')).toBeVisible();
+  fireEvent.click(screen.getByRole('button',{name:'Edit',exact:true}));
+  expect(screen.getByTestId('location')).toHaveTextContent('/admin/payments/p1216/edit');
+  expect(paymentsApi.update).not.toHaveBeenCalled();
+ });
+ it('labels pending and refunded records explicitly and uses net paid wording',async()=>{
+  const records=[{...payment,_id:'pending',status:'pending'},{...payment,_id:'refunded',display_id:1217,refundedAmount:250,status:'completed'}];
+  (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({data:records});
+  (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({data:records});
+  renderPage();
+  const transactions=await screen.findByRole('region',{name:'Payments — recorded transactions'});
+  expect(within(transactions).getByText('PENDING')).toBeVisible();
+  expect(within(transactions).getByText(/Refunded:/)).toHaveTextContent('PLN 250.00');
+  expect(within(transactions).getByText(/net paid/)).toHaveTextContent('2 records · PLN 3800.00 net paid');
+ });
 });
