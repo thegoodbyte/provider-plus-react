@@ -1,3 +1,4 @@
+import { useStaffFocus } from './staffFocus';
 import React, {
   createContext,
   useCallback,
@@ -46,8 +47,9 @@ const WorkContext = createContext<Context>(empty);
 export const useWorkMode = () => useContext(WorkContext);
 export function WorkModeProvider({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuth();
+  const financeFocus = useStaffFocus(user);
   const owner =
-    isAuthenticated && user?.role === "admin"
+    isAuthenticated && user?.role === "admin" && financeFocus.mode !== "payments"
       ? String(user._id || user.id || user.email)
       : "";
   const latest = useRef(owner);

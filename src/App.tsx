@@ -1,3 +1,6 @@
+import PaymentsWorkspace from './finance/PaymentsWorkspace';
+import { useStaffFocus } from './workModes/staffFocus';
+import { isFinanceWorkspace } from './finance/financeScope';
 import { WorkModeProvider } from './workModes/WorkModeContext';
 import React, { lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
@@ -26,6 +29,7 @@ installNativeDialogReplacement();
 
 function AppContent() {
   const { isAuthenticated, user, loading } = useAuth();
+  const financeFocus = useStaffFocus(user);
   const location = useLocation();
   const isPublicMedicalReviewRoute = location.pathname.startsWith('/medical-review-access/')
     || location.pathname.startsWith('/medical/review-link/')
@@ -41,6 +45,7 @@ function AppContent() {
       // normal application preload endpoints. Skipping preload prevents a
       // harmless 403 from a global request being shown as an access-denied
       // popup while the packet itself is loading.
+      if (isFinanceWorkspace()) return;
       if (String(user?.accessType || '').startsWith('medical_review_')) return;
       // In development, disable preloading for faster page loads
       if (process.env.NODE_ENV === 'development') {
@@ -78,6 +83,7 @@ function AppContent() {
     return <Login />;
   }
 
+  if (user?.role === 'staff' || (user?.role === 'admin' && financeFocus.mode === 'payments')) return <PaymentsWorkspace/>;
   return (
     <>
       <AppleLayout />

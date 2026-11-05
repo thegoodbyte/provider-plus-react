@@ -7,6 +7,7 @@ import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchableBookingSelect from './SearchableBookingSelect';
 import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi, PaymentRequestTypeSetting, paymentsApi, retreatsApi } from '../services/api';
+import { isFinanceWorkspace } from '../finance/financeScope';
 import { formatCalendarDate, parseCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
 import RevolutPaymentLinkPicker from './RevolutPaymentLinkPicker';
@@ -464,7 +465,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         isUrgent: formData.isUrgent,
         paymentInstructions: formData.paymentInstructions || undefined,
         revolutPaymentLink: formData.revolutPaymentLink.trim() || undefined,
-        createdBy: formData.createdBy || undefined,
+        createdBy: isFinanceWorkspace() ? undefined : formData.createdBy || undefined,
       });
     } catch (error) {
       console.error('Error saving payment request:', error);

@@ -3,6 +3,7 @@ import { Dropdown, Tooltip } from 'antd';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import RequestExistingPayment from './RequestExistingPayment';
 import { authService } from '../services/authService';
+import { useFinancePermission } from '../finance/FinanceAccessContext';
 import RequestBookingAction from './RequestBookingAction';
 import { requestBookingReferences } from './requestBookingState';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
@@ -61,6 +62,7 @@ type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'paidDa
 type SortDirection = 'asc' | 'desc';
 
 const PaymentRequestsGrid: React.FC = () => {
+  const canFinance=useFinancePermission();
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const navigate = useNavigate();
   const [paymentRequests, setPaymentRequests] = useState<any[]>([]);
@@ -500,7 +502,7 @@ const PaymentRequestsGrid: React.FC = () => {
                         </button>
                         <Dropdown trigger={['click']} open={openActionMenu === request._id} onOpenChange={(open, info) => { if (info.source === 'trigger') setOpenActionMenu(open ? request._id : null); }} menu={{ items: [
                           { key: 'duplicate', label: <DuplicatePaymentRequestButton request={request} className="request-grid-duplicate" /> },
-                          ...(request.status !== 'cancelled' && request.status !== 'paid' ? [{ key: 'cancel', label: 'Cancel invoice (Storno)', icon: <Slash size={16} />, danger: true, onClick: () => { setOpenActionMenu(null); setCancellingRequest(request); setCancelReason('Client did not pay'); } }] : []),
+                          ...(canFinance('finance.requests') && request.status !== 'cancelled' && request.status !== 'paid' ? [{ key: 'cancel', label: 'Cancel invoice (Storno)', icon: <Slash size={16} />, danger: true, onClick: () => { setOpenActionMenu(null); setCancellingRequest(request); setCancelReason('Client did not pay'); } }] : []),
                           { key: 'delete', label: request.context === 'standalone_service' ? 'Use cancellation from the service document' : 'Delete', icon: <Trash2 size={16} />, disabled: request.context === 'standalone_service', danger: true, onClick: () => { setOpenActionMenu(null); handleDelete(request._id); } },
                         ] }}>
                           <button type="button" className="icon-action-btn" title="More actions" aria-label={`More actions for request ${request.invoiceNumber || request.display_id || request._id}`}><MoreVertical aria-hidden="true" /></button>

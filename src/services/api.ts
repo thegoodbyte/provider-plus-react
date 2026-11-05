@@ -1,3 +1,4 @@
+import { isFinanceWorkspace } from '../finance/financeScope';
 import { completeReferralReport, ReferralReportPage } from './referralReportPages';
 import { createClient as createContractClient } from '../generated/contracts/sdk/client';
 import { contactBookControllerFindAll, contactBookControllerFindOne, contactBookControllerCreate, contactBookControllerUpdate, contactBookControllerRemove } from '../generated/contracts/sdk/sdk.gen';
@@ -31,6 +32,7 @@ api.interceptors.request.use(
     if (!['get', 'head', 'options'].includes(String(config.method || 'get').toLowerCase()) && (config as ReadOptions).suppressGlobalError === undefined) {
       (config as ReadOptions).suppressGlobalError = true;
     }
+    if (isFinanceWorkspace()) config.headers['X-Work-Mode'] = 'payments';
     const token = authService.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -46,6 +48,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 403 && isFinanceWorkspace()) window.dispatchEvent(new Event('staff-access-change'));
     if (error.response?.status === 401) {
       if ((error.config as any)?.suppressAuthRedirect) {
         return Promise.reject(error);
@@ -72,6 +75,7 @@ const readGet = <T,>(key: string, url: string, options?: ReadOptions) =>
 
 // Helper function to cache GET requests
 const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: number = 60000): Promise<any> => {
+  if (isFinanceWorkspace()) return fetcher();
   const cached = cacheService.get<T>(key);
   if (cached) {
     return { data: cached };

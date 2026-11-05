@@ -1,3 +1,4 @@
+import { isFinanceWorkspace } from '../finance/financeScope';
 import { API_BASE_URL } from '../config/api.config';
 import { cacheService } from './cacheService';
 
@@ -186,6 +187,7 @@ export const authFetch = async (url: string, options: RequestInit = {}): Promise
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...(isFinanceWorkspace() ? {'X-Work-Mode':'payments'} : {}),
     ...(options.headers ? (options.headers as Record<string, string>) : {}),
   };
 

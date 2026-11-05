@@ -1,6 +1,7 @@
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import { duplicateRetreatRequest } from './paymentRequestDuplication';
 import PaymentRequestInvoicePreview from './PaymentRequestInvoicePreview';
+import { isFinanceWorkspace } from '../finance/financeScope';
 import PaymentRequestSettlement from './PaymentRequestSettlement';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
 import RequestBookingAction from './RequestBookingAction';
@@ -110,11 +111,11 @@ const PaymentRequestEditorPage: React.FC = () => {
         // itself is perfectly editable.
         setLoading(false);
         try {
-          const identityResponse = await paymentRequestsApi.getIdentityChange(id);
+          const identityResponse = isFinanceWorkspace() ? {data:null} : await paymentRequestsApi.getIdentityChange(id);
           setIdentityReview(identityResponse.data);
         } catch { setIdentityReview(null); }
         try {
-          const activityResponse = await auditLogsApi.getAll({ entityType: 'payment_request', entityId: id, limit: 100 });
+          const activityResponse = isFinanceWorkspace() ? {data:{items:[]}} : await auditLogsApi.getAll({ entityType: 'payment_request', entityId: id, limit: 100 });
           setActivity(activityResponse.data?.items || []);
         } catch { setActivity([]); }
         const receiptId = typeof response.data.receiptId === 'object' ? response.data.receiptId?._id : response.data.receiptId;
@@ -427,7 +428,7 @@ const PaymentRequestEditorPage: React.FC = () => {
           </div>
         </div>
 
-        {id && <InvoiceVisitHistory key={id} requestId={id} />}
+        {id && !isFinanceWorkspace() && <InvoiceVisitHistory key={id} requestId={id} />}
         <RelatedRecords records={[...recordRelations(paymentRequest), ...recordRelations(receipt)]} />
 
         {showCancelModal && (

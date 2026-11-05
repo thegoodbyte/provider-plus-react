@@ -1,4 +1,5 @@
 import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
+import { useFinancePermission } from '../finance/FinanceAccessContext';
 import BalanceReminderButton from './BalanceReminderButton';
 import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
@@ -43,6 +44,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   pricingSummary,
   onPaymentUpdate
 }) => {
+  const canFinance = useFinancePermission();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
@@ -741,19 +743,19 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         <div className="payment-header-actions">
           <BalanceReminderButton bookingId={bookingId} clientName={clientName} disabledReason={!financialSummary ? 'Load the current balance first.' : financialSummary.sourceState !== 'verified_ledger' ? 'Reconcile payment history first.' : financialSummary.balance <= 0.005 ? 'No unpaid balance.' : undefined} />
           <button type="button" className="refresh-payments-button" onClick={() => { void fetchPayments(); void syncPaymentPlan(); }} disabled={isLoading || paymentPlanSaving}>↻ <span>Refresh</span></button>
-          <button type="button" className="record-payment-button" onClick={openPaymentEditor}><span aria-hidden="true">+</span> Record a payment</button>
+          <button type="button" className="record-payment-button" disabled={!canFinance('finance.capture')} onClick={openPaymentEditor}><span aria-hidden="true">+</span> Record a payment</button>
         </div>
       </div>
 
       {summaryError && <p role="alert">{summaryError}</p>}
       <p className="booking-payment-explainer">A <strong>payment request</strong> asks the client to pay. A <strong>payment</strong> records the actual transaction. A paid request and its linked payment represent the same money, counted once.</p>
       {financialSummary && <div className="booking-balance-summary authoritative-financial-summary">
-        <div className="booking-balance-metric total"><span>Agreed price</span><strong><CurrencyDisplay amount={financialSummary.price} currency={financialSummary.currency} showUSD={false}/></strong><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Manage booking price</button></div>
+        <div className="booking-balance-metric total"><span>Agreed price</span><strong><CurrencyDisplay amount={financialSummary.price} currency={financialSummary.currency} showUSD={false}/></strong><button type="button" className="change-booking-price" disabled={!canFinance('finance.bookings')} onClick={() => setShowPriceEditor(true)}>Manage booking price</button></div>
         <div className="booking-balance-metric received"><span>Paid after refunds</span><strong><CurrencyDisplay amount={totalPaidBookingCurrency} currency={financialSummary.currency} showUSD={false}/></strong></div>
         <div className="booking-balance-metric outstanding"><span>{financialSummary.overpayment > 0 ? 'Overpaid · client credit' : 'Balance outstanding'}</span><strong><CurrencyDisplay amount={financialSummary.overpayment || bookingBalance} currency={financialSummary.currency} showUSD={false}/></strong></div>
         <div className="financial-summary-state"><span>{financialSummary.sourceState === 'verified_ledger' ? isPaidInFull ? 'Paid in full' : 'Not fully paid' : 'Reconciliation required'}</span><strong>{paidPercentage}% paid</strong></div>
         <details className="financial-summary-reconciliation"><summary>Accounting details</summary><p>Gross receipts: <CurrencyDisplay amount={financialSummary.grossReceived} currency={financialSummary.currency} showUSD={false} /> · Refunded: <CurrencyDisplay amount={financialSummary.refunded} currency={financialSummary.currency} showUSD={false} /></p><Link to={`/admin/payment-requests/booking-review?bookingId=${encodeURIComponent(bookingId)}`}>Review existing payment allocations</Link><p>Source: {financialSummary.sourceState}. Cached: {financialSummary.cachedAmountPaid} {financialSummary.currency}. Ledger: {financialSummary.calculated?.netPaid} {financialSummary.currency}.</p>{financialSummary.mismatchReason && <p>{financialSummary.mismatchReason}</p>}</details>
-        <button type="button" className="mobile-record-payment" onClick={openPaymentEditor}>Record a payment</button>
+        <button type="button" className="mobile-record-payment" disabled={!canFinance('finance.capture')} onClick={openPaymentEditor}>Record a payment</button>
       </div>}
 
       {showPriceEditor && <div className="booking-price-editor" role="dialog" aria-label="Manage booking price">
@@ -777,15 +779,15 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       <section className="booking-payment-requests" aria-label="Payment requests — money requested">
         <div className="payment-requests-heading">
           <div><h4>Payment requests</h4><p>What we asked the client to pay. These are not additional payments.</p></div>
-          <button type="button" className="new-payment-request-link" onClick={() => navigate(`${routePrefix}/payment-requests/new?bookingId=${encodeURIComponent(bookingId)}&clientId=${encodeURIComponent(clientId)}&retreatId=${encodeURIComponent(retreatId)}&currency=${encodeURIComponent(bookingCurrency)}&fullPrice=${encodeURIComponent(totalAmount)}`)}>New request</button>
-          {!existingFinalBalance && !waitingForDeposit && !isPaidInFull && !requestsLoading && !requestsError && <details className="payment-request-create"><summary>Request remaining balance</summary>
+          <button type="button" disabled={!canFinance('finance.requests')} className="new-payment-request-link" onClick={() => navigate(`${routePrefix}/payment-requests/new?bookingId=${encodeURIComponent(bookingId)}&clientId=${encodeURIComponent(clientId)}&retreatId=${encodeURIComponent(retreatId)}&currency=${encodeURIComponent(bookingCurrency)}&fullPrice=${encodeURIComponent(totalAmount)}`)}>New request</button>
+          {canFinance('finance.requests') && !existingFinalBalance && !waitingForDeposit && !isPaidInFull && !requestsLoading && !requestsError && <details className="payment-request-create"><summary>Request remaining balance</summary>
             <label>Final payment due<input type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /></label>
             <button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button>
           </details>}
         </div>
         {!existingFinalBalance && waitingForDeposit && <p role="status" className="mx-5 mb-3 rounded border border-blue-200 bg-blue-50 p-3 text-sm">The final balance request will be created after the first payment request is fully paid. It will be linked to this booking and due according to payment-plan settings.</p>}
         {existingFinalBalance && <p aria-label="Existing final balance" className="mx-5 mb-3 rounded border border-blue-200 bg-blue-50 p-3 text-sm">A final balance request already exists for this booking. <Link className="font-semibold underline" to={`${routePrefix}/payment-requests/${existingFinalBalance._id}`}>Review existing balance request #{existingFinalBalance.invoiceNumber || existingFinalBalance.display_id}</Link>. Keep its original amount and due date unless you explicitly agree a change.</p>}
-        {requestsLoading ? <p role="status">Loading payment requests…</p> : requestsError ? <div role="alert"><p>{requestsError}</p><button type="button" onClick={() => void syncPaymentPlan()}>Retry payment requests</button></div> : bookingPaymentRequests.length === 0 ? <div className="payment-requests-empty"><strong>No payment request yet</strong><span>No request is linked to this booking. Existing payments still count toward the balance above.</span>{!existingFinalBalance && !waitingForDeposit && !isPaidInFull && !requestsLoading && !requestsError && <div className="mobile-balance-request"><input aria-label="Final payment due" type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /><button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button></div>}</div> : bookingPaymentRequests.map(request => {
+        {requestsLoading ? <p role="status">Loading payment requests…</p> : requestsError ? <div role="alert"><p>{requestsError}</p><button type="button" onClick={() => void syncPaymentPlan()}>Retry payment requests</button></div> : bookingPaymentRequests.length === 0 ? <div className="payment-requests-empty"><strong>No payment request yet</strong><span>No request is linked to this booking. Existing payments still count toward the balance above.</span>{canFinance('finance.requests') && !existingFinalBalance && !waitingForDeposit && !isPaidInFull && !requestsLoading && !requestsError && <div className="mobile-balance-request"><input aria-label="Final payment due" type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /><button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button></div>}</div> : bookingPaymentRequests.map(request => {
           const linkedPaymentId = typeof request.paymentId === 'object' ? request.paymentId?._id : request.paymentId;
           const requestNumber = request.invoiceNumber || request.display_id || request._id?.slice(-8);
           const canAct = !['paid', 'cancelled'].includes(request.status);
@@ -823,13 +825,13 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                   loadExistingPayments();
                 }
               }}
-              className="link-existing-payment-button"
+              disabled={!canFinance('finance.reconcile')} className="link-existing-payment-button"
               title={showLinkExisting ? 'Cancel linking payment' : 'Link existing payment'}
               aria-label={showLinkExisting ? 'Cancel linking payment' : 'Link existing payment'}
             >
               {showLinkExisting ? 'Cancel linking' : 'Link existing payment'}
             </button>
-          <button type="button" className="mobile-history-add" onClick={openPaymentEditor}>Add</button>
+          <button type="button" className="mobile-history-add" disabled={!canFinance('finance.capture')} onClick={openPaymentEditor}>Add</button>
           <div style={{ display: 'flex', gap: '8px' }}>
             {balanceUsd !== null && balanceUsd > 0.005 && (
               <button
@@ -844,7 +846,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
               </button>
             )}
             <button
-              onClick={openPaymentEditor}
+              disabled={!canFinance('finance.capture')} onClick={openPaymentEditor}
               className="add-payment-btn"
               title="Add new payment"
               aria-label="Add new payment"
@@ -1155,7 +1157,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                             </button>
                           )}
                           <details className="payment-record-more"><summary aria-label={`More actions for payment ${payment.display_id || payment._id}`}>•••</summary><div>
-                          {payment.isRefundable && payment.status === 'completed' && !payment.refundedAmount && (
+                          {canFinance('finance.refund') && payment.isRefundable && payment.status === 'completed' && !payment.refundedAmount && (
                             <button
                               onClick={() => handleRefundPayment(payment._id!, payment.amount)}
                               className="refund-btn"
@@ -1177,7 +1179,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                           {payment._id && (
                             <button
                               type="button"
-                              onClick={() => handleDeletePayment(payment)}
+                              disabled={!canFinance('finance.delete')} onClick={() => handleDeletePayment(payment)}
                               className="delete-payment-btn"
                               title="Delete this payment"
                             >

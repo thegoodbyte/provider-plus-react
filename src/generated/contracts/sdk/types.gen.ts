@@ -14212,6 +14212,45 @@ export type ServiceRequestsControllerLinkResponses = {
 
 export type ServiceRequestsControllerLinkResponse = ServiceRequestsControllerLinkResponses[keyof ServiceRequestsControllerLinkResponses];
 
+export type StaffAccessControllerCatalogData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/staff-access/catalog';
+};
+
+export type StaffAccessControllerCatalogResponses = {
+    200: unknown;
+};
+
+export type StaffAccessControllerMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/staff-access/me';
+};
+
+export type StaffAccessControllerMeResponses = {
+    200: unknown;
+};
+
+export type StaffAccessControllerGrantData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/staff-access/users/{id}';
+};
+
+export type StaffAccessControllerGrantResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type StaffAccessControllerGrantResponse = StaffAccessControllerGrantResponses[keyof StaffAccessControllerGrantResponses];
+
 export type StorageSettingsControllerGetS3ReadOverrideData = {
     body?: never;
     path?: never;

@@ -3,10 +3,13 @@ import { api } from './api';
 export interface User {
   _id: string;
   email: string;
-  role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
+  role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor' | 'staff';
   firstName?: string;
   lastName?: string;
   isActive: boolean;
+  staffProfiles?: string[];
+  staffCapabilities?: string[];
+  staffAccessRevision?: number;
   lastLogin?: Date;
   createdAt?: Date;
   updatedAt?: Date;
@@ -21,7 +24,7 @@ export interface User {
 export interface CreateUserData {
   email: string;
   password: string;
-  role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
+  role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor' | 'staff';
   firstName?: string;
   lastName?: string;
   preferredReviewLanguage?: 'en' | 'pl' | 'cs';
@@ -31,7 +34,7 @@ export interface CreateUserData {
 
 export interface UpdateUserData {
   email?: string;
-  role?: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
+  role?: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor' | 'staff';
   firstName?: string;
   lastName?: string;
   preferredReviewLanguage?: 'en' | 'pl' | 'cs';

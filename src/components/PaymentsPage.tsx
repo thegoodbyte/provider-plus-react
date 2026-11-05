@@ -1,3 +1,4 @@
+import { useFinancePermission } from '../finance/FinanceAccessContext';
 import {emptyPaymentFilters,readPaymentFilters,paymentFilterError,paymentMatchesFilters,paymentRecordId,paymentConfirmationPath} from './paymentListFilters';
 import { ChevronDown, DollarSign, Edit2, Plus, Search as SearchIcon, Trash2, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
@@ -38,6 +39,7 @@ const getRetreatCode = (retreat?: Retreat) => {
 };
 
 const PaymentsPage: React.FC = () => {
+  const canFinance=useFinancePermission();
   const navigate = useNavigate();
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
   const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
@@ -399,7 +401,7 @@ const PaymentsPage: React.FC = () => {
                       >
                         <Icon icon={Edit2} className="w-4 h-4" />
                       </button>
-                      {payment.status === 'completed' && !payment.isRefundable && (
+                      {canFinance('finance.refund') && payment.status === 'completed' && !payment.isRefundable && (
                         <button
                           onClick={() => console.log('Refund payment:', payment._id)}
                           className="text-yellow-600 hover:text-yellow-900"
@@ -409,7 +411,7 @@ const PaymentsPage: React.FC = () => {
                         </button>
                       )}
                       <button
-                        onClick={() => handleDelete(payment._id!)}
+                        disabled={!canFinance('finance.delete')} onClick={() => handleDelete(payment._id!)}
                         className="text-red-600 hover:text-red-900"
                         title="Delete"
                       >

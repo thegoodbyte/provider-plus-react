@@ -24,7 +24,7 @@ export default function PaymentRequestInvoicePreview({
   requestId: string;
 }) {
   const { user } = useAuth(),
-    allowed = user?.role === "admin",
+    allowed = user?.role === "admin" || user?.role === "staff",
     frame = useRef<HTMLIFrameElement>(null);
   const [open, setOpen] = useState(false),
     [retry, setRetry] = useState(0),

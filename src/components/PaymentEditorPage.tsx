@@ -1,4 +1,7 @@
 import PaymentInvoiceActions from './PaymentInvoiceActions';
+import FinanceBookingCreate from '../finance/FinanceBookingCreate';
+import { isFinanceWorkspace } from '../finance/financeScope';
+import { useFinancePermission } from '../finance/FinanceAccessContext';
 import PaymentDetailSummary from './PaymentDetailSummary';
 import PaymentReceiptPanel from './PaymentReceiptPanel';
 import { Modal } from 'antd';
@@ -75,6 +78,7 @@ const paymentTypeFromRequest = (requestType?: PaymentRequest['requestType']): Pa
 };
 
 const PaymentEditorPage: React.FC = () => {
+  const canFinance=useFinancePermission();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -685,7 +689,7 @@ const PaymentEditorPage: React.FC = () => {
               /> : <p className="text-sm text-gray-600">Select a client to see their bookings.</p>}
               {!isView && formData.clientId && !isSplitReceipt && <div className="mt-3 flex flex-wrap items-center gap-3">
                 {!bookingOptions.length && <p className="text-sm text-gray-600">No bookings for this client yet.</p>}
-                <AppleButton variant="secondary" onClick={openBookingCreation}>Create booking for this client</AppleButton>
+                <AppleButton variant="secondary" disabled={!canFinance('finance.bookings')} onClick={openBookingCreation}>Create booking for this client</AppleButton>
                 <p className="text-xs text-gray-500">Your payment draft stays open. Review the booking price separately from the received payment amount.</p>
               </div>}
               {bookingNotice && <p role="status" className="mt-3 rounded border border-green-200 bg-green-50 p-3 text-sm">{bookingNotice}</p>}
@@ -924,7 +928,7 @@ const PaymentEditorPage: React.FC = () => {
         </form>}
         {isExisting && loadedPayment && <RelatedRecords records={recordRelations(loadedPayment)} />}
         <Modal title="Create booking for this client" open={Boolean(newBookingContext)} footer={null} width={900} destroyOnHidden maskClosable={false} onCancel={() => setNewBookingContext(null)}>
-          {newBookingContext && <BookingEditorForm mode="create" initialBookingData={newBookingContext} lockedClientId={newBookingContext.clientId} deferPaymentLinking onCancel={() => setNewBookingContext(null)} onSaved={bookingCreated} submitLabel="Create and select booking" />}
+          {newBookingContext && (isFinanceWorkspace() ? <FinanceBookingCreate initial={newBookingContext} onSaved={bookingCreated}/> : <BookingEditorForm mode="create" initialBookingData={newBookingContext} lockedClientId={newBookingContext.clientId} deferPaymentLinking onCancel={() => setNewBookingContext(null)} onSaved={bookingCreated} submitLabel="Create and select booking" />)}
         </Modal>
       </Card>
     </div>

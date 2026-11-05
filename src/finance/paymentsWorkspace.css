@@ -1,0 +1,132 @@
+.payments-workspace {
+  max-width: 1440px;
+  margin: auto;
+  padding: 24px;
+  color: #173d32;
+}
+.payments-workspace > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.payments-workspace > header strong {
+  font-size: 24px;
+}
+.payments-workspace > header p {
+  color: #64748b;
+  font-size: 13px;
+}
+.payments-workspace button,
+.payments-workspace input {
+  min-height: 40px;
+}
+.payments-workspace > nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #cbded5;
+  padding-bottom: 16px;
+}
+.payments-workspace > nav a {
+  border: 1px solid #cbded5;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #16675d;
+  text-decoration: none;
+}
+.finance-context h1 {
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+.finance-context > p {
+  color: #64748b;
+  margin-bottom: 16px;
+}
+.finance-context label {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0;
+}
+.finance-context input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px;
+}
+.finance-records {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+.finance-records > article,
+.finance-booking-row {
+  border: 1px solid #cbded5;
+  border-radius: 12px;
+  padding: 18px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.finance-records h2 {
+  font-size: 18px;
+  font-weight: 700;
+}
+.finance-records article > a {
+  display: block;
+  margin-top: 7px;
+}
+.finance-context a {
+  color: #075985;
+  text-decoration: underline;
+}
+.finance-context-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px 0;
+}
+.finance-booking-row {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.finance-booking-row dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.finance-booking-row dt {
+  font-size: 12px;
+  color: #64748b;
+}
+.finance-booking-row dd {
+  font-weight: 700;
+}
+@media (max-width: 700px) {
+  .payments-workspace {
+    padding: 16px;
+  }
+  .finance-records > article {
+    padding: 12px;
+  }
+  .payments-workspace > nav a {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
+.finance-booking-form {
+  max-width: 640px;
+}
+.finance-booking-form label {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0;
+}
+.finance-booking-form select {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  min-height: 40px;
+}

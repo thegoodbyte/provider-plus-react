@@ -1,3 +1,4 @@
+import StaffAccessEditor from '../finance/StaffAccessEditor';
 import { Check, Clock, Edit2, Key, Lock, LogIn, Mail, Plus, Trash2, User as UserIcon, X } from 'lucide-react';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
@@ -15,6 +16,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 const ROLES = [
+  {key:'staff',name:'Restricted staff',description:'Only assigned work profiles; no access until granted.',color:'bg-teal-50 text-teal-700'},
   { key: 'user', name: 'User', description: 'Basic user access', color: 'bg-blue-50 text-blue-700' },
   { key: 'facilitator', name: 'Facilitator', description: 'Retreat and operations staff', color: 'bg-green-50 text-green-700' },
   { key: 'helper', name: 'Helper', description: 'Current retreat EKG and blood pressure entry', color: 'bg-amber-50 text-amber-700' },
@@ -25,6 +27,7 @@ const ROLES = [
 
 const UserManagement: React.FC = () => {
   const { user: currentUser, startUserImpersonation } = useAuth();
+  const [accessUser,setAccessUser] = useState<User|null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -439,6 +442,7 @@ const UserManagement: React.FC = () => {
                   </TableCell>
                   <TableCell align="right" className="whitespace-nowrap font-medium">
                     <div className="flex flex-wrap justify-end gap-2">
+                      {user.role==='staff' && <button type="button" onClick={()=>setAccessUser(user)} className="rounded border px-2 py-1 text-teal-700">Work access</button>}
                       <button
                         onClick={() => handleEditUser(user)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100"
@@ -455,7 +459,7 @@ const UserManagement: React.FC = () => {
                       >
                         <Icon icon={Key} className="w-4 h-4" />
                       </button>
-                      {user.role !== 'admin' && user.isActive && user._id !== currentUser?.id && (
+                      {user.role !== 'admin' && user.role !== 'staff' && user.isActive && user._id !== currentUser?.id && (
                         <button
                           onClick={() => handleImpersonateUser(user)}
                           className="inline-flex h-8 items-center gap-1.5 rounded-md border border-indigo-100 bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400"
@@ -719,6 +723,7 @@ const UserManagement: React.FC = () => {
         </div>
       )}
 
+      {accessUser&&<StaffAccessEditor user={accessUser} onClose={()=>setAccessUser(null)} onSaved={()=>void fetchUsers()}/>}
       <Toast toast={toast} onDismiss={dismiss} />
     </div>
   );

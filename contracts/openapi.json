@@ -27253,6 +27253,64 @@
         ]
       }
     },
+    "/staff-access/catalog": {
+      "get": {
+        "operationId": "StaffAccessController_catalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffAccess"
+        ]
+      }
+    },
+    "/staff-access/me": {
+      "get": {
+        "operationId": "StaffAccessController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffAccess"
+        ]
+      }
+    },
+    "/staff-access/users/{id}": {
+      "put": {
+        "operationId": "StaffAccessController_grant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "StaffAccess"
+        ]
+      }
+    },
     "/storage-settings/s3-read-override": {
       "get": {
         "operationId": "StorageSettingsController_getS3ReadOverride",
