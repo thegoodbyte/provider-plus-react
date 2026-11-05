@@ -10,14 +10,14 @@ const task = (overrides: Partial<Task> = {}): Task => ({
   tags: [], createdAt: '2026-08-29', updatedAt: '2026-08-29', ...overrides,
 });
 
-describe('SprintBoard', () => {
-  beforeEach(() => {
+beforeEach(() => {
     jest.clearAllMocks(); localStorage.clear();
     (api.getSprints as jest.Mock).mockResolvedValue([]);
     (api.createSprint as jest.Mock).mockImplementation(async (name) => ({ id: name, name }));
     (api.updateTask as jest.Mock).mockResolvedValue(task());
   });
 
+describe('SprintBoard', () => {
   it('renders four clear swimlanes and distinguishes custom and system tasks', async () => {
     render(<SprintBoard tasks={[
       task(),
@@ -88,7 +88,7 @@ describe('SprintBoard', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not save sprint');
   });
 
-  it('moves a dragged task to another status and context', async () => {
+  it('rejects cross-context moves without changing existing associations', async () => {
     const onChanged = jest.fn().mockResolvedValue(undefined);
     render(<SprintBoard tasks={[task()]} onChanged={onChanged} onEdit={jest.fn()} onCreate={jest.fn()} />);
     fireEvent.dragStart(screen.getByText('Upload EKG').closest('article')!);
@@ -96,8 +96,9 @@ describe('SprintBoard', () => {
     const inProgress = within(bookingLane).getByText('In progress').closest('.sprint-column')!;
     fireEvent.dragOver(inProgress);
     fireEvent.drop(inProgress);
-    await waitFor(() => expect(api.updateTask).toHaveBeenCalledWith('task-1', { type: 'booking', status: 'in_progress', tags: [] }));
-    expect(onChanged).toHaveBeenCalled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Move tasks within their existing lane');
+    expect(api.updateTask).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
   });
 
   it('assigns and removes sprint tags and opens editing on double click', async () => {
@@ -112,4 +113,33 @@ describe('SprintBoard', () => {
     fireEvent.change(await screen.findByLabelText('Move Upload EKG to sprint'), { target: { value: 'August' } });
     await waitFor(() => expect(api.updateTask).toHaveBeenCalledWith('task-1', { tags: ['existing', 'sprint:August'] }));
   });
+});
+
+test('explicit status and edit controls work without drag or double-click and only patch status',async()=>{
+ const item=task({clientId:'client-1',sourceType:'whatsapp',tags:['important','sprint:One']});
+ const edited=jest.fn(),changed=jest.fn().mockResolvedValue(undefined);
+ render(<SprintBoard tasks={[item]} onChanged={changed} onEdit={edited} onCreate={jest.fn()}/>);
+ fireEvent.click(await screen.findByRole('tab',{name:/One/}));
+ fireEvent.click(screen.getByRole('button',{name:'Edit Upload EKG'}));expect(edited).toHaveBeenCalledWith(item);
+ fireEvent.change(screen.getByLabelText('Status for Upload EKG'),{target:{value:'in_progress'}});
+ await waitFor(()=>expect(api.updateTask).toHaveBeenCalledWith('task-1',{status:'in_progress'}));
+ await waitFor(()=>expect(changed).toHaveBeenCalled());
+});
+test('a failed status save shows an error and permits retry without claiming completion',async()=>{
+ (api.updateTask as jest.Mock).mockRejectedValueOnce(Error('Offline: retry your update')).mockResolvedValue(task());
+ const changed=jest.fn().mockResolvedValue(undefined);
+ render(<SprintBoard tasks={[task()]} onChanged={changed} onEdit={jest.fn()} onCreate={jest.fn()}/>);
+ fireEvent.change(screen.getByLabelText('Status for Upload EKG'),{target:{value:'completed'}});
+ expect(await screen.findByRole('alert')).toHaveTextContent('Offline: retry');expect(changed).not.toHaveBeenCalled();
+ expect(screen.getByLabelText('Status for Upload EKG')).toHaveValue('pending');
+ fireEvent.change(screen.getByLabelText('Status for Upload EKG'),{target:{value:'in_progress'}});
+ await waitFor(()=>expect(changed).toHaveBeenCalled());expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+test('a failed sprint move retains its non-sprint tags and reports the failed save',async()=>{
+ (api.updateTask as jest.Mock).mockRejectedValue(Error('Cannot save sprint'));
+ (api.getSprints as jest.Mock).mockResolvedValue([{id:'next',name:'Next'}]);
+ const changed=jest.fn();
+ render(<SprintBoard tasks={[task({tags:['keep']})]} onChanged={changed} onEdit={jest.fn()} onCreate={jest.fn()}/>);
+ await screen.findByRole('tab',{name:/Next/});fireEvent.change(screen.getByLabelText('Move Upload EKG to sprint'),{target:{value:'Next'}});
+ expect(await screen.findByRole('alert')).toHaveTextContent('Cannot save sprint');expect(api.updateTask).toHaveBeenCalledWith('task-1',{tags:['keep','sprint:Next']});expect(changed).not.toHaveBeenCalled();
 });

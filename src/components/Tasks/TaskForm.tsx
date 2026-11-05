@@ -49,6 +49,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   // PPVC-868: quick task creation should default to collapsed -- staff just
   // wants to type a title and go. Editing an existing task defaults open
   // since the fields it's showing are already meaningfully filled in.
+  const [validationError, setValidationError] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(Boolean(task));
   const [tagInput, setTagInput] = useState('');
   const [clients, setClients] = useState<any[]>([]);
@@ -267,6 +268,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const target = formData.type === 'client' ? formData.clientId : formData.type === 'booking' ? formData.bookingId : formData.type === 'retreat' ? formData.retreatId : true;
+    if (!target) { setValidationError(`Choose a ${formData.type} from the results before saving.`); return; }
+    setValidationError('');
     // Create submission data
     const submitData: CreateTaskDto = {
       ...formData,
@@ -295,7 +299,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="task-form">
-          {error && <div className="error-message">{error}</div>}
+          {(validationError || error) && <div role="alert" className="error-message">{validationError || error}</div>}
           {bookingId && (
             <div className="task-context-banner">
               <span>Booking</span>
@@ -315,6 +319,52 @@ export const TaskForm: React.FC<TaskFormProps> = ({
               autoFocus
             />
           </div>
+
+            {formData.type === 'client' && !clientId && (
+              <div className="form-group">
+                <label htmlFor="clientId">Select Client *</label>
+                <SearchableSelect
+                  id="clientId"
+                  name="clientId"
+                  value={formData.clientId || ''}
+                  options={clientOptions}
+                  placeholder="Search for a client..."
+                  onChange={handleClientChange}
+                  required
+                  loading={loadingClients}
+                />
+              </div>
+            )}
+            {formData.type === 'retreat' && !retreatId && (
+              <div className="form-group">
+                <label htmlFor="retreatId">Select Retreat *</label>
+                <SearchableSelect
+                  id="retreatId"
+                  name="retreatId"
+                  value={formData.retreatId || ''}
+                  options={retreatOptions}
+                  placeholder="Search for a retreat..."
+                  onChange={handleRetreatChange}
+                  required
+                  loading={loadingRetreats}
+                />
+              </div>
+            )}
+            {formData.type === 'booking' && !bookingId && (
+              <div className="form-group">
+                <label htmlFor="bookingId">Select Booking *</label>
+                <SearchableSelect
+                  id="bookingId"
+                  name="bookingId"
+                  value={formData.bookingId || ''}
+                  options={bookingOptions}
+                  placeholder="Search by booking or client..."
+                  onChange={handleBookingChange}
+                  required
+                  loading={loadingBookings}
+                />
+              </div>
+            )}
 
           <div className="form-group full-width">
             <label htmlFor="description">Description (optional)</label>
@@ -385,21 +435,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 surrounding page already knows the client/retreat/booking
                 (e.g. the screening page), since re-picking from a dropdown
                 with one obvious option is pure friction. */}
-            {formData.type === 'client' && !clientId && (
-              <div className="form-group">
-                <label htmlFor="clientId">Select Client *</label>
-                <SearchableSelect
-                  id="clientId"
-                  name="clientId"
-                  value={formData.clientId || ''}
-                  options={clientOptions}
-                  placeholder="Search for a client..."
-                  onChange={handleClientChange}
-                  required
-                  loading={loadingClients}
-                />
-              </div>
-            )}
+
 
             {formData.type === 'client' && (
               <>
@@ -434,37 +470,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
               </>
             )}
 
-            {formData.type === 'retreat' && !retreatId && (
-              <div className="form-group">
-                <label htmlFor="retreatId">Select Retreat *</label>
-                <SearchableSelect
-                  id="retreatId"
-                  name="retreatId"
-                  value={formData.retreatId || ''}
-                  options={retreatOptions}
-                  placeholder="Search for a retreat..."
-                  onChange={handleRetreatChange}
-                  required
-                  loading={loadingRetreats}
-                />
-              </div>
-            )}
 
-            {formData.type === 'booking' && !bookingId && (
-              <div className="form-group">
-                <label htmlFor="bookingId">Select Booking *</label>
-                <SearchableSelect
-                  id="bookingId"
-                  name="bookingId"
-                  value={formData.bookingId || ''}
-                  options={bookingOptions}
-                  placeholder="Search by booking or client..."
-                  onChange={handleBookingChange}
-                  required
-                  loading={loadingBookings}
-                />
-              </div>
-            )}
+
+
 
             <div className="form-row">
               <div className="form-group">

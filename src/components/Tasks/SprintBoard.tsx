@@ -78,32 +78,34 @@ export const SprintBoard: React.FC<{ tasks: Task[]; onChanged: () => Promise<voi
     }
   };
 
+  const saveTask = async (task: Task, patch: Partial<Pick<Task, 'status' | 'tags'>>) => {
+    if (busy) return;
+    setBusy(true);
+    setSprintError('');
+    try {
+      await taskService.updateTask(task.id, patch);
+      try { await onChanged(); }
+      catch { setSprintError('Saved, but the board could not refresh. Reload tasks to see the latest state.'); }
+    } catch (error) {
+      setSprintError(error instanceof Error ? error.message : 'Could not save task. Please try again.');
+    } finally { setBusy(false); setDraggedId(''); }
+  };
+
   const move = async (context: Context, status: Status) => {
     const task = tasks.find(item => item.id === draggedId);
     if (!task || busy) return;
-    const tags = [...(task.tags || []).filter(tag => !tag.startsWith('sprint:'))];
-    if (selectedSprint !== 'Backlog') tags.push(`sprint:${selectedSprint}`);
-    setBusy(true);
-    try {
-      await taskService.updateTask(task.id, { type: context, status, tags });
-      await onChanged();
-    } finally {
-      setBusy(false);
+    if (taskContext(task) !== context) {
+      setSprintError('Move tasks within their existing lane. Use Edit to change the linked client, booking or retreat.');
       setDraggedId('');
+      return;
     }
+    await saveTask(task, { status });
   };
 
   const assignSprint = async (task: Task, sprint: string) => {
-    if (busy) return;
     const tags = [...(task.tags || []).filter(tag => !tag.startsWith('sprint:'))];
     if (sprint !== 'Backlog') tags.push(`sprint:${sprint}`);
-    setBusy(true);
-    try {
-      await taskService.updateTask(task.id, { tags });
-      await onChanged();
-    } finally {
-      setBusy(false);
-    }
+    await saveTask(task, { tags });
   };
 
   return <div className={`sprint-board ${busy ? 'is-busy' : ''}`}>
@@ -129,9 +131,10 @@ export const SprintBoard: React.FC<{ tasks: Task[]; onChanged: () => Promise<voi
             return <div className="sprint-column" key={column.status} onDragOver={event => event.preventDefault()} onDrop={() => move(context.id, column.status)}>
               <div className="sprint-column-title"><span>{column.label}</span><em>{columnTasks.length}</em></div>
               <div className="sprint-card-list">
-                {columnTasks.map(task => <article className={`sprint-task-card urgency-edge-${task.urgency}`} draggable key={task.id} onDragStart={() => setDraggedId(task.id)} onDoubleClick={() => onEdit(task)}>
-                  <div className="sprint-card-top"><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{isSystemTask(task) ? 'System' : 'Custom'}</span><select aria-label={`Move ${task.name} to sprint`} value={selectedSprint} onClick={event => event.stopPropagation()} onChange={event => void assignSprint(task, event.target.value)}>{sprints.map(sprint => <option key={sprint} value={sprint}>{sprint}</option>)}</select></div>
+                {columnTasks.map(task => <article className={`sprint-task-card urgency-edge-${task.urgency}`} draggable={!busy} key={task.id} onDragStart={() => setDraggedId(task.id)} onDoubleClick={() => onEdit(task)}>
+                  <div className="sprint-card-top"><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{isSystemTask(task) ? 'System' : 'Custom'}</span><select disabled={busy} aria-label={`Move ${task.name} to sprint`} value={selectedSprint} onClick={event => event.stopPropagation()} onChange={event => void assignSprint(task, event.target.value)}>{sprints.map(sprint => <option key={sprint} value={sprint}>{sprint}</option>)}</select></div>
                   <strong title={task.name}>{task.name}</strong>
+                  <div className="sprint-task-actions"><label>Status<select disabled={busy} aria-label={`Status for ${task.name}`} value={task.status} onChange={event => void saveTask(task, { status: event.target.value as Status })}>{columns.map(column => <option key={column.status} value={column.status}>{column.label}</option>)}</select></label><button type="button" disabled={busy} onClick={() => onEdit(task)} aria-label={`Edit ${task.name}`}>Edit</button></div>
                   <div><span className={`sprint-priority priority-${task.urgency}`}>{task.urgency}</span><time>{task.dueDate ? formatCalendarDate(task.dueDate) : 'No due date'}</time></div>
                 </article>)}
                 {!columnTasks.length && <div className="sprint-empty-column">Drop task here</div>}

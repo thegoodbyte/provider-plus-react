@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import ClientSupportInbox from '../../components/Tasks/ClientSupportInbox';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BookingFlowItem } from '../../types';
 import { bookingFlowApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -47,7 +47,9 @@ export const Tasks: React.FC = () => {
     sortOrder: 'asc'
   });
 
+  const requestVersion = useRef(0);
   const loadTasks = async () => {
+    const version = ++requestVersion.current;
     try {
       setLoading(true);
       setError(null);
@@ -58,17 +60,19 @@ export const Tasks: React.FC = () => {
         taskService.getTasks({ ...filters, mine: scopeFilter === 'mine' ? true : undefined }),
         bookingFlowApi.getItems({}).catch(() => ({ data: [] as BookingFlowItem[] })),
       ]);
-      setTasks(tasksData);
+      if (version !== requestVersion.current) return;
+      setTasks(tasksData.filter(task => task.sourceType !== 'client_support'));
       setDeadlines(deadlinesResponse.data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tasks');
+      if (version === requestVersion.current) setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!isSupport) loadTasks();
+    if (!isSupport) void loadTasks();
+    return () => { requestVersion.current += 1; };
   }, [filters, isSupport, scopeFilter]);
 
   const handleCreateTask = (context = activeContext, sprint: string | null = null) => {
@@ -95,9 +99,10 @@ export const Tasks: React.FC = () => {
     return true;
   }), [tasks, originFilter]);
 
+  const categoryTasks = useMemo(() => originTasks.filter(task => categoryFilter === 'all' || (task.category || 'operations') === categoryFilter), [originTasks, categoryFilter]);
   const visibleTasks = useMemo(
-    () => originTasks.filter(task => taskContext(task) === activeContext && (categoryFilter === 'all' || (task.category || 'operations') === categoryFilter)),
-    [originTasks, activeContext, categoryFilter],
+    () => categoryTasks.filter(task => taskContext(task) === activeContext),
+    [categoryTasks, activeContext],
   );
 
   const contexts = [
@@ -210,18 +215,19 @@ export const Tasks: React.FC = () => {
       {error && (
         <div className="error-message">
           {error}
+          <button type="button" onClick={() => void loadTasks()}>Retry loading tasks</button>
           <button onClick={() => setError(null)} className="error-close">×</button>
         </div>
       )}
 
-      <nav className="task-context-tabs" aria-label="Task context">
+      {viewMode !== 'board' && <nav className="task-context-tabs" aria-label="Task context">
         {contexts.map(context => {
           const count = originTasks.filter(task => taskContext(task) === context.id && task.status !== 'completed' && task.status !== 'cancelled').length;
           return <button key={context.id} type="button" className={activeContext === context.id ? 'active' : ''} onClick={() => setActiveContext(context.id)}>
             <span>{context.label}<em>{count}</em></span><small>{context.hint}</small>
           </button>;
         })}
-      </nav>
+      </nav>}
 
       <div className="task-origin-bar">
         <div className="task-scope-filter" aria-label="Task scope">
@@ -243,13 +249,13 @@ export const Tasks: React.FC = () => {
             onCompleteTask={handleCompleteTask}
           />
         ) : viewMode === 'board' ? (
-          <SprintBoard tasks={originTasks} onChanged={loadTasks} onEdit={handleEditTask} onCreate={handleCreateTask} />
+          <SprintBoard tasks={categoryTasks} onChanged={loadTasks} onEdit={handleEditTask} onCreate={handleCreateTask} />
         ) : (
           <TasksCalendarView tasks={visibleTasks} deadlines={deadlines} />
         )}
       </div>
 
-      <div className="task-stats-footer">
+      {viewMode !== 'board' && <details className="task-counts"><summary>Task counts for this view</summary><div className="task-stats-footer">
         <Card padding="sm" className="stat-item">
           <span className="stat-label">Total</span>
           <span className="stat-value">{stats.total}</span>
@@ -274,7 +280,7 @@ export const Tasks: React.FC = () => {
           <span className="stat-label">Urgent</span>
           <span className="stat-value urgent">{stats.urgent}</span>
         </Card>
-      </div>
+      </div></details>}
 
       {showForm && (
         <TaskForm

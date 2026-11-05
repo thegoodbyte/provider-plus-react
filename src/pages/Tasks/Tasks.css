@@ -164,3 +164,15 @@
   .tasks-page .tasks-main-content { flex: none; min-height: auto; overflow: visible; }
   .tasks-page .task-list { flex: none; max-height: none; overflow: visible; }
 }
+/* One scroll surface: filters must never collapse the actual task workspace. */
+.tasks-page { height: auto; min-width: 0; }
+.tasks-page .tasks-main-content { flex: none; overflow: visible; min-width: 0; }
+.task-counts { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+.task-counts > summary { font-size: 13px; color: #64748b; cursor: pointer; padding: 8px 0; }
+.task-counts .task-stats-footer { box-shadow: none; margin-top: 8px; }
+@media(max-width:760px) {
+ .tasks-page .header-content { flex-direction: column; align-items: stretch; gap: 14px; }
+ .tasks-page .task-header-actions { align-items: stretch; justify-content: space-between; flex-wrap: wrap; }
+ .tasks-page .task-context-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .tasks-page .task-origin-bar details > div { position: static; width: 100%; box-shadow: none; }
+}

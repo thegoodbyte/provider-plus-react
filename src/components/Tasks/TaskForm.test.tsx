@@ -21,7 +21,7 @@ const retreats = retreatsApi as jest.Mocked<typeof retreatsApi>;
 const bookings = bookingsApi as jest.Mocked<typeof bookingsApi>;
 const users = usersApi as jest.Mocked<typeof usersApi>;
 
-// PPVC-868: Type/Category/the context selector/Source/checkboxes/Urgency/Due
+// PPVC-868: Type/Category/Source/checkboxes/Urgency/Due
 // Date/Tags/Notes all live behind a collapsed "More options" accordion now --
 // open it before interacting with any of them, same as a real user would.
 const openMore = () => fireEvent.click(screen.getByText('More options'));
@@ -260,4 +260,14 @@ describe('TaskForm', () => {
     await waitFor(() => expect(screen.getByText('Ready clientId')).toBeInTheDocument());
     expect(error).toHaveBeenCalledWith('Error loading clients and retreats:', expect.any(Error));
   });
+});
+
+test.each(['client','booking','retreat'] as const)('required %s association is visible without expanding More options and cannot be omitted when saving',async type=>{
+ (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[]});(retreatsApi.getAll as jest.Mock).mockResolvedValue({data:[]});(bookingsApi.getAll as jest.Mock).mockResolvedValue({data:[]});
+ const save=jest.fn();render(<TaskForm initialType={type} onSubmit={save} onCancel={jest.fn()}/>);
+ const label=type==='client'?'Search for a client...':type==='retreat'?'Search for a retreat...':'Search by booking or client...';
+ const input=await screen.findByLabelText(label);expect(input).toBeVisible();
+ fireEvent.change(screen.getByLabelText('Task Name *'),{target:{value:'Follow up'}});
+ fireEvent.submit(screen.getByRole('button',{name:'Create Task'}).closest('form')!);
+ expect(screen.getByRole('alert')).toHaveTextContent(`Choose a ${type} from the results`);expect(save).not.toHaveBeenCalled();
 });
