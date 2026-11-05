@@ -257,6 +257,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         nextActionSummary={<BookingNextActionSummary bookingId={bookingId} bookingStatus={booking.status} source={readinessSource} onRetry={refreshReadiness} onOpen={(tab, itemId) => { setFocusedStepId(itemId); setActiveTab(tab); }} />}
         bookingId={bookingId}
         bookingNumber={booking.bookingNumber}
+        roomType={booking.roomType}
         clientName={clientName}
         clientDisplayId={clientDisplayId}
         clientId={clientId}

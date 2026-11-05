@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Edit3, Mail, MoreHorizontal, X } from 'lucide-react';
 import React from 'react';
+import RoomTypeBadge from './RoomTypeBadge';
 import { BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 import NotificationCountBadge, { useNotificationCount } from './NotificationCountBadge';
 
@@ -10,6 +11,7 @@ export const bookingDetailTabs: { key: BookingDetailTab; label: string }[] = [
 const Icon: React.FC<{ component: any }> = ({ component: Component }) => <Component />;
 
 type Props = {
+  roomType?: string | null;
   nextActionSummary?: React.ReactNode;
   canManageIntegration?: boolean;
   bookingId?: string; bookingNumber?: string | number; clientName: string; clientDisplayId?: string | number; clientId?: string; retreatCode: string; retreatId?: string; retreatAddress?: string; bookingTypeCode: string;
@@ -26,7 +28,7 @@ const BookingDetailShell: React.FC<Props> = (props) => {
   return <>
   <div className="detail-header">
     <button onClick={props.onBack} className="back-btn" title="Back to bookings" aria-label="Back to bookings"><Icon component={ArrowLeft} /></button>
-    <div className="booking-title-block"><h1>Booking #{props.bookingNumber || 'N/A'}</h1><div className="booking-title-meta"><strong>{props.clientName}</strong>{props.retreatId ? <button type="button" onClick={props.onOpenRetreat}>{props.retreatCode}</button> : <strong>{props.retreatCode}</strong>}{props.clientDisplayId && (props.clientId ? <button type="button" onClick={props.onOpenClient} title={`Open client #${props.clientDisplayId}`}>Client #{props.clientDisplayId}</button> : <span>Client #{props.clientDisplayId}</span>)}<span>Type {props.bookingTypeCode}</span>{Boolean(props.rescheduleCount) && <span>Rescheduled {props.rescheduleCount}×</span>}</div></div>
+    <div className="booking-title-block"><div className="booking-accommodation-title"><h1>Booking #{props.bookingNumber || 'N/A'}</h1><RoomTypeBadge roomType={props.roomType}/></div><div className="booking-title-meta"><strong>{props.clientName}</strong>{props.retreatId ? <button type="button" onClick={props.onOpenRetreat}>{props.retreatCode}</button> : <strong>{props.retreatCode}</strong>}{props.clientDisplayId && (props.clientId ? <button type="button" onClick={props.onOpenClient} title={`Open client #${props.clientDisplayId}`}>Client #{props.clientDisplayId}</button> : <span>Client #{props.clientDisplayId}</span>)}<span>Type {props.bookingTypeCode}</span>{Boolean(props.rescheduleCount) && <span>Rescheduled {props.rescheduleCount}×</span>}</div></div>
     <nav hidden={!props.previousBooking && !props.nextBooking} className="booking-sibling-navigation" aria-label={`Bookings in ${props.retreatCode}`}>
       <button type="button" disabled={!props.previousBooking} onClick={props.onPreviousBooking} className="booking-sibling-button" aria-label={props.previousBooking ? `Previous booking, #${props.previousBooking.bookingNumber}, ${props.previousBooking.clientName || ''}` : 'No previous booking'} title={props.previousBooking ? `Previous: #${props.previousBooking.bookingNumber} · ${props.previousBooking.clientName || ''}` : 'First booking in this retreat'}><Icon component={ArrowLeft} /><span><small>Previous</small>{props.previousBooking ? `#${props.previousBooking.bookingNumber || 'N/A'}` : '—'}</span></button>
       <button type="button" disabled={!props.nextBooking} onClick={props.onNextBooking} className="booking-sibling-button is-next" aria-label={props.nextBooking ? `Next booking, #${props.nextBooking.bookingNumber}, ${props.nextBooking.clientName || ''}` : 'No next booking'} title={props.nextBooking ? `Next: #${props.nextBooking.bookingNumber} · ${props.nextBooking.clientName || ''}` : 'Last booking in this retreat'}><span><small>Next</small>{props.nextBooking ? `#${props.nextBooking.bookingNumber || 'N/A'}` : '—'}</span><Icon component={ArrowRight} /></button>

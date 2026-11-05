@@ -1,4 +1,5 @@
 import BalanceReminderButton from './BalanceReminderButton';
+import RoomTypeBadge from './RoomTypeBadge';
 import MedicalPayoutPanel from './MedicalPayoutPanel';
 import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, CreditCard, Edit2, Eye, FlaskConical, Flower2, ListChecks, Mail, PiggyBank, Plus, Printer, RefreshCw, Sparkles, Trash2, TrendingUp, UserPlus, Users, UtensilsCrossed, X } from 'lucide-react';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
@@ -1442,6 +1443,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         {index + 1}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <span className="guest-booking-identity">
                         <Link
                           to={`/${routePrefix}/bookings/${client._id}`}
                           className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
@@ -1449,6 +1451,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         >
                           #{client.bookingNumber || client._id?.slice(-6)}
                         </Link>
+                        <RoomTypeBadge roomType={client.roomType}/>
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <div className="flex items-center gap-3">
