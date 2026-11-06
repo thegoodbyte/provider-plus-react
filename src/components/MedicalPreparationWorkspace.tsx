@@ -270,15 +270,6 @@ export default function MedicalPreparationWorkspace() {
           {view === "calendar" ? (
             <>
               <div className="preparation-calendar-controls">
-                <button
-                  onClick={() => {
-                    const m = new Date().toISOString().slice(0, 7);
-                    setMonth(m);
-                    change("month", m);
-                  }}
-                >
-                  Today
-                </button>
                 <p>
                   {visible.filter((r) => !r.date).length} items awaiting a
                   booking/date remain in Items.
