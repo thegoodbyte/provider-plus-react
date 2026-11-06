@@ -75,3 +75,16 @@ it("keeps medical preparation navigation out of unrelated roles", () => {
   ])
     expect(canShowNavigation("medical-preparation", role)).toBe(false);
 });
+
+it("calendar navigation crosses year boundaries and Today uses the retreat calendar timezone", () => {
+  const change = jest.fn();
+  render(<MedicalPreparationCalendar month="2026-01" onMonthChange={change} items={[]} />);
+  fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
+  expect(change).toHaveBeenLastCalledWith("2025-12");
+  fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+  expect(change).toHaveBeenLastCalledWith("2026-02");
+  fireEvent.click(screen.getByRole("button", { name: "Today", exact: true }));
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Prague" });
+  expect(change).toHaveBeenLastCalledWith(today.slice(0, 7));
+  expect(screen.getByLabelText("Selected preparation instructions")).toHaveTextContent(today);
+});
