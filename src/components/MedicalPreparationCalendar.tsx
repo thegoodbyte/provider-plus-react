@@ -11,6 +11,11 @@ export default function MedicalPreparationCalendar({ items, month, onMonthChange
     <label className="flex flex-wrap items-center gap-2 text-sm font-semibold">Calendar month
       <input type="month" value={month} onChange={event => onMonthChange(event.target.value)} className="rounded-lg border p-2" />
     </label>
+    <div className="my-2 flex flex-wrap gap-2" aria-label="Calendar navigation">
+      <button type="button" className="rounded border px-3 py-2" onClick={() => { const d = new Date(`${month}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() - 1); onMonthChange(d.toISOString().slice(0, 7)); }}>Previous month</button>
+      <button type="button" className="rounded border px-3 py-2" onClick={() => { const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Prague' }); onMonthChange(today.slice(0, 7)); setSelectedDate(today); }}>Today</button>
+      <button type="button" className="rounded border px-3 py-2" onClick={() => { const d = new Date(`${month}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); onMonthChange(d.toISOString().slice(0, 7)); }}>Next month</button>
+    </div>
     <p className="my-3 text-sm text-slate-600">Select an item to read its full instruction.</p>
     <div className="grid grid-cols-7 gap-1">
       {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => <strong key={day} className="text-center text-xs">{day}</strong>)}
