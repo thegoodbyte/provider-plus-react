@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 export const NAVIGATION_PERMISSIONS_STORAGE_KEY = 'navigationPermissions:v1';
 export const SETTINGS_LABEL = 'Settings & Setup';
 export const NAVIGATION: Record<string, { label: string; description: string; setup?: boolean; aliases?: string }> = {
+  'medical-preparation': {label:'Medical Preparation',description:'Manage client preparation plans and booking-linked calendars.'},
   integration: { label: 'Integration Calls', description: 'Schedule group and individual calls and record private notes.' },
   launcher: { label: 'Home', description: 'Daily work and application setup.' },
   workflow: { label: 'Readiness Dashboard', description: 'Review booking readiness across a retreat and resolve blockers.', aliases: 'Workflow' },
@@ -37,7 +38,7 @@ export const NAVIGATION: Record<string, { label: string; description: string; se
 
 const operational = ['launcher', 'clients', 'potential-clients', 'screening', 'bookings', 'retreats', 'retreat-staffing', 'ceremonies', 'reminders', 'communications', 'communications-settings', 'contact-book'];
 const roleRoutes: Record<string, string[]> = {
-  medical_staff: [...operational, 'workflow', 'flow-tasks', 'medical-dashboard', 'medical-artifacts', 'medical-tracking', 'medical-review-requests', 'review-requests', 'medical', 'medical-retreats', 'client-forms', 'client-medications', 'retreat-flow', 'retreat-flow-library', 'booking-flow', 'booking-step-deadlines', 'scheduled-reminders', 'booking-documents', 'booking-document-types', 'file-uploads', 'assistant', 'needs-attention', 'ir-notifications'],
+  medical_staff: [...operational, 'workflow', 'flow-tasks', 'medical-dashboard', 'medical-preparation', 'medical-artifacts', 'medical-tracking', 'medical-review-requests', 'review-requests', 'medical', 'medical-retreats', 'client-forms', 'client-medications', 'retreat-flow', 'retreat-flow-library', 'booking-flow', 'booking-step-deadlines', 'scheduled-reminders', 'booking-documents', 'booking-document-types', 'file-uploads', 'assistant', 'needs-attention', 'ir-notifications'],
   medical_advisor: ['medical-dashboard', 'review-requests', 'medical-review-requests'],
   facilitator: [...operational, 'houses', 'booster-offers', 'integration'],
   user: ['launcher', 'clients', 'potential-clients', 'reminders', 'communications', 'communications-settings', 'contact-book'],

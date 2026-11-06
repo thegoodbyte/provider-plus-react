@@ -21,6 +21,7 @@ import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import IntegrationCalls from './IntegrationCalls';
 import { useAuth } from '../context/AuthContext';
+import PreparationContextLink from './PreparationContextLink';
 
 interface ClientDetailViewProps {
   clientId: string;
@@ -795,6 +796,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
         {activeTab === 'medical' && clientBookings.filter((booking:any)=>!['cancelled','canceled'].includes(booking.status)).map((booking:any)=><EkgRequirementStatus key={booking._id} bookingId={booking._id} bookingLabel={`Booking ${booking.bookingNumber || booking.display_id || booking._id}`} />)}
         {activeTab === 'medical' && (
           <div className="medical-tab">
+            <PreparationContextLink clientId={clientId}/>
             {retreats.length > 0 ? (
               <>
                 <div className="retreat-selector" style={{ marginBottom: '24px' }}>

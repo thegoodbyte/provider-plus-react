@@ -119,6 +119,7 @@ const ClientFoodFormsPage = lazy(() => import('./ClientFoodFormsPage'));
 const ClientFormsPage = lazy(() => import('./ClientFormsPage'));
 const BookingStepDeadlinesPage = lazy(() => import('./BookingStepDeadlinesPage'));
 const ScheduledRemindersPage = lazy(() => import('./ScheduledRemindersPage'));
+const MedicalPreparationWorkspace = lazy(() => import('./MedicalPreparationWorkspace'));
 const MedicationStopPlanPage = lazy(() => import('./MedicationStopPlanPage'));
 const SubmissionNotificationsPage = lazy(() => import('./SubmissionNotificationsPage'));
 const RetreatClientsPrintPage = lazy(() => import('./RetreatClientsPrintPage'));
@@ -226,6 +227,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'work-modes') return 'work-modes';
     if (route === 'medical-artifacts') return 'medical-artifacts';
     if (route === 'medical-tracking') return 'medical-tracking';
+    if (route === 'medical-preparation') return 'medical-preparation';
     if (route === 'medical-review-requests') return 'medical-review-requests';
     if (route === 'review-requests') return 'review-requests';
     if (route === 'medical') return 'medical';
@@ -796,6 +798,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="integration/:retreatId" element={<IntegrationRetreatDetailPage />} />
                       <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
                       <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
+                      <Route path="medical-preparation" element={<ProtectedRoute requiredRole={['admin','medical_staff']}><MedicalPreparationWorkspace/></ProtectedRoute>}/>
                       <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                       <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
@@ -916,7 +919,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="announcements" element={<ProtectedRoute requiredRole={['admin']}><AnnouncementsPage /></ProtectedRoute>} />
                         <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
                         <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
-                        <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
+                        <Route path="medical-preparation" element={<ProtectedRoute requiredRole={['admin','medical_staff']}><MedicalPreparationWorkspace/></ProtectedRoute>}/>
+                      <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                         <Route path="booking-flow" element={<BookingFlowPage />} />
                         <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                         <Route path="needs-attention" element={<NeedsAttentionPage />} />

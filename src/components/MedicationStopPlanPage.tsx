@@ -1,4 +1,6 @@
 import MedicalPreparationCalendar from './MedicalPreparationCalendar';
+import PreparationIdentity from './PreparationIdentity';
+import {api} from '../services/api';
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, CalendarDays, Plus, Save, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -13,6 +15,7 @@ const MedicationStopPlanPage: React.FC = () => {
   const navigate = useNavigate();
   const [entries, setEntries] = useState<Entry[]>([emptyEntry()]);
   const [retreatStart, setRetreatStart] = useState('');
+  const [context,setContext]=useState<any>(null),[archiveReason,setArchiveReason]=useState('');
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [dirty, setDirty] = useState(false);
@@ -27,7 +30,7 @@ const MedicationStopPlanPage: React.FC = () => {
   useEffect(() => {
     let active = true;
     setLoading(true); setLoadError(''); setRetreatStart(''); setDirty(false); setMessage('');
-    bookingsApi.getOneFresh(bookingId).then(({ data }: any) => { if (!active) return; const start = data?.retreatId?.startDate; if (start) { setRetreatStart(preparationDate(new Date(start), { daysBeforeRetreat: 0 }).toISOString().slice(0, 10)); setMonth(preparationDate(new Date(start), { daysBeforeRetreat: 0 }).toISOString().slice(0, 7)); } }).catch(() => active && setMessage('Retreat date unavailable. Reload before using relative dates.'));
+    bookingsApi.getOneFresh(bookingId).then(({ data }: any) => { if (!active) return; setContext(data); const start = data?.retreatId?.startDate; if (start) { setRetreatStart(preparationDate(new Date(start), { daysBeforeRetreat: 0 }).toISOString().slice(0, 10)); setMonth(preparationDate(new Date(start), { daysBeforeRetreat: 0 }).toISOString().slice(0, 7)); } }).catch(() => active && setMessage('Retreat date unavailable. Reload before using relative dates.'));
     bookingFlowApi.getMedicationStopPlan(bookingId).then(({ data }) => {
       if (!active) return;
       const allClearItem = (data || []).find((item: any) => item.metadata?.medicationStopPlanAllClear && item.status !== 'cancelled');
@@ -69,6 +72,7 @@ const MedicationStopPlanPage: React.FC = () => {
       <header className="mb-6 rounded-2xl border border-violet-200 bg-white/90 p-6 shadow-sm">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-600"><CalendarDays size={17}/> Medical advisor tool</div>
         <h1 className="mt-2 text-3xl font-semibold text-slate-900">Medical Preparation Calendar</h1>
+        {context&&<><PreparationIdentity client={context.clientId} booking={context} retreat={context.retreatId} prefix={window.location.pathname.startsWith('/medical/')?'/medical':'/admin'}/><a className="text-teal-700 underline" href={`${window.location.pathname.startsWith('/medical/')?'/medical':'/admin'}/medical-preparation?bookingId=${bookingId}`}>View booking preparation items / calendar</a></>}
         <p className="mt-2 text-sm text-slate-600">Build the client’s dated preparation calendar. Each date becomes a booking requirement and receives the configured reminder sequence.</p>
         <div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Enter only instructions approved by the medical advisor. The system never invents tapering or stopping advice.</div>
         <div className="mt-3 font-semibold">Status: {lifecycle.replace(/_/g, ' ')}</div>
@@ -91,16 +95,17 @@ const MedicationStopPlanPage: React.FC = () => {
             <label className="text-sm text-slate-600">Or days before retreat<input type="number" min="0" value={entry.daysBeforeRetreat} onChange={event => update(index, { daysBeforeRetreat: event.target.value, monthsBeforeRetreat: '', dueDate: '' })} className="mt-1 w-full rounded-xl border border-sky-200 px-3 py-2.5"/></label>
             <label className="text-sm text-slate-600">Or calendar months before retreat<input type="number" min="0" step="1" value={entry.monthsBeforeRetreat} onChange={event => update(index, { monthsBeforeRetreat: event.target.value, daysBeforeRetreat: '', dueDate: '' })} className="mt-1 w-full rounded-xl border p-3"/></label>
             <output className="text-sm">Preparation date: {(() => { try { return preparationDate(new Date(retreatStart), entry).toISOString().slice(0,10); } catch { return 'Set a valid date or retreat offset'; } })()}</output>
-            <label className="text-sm text-slate-600">Action<select value={entry.action} onChange={event => update(index, { action: event.target.value })} className="mt-1 w-full rounded-xl border p-2"><option value="stop">Stop</option><option value="reduce">Reduce</option><option value="continue">Continue</option><option value="discuss">Discuss</option><option value="avoid">Avoid</option></select></label>
+            <label className="text-sm text-slate-600">Action<select value={entry.action} onChange={event => update(index, { action: event.target.value })} className="mt-1 w-full rounded-xl border p-2"><option value="last_dose">Last dose on</option><option value="stop">Do not take from</option><option value="reduce">Reduce</option><option value="continue">Continue</option><option value="discuss">Discuss</option><option value="avoid">Avoid</option></select></label>
             <label className="text-sm text-slate-600">Category<select value={entry.category} onChange={event => update(index, { category: event.target.value })} className="mt-1 w-full rounded-xl border border-sky-200 bg-white px-3 py-2.5"><option value="medication">Medication</option><option value="supplement">Supplement</option><option value="drug">Recreational substance</option><option value="alcohol">Alcohol</option><option value="other">Other</option></select></label>
             <label className="flex items-center gap-2 self-end rounded-xl bg-violet-50 px-3 py-3 text-sm"><input type="checkbox" checked={entry.isBlocking} onChange={event => update(index, { isBlocking: event.target.checked })}/> Required for medical clearance</label>
-            <label className="text-sm text-slate-600 md:col-span-2">Instruction shown to client<textarea required value={entry.instruction} onChange={event => update(index, { instruction: event.target.value })} rows={3} className="mt-1 w-full rounded-xl border border-sky-200 px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-200"/></label>
+            <label className="text-sm text-slate-600 md:col-span-2">Instruction shown to client<textarea aria-label="Instruction shown to client" required value={entry.instruction} onChange={event => update(index, { instruction: event.target.value })} rows={3} className="mt-1 w-full rounded-xl border border-sky-200 px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-200"/></label>
             <label className="text-sm text-slate-600 md:col-span-2">Advisor-authored taper / wean-off detail (optional)<textarea value={entry.taperPlan} onChange={event => update(index, { taperPlan: event.target.value })} rows={2} className="mt-1 w-full rounded-xl border border-sky-200 px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-200"/></label>
             <label className="text-sm text-slate-600 md:col-span-2">Internal note — never shown in IR<textarea value={entry.internalNote} onChange={event => update(index, { internalNote: event.target.value })} rows={2} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5"/></label>
           </div>
         </section>)}
         <div className="flex flex-wrap justify-between gap-3"><button disabled={allClear} onClick={() => { setDirty(true); setView('list'); setEntries(current => [...current, emptyEntry()]); }} className="flex items-center gap-2 rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm font-semibold text-violet-700 disabled:opacity-40"><Plus size={17}/> Add calendar item</button><span className="flex gap-2"><button disabled={saving} onClick={save} className="rounded-xl bg-slate-700 px-5 py-2.5 text-sm font-semibold text-white"><Save size={17} className="inline"/> Save draft</button><button disabled={saving || dirty || lifecycle!=='draft'} onClick={() => void transition('approved')} className="rounded-xl bg-amber-600 px-4 py-2 text-white disabled:opacity-40">Medical approve</button><button disabled={saving || dirty || lifecycle!=='approved'} onClick={() => void transition('published')} className="rounded-xl bg-emerald-700 px-4 py-2 text-white disabled:opacity-40">Publish to IR</button></span></div>
         {message && <div className="rounded-xl bg-white p-4 text-sm text-slate-700 shadow-sm">{message}</div>}
+        <details className="rounded-xl border p-4"><summary>Archive booking preparation plan</summary><p>Retains clinical history and cancels pending preparation reminders. Save or discard edits before archiving.</p><label>Reason<input value={archiveReason} onChange={e=>{e.stopPropagation();setArchiveReason(e.target.value);}} className="m-2 rounded border p-2"/></label><button disabled={saving||dirty||!archiveReason.trim()} onClick={async()=>{setSaving(true);try{await api.post(`/medical-preparation/bookings/${bookingId}/archive`,{reason:archiveReason});setMessage('Preparation plan archived. Pending reminders cancelled.');setLifecycle('cancelled');setEntries([]);}catch(e:any){setMessage(e.response?.data?.message||'Unable to archive plan');}finally{setSaving(false);}}}>Archive plan</button></details>
       </div>}
     </div>
   </div>;

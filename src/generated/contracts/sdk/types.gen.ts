@@ -9674,6 +9674,130 @@ export type MedicalPayoutsControllerSaveSettingsResponses = {
 
 export type MedicalPayoutsControllerSaveSettingsResponse = MedicalPayoutsControllerSaveSettingsResponses[keyof MedicalPayoutsControllerSaveSettingsResponses];
 
+export type PreparationWorkspaceControllerListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/medical-preparation';
+};
+
+export type PreparationWorkspaceControllerListResponses = {
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type PreparationWorkspaceControllerListResponse = PreparationWorkspaceControllerListResponses[keyof PreparationWorkspaceControllerListResponses];
+
+export type PreparationWorkspaceControllerCreateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/medical-preparation';
+};
+
+export type PreparationWorkspaceControllerCreateResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PreparationWorkspaceControllerCreateResponse = PreparationWorkspaceControllerCreateResponses[keyof PreparationWorkspaceControllerCreateResponses];
+
+export type PreparationWorkspaceControllerArchiveBookingData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-preparation/bookings/{id}/archive';
+};
+
+export type PreparationWorkspaceControllerArchiveBookingResponses = {
+    201: unknown;
+};
+
+export type PreparationWorkspaceControllerGetData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-preparation/drafts/{id}';
+};
+
+export type PreparationWorkspaceControllerGetResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PreparationWorkspaceControllerGetResponse = PreparationWorkspaceControllerGetResponses[keyof PreparationWorkspaceControllerGetResponses];
+
+export type PreparationWorkspaceControllerUpdateData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-preparation/drafts/{id}';
+};
+
+export type PreparationWorkspaceControllerUpdateResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type PreparationWorkspaceControllerUpdateResponse = PreparationWorkspaceControllerUpdateResponses[keyof PreparationWorkspaceControllerUpdateResponses];
+
+export type PreparationWorkspaceControllerApplyData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-preparation/drafts/{id}/apply';
+};
+
+export type PreparationWorkspaceControllerApplyResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PreparationWorkspaceControllerApplyResponse = PreparationWorkspaceControllerApplyResponses[keyof PreparationWorkspaceControllerApplyResponses];
+
+export type PreparationWorkspaceControllerArchiveData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-preparation/drafts/{id}/archive';
+};
+
+export type PreparationWorkspaceControllerArchiveResponses = {
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type PreparationWorkspaceControllerArchiveResponse = PreparationWorkspaceControllerArchiveResponses[keyof PreparationWorkspaceControllerArchiveResponses];
+
+export type PreparationWorkspaceControllerPreviewData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/medical-preparation/drafts/{id}/preview';
+};
+
+export type PreparationWorkspaceControllerPreviewResponses = {
+    201: unknown;
+};
+
 export type MedicalReviewAutomationControllerGetSettingsData = {
     body?: never;
     path?: never;
