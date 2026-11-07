@@ -122,3 +122,19 @@ it('distinguishes booking and itemized documents and shows the billing recipient
   expect(screen.getByText('Ewa Billing Company')).toBeInTheDocument();expect(screen.getByText('Itemized · INV-1969')).toBeInTheDocument();expect(screen.queryByText('INV-DEPOSIT')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Clear filters'}));expect(screen.getByText('INV-DEPOSIT')).toBeInTheDocument();
 });
+it('combines client/retreat identity, removes redundant columns and keeps a visible Duplicate action',async()=>{
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[{_id:'copy',invoiceNumber:'COMPACT',currency:'PLN',requestedAmount:2500,usd_amount:630.25,clientId:{_id:'c',display_id:123,firstName:'Ewa',lastName:'Franus'},retreatId:{_id:'r',code:'NOV-29'}}]});
+ mount();const row=(await screen.findByRole('button',{name:'COMPACT'})).closest('tr')!;
+ const clientCell=row.querySelector('[data-label="Client"]')!;
+ expect(clientCell).toHaveTextContent('Ewa Franus');expect(clientCell).toHaveTextContent('#123');expect(within(clientCell as HTMLElement).getByRole('link',{name:'NOV-29'})).toHaveAttribute('href','/admin/retreats/r');
+ for(const label of ['Retreat','USD','Currency'])expect(screen.queryByRole('columnheader',{name:label})).not.toBeInTheDocument();
+ expect(within(row).getByRole('button',{name:'Duplicate payment request'})).toHaveTextContent('Duplicate');
+ const amount=within(row).getByText('2,500 PLN');expect(amount).toHaveAttribute('tabIndex','0');fireEvent.focus(amount);
+ expect(await screen.findByRole('tooltip')).toHaveTextContent('Recorded USD equivalent: 630.25 USD');
+});
+it('does not present missing FX as zero USD and keeps standalone service context with the recipient',async()=>{
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[{_id:'service',invoiceNumber:'SERVICE',context:'standalone_service',currency:'EUR',requestedAmount:20,serviceDocument:{title:'Integration calls',client:{name:'One-off recipient'}}}]});
+ mount();const row=(await screen.findByRole('button',{name:'SERVICE'})).closest('tr')!;
+ expect(row.querySelector('[data-label="Client"]')).toHaveTextContent('Integration calls');expect(screen.queryByText('Unknown Retreat')).not.toBeInTheDocument();
+ fireEvent.focus(within(row).getByText('20 EUR'));expect(await screen.findByRole('tooltip')).toHaveTextContent('USD equivalent not available');
+});

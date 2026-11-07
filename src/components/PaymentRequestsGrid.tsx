@@ -1,3 +1,4 @@
+import { Tooltip } from 'antd';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import RequestBookingAction from './RequestBookingAction';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
@@ -380,13 +381,10 @@ const PaymentRequestsGrid: React.FC = () => {
               <tr>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('invoice', 'Invoice #')}</th>
                 <th className="w-44 px-3 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('retreat', 'Retreat')}</th>
                 <th className="px-4 py-3 text-left">Booking</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Request Date')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('paidDate', 'Paid Date')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('requested', 'Requested amount')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('usd', 'USD')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('currency', 'Currency')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('status', 'Status')}</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
@@ -395,6 +393,10 @@ const PaymentRequestsGrid: React.FC = () => {
               {sortedRequests.map((request) => {
                 const client = resolveClient(request.clientId || (request.serviceDocument?.client ? {firstName:request.serviceDocument.client.name,email:request.serviceDocument.client.email} : undefined));
                 const retreat = request.context === 'standalone_service' ? request.serviceDocument?.title || 'Standalone service' : resolveRetreat(request.retreatId);
+                const retreatId = typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id || request.retreatId?.id;
+                const financials = paymentRequestFinancialSummary(request);
+                const hasUsd = request.usd_amount !== undefined && request.usd_amount !== null && request.usd_amount !== '' && Number.isFinite(Number(request.usd_amount));
+                const usdTooltip = hasUsd ? `Recorded USD equivalent: ${Number(request.usd_amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD` : 'USD equivalent not available';
                 return (
                   <tr key={request._id} className="hover:bg-gray-50">
                     <td data-label="Invoice" className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
@@ -428,10 +430,12 @@ const PaymentRequestsGrid: React.FC = () => {
                               )}
                             </div>
                           )}
+                          <div className="mt-1 break-words text-xs text-gray-600">
+                            {request.context !== 'standalone_service' && retreatId ? <Link to={`/admin/retreats/${encodeURIComponent(retreatId)}`} className="text-teal-700 hover:underline" title="Open retreat">{retreat}</Link> : retreat}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td data-label="Retreat" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
                     <td data-label="Booking" className="px-4 py-4"><PaymentRequestBookingLinks request={request} />{request.status === 'paid' && !request.bookingId && <RequestBookingAction request={request} compact />}</td>
                     <td data-label="Requested on" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {formatCalendarDate(request.paymentDate)}
@@ -440,12 +444,10 @@ const PaymentRequestsGrid: React.FC = () => {
                       {request.paidDate ? formatCalendarDate(request.paidDate) : '-'}
                     </td>
                     <td data-label="Amount" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {paymentRequestFinancialSummary(request).requested.toLocaleString()} {paymentRequestFinancialSummary(request).currency}
+                      {financials.currency === 'USD' ? <span>{financials.requested.toLocaleString()} USD</span> : <Tooltip trigger={['hover', 'focus', 'click']} title={usdTooltip}>
+                        <span tabIndex={0} className="cursor-help rounded border-b border-dotted border-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-600">{financials.requested.toLocaleString()} {financials.currency}</span>
+                      </Tooltip>}
                     </td>
-                    <td data-label="USD equivalent" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {(request.usd_amount ?? 0).toLocaleString()} USD
-                    </td>
-                    <td data-label="Currency" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{request.currency}</td>
                     <td data-label="Status" className="px-4 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}
@@ -459,8 +461,8 @@ const PaymentRequestsGrid: React.FC = () => {
                       </span>
                     </td>
                     <td data-label="Actions" className="sticky right-0 whitespace-nowrap border-l border-gray-100 bg-white px-2 py-4">
-                      <div className="flex items-center gap-1">
-                        <DuplicatePaymentRequestButton request={request} iconOnly className="icon-action-btn icon-action-btn-edit"/>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <DuplicatePaymentRequestButton request={request}/>
                         <button
                           onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`, { state: { returnTo: '/admin/payment-requests' } })}
                           className="icon-action-btn icon-action-btn-success"
