@@ -5870,7 +5870,9 @@ export type ClientsControllerDownloadScreeningPdfData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        mode?: string;
+    };
     url: '/clients/{id}/screening/download-pdf';
 };
 
@@ -5883,7 +5885,9 @@ export type ClientsControllerViewScreeningPdfData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        mode?: string;
+    };
     url: '/clients/{id}/screening/pdf';
 };
 
@@ -5896,7 +5900,9 @@ export type ClientsControllerRegenerateScreeningPdfData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        mode?: string;
+    };
     url: '/clients/{id}/screening/pdf/regenerate';
 };
 
