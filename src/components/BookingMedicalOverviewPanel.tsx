@@ -8,6 +8,7 @@ import BookingMedicalUpload from './BookingMedicalUpload';
 import MedicalItemCard, { MedicalItemCardProps } from './MedicalItemCard';
 import { deriveMedicalItemState, MEDICAL_ITEM_TONES, MedicalItemState } from './medicalItemStatus';
 import './BookingMedicalOverviewPanel.css';
+import PreparationContextLink from './PreparationContextLink';
 import {
   findRequiredEntryFlowItem,
   groupMedicalArtifacts,
@@ -174,6 +175,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
   const overallTone = MEDICAL_ITEM_TONES[overallState];
 
   return <div className="booking-medical-panel booking-medical-redesign">
+    <PreparationContextLink bookingId={bookingId}/>
     <header className="booking-medical-page-header">
       <div>
         <div className="booking-medical-eyebrow">Booking #{bookingNumber || bookingId}</div>

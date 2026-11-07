@@ -1,0 +1,223 @@
+.preparation-workspace {
+  max-width: 1320px;
+  margin: auto;
+  padding: 24px;
+  color: #243e3b;
+}
+.preparation-workspace > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.preparation-workspace h1 {
+  font-size: 28px;
+  font-weight: 700;
+}
+.preparation-eyebrow {
+  color: #687d78;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.preparation-workspace button,
+.preparation-editor button {
+  min-height: 42px;
+  border: 1px solid #bfd2cc;
+  border-radius: 9px;
+  padding: 8px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: white;
+  color: #235e55;
+}
+.preparation-workspace button:disabled,
+.preparation-editor button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.preparation-workspace .preparation-primary,
+.preparation-editor .preparation-primary {
+  background: #17695f;
+  color: white;
+  border-color: #17695f;
+}
+.preparation-filters {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+.preparation-workspace label,
+.preparation-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+}
+.preparation-workspace input,
+.preparation-workspace select,
+.preparation-editor input,
+.preparation-editor select,
+.preparation-editor textarea {
+  border: 1px solid #cbd9d5;
+  border-radius: 8px;
+  padding: 9px;
+  min-height: 42px;
+  background: white;
+  max-width: 100%;
+}
+.preparation-check {
+  flex-direction: row !important;
+  align-items: center;
+}
+.preparation-check input {
+  min-height: 20px;
+  width: 18px;
+}
+.preparation-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+.preparation-tabs [aria-selected="true"] {
+  background: #e5f3ed;
+  border-color: #17695f;
+}
+.preparation-items > article {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid #d9e4e0;
+  border-radius: 12px;
+  background: white;
+  margin: 12px 0;
+}
+.preparation-items p {
+  margin: 8px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.preparation-identity {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  margin: 12px 0;
+}
+.preparation-identity a {
+  color: #14695f;
+  text-decoration: underline;
+}
+.preparation-status {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: #edf1f7;
+  margin-left: 8px;
+}
+.preparation-notice,
+.preparation-preview {
+  background: #edf5f1;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 12px 0;
+}
+.preparation-entry {
+  border: 1px solid #dce4e1;
+  border-radius: 10px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.preparation-entry-heading,
+.preparation-editor-actions,
+.preparation-calendar-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.preparation-entry-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.preparation-editor label {
+  margin: 12px 0;
+}
+.preparation-editor fieldset {
+  min-width: 0;
+}
+.preparation-apply {
+  border-top: 1px solid #dce4e1;
+  margin-top: 20px;
+  padding-top: 16px;
+}
+.preparation-apply details {
+  margin-top: 22px;
+}
+.preparation-editor textarea {
+  min-height: 70px;
+}
+.preparation-editor [role="alert"],
+.preparation-workspace [role="alert"] {
+  color: #a72e38;
+}
+.preparation-scope {
+  padding: 10px;
+  background: #edf5f1;
+}
+.preparation-workspace :focus-visible,
+.preparation-editor :focus-visible {
+  outline: 2px solid #17695f;
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .preparation-workspace {
+    padding: 12px;
+  }
+  .preparation-workspace h1 {
+    font-size: 24px;
+  }
+  .preparation-items > article {
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+  }
+  .preparation-entry-grid {
+    grid-template-columns: 1fr;
+  }
+  .preparation-filters > label {
+    width: 100%;
+  }
+  .preparation-editor-actions button {
+    flex: 1;
+  }
+}
+.preparation-workspace [aria-label="Preparation calendar"] button {
+  padding: 4px;
+  min-height: 32px;
+  min-width: 0;
+  font-size: 12px;
+}
+.preparation-items > article > div,
+.preparation-identity a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.preparation-workspace [aria-label="Preparation calendar"] button {
+  display: block;
+  text-align: left;
+}
+.preparation-workspace
+  [aria-label="Preparation calendar"]
+  button[aria-label$="preparation items"] {
+  display: flex;
+  justify-content: space-between;
+}

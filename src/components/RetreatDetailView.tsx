@@ -1,5 +1,6 @@
 import BalanceReminderButton from './BalanceReminderButton';
 import RoomTypeBadge from './RoomTypeBadge';
+import PreparationContextLink from './PreparationContextLink';
 import MedicalPayoutPanel from './MedicalPayoutPanel';
 import { CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, CreditCard, Edit2, Eye, FlaskConical, Flower2, ListChecks, Mail, PiggyBank, Plus, Printer, RefreshCw, Sparkles, Trash2, TrendingUp, UserPlus, Users, UtensilsCrossed, X } from 'lucide-react';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
@@ -1326,6 +1327,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       </div>
 
       <div className="retreat-detail-tab-content">
+        {activeTab==='tracking'&&<PreparationContextLink retreatId={retreatId}/>}
         {activeTab === 'closeout' && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <RetreatCloseout retreatId={retreatId} onOpenTab={tab => handleTabChange(tab as typeof activeTab)} />}
         {activeTab === 'integration' && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <RouteContentBoundary><IntegrationCalendar retreatId={retreatId} /></RouteContentBoundary>}
         {activeTab === 'rooms' && <details className="mb-4"><summary className="cursor-pointer">Accommodation rates and room settings</summary><RouteContentBoundary><RetreatRoomsTab retreatId={retreatId} /></RouteContentBoundary></details>}

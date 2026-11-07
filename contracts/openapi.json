@@ -18943,6 +18943,213 @@
         ]
       }
     },
+    "/medical-preparation": {
+      "get": {
+        "operationId": "PreparationWorkspaceController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "PreparationWorkspace"
+        ]
+      },
+      "post": {
+        "operationId": "PreparationWorkspaceController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "PreparationWorkspace"
+        ]
+      }
+    },
+    "/medical-preparation/bookings/{id}/archive": {
+      "post": {
+        "operationId": "PreparationWorkspaceController_archiveBooking",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PreparationWorkspace"
+        ]
+      }
+    },
+    "/medical-preparation/drafts/{id}": {
+      "get": {
+        "operationId": "PreparationWorkspaceController_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "PreparationWorkspace"
+        ]
+      },
+      "put": {
+        "operationId": "PreparationWorkspaceController_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "PreparationWorkspace"
+        ]
+      }
+    },
+    "/medical-preparation/drafts/{id}/apply": {
+      "post": {
+        "operationId": "PreparationWorkspaceController_apply",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "PreparationWorkspace"
+        ]
+      }
+    },
+    "/medical-preparation/drafts/{id}/archive": {
+      "post": {
+        "operationId": "PreparationWorkspaceController_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "PreparationWorkspace"
+        ]
+      }
+    },
+    "/medical-preparation/drafts/{id}/preview": {
+      "post": {
+        "operationId": "PreparationWorkspaceController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PreparationWorkspace"
+        ]
+      }
+    },
     "/medical-review-automation": {
       "get": {
         "operationId": "MedicalReviewAutomationController_getSettings",
