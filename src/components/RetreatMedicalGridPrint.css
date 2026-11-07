@@ -1,0 +1,159 @@
+.retreat-medical-print {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  overflow: auto;
+  background: #edf2f1;
+  color: #162b32;
+}
+.retreat-medical-print-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 24px;
+  background: white;
+  border-bottom: 1px solid #cbd5d1;
+}
+.retreat-medical-print-toolbar > div {
+  flex: 1 1 220px;
+}
+.retreat-medical-print-toolbar p {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.retreat-medical-print-toolbar button {
+  padding: 10px 16px;
+  border: 1px solid #287467;
+  border-radius: 6px;
+  background: white;
+  color: #155e53;
+}
+.retreat-medical-print-toolbar button:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+.retreat-medical-print-pages {
+  padding: 24px;
+  overflow-x: auto;
+}
+.retreat-medical-print-sheet {
+  box-sizing: border-box;
+  width: 1100px;
+  padding: 28px;
+  margin: 0 auto 24px;
+  background: white;
+}
+.retreat-medical-print-sheet h1 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+.retreat-medical-print-meta {
+  margin: 0 0 20px;
+  font-size: 12px;
+}
+.retreat-medical-print-sheet table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.retreat-medical-print-sheet th,
+.retreat-medical-print-sheet td {
+  border: 1px solid #a8b8b3;
+  padding: 10px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.retreat-medical-print-sheet thead th {
+  background: #e7f2ee;
+}
+.retreat-medical-print-sheet th:first-child {
+  width: 16%;
+}
+.retreat-medical-print-sheet p {
+  white-space: pre-wrap;
+}
+.retreat-medical-print-notes {
+  margin: 10px 0;
+}
+@page retreat-medical-grid {
+  size: A4 landscape;
+  margin: 8mm;
+}
+@media print {
+  body.retreat-medical-printing .retreat-medical-print,
+  body.retreat-medical-printing .retreat-medical-print * {
+    visibility: visible !important;
+  }
+  body.retreat-medical-printing {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  body.retreat-medical-printing > :not(.retreat-medical-print) {
+    display: none !important;
+  }
+  .retreat-medical-print {
+    position: static;
+    overflow: visible;
+    height: auto;
+    background: white;
+  }
+  .retreat-medical-print-toolbar {
+    display: none;
+  }
+  .retreat-medical-print-pages {
+    padding: 0;
+    overflow: visible;
+  }
+  .retreat-medical-print-sheet {
+    page: retreat-medical-grid;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    break-after: page;
+  }
+  .retreat-medical-print-sheet:last-child {
+    break-after: auto;
+  }
+  .retreat-medical-print-sheet thead {
+    display: table-header-group;
+  }
+  .retreat-medical-print-sheet table {
+    font-size: 10pt;
+  }
+  .retreat-medical-print-sheet th,
+  .retreat-medical-print-sheet td {
+    padding: 6px;
+  }
+  .retreat-medical-print-sheet tr {
+    break-inside: auto;
+  }
+}
+
+.retreat-medical-print-sheet .retreat-medical-print-heading {
+  border: 0;
+  padding: 0 0 12px;
+  background: white;
+}
+@media print {
+  .retreat-medical-print-sheet table {
+    line-height: 1.35;
+  }
+  .retreat-medical-print-sheet thead tr {
+    break-inside: avoid;
+  }
+  .retreat-medical-print-sheet .retreat-medical-print-meta {
+    margin-bottom: 0;
+  }
+}
+
+@media print {
+  .retreat-medical-print-sheet .medical-print-short-row {
+    break-inside: avoid;
+  }
+}

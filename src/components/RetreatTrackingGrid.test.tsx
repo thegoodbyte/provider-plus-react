@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
 import { bookingFlowApi, bookingsApi, documentRequestsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
@@ -31,6 +31,40 @@ describe('RetreatTrackingGrid MRR actions', () => {
     }] });
     (medicalReviewRequestsApi.getByArtifacts as jest.Mock).mockResolvedValue({ data: [] });
     (bookingFlowApi.getItems as jest.Mock).mockResolvedValue({ data: [] });
+  });
+
+  it('prints the loaded snapshot without mutations, preserves full notes and restores fullscreen/focus', async () => {
+    const print = jest.spyOn(window, 'print').mockImplementation(() => {});
+    render(<MemoryRouter><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
+    const opener = await screen.findByRole('button', { name: 'Print medical grid' });
+    fireEvent.click(screen.getByRole('button', { name: 'Full screen' }));
+    opener.focus();
+    fireEvent.click(opener);
+    const preview = screen.getByRole('dialog', { name: 'Medical grid print preview' });
+    expect(within(preview).getByText('Booking #1248')).toBeInTheDocument();
+    expect(within(preview).getByText('Client #1197')).toBeInTheDocument();
+    expect(within(preview).getByText('MRR #1105')).toBeInTheDocument();
+    expect(within(preview).queryByRole('link')).not.toBeInTheDocument();
+    fireEvent.click(within(preview).getByRole('button', { name: 'Print / Save PDF' }));
+    expect(print).toHaveBeenCalledTimes(1);
+    expect(documentRequestsApi.requestMissingDocument).not.toHaveBeenCalled();
+    fireEvent.keyDown(preview, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exit full screen' })).toBeInTheDocument();
+    expect(opener).toHaveFocus();
+    expect(document.body).not.toHaveClass('retreat-medical-printing');
+    print.mockRestore();
+  });
+
+  it('does not offer a stale print snapshot after a failed refresh', async () => {
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    render(<MemoryRouter><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
+    await screen.findByRole('button', { name: 'Print medical grid' });
+    (bookingsApi.getByRetreatWithDetails as jest.Mock).mockRejectedValueOnce(new Error('Denied'));
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    await screen.findByText('No bookings found for this retreat yet.');
+    expect(screen.queryByRole('button', { name: 'Print medical grid' })).not.toBeInTheDocument();
+    error.mockRestore();
   });
 
   it('shows full compact WhatsApp responses and retains review links in both layouts', async () => {
