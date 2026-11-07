@@ -140,3 +140,15 @@ test("denied or partially failed check reads block incomplete printing and can b
   await waitFor(() => expect(screen.getByRole("button", {name: "Print / Save PDF"})).toBeEnabled());
   expect(screen.getAllByText("No checks recorded.")).toHaveLength(2);
 });
+
+test("a later participant read failure never prints a partial ceremony snapshot", async () => {
+  (ceremoniesApi.getByRetreat as jest.Mock).mockResolvedValue({data: [{_id: "one", ceremonyNumber: 1}, {_id: "two", ceremonyNumber: 2}]});
+  (ceremoniesApi.getParticipants as jest.Mock).mockImplementation(async id => {
+    if (id === "two") throw new Error("Denied");
+    return {data: [{ceremonyId: "one", clientId: "c0", medicalClearanceNotes: "Partial note"}]};
+  });
+  render(<RetreatMedicalGridPrint retreatId="r" data={oneClient()} preparationItems={[]} generatedAt="2026-11-07T12:00:00Z" onClose={() => {}} />);
+  await screen.findByRole("alert");
+  expect(screen.queryByText("Clearance: Partial note")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", {name: "Print / Save PDF"})).toBeDisabled();
+});
