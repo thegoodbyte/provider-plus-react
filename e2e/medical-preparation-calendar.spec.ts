@@ -57,7 +57,8 @@ test('API rejects unauthorized publication and invalid offsets without partial w
   await request.post(f.url + '/fixture/reset');
   const path = f.url + `/booking-flow/bookings/${f.booking}/medication-stop-plan`;
   expect((await request.get(path)).status()).toBe(401);
-  expect((await request.get(path, { headers: { Authorization: 'Bearer ' + f.tokens.client } })).status()).toBe(401);
+  // This fixture contains a real client: authentication succeeds, medical authorization is denied.
+  expect((await request.get(path, { headers: { Authorization: 'Bearer ' + f.tokens.client } })).status()).toBe(403);
   const headers = { Authorization: 'Bearer ' + f.tokens.medical_staff };
   const entries = [{ name: 'Alcohol', instruction: 'Advisor instruction', monthsBeforeRetreat: 1 }];
   expect((await request.put(path, { headers, data: { entries } })).ok()).toBeTruthy();
