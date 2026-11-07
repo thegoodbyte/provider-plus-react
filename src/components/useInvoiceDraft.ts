@@ -15,7 +15,7 @@ const removeBackup = (key: string) => {
     localStorage.removeItem(key);
   } catch {}
 };
-const uuid = () => {
+export const newInvoiceDraftId = () => {
   if (crypto.randomUUID) return crypto.randomUUID();
   const b = crypto.getRandomValues(new Uint8Array(16));
   b[6] = (b[6] & 15) | 64;
@@ -43,6 +43,7 @@ export function useInvoiceDraft({
   apply,
   empty,
   initialClient,
+  initialDraftId,
   onIssued,
 }: {
   enabled: boolean;
@@ -50,6 +51,7 @@ export function useInvoiceDraft({
   apply: (p: any) => void;
   empty: () => any;
   initialClient: string | null;
+  initialDraftId?: string | null;
   onIssued: (id: string) => void;
 }) {
   const owner = account(),
@@ -62,6 +64,7 @@ export function useInvoiceDraft({
     [error, setError] = useState(""),
     [drafts, setDrafts] = useState<any[]>([]),
     [restored, setRestored] = useState(false);
+  const activeOwner = useRef("");
   const copySource = useRef<string | null>(null);
   const revision = useRef(0),
     baseline = useRef(""),
@@ -101,6 +104,11 @@ export function useInvoiceDraft({
       issuingRef.current = row.status === "issuing";
       setIssuing(issuingRef.current);
       active.current = row.draftId;
+      activeOwner.current = owner;
+      if (initialDraftId && !row.revision && !row.status) {
+        // Explicit draft URLs also recover brand-new/forked drafts before their first server save.
+        try { localStorage.setItem(prefix + row.draftId, JSON.stringify({ draftId: row.draftId, revision: 0, payload: row.payload, updatedAt: Date.now() })); } catch {}
+      }
       setDraftId(row.draftId);
       revision.current = row.revision || 0;
       baseline.current = draftFingerprint(row.payload);
@@ -117,10 +125,11 @@ export function useInvoiceDraft({
             : "Draft not yet saved",
       );
     },
-    [apply],
+    [apply, owner, prefix, initialDraftId],
   );
   useEffect(() => {
     if (!enabled) return;
+    if (initialDraftId && active.current === initialDraftId && activeOwner.current === owner) return;
     let live = true;
     issued.current = false;
     setReady(false);
@@ -145,6 +154,7 @@ export function useInvoiceDraft({
           .filter(
             (b) =>
               b?.payload &&
+              (!initialDraftId || b.draftId === initialDraftId) &&
               Array.isArray(b.payload.items) &&
               (!initialClient || b.payload.clientId === initialClient),
           )
@@ -164,9 +174,15 @@ export function useInvoiceDraft({
       if (!live) return;
       setDrafts(list);
       const backup = backups()[0];
-      let row = list.find(
-        (r) => !initialClient || r.payload.clientId === initialClient,
-      );
+      let row = list.find(r => initialDraftId ? r.draftId === initialDraftId : !initialClient || r.payload.clientId === initialClient);
+      if (initialDraftId && !row) {
+        try { row = (await invoiceDraftsApi.get(initialDraftId)).data; }
+        catch { if (!backup) { if (live) setError("Could not load the selected draft. Reload to retry; your other drafts are unchanged."); return; } }
+      }
+      if (!live) return;
+      if (row?.status === "issued") { onIssued(row.paymentRequestId); return; }
+      if (row?.status === "discarded") { setError("This draft was discarded. Open the original request to duplicate it again."); return; }
+
       if (backup) {
         let saved = list.find((r) => r.draftId === backup.draftId);
         if (!saved && !loadFailed) {
@@ -193,7 +209,7 @@ export function useInvoiceDraft({
               saved.revision !== backup.revision);
           if (newer) copySource.current = prefix + backup.draftId;
           row = {
-            draftId: newer ? uuid() : backup.draftId,
+            draftId: newer ? newInvoiceDraftId() : backup.draftId,
             revision: newer ? 0 : saved?.revision || backup.revision,
             payload: backup.payload,
           };
@@ -212,7 +228,7 @@ export function useInvoiceDraft({
         }
       }
       activate(
-        row || { draftId: uuid(), revision: 0, payload: empty() },
+        row || { draftId: newInvoiceDraftId(), revision: 0, payload: empty() },
         Boolean(row),
       );
       if (loadFailed)
@@ -225,7 +241,7 @@ export function useInvoiceDraft({
       store();
     };
     // Initial load only; selecting/new drafts is handled explicitly and never overwrites an editing form.
-  }, [enabled, owner, initialClient]);
+  }, [enabled, owner, initialClient, initialDraftId]);
   const serialized = draftFingerprint(payload);
   const flush = useCallback(async (): Promise<any> => {
     if (flight.current) {
@@ -303,7 +319,7 @@ export function useInvoiceDraft({
   }, [enabled, store]);
   const startNew = async () => {
     await flush();
-    activate({ draftId: uuid(), revision: 0, payload: empty() });
+    activate({ draftId: newInvoiceDraftId(), revision: 0, payload: empty() });
   };
   const select = async (id: string) => {
     await flush();
@@ -313,7 +329,7 @@ export function useInvoiceDraft({
   const copy = () => {
     store();
     copySource.current = prefix + active.current;
-    activate({ draftId: uuid(), revision: 0, payload: latest.current }, true);
+    activate({ draftId: newInvoiceDraftId(), revision: 0, payload: latest.current }, true);
     baseline.current = "";
   };
   const discard = async () => {
@@ -323,7 +339,7 @@ export function useInvoiceDraft({
     });
     removeBackup(prefix + active.current);
     setDrafts((rows) => rows.filter((r) => r.draftId !== active.current));
-    activate({ draftId: uuid(), revision: 0, payload: empty() });
+    activate({ draftId: newInvoiceDraftId(), revision: 0, payload: empty() });
   };
   const issue = async () => {
     await flush();

@@ -1,3 +1,5 @@
+import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
+import { duplicateRetreatRequest } from './paymentRequestDuplication';
 import PaymentRequestInvoicePreview from './PaymentRequestInvoicePreview';
 import PaymentRequestSettlement from './PaymentRequestSettlement';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
@@ -63,9 +65,11 @@ const PaymentRequestEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const duplicateFrom = new URLSearchParams(location.search).get('duplicateFrom');
+  const [loadError, setLoadError] = useState('');
   const isView = Boolean(id) && !location.pathname.endsWith('/edit');
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
-  const [loading, setLoading] = useState(Boolean(id));
+  const [loading, setLoading] = useState(Boolean(id || duplicateFrom));
   const [paymentRequest, setPaymentRequest] = useState<Partial<PaymentRequest> | undefined>(
     () => (id ? undefined : buildPaymentRequestFromSearch(location.search))
   );
@@ -80,6 +84,16 @@ const PaymentRequestEditorPage: React.FC = () => {
 
   useEffect(() => {
     const loadRequest = async () => {
+      if (!id && duplicateFrom) {
+        setLoading(true); setLoadError('');
+        try {
+          const { data } = await paymentRequestsApi.getOne(duplicateFrom);
+          if ((data as any).context === 'standalone_service') { navigate(`/admin/payment-requests/services/${duplicateFrom}`, { replace: true }); return; }
+          setPaymentRequest(duplicateRetreatRequest(data));
+        } catch { setLoadError('Could not load the original request. Reload to retry; nothing has been created.'); }
+        finally { setLoading(false); }
+        return;
+      }
       if (!id) {
         setLoading(false);
         setPaymentRequest(buildPaymentRequestFromSearch(location.search));
@@ -195,6 +209,8 @@ const PaymentRequestEditorPage: React.FC = () => {
     }
   };
 
+  if (loadError) return <div role="alert" className="p-6 text-red-700">{loadError}</div>;
+
   if (loading) {
     return <LoadingSpinner message={id ? 'Loading payment request...' : 'Loading form...'} />;
   }
@@ -217,7 +233,8 @@ const PaymentRequestEditorPage: React.FC = () => {
           >
             Back
           </button>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <DuplicatePaymentRequestButton request={paymentRequest}/>
             {paymentRequest.status !== 'cancelled' && <button type="button" onClick={() => navigate(`/admin/payments/new?paymentRequestId=${id}`, { state: { returnTo: `/admin/payment-requests/${id}` } })} className="rounded-md bg-green-600 px-4 py-2 text-white">Record payment</button>}
             {!linkedPaymentId && paymentRequest.status !== 'paid' && paymentRequest.status !== 'cancelled' && (
               <>
@@ -504,12 +521,16 @@ const PaymentRequestEditorPage: React.FC = () => {
   }
 
   return (
+    <>
+    {duplicateFrom && <p role="status" className="mx-auto max-w-5xl rounded-md bg-teal-50 p-4">New unpaid request copied from another request. Review the recipient, booking, items and new due date before saving. Nothing has been sent.</p>}
     <PaymentRequestForm
       paymentRequest={paymentRequest}
       onSave={handleSave}
       onCancel={() => navigate('/admin/payment-requests')}
       isEdit={Boolean(id)}
+      isDuplicate={Boolean(duplicateFrom)}
     />
+    </>
   );
 };
 
