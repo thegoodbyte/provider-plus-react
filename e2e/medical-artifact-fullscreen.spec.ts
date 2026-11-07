@@ -120,7 +120,7 @@ for (const width of [1440, 390])
     });
     await page.goto("/admin/medical-artifacts/artifact-998");
     const openEnglish = page.getByRole("button", {
-      name: "Open English document full screen: english.pdf",
+      name: "View English full screen",
       exact: true,
     });
     await openEnglish.scrollIntoViewIfNeeded();
@@ -186,7 +186,7 @@ for (const width of [1440, 390])
     await expect(openEnglish).toBeFocused();
     await page
       .getByRole("button", {
-        name: "Open original document full screen: original.pdf",
+        name: "View original full screen",
         exact: true,
       })
       .click();

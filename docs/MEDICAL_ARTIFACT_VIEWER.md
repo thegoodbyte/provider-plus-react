@@ -1,7 +1,10 @@
 # Medical artifact full-screen viewer (PPVC-998)
 
-In a medical artifact's Preview section, each original/English PDF or image has
-Full screen. The portal modal fills the viewport above the app navigation.
+On the original medical-artifact record, the English advisor version panel has
+View original full screen and View English full screen beside Generate/Regenerate
+English. English viewing becomes available when the generated file exists; View
+does not regenerate or change data. The Preview section also keeps Full screen
+on each original/English PDF or image. The portal modal fills the viewport above the app navigation.
 Document version selects the exact stored file; the header retains the client
 and artifact identity. Close viewer returns focus to the opening button. Escape
 works from the viewer controls; native embedded PDF controls handle their own
