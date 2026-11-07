@@ -248,3 +248,23 @@ it("can use a server-saved draft when browser recovery storage is unavailable", 
     h.unmount();
   }
 });
+it("loads an explicitly selected duplicate instead of a newer unrelated draft or browser backup", async () => {
+ const selected = '00000000-0000-4000-8000-000000000099';
+ api.list.mockResolvedValue({data:[{draftId,revision:3,status:'draft',payload:{...eight(),title:'Unrelated'}},{draftId:selected,revision:1,status:'draft',payload:eight()}]} as any);
+ localStorage.setItem('ppvc.invoice-draft.v1:staff-a:'+draftId,JSON.stringify({draftId,revision:3,payload:{...eight(),title:'Unsaved unrelated'},updatedAt:Date.now()}));
+ const h=renderHook(()=>{const [payload,setPayload]=useState(empty()); const d=useInvoiceDraft({enabled:true,payload,apply:setPayload,empty,initialClient:null,initialDraftId:selected,onIssued:jest.fn()});return {...d,payload};});
+ await waitFor(()=>expect(h.result.current.ready).toBe(true));
+ expect(h.result.current.draftId).toBe(selected);expect(h.result.current.payload.title).toBe('Eight items');expect(api.save).not.toHaveBeenCalled();
+ expect(localStorage.getItem('ppvc.invoice-draft.v1:staff-a:'+draftId)).toContain('Unsaved unrelated');h.unmount();
+});
+it("fails closed when an explicit draft is unavailable instead of opening another invoice", async () => {
+ const h=renderHook(()=>useInvoiceDraft({enabled:true,payload:empty(),apply:jest.fn(),empty,initialClient:null,initialDraftId:'missing',onIssued:jest.fn()}));
+ await waitFor(()=>expect(h.result.current.error).toContain('Could not load the selected draft'));
+ expect(h.result.current.ready).toBe(false);expect(api.save).not.toHaveBeenCalled();h.unmount();
+});
+it('recovers a newly forked draft from its explicit URL before its first server save',async()=>{
+ const selected='00000000-0000-4000-8000-000000000088';
+ localStorage.setItem('ppvc.invoice-draft.v1:staff-a:'+selected,JSON.stringify({draftId:selected,revision:0,payload:{...eight(),title:'New unsaved copy'},updatedAt:Date.now()}));
+ const h=renderHook(()=>{const [payload,setPayload]=useState(empty());const d=useInvoiceDraft({enabled:true,payload,apply:setPayload,empty,initialClient:null,initialDraftId:selected,onIssued:jest.fn()});return {...d,payload};});
+ await waitFor(()=>expect(h.result.current.ready).toBe(true));expect(h.result.current.draftId).toBe(selected);expect(h.result.current.payload.title).toBe('New unsaved copy');h.unmount();
+});

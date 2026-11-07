@@ -1,0 +1,103 @@
+import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+const file=process.env.PAYMENT_REQUEST_DUPLICATION_FIXTURE,f=file?JSON.parse(fs.readFileSync(file,'utf8')):{};
+test.skip(!file,'Run scripts/run-payment-request-duplication-e2e.cjs with the real built API and MongoDB.');
+test.describe.configure({mode:'serial'});
+for(const width of [1440,390]) test(`duplicate eight invoice rows, preserve drafts and issue new unpaid identity at ${width}px`,async({page,request})=>{
+ test.setTimeout(60000);
+ const seed=await(await request.post(f.url+'/fixture/duplicate-reset')).json();
+ const snapshot=async()=>await(await request.get(f.url+'/fixture/invoice-snapshot')).json();
+ const before=await snapshot(),original=before.requests.find((r:any)=>r._id===seed.sourceId);
+ await page.setViewportSize({width,height:1000});
+ await page.addInitScript(({token,unrelatedId})=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'duplicate-admin',role:'admin',email:'admin@example.invalid'}));localStorage.setItem('ppvc.invoice-draft.v1:duplicate-admin:'+unrelatedId,JSON.stringify({draftId:unrelatedId,revision:1,payload:{title:'Unsaved unrelated draft',currency:'EUR',items:[{type:'charge',description:'Do not overwrite',quantity:1,unitPrice:100}]},updatedAt:Date.now()}));},{token:f.tokens.admin,unrelatedId:seed.unrelatedId});
+ let lostSave=false;
+ const issuance:string[]=[];
+ await page.route('**/*',async route=>{
+  const q=route.request(),u=new URL(q.url());if(!['xhr','fetch'].includes(q.resourceType()))return route.continue();
+  if(['/service-invoice-drafts','/service-payment-requests','/payment-requests','/clients'].some(p=>u.pathname.startsWith(p))){
+   if(!['GET','PUT'].includes(q.method())&&!u.pathname.endsWith('/issue'))throw Error('Unexpected write '+q.method()+' '+u.pathname);
+   if(u.pathname.endsWith('/issue'))issuance.push(u.pathname);
+   const response=await route.fetch({url:f.url+u.pathname+u.search});
+   if(q.method()==='PUT'&&!lostSave){lostSave=true;return route.abort();}
+   return route.fulfill({response});
+  }
+  if(q.method()!=='GET')throw Error('Unexpected write '+u.pathname);
+  return route.fulfill({json:u.pathname.includes('config-summary')||u.pathname.includes('navigation-permissions')?{}:u.pathname==='/environment/status'?{production:true}:[]});
+ });
+ await page.goto('/admin/payment-requests/services/'+seed.sourceId);
+ await expect(page.getByRole('heading',{name:'Eight copied integration items',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Duplicate payment request',exact:true}).click();
+ await expect(page).toHaveURL(/services\/new\?draftId=.*duplicateFrom=/);
+ const copyId=new URL(page.url()).searchParams.get('draftId');expect(copyId).toBeTruthy();
+ await expect(page.getByLabel('Description',{exact:true})).toHaveCount(8);
+ expect(issuance).toHaveLength(0);
+ const afterCopy=await snapshot();expect(afterCopy.requests).toHaveLength(1);expect(afterCopy.drafts).toHaveLength(2);expect(afterCopy.requests[0]).toEqual(original);
+ await page.getByLabel('Description',{exact:true}).nth(4).fill('Edited copied fifth call');
+ await page.getByRole('button',{name:'Save draft now',exact:true}).click();
+ await page.reload();await expect(page.getByLabel('Description',{exact:true}).nth(4)).toHaveValue('Edited copied fifth call');
+ await expect(page.getByLabel('Description',{exact:true}).nth(7)).toHaveValue('Package discount');
+ const preIssue=await snapshot();expect(preIssue.drafts.find((d:any)=>d.draftId===seed.unrelatedId).payload.title).toBe('Unrelated saved draft');
+ expect(await page.evaluate(id=>localStorage.getItem('ppvc.invoice-draft.v1:duplicate-admin:'+id),seed.unrelatedId)).toContain('Unsaved unrelated draft');
+ if(process.env.DUPLICATION_ARTIFACT_DIR)await page.screenshot({path:process.env.DUPLICATION_ARTIFACT_DIR+`/duplicate-draft-${width}.png`,fullPage:true});
+ await page.getByRole('button',{name:'Review request',exact:true}).click();await expect(page.getByText('Ready to issue',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Issue payment request',exact:true}).click();
+ await expect(page).toHaveURL(/services\/[a-f0-9]{24}$/);expect(page.url()).not.toContain(seed.sourceId);
+ const done=await snapshot(),created=done.requests.find((r:any)=>r._id!==seed.sourceId);
+ expect(done.requests).toHaveLength(2);expect(created.lineItems).toHaveLength(8);expect(created.lineItems[4].description).toBe('Edited copied fifth call');
+ expect(created.publicHash).not.toBe(original.publicHash);expect(created.invoiceNumber).not.toBe(original.invoiceNumber);expect(created.status).toBe('pending');expect(created.paymentId).toBeFalsy();expect(created.receiptId).toBeFalsy();
+ expect(done.requests.find((r:any)=>r._id===seed.sourceId)).toEqual(original);expect(done.payments).toEqual(before.payments);expect(done.receipts).toEqual(before.receipts);expect(done.effects.emails).toEqual([]);expect(issuance).toHaveLength(1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ // The list action starts another independent saved draft, without issuing it.
+ await page.goto('/admin/payment-requests');
+ await page.getByRole('button',{name:'Duplicate payment request',exact:true}).first().click();
+ await expect(page).toHaveURL(/services\/new\?draftId=/);expect(new URL(page.url()).searchParams.get('draftId')).not.toBe(copyId);
+ await expect(page.getByLabel('Description',{exact:true})).toHaveCount(8);expect((await snapshot()).requests).toHaveLength(2);
+ const secondCopyId=new URL(page.url()).searchParams.get('draftId');
+ await page.getByRole('button',{name:'New draft',exact:true}).click();
+ await expect.poll(()=>new URL(page.url()).searchParams.get('draftId')).not.toBe(secondCopyId);
+ await page.getByRole('button',{name:'Add custom service',exact:true}).click();
+ await page.getByLabel('Description',{exact:true}).fill('New draft after duplicate');
+ await page.getByRole('button',{name:'Save draft now',exact:true}).click();
+ await page.reload();await expect(page.getByLabel('Description',{exact:true})).toHaveValue('New draft after duplicate');
+ await page.getByRole('button',{name:'Save draft now',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Save draft now',exact:true})).toBeEnabled();
+ await page.goto('/admin/payment-requests');
+ await page.unrouteAll({behavior:'wait'});
+});
+for(const width of [1440,390]) test(`duplicate retreat pricing without booking-default overwrite or paid credit at ${width}px`,async({page,request})=>{
+ test.setTimeout(60000);
+ const reset=await request.post(f.url+'/fixture/duplicate-retreat-reset');expect(reset.ok()).toBe(true);const seed=await reset.json();
+ const snapshot=async()=>await(await request.get(f.url+'/fixture/invoice-snapshot')).json();
+ const before=await snapshot(),retreats=await(await request.get(f.url+'/fixture/duplicate-retreats')).json();
+ await page.setViewportSize({width,height:1000});await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'duplicate-admin',role:'admin'}));},f.tokens.admin);
+ await page.route('**/*',async route=>{
+  const q=route.request(),u=new URL(q.url());if(!['xhr','fetch'].includes(q.resourceType()))return route.continue();
+  const p=u.pathname;
+  if(p.startsWith('/payment-requests')){if(q.method()!=='GET'&&!(q.method()==='POST'&&p==='/payment-requests'))throw Error('Unexpected write '+p);return route.fulfill({response:await route.fetch({url:f.url+p+u.search})});}
+  if(q.method()!=='GET')throw Error('Unexpected write '+p);
+  let data:any=[];
+  if(p.startsWith('/clients'))data=before.clients;
+  else if(p.startsWith('/retreats'))data=retreats;
+  else if(p.startsWith('/bookings'))data=before.bookings;
+  else if(p==='/payment-request-types')data=[{key:'payment',label:'Payment',active:true},{key:'balance',label:'Balance',active:true}];
+  else if(p.startsWith('/payments/client'))data=before.payments;
+  else if(p.includes('plan-settings'))data={depositPercentage:40,balanceDueDaysBeforeRetreat:30};
+  else if(p.includes('convert'))data={usd_amount:110,convertedAmount:110,amount:110};
+  else if(p.includes('room-inventory/payment-accommodation'))data={options:[],rooms:[],configured:false,house:null};
+  else if(p.includes('room-inventory/preference'))data={key:''};
+  else if(p.includes('config-summary')||p.includes('navigation-permissions'))data={};
+  else if(p==='/environment/status')data={production:true};
+  return route.fulfill({json:data});
+ });
+ await page.goto('/admin/payment-requests/'+seed.sourceId);await page.getByRole('button',{name:'Duplicate payment request',exact:true}).click();
+ await expect(page).toHaveURL(/payment-requests\/new\?duplicateFrom=/);
+ await expect(page.getByLabel('Item 8 description',{exact:true})).toHaveValue('Preparation details');
+ await expect(page.getByLabel('Item 6 description',{exact:true})).toHaveValue('Percentage discount');
+ await page.getByLabel('Item 3 description',{exact:true}).fill('Edited copied retreat item');
+ await page.getByRole('button',{name:'Create Request',exact:true}).click();
+ await expect(page).toHaveURL(/\/admin\/payment-requests$/);
+ const after=await snapshot();expect(after.requests).toHaveLength(2);const created=after.requests.find((r:any)=>r._id!==seed.sourceId);
+ expect(created.lineItems).toHaveLength(8);expect(created.requestType).toBe('payment');expect(created.requestedAmount).toBe(110);expect(created.lineItems[5].discountPercent).toBe(10);expect(created.lineItems[2].description).toBe('Edited copied retreat item');expect(created.status).toBe('pending');
+ expect(after.bookings).toEqual(before.bookings);expect(after.payments).toEqual(before.payments);expect(after.receipts).toEqual(before.receipts);expect(after.effects.emails).toEqual([]);
+ expect(created.invoiceNumber).not.toBe(before.requests[0].invoiceNumber);expect(created.publicHash).not.toBe(before.requests[0].publicHash);
+});

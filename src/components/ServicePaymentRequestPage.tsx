@@ -1,3 +1,4 @@
+import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import { Modal } from "antd";
 import { useInvoiceDraft } from "./useInvoiceDraft";
 import { BillingPartyFields, emptyBillingParty } from "./BillingPartyFields";
@@ -37,6 +38,8 @@ export default function ServicePaymentRequestPage() {
   const [invoiceBusy, setInvoiceBusy] = useState(false);
   const location = useLocation();
   const initialClient = new URLSearchParams(location.search).get("clientId");
+  const initialDraftId = new URLSearchParams(location.search).get("draftId");
+  const duplicateFrom = new URLSearchParams(location.search).get("duplicateFrom");
   useEffect(() => {
     if (initialClient) setClient(initialClient);
   }, [initialClient]);
@@ -135,9 +138,17 @@ export default function ServicePaymentRequestPage() {
     apply: applyDraft,
     empty: emptyDraft,
     initialClient,
+    initialDraftId,
     onIssued: (requestId) =>
       navigate(`/admin/payment-requests/services/${requestId}`),
   });
+  useEffect(() => {
+    if (!id && duplicateFrom && draft.ready && draft.draftId && draft.draftId !== initialDraftId) {
+      const query = new URLSearchParams(location.search);
+      query.set('draftId', draft.draftId);
+      navigate({ pathname: location.pathname, search: query.toString() }, { replace: true });
+    }
+  }, [id, duplicateFrom, draft.ready, draft.draftId, initialDraftId, location.pathname, location.search, navigate]);
   const draftAction = async (action: () => Promise<any>) => {
     setBusy(true);
     try {
@@ -271,6 +282,8 @@ export default function ServicePaymentRequestPage() {
           Service & policy settings
         </Link>
       </header>
+      {id && request && <div className="mb-4"><DuplicatePaymentRequestButton request={request}/></div>}
+      {!id && duplicateFrom && <p role="status" className="sr-card">New draft copied from payment request. Review the recipient, items and a new due date before issuing. Nothing has been sent. <Link to={`/admin/payment-requests/services/${encodeURIComponent(duplicateFrom)}`}>View original request</Link></p>}
       {!id && (
         <section className="sr-card" aria-label="Invoice draft">
           <p role="status" aria-live="polite">

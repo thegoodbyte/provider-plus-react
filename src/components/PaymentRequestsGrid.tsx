@@ -1,3 +1,4 @@
+import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import RequestBookingAction from './RequestBookingAction';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
 import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, Plus, Search as SearchIcon, Send as SendIcon, Settings, Slash, Trash2 } from 'lucide-react';
@@ -459,6 +460,7 @@ const PaymentRequestsGrid: React.FC = () => {
                     </td>
                     <td data-label="Actions" className="sticky right-0 whitespace-nowrap border-l border-gray-100 bg-white px-2 py-4">
                       <div className="flex items-center gap-1">
+                        <DuplicatePaymentRequestButton request={request} iconOnly className="icon-action-btn icon-action-btn-edit"/>
                         <button
                           onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`, { state: { returnTo: '/admin/payment-requests' } })}
                           className="icon-action-btn icon-action-btn-success"

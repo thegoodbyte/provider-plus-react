@@ -494,3 +494,12 @@ test('new balance started from a specific booking does not jump to another more 
 });
 
 });
+it('preserves duplicate request pricing/type instead of applying the active booking balance defaults',async()=>{
+ jest.clearAllMocks();
+ (paymentsApi.getPlanSettings as jest.Mock).mockResolvedValue({data:{depositPercentage:40,balanceDueDaysBeforeRetreat:30}});
+ setUp({bookings:[{_id:'chosen',clientId:'client-1',retreatId:'retreat-1',totalAmount:9500,amountPaid:1000,currency:'EUR'}]});
+ render(<PaymentRequestForm isDuplicate paymentRequest={{clientId:'client-1',retreatId:'retreat-1',bookingId:'chosen',requestType:'payment',baseBookingPrice:100,requestedAmount:100,fullPrice:100,currency:'EUR',status:'pending'}} onSave={jest.fn()} onCancel={jest.fn()}/>);
+ await waitFor(()=>expect(screen.getByLabelText('Invoice Number')).toHaveValue('2001'));
+ expect(screen.getByLabelText('Request Type')).toHaveValue('payment');expect(screen.getByLabelText('Requested Amount *')).toHaveValue(100);
+ expect(bookingsApi.getByClient).not.toHaveBeenCalled();
+});

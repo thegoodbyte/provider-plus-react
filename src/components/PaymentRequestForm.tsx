@@ -27,6 +27,7 @@ interface PaymentRequestFormProps {
   onSave: (data: Omit<PaymentRequest, '_id'> & { finalPaymentRequestPreview?: FinalPaymentRequestPreview }) => Promise<void>;
   onCancel: () => void;
   isEdit?: boolean;
+  isDuplicate?: boolean;
 }
 
 const defaultDate = () => todayDateInputValue();
@@ -65,6 +66,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   onSave,
   onCancel,
   isEdit = false,
+  isDuplicate = false,
 }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
@@ -188,7 +190,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isEdit || !formData.clientId) return;
+    if (isEdit || isDuplicate || !formData.clientId) return;
     let active = true;
     setBookingDefaultsLoading(true);
     setBookingDefaultsMessage('');
@@ -241,7 +243,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       if (active) setBookingDefaultsLoading(false);
     });
     return () => { active = false; };
-  }, [formData.clientId, isEdit]);
+  }, [formData.clientId, isEdit, isDuplicate]);
 
   // PPVC-?: the active-booking-default fill above is silent and forceful --
   // it auto-switches request type to "balance" and locks the price to the
@@ -852,6 +854,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                         <option value="info">Information only</option>
                       </select>
                       <input
+                        aria-label={`Item ${index + 1} description`}
                         value={item.description}
                         onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, description: event.target.value } : row))}
                         placeholder={item.type === 'charge' ? 'Robert — retreat stay' : item.type === 'info' ? 'Retreat dates or payment context' : 'Shared-room discount'}
