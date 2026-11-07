@@ -1,7 +1,8 @@
+import MedicalArtifactDocumentViewer from './MedicalArtifactDocumentViewer';
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Download, Edit, Eye, Plus, Save, Trash2, Upload, Zap } from 'lucide-react';
+import { ArrowLeft, Camera, Download, Edit, Eye, Maximize2, Plus, Save, Trash2, Upload, Zap } from 'lucide-react';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, RetreatClient } from '../types';
@@ -160,7 +161,8 @@ const getReviewDecision = (request: MedicalReviewRequest) =>
 const MedicalArtifactInlinePreview: React.FC<{
   artifactId: string;
   file: NonNullable<MedicalArtifact['files']>[number];
-}> = ({ artifactId, file }) => {
+  onOpen: () => void;
+}> = ({ artifactId, file, onOpen }) => {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [contentType, setContentType] = useState(file.mimeType || '');
   const [isLoading, setIsLoading] = useState(true);
@@ -186,6 +188,7 @@ const MedicalArtifactInlinePreview: React.FC<{
         setError(null);
         const response = await medicalArtifactsApi.getFileBlob(artifactId, storedPath);
         const blob = response.data as Blob;
+        if (!active) return;
         createdUrl = URL.createObjectURL(blob);
         if (active) {
           setContentType(String(blob.type || response.headers?.['content-type'] || file.mimeType || ''));
@@ -214,8 +217,9 @@ const MedicalArtifactInlinePreview: React.FC<{
       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-semibold text-gray-900">{fileName}</div>
-          <div className="text-xs text-gray-500">{contentType || file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
+          <div className="text-xs text-gray-500">{file.variant === 'english_translation' ? 'English version' : 'Original version'} · {contentType || file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
         </div>
+        <button type="button" onClick={onOpen} aria-label={`Open ${file.variant === 'english_translation' ? 'English' : 'original'} document full screen: ${fileName}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-teal-700 px-3 py-2 text-sm font-semibold text-teal-800"><Maximize2 size={16} aria-hidden="true"/>Full screen</button>
       </div>
 
       <div className="flex min-h-[360px] items-center justify-center rounded-md border border-gray-100 bg-gray-50">
@@ -251,6 +255,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
   const isEditMode = location.pathname.endsWith('/edit');
   const [artifact, setArtifact] = useState<MedicalArtifact | null>(null);
+  const [viewerPath, setViewerPath] = useState<string | null>(null);
+  useEffect(() => setViewerPath(null), [id]);
   const [captureMode, setCaptureMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -868,6 +874,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
 
   return (
     <div className="medical-artifact-page -mx-4 px-4 pb-6 sm:mx-0 sm:p-6">
+      {viewerPath && <MedicalArtifactDocumentViewer key={artifactId} artifactId={artifactId} files={previewFiles} initialPath={viewerPath} identity={`${clientLabel} · Record #${artifact.display_id || artifactId}`} onClose={() => setViewerPath(null)}/>}
       <MrrCreatedModal request={createdMrr} onDismiss={() => setCreatedMrr(null)} onViewMrr={() => { setCreatedMrr(null); if (createdMrr) navigate(`${routePrefix}/medical-review-requests/${createdMrr._id}`, { state: location.state }); }} onBackToArtifacts={() => navigate(location.state?.artifactReturnTo || `${routePrefix}/medical-artifacts`, { state: location.state })} />
       <div className="medical-artifact-page-actions mb-4 flex items-start justify-between gap-3 sm:mb-6">
         <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
@@ -1149,6 +1156,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
                     key={`${getFileStoredPath(file)}-${index}`}
                     artifactId={artifactId}
                     file={file}
+                    onOpen={() => setViewerPath(getFileStoredPath(file))}
                   />
                 ))}
               </div>
