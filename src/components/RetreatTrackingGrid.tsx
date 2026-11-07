@@ -1,5 +1,5 @@
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { Modal } from 'antd';
@@ -9,6 +9,7 @@ import LoadingSpinner from './LoadingSpinner';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import RetreatMedicalGridPrint, { currentPreparationItems } from './RetreatMedicalGridPrint';
 import {
   buildRetreatMedicalGridData,
   mergeMedicalReviewRequests,
@@ -66,7 +67,10 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [historyView, setHistoryView] = useState<{ cell: RetreatMedicalCell; clientName: string; stage: string } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [printSnapshot, setPrintSnapshot] = useState<{ retreatId: string; data: RetreatMedicalGridData; preparationItems: any[]; generatedAt: string } | null>(null);
   const [requestingKey, setRequestingKey] = useState('');
+  const requestVersion = useRef(0);
+  const [loadedRetreatId, setLoadedRetreatId] = useState('');
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
 
   useEffect(() => {
@@ -84,8 +88,10 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   }, [isFullscreen]);
 
   const fetchGridData = useCallback(async () => {
+    const version = ++requestVersion.current;
     try {
       setIsLoading(true);
+      setPrintSnapshot(null);
       const [bookingsResponse, artifactsResponse, reviewsResponse, bookingFlowItemsResponse] = await Promise.all([
         bookingsApi.getByRetreatWithDetails(retreatId),
         medicalArtifactsApi.getAll({ retreatId }),
@@ -95,6 +101,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
       const artifactIds = (artifactsResponse.data || []).map((artifact: any) => artifact._id).filter(Boolean);
       const artifactReviewsResponse = await medicalReviewRequestsApi.getByArtifacts(artifactIds);
       const reviews = mergeMedicalReviewRequests(reviewsResponse.data || [], artifactReviewsResponse.data || []);
+      if (version !== requestVersion.current) return;
 
       const bookings = (bookingsResponse.data || []) as RetreatClient[];
       const retreatFromBookings = bookings
@@ -102,6 +109,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
         .find((value) => value && typeof value === 'object') as Retreat | undefined;
 
       setRetreat(retreatFromBookings || null);
+      setLoadedRetreatId(retreatId);
       setPreparationItems(bookingFlowItemsResponse.data || []);
       setGridData(
         buildRetreatMedicalGridData(
@@ -113,11 +121,12 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
         ),
       );
     } catch (error) {
+      if (version !== requestVersion.current) return;
       console.error('Error fetching retreat medical grid:', error);
       setGridData(null);
       setRetreat(null);
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) setIsLoading(false);
     }
   }, [retreatId]);
 
@@ -139,6 +148,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
 
   useEffect(() => {
     fetchGridData();
+    return () => { requestVersion.current += 1; };
   }, [fetchGridData]);
 
   const summaryCards = useMemo(() => {
@@ -229,11 +239,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   };
 
   const renderPreparationCalendar = (client: any) => {
-    const items = preparationItems.filter(item => String(item.bookingId?._id || item.bookingId) === client.bookingId && item.metadata?.medicationStopPlan && item.status !== 'cancelled');
-    const editable = items.filter(item => ['draft', 'approved'].includes(item.metadata?.planLifecycle));
-    const candidates = editable.length ? editable : items.filter(item => !item.metadata?.planLifecycle || item.metadata.planLifecycle === 'published');
-    const version = Math.max(0, ...candidates.map(item => Number(item.metadata?.planVersion || 0)));
-    const current = candidates.filter(item => Number(item.metadata?.planVersion || 0) === version);
+    const current = currentPreparationItems(preparationItems, client.bookingId);
     return client.bookingId && <div className="mt-2 text-xs"><Link to={`/${routePrefix}/bookings/${client.bookingId}/medication-stop-plan`} className="font-semibold underline">Medical Preparation Calendar</Link><p>{current.length ? `${current[0].metadata?.planLifecycle || 'published'} · ${current.length} item(s)` : 'No preparation decision'}</p>{current.slice(0, 3).map(item => <p key={item._id}>{item.dueDate?.slice(0,10)} · {item.title}</p>)}</div>;
   };
 
@@ -263,7 +269,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
     );
   };
 
-  if (isLoading) {
+  if (isLoading || (gridData && loadedRetreatId !== retreatId)) {
     return <LoadingSpinner message="Loading medical grid..." />;
   }
 
@@ -279,6 +285,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
 
   return (
     <div className={`retreat-medical-grid${isFullscreen ? ' medical-grid-fullscreen' : ''}`}>
+      {printSnapshot?.retreatId === retreatId && <RetreatMedicalGridPrint {...printSnapshot} onClose={() => setPrintSnapshot(null)} />}
       <Toast toast={toast} onDismiss={dismissToast} />
       <Modal
         title={historyView ? `${historyView.clientName} · ${historyView.stage} history` : 'Medical history'}
@@ -330,6 +337,9 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
           </p>
         </div>
         <div className="medical-grid-header-actions">
+          <button type="button" className="medical-grid-refresh-btn" onClick={() => setPrintSnapshot({ retreatId, data: gridData, preparationItems, generatedAt: new Date().toISOString() })}>
+            Print medical grid
+          </button>
           <button type="button" onClick={() => setIsFullscreen((current) => !current)} className="medical-grid-refresh-btn" aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}>
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             {isFullscreen ? 'Exit full screen' : 'Full screen'}
