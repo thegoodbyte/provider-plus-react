@@ -11,7 +11,7 @@ beforeEach(() => {
 it('opens the saved/generated PDF in the viewer and provides a download', async () => {
   render(<ScreeningPdfViewer clientId="client-1" onClose={jest.fn()} />);
   expect(await screen.findByTitle('Screening PDF document')).toHaveAttribute('src', 'blob:pdf-1');
-  expect(clientsApi.viewScreeningPdf).toHaveBeenCalledWith('client-1'); expect(clientsApi.regenerateScreeningPdf).not.toHaveBeenCalled();
+  expect(clientsApi.viewScreeningPdf).toHaveBeenCalledWith('client-1', 'view'); expect(clientsApi.regenerateScreeningPdf).not.toHaveBeenCalled();
   expect(screen.getByRole('link', { name: 'Download PDF' })).toHaveAttribute('href', 'blob:pdf-1');
 });
 it('regenerates and replaces the preview, revoking the previous blob', async () => {
@@ -47,4 +47,23 @@ it('rejects an HTML error page returned with status 200', async () => {
   (clientsApi.viewScreeningPdf as jest.Mock).mockResolvedValue({ data: new Blob(['error page'], { type: 'text/html' }) });
   render(<ScreeningPdfViewer clientId="client-1" onClose={jest.fn()} />); await screen.findByRole('alert');
   expect(URL.createObjectURL).not.toHaveBeenCalled();
+});
+
+it('switches to print-friendly, downloads the chosen version, and regenerates that mode', async () => {
+  render(<ScreeningPdfViewer clientId="client-1" onClose={jest.fn()} />); await screen.findByTitle('Screening PDF document');
+  fireEvent.click(screen.getByRole('button', {name:'Print-friendly'}));
+  await waitFor(() => expect(clientsApi.viewScreeningPdf).toHaveBeenLastCalledWith('client-1','print'));
+  expect(screen.getByRole('link',{name:'Download PDF'})).toHaveAttribute('download','screening-print.pdf');
+  expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-1');
+  fireEvent.click(screen.getByRole('button',{name:'Regenerate'}));
+  await waitFor(() => expect(clientsApi.regenerateScreeningPdf).toHaveBeenLastCalledWith('client-1','print'));
+});
+it('does not expose graphical PDF as print output when switching fails and retries the selected mode', async () => {
+  render(<ScreeningPdfViewer clientId="client-1" onClose={jest.fn()} />); await screen.findByTitle('Screening PDF document');
+  (clientsApi.viewScreeningPdf as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+  fireEvent.click(screen.getByRole('button',{name:'Print-friendly'}));await screen.findByRole('alert');
+  expect(screen.queryByTitle('Screening PDF document')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link',{name:'Download PDF'})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Retry'}));await screen.findByTitle('Screening PDF document');
+  expect(clientsApi.viewScreeningPdf).toHaveBeenLastCalledWith('client-1','print');
 });

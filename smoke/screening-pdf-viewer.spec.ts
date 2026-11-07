@@ -13,7 +13,7 @@ test.beforeEach(async ({ page, baseURL }) => {
     if (url.origin === new URL(baseURL!).origin) return route.continue();
     const path = url.pathname.replace(/^\/api(?=\/)/, '');
     if (path.startsWith(`/clients/${clientId}/screening/pdf`)) {
-      const response = await route.fetch({ url: fixture + path });
+      const response = await route.fetch({ url: fixture + path + url.search });
       return route.fulfill({ response });
     }
     let data: any = [];
@@ -28,7 +28,7 @@ test.beforeEach(async ({ page, baseURL }) => {
 
 async function openViewer(page: any) {
   await page.goto(`/admin/clients/${clientId}/screening`);
-  const pdfResponse = page.waitForResponse((r: any) => r.url().endsWith(`/clients/${clientId}/screening/pdf`) && r.request().method() === 'GET');
+  const pdfResponse = page.waitForResponse((r: any) => r.url().split('?')[0].endsWith(`/clients/${clientId}/screening/pdf`) && r.request().method() === 'GET');
   await page.getByRole('button', { name: 'PDF', exact: true }).click();
   const response = await pdfResponse;
   expect(response.status()).toBe(200);
