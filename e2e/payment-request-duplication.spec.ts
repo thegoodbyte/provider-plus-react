@@ -59,6 +59,10 @@ for(const width of [1440,390]) test(`duplicate eight invoice rows, preserve draf
  await page.getByLabel('Description',{exact:true}).fill('New draft after duplicate');
  await page.getByRole('button',{name:'Save draft now',exact:true}).click();
  await page.reload();await expect(page.getByLabel('Description',{exact:true})).toHaveValue('New draft after duplicate');
+ await page.getByRole('button',{name:'Save draft now',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Save draft now',exact:true})).toBeEnabled();
+ await page.goto('/admin/payment-requests');
+ await page.unrouteAll({behavior:'wait'});
 });
 for(const width of [1440,390]) test(`duplicate retreat pricing without booking-default overwrite or paid credit at ${width}px`,async({page,request})=>{
  test.setTimeout(60000);
