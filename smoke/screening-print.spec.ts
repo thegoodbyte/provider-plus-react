@@ -1,0 +1,30 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+const fixturePath=process.env.SCREENING_PRINT_FIXTURE;
+for(const width of [1440,390])test(`choose graphical or print PDF and regenerate at ${width}px`,async({page,request,baseURL})=>{
+ test.skip(!fixturePath,'Start the real screening-print fixture first');
+ const f=JSON.parse(fs.readFileSync(fixturePath!,'utf8'));const id=f.ids.client;
+ const initial=await(await request.get(f.url+'/fixture/snapshot')).json();
+ await page.setViewportSize({width,height:1000});
+ await page.addInitScript(token=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'fixture',role:'admin',email:'admin@example.invalid'}))},f.tokens.admin);
+ await page.route('**/*',async route=>{
+  const u=new URL(route.request().url());if(u.origin===new URL(baseURL!).origin&&!u.pathname.startsWith('/api/'))return route.continue();
+  const p=u.pathname.replace(/^\/api(?=\/)/,'');
+  if(p===`/clients/${id}`||p.startsWith(`/clients/${id}/screening/pdf`))return route.fulfill({response:await route.fetch({url:f.url+p+u.search})});
+  let data:any=[];if(p==='/environment/status')data={production:true};if(p==='/users/navigation-permissions'||p==='/config-summary')data={};if(p==='/submission-notifications/unread-count')data={count:0};if(p.startsWith('/room-inventory/'))data=p.endsWith('/options')?[]:null;return route.fulfill({json:data});
+ });
+ await page.goto(`/admin/clients/${id}/screening`);await page.getByRole('button',{name:'PDF',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Screening PDF'});await expect(dialog.getByTitle('Screening PDF document')).toHaveAttribute('src',/^blob:/);
+ await expect(dialog.getByRole('button',{name:'View · graphical'})).toHaveAttribute('aria-pressed','true');
+ const waitPrint=page.waitForResponse(r=>r.url().includes('/screening/pdf?mode=print')&&r.request().method()==='GET');
+ await dialog.getByRole('button',{name:'Print-friendly',exact:true}).click();const response=await waitPrint;expect(response.status()).toBe(200);expect((await response.body()).subarray(0,5).toString()).toBe('%PDF-');
+ await expect(dialog.getByRole('link',{name:'Download PDF',exact:true})).toHaveAttribute('download','screening-print.pdf');
+ const previous=await dialog.getByTitle('Screening PDF document').getAttribute('src');
+ await dialog.getByRole('button',{name:'Regenerate',exact:true}).click();await expect(dialog.getByTitle('Screening PDF document')).not.toHaveAttribute('src',previous!);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+ if(process.env.SCREENING_PRINT_ARTIFACTS)await page.screenshot({path:path.join(process.env.SCREENING_PRINT_ARTIFACTS,`viewer-${width}.png`)});
+ await dialog.getByRole('button',{name:'View · graphical'}).click();await expect(dialog.getByRole('link',{name:'Download PDF',exact:true})).toHaveAttribute('download','screening.pdf');
+ await dialog.getByRole('button',{name:'Close PDF viewer'}).click();await page.reload();await page.getByRole('button',{name:'PDF',exact:true}).click();await expect(dialog.getByRole('button',{name:'View · graphical'})).toHaveAttribute('aria-pressed','true');
+ expect(await(await request.get(f.url+'/fixture/snapshot')).json()).toEqual(initial);
+});
