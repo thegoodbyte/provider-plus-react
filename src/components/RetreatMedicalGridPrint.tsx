@@ -1,7 +1,22 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RetreatMedicalGridData } from "./RetreatMedicalGrid.helpers";
 import "./RetreatMedicalGridPrint.css";
+import { ceremoniesApi } from "../services/api";
+import { CeremonyParticipant } from "../types";
+import { AlertTriangle, CheckCircle2, CircleHelp, HeartPulse, Leaf, Pill, XCircle } from "lucide-react";
+
+const objectId = (value: any): string => String(value?._id || value || "");
+type CeremonyNotes = { ceremonyNumber: number; participants: CeremonyParticipant[] };
+const checksFor = (participant: CeremonyParticipant) => participant.preCeremonyChecks?.length
+  ? participant.preCeremonyChecks
+  : (participant.preCeremonyEkg || participant.preCeremonyBloodPressure || participant.medicalClearanceNotes)
+    ? [{ preCeremonyEkg: participant.preCeremonyEkg, preCeremonyBloodPressure: participant.preCeremonyBloodPressure, medicalClearance: participant.medicalClearance, medicalClearanceNotes: participant.medicalClearanceNotes }]
+    : [];
+const Status = ({ tone, children }: { tone?: string; children: React.ReactNode }) => {
+  const Icon = tone === "green" ? CheckCircle2 : tone === "yellow" ? AlertTriangle : tone === "red" ? XCircle : CircleHelp;
+  return <strong className={`medical-print-status medical-print-${tone || "neutral"}`}><Icon size={14} aria-hidden="true" />{children}</strong>;
+};
 
 // Use the same current plan selection in the interactive grid and printed snapshot.
 export const currentPreparationItems = (items: any[], bookingId: string) => {
@@ -31,6 +46,7 @@ export const currentPreparationItems = (items: any[], bookingId: string) => {
 };
 
 interface Props {
+  retreatId: string;
   data: RetreatMedicalGridData;
   preparationItems: any[];
   generatedAt: string;
@@ -38,6 +54,7 @@ interface Props {
 }
 
 export default function RetreatMedicalGridPrint({
+  retreatId,
   data,
   preparationItems,
   generatedAt,
@@ -68,10 +85,27 @@ export default function RetreatMedicalGridPrint({
       opener?.focus();
     };
   }, []);
-  const groups = Array.from(
-    { length: Math.ceil(data.clients.length / 3) },
-    (_, i) => i * 3,
-  );
+  const [ceremonies, setCeremonies] = useState<CeremonyNotes[]>([]);
+  const [checksState, setChecksState] = useState<"loading" | "ready" | "error">("loading");
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setChecksState("loading");
+    setCeremonies([]);
+    (async () => {
+      try {
+        const response = await ceremoniesApi.getByRetreat(retreatId);
+        const relevant = response.data.filter(c => [1, 2].includes(c.ceremonyNumber) && c.status !== "cancelled" && (!c.retreatId || objectId(c.retreatId) === retreatId));
+        const loaded = await Promise.all(relevant.map(async c => {
+          if (!c._id) throw new Error("Missing ceremony identity");
+          const result = await ceremoniesApi.getParticipants(c._id);
+          return { ceremonyNumber: c.ceremonyNumber, participants: result.data.filter(p => objectId(p.ceremonyId) === c._id && (!p.retreatId || objectId(p.retreatId) === retreatId)) };
+        }));
+        if (active) { setCeremonies(loaded); setChecksState("ready"); }
+      } catch { if (active) setChecksState("error"); }
+    })();
+    return () => { active = false; };
+  }, [retreatId, attempt]);
   return createPortal(
     <div
       ref={dialog}
@@ -98,133 +132,67 @@ export default function RetreatMedicalGridPrint({
       <div className="retreat-medical-print-toolbar">
         <div>
           <strong>Medical grid print preview</strong>
-          <p>Landscape A4 · up to 3 guests per group · full notes</p>
+          <p>Portrait A4 · clients in rows · full notes</p>
         </div>
-        <button type="button" onClick={() => window.print()}>
+        <button type="button" disabled={checksState !== "ready"} onClick={() => window.print()}>
           Print / Save PDF
         </button>
         <button ref={close} type="button" onClick={onClose}>
           Close preview
         </button>
       </div>
+      {checksState === "loading" && <p role="status" className="medical-print-message">Loading preceremony checks…</p>}
+      {checksState === "error" && <div role="alert" className="medical-print-message">Unable to load preceremony checks. Printing is unavailable until the checks load. <button onClick={() => setAttempt(n => n + 1)}>Retry checks</button></div>}
       <div className="retreat-medical-print-pages">
-        {groups.map((start) => (
-          <section className="retreat-medical-print-sheet" key={start}>
-            <table>
-              <colgroup>
-                <col style={{ width: "16%" }} />
-                {data.clients.slice(start, start + 3).map((client) => (
-                  <col key={client.bookingId} />
-                ))}
-              </colgroup>
+        {data.clients.map((client, index) => {
+          const items = currentPreparationItems(preparationItems, client.bookingId);
+          const cells = data.rows.map(row => row.cells[index]);
+          const long = cells.some(c => (c.notes?.length || 0) > 500);
+          return <section className="retreat-medical-print-sheet" key={client.bookingId}>
+            <table aria-label={`Medical checks for ${client.clientName}`}>
+              <colgroup><col style={{width: "19%"}} /><col /><col /><col /></colgroup>
               <thead>
+                <tr><td className="retreat-medical-print-heading" colSpan={4}>
+                  <h1>Medical Grid · {data.retreatCode}</h1>
+                  <p className="retreat-medical-print-meta">{data.retreatName} · Generated {new Date(generatedAt).toLocaleString()} · Client {index + 1} of {data.clients.length}</p>
+                </td></tr>
                 <tr>
-                  <td
-                    className="retreat-medical-print-heading"
-                    colSpan={Math.min(3, data.clients.length - start) + 1}
-                  >
-                    <h1>Medical Grid · {data.retreatCode}</h1>
-                    <p className="retreat-medical-print-meta">
-                      {data.retreatName} · Generated{" "}
-                      {new Date(generatedAt).toLocaleString()} · Guests{" "}
-                      {start + 1}-{Math.min(start + 3, data.clients.length)} of{" "}
-                      {data.clients.length}
-                    </p>
-                  </td>
-                </tr>
-                <tr>
-                  <th scope="col">Medical stage</th>
-                  {data.clients.slice(start, start + 3).map((client) => (
-                    <th scope="col" key={client.bookingId}>
-                      <strong>{client.clientName}</strong>
-                      <div>
-                        {client.clientDisplayId
-                          ? `Client #${client.clientDisplayId}`
-                          : "Client number unavailable"}
-                      </div>
-                      <div>Booking #{client.bookingNumber}</div>
-                    </th>
-                  ))}
+                  <th scope="col"><strong>{client.clientName}</strong><div>{client.clientDisplayId ? `Client #${client.clientDisplayId}` : "Client number unavailable"}</div><div>Booking #{client.bookingNumber}</div></th>
+                  <th scope="col"><span className="medical-print-column medical-print-ekg"><HeartPulse aria-hidden="true" size={18} /> EKG</span></th>
+                  <th scope="col"><span className="medical-print-column medical-print-liver"><Leaf aria-hidden="true" size={18} /> Liver</span></th>
+                  <th scope="col"><span className="medical-print-column medical-print-meds"><Pill aria-hidden="true" size={18} /> Medications</span></th>
                 </tr>
               </thead>
               <tbody>
-                {data.rows.map((row) => (
-                  <tr
-                    key={row.key}
-                    className={
-                      row.cells
-                        .slice(start, start + 3)
-                        .some((cell) => (cell.notes?.length || 0) > 900)
-                        ? "medical-print-long-row"
-                        : "medical-print-short-row"
-                    }
-                  >
-                    <th scope="row">{row.label}</th>
-                    {row.cells.slice(start, start + 3).map((cell, index) => (
-                      <td key={data.clients[start + index].bookingId}>
-                        <strong>
-                          {cell.status === "missing"
-                            ? "Missing"
-                            : cell.status === "artifact_only"
-                              ? "Artifact only"
-                              : cell.decisionLabel ||
-                                (cell.status === "pending"
-                                  ? "Pending"
-                                  : "Reviewed")}
-                        </strong>
-                        <div>{cell.reviewLabel || "No MRR yet"}</div>
-                        {cell.artifact && (
-                          <div>
-                            Artifact #
-                            {cell.artifact.display_id ||
-                              cell.artifact._id?.slice(-6) ||
-                              "unavailable"}
-                          </div>
-                        )}
-                        <div>Submitted {cell.submittedAt || "-"}</div>
-                        <p className="retreat-medical-print-notes">
-                          {cell.notes?.trim() || "No notes yet."}
-                        </p>
-                        {cell.documentRequestedAt && (
-                          <div>Requested {cell.documentRequestedAt}</div>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                <tr>
-                  <th scope="row">Medical preparation</th>
-                  {data.clients.slice(start, start + 3).map((client) => {
-                    const items = currentPreparationItems(
-                      preparationItems,
-                      client.bookingId,
-                    );
-                    return (
-                      <td key={client.bookingId}>
-                        {items.length ? (
-                          <>
-                            <strong>
-                              {items[0].metadata?.planLifecycle || "published"}{" "}
-                              · version {items[0].metadata?.planVersion || 0}
-                            </strong>
-                            {items.map((item) => (
-                              <p key={item._id}>
-                                {item.dueDate?.slice(0, 10) || "Unscheduled"} ·{" "}
-                                {item.title}
-                              </p>
-                            ))}
-                          </>
-                        ) : (
-                          "No preparation decision"
-                        )}
-                      </td>
-                    );
-                  })}
+                <tr className={long ? "medical-print-long-row" : "medical-print-short-row"}>
+                  <th scope="row">Medical results</th>
+                  {cells.map((cell, i) => <td key={data.rows[i].key}>
+                    <Status tone={cell.decisionTone}>{cell.status === "missing" ? "Missing" : cell.status === "artifact_only" ? "Artifact only" : cell.decisionLabel || (cell.status === "pending" ? "Pending" : "Reviewed")}</Status>
+                    <div>{cell.reviewLabel || "No MRR yet"}</div>
+                    {cell.artifact && <div>Artifact #{cell.artifact.display_id || cell.artifact._id?.slice(-6) || "unavailable"}</div>}
+                    <div>Submitted {cell.submittedAt || "-"}</div>
+                    <p className="retreat-medical-print-notes">{cell.notes?.trim() || "No notes yet."}</p>
+                    {cell.documentRequestedAt && <div>Requested {cell.documentRequestedAt}</div>}
+                  </td>)}
                 </tr>
+                {[1, 2].map(number => {
+                  const checks = ceremonies.filter(c => c.ceremonyNumber === number).flatMap(c => c.participants.filter(p => objectId(p.clientId) === client.clientId).flatMap(checksFor));
+                  return <tr key={number}><th scope="row">Preceremony {number}</th><td colSpan={3}>
+                    {checksState !== "ready" ? "Checks unavailable — load before printing" : checks.length ? checks.map((check, i) => <div className="medical-print-check" key={i}>
+                      <Status tone={check.medicalClearance === "approved" ? "green" : check.medicalClearance === "conditional" ? "yellow" : check.medicalClearance === "not_approved" ? "red" : "neutral"}>Check {i + 1} · {check.medicalClearance || "pending"}</Status>
+                      <p>EKG: {check.preCeremonyEkg?.notes?.trim() || "No notes recorded."}</p>
+                      <p>Blood pressure: {check.preCeremonyBloodPressure?.notes?.trim() || "No notes recorded."}</p>
+                      <p>Clearance: {check.medicalClearanceNotes?.trim() || "No notes recorded."}</p>
+                    </div>) : "No checks recorded."}
+                  </td></tr>;
+                })}
+                <tr><th scope="row">Medical preparation</th><td colSpan={3}>
+                  {items.length ? <><strong>{items[0].metadata?.planLifecycle || "published"} · version {items[0].metadata?.planVersion || 0}</strong>{items.map(item => <p key={item._id}>{item.dueDate?.slice(0,10) || "Unscheduled"} · {item.title}</p>)}</> : "No preparation decision"}
+                </td></tr>
               </tbody>
             </table>
-          </section>
-        ))}
+          </section>;
+        })}
       </div>
     </div>,
     document.body,

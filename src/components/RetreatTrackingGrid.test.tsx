@@ -2,9 +2,10 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
-import { bookingFlowApi, bookingsApi, documentRequestsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { ceremoniesApi, bookingFlowApi, bookingsApi, documentRequestsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
+  ceremoniesApi: { getByRetreat: jest.fn(), getParticipants: jest.fn() },
   bookingsApi: { getByRetreatWithDetails: jest.fn() },
   medicalArtifactsApi: { getAll: jest.fn() },
   medicalReviewRequestsApi: { getAll: jest.fn(), getByArtifacts: jest.fn() },
@@ -16,6 +17,7 @@ jest.mock('antd', () => ({ Modal: ({ open, children }: any) => open ? <div>{chil
 describe('RetreatTrackingGrid MRR actions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (ceremoniesApi.getByRetreat as jest.Mock).mockResolvedValue({data: []});
     (bookingsApi.getByRetreatWithDetails as jest.Mock).mockResolvedValue({ data: [{
       _id: 'booking-1', bookingNumber: 1248, status: 'confirmed',
       clientId: { _id: 'client-1', firstName: 'Agnieszka', lastName: 'Nowak', display_id: 1197 },
@@ -45,6 +47,7 @@ describe('RetreatTrackingGrid MRR actions', () => {
     expect(within(preview).getByText('Client #1197')).toBeInTheDocument();
     expect(within(preview).getByText('MRR #1105')).toBeInTheDocument();
     expect(within(preview).queryByRole('link')).not.toBeInTheDocument();
+    await waitFor(() => expect(within(preview).getByRole('button', {name: 'Print / Save PDF'})).toBeEnabled());
     fireEvent.click(within(preview).getByRole('button', { name: 'Print / Save PDF' }));
     expect(print).toHaveBeenCalledTimes(1);
     expect(documentRequestsApi.requestMissingDocument).not.toHaveBeenCalled();

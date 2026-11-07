@@ -68,6 +68,12 @@ for (const width of [1440, 390])
             },
           ],
         });
+      if (p === "/ceremonies/retreat/r999") return route.fulfill({ json: [{_id: "cer1", ceremonyNumber: 1, retreatId: "r999"}, {_id: "cer2", ceremonyNumber: 2, retreatId: "r999"}] });
+      if (p === "/ceremonies/cer1/participants") return route.fulfill({json: [
+        {ceremonyId: "cer1", clientId: "c0", retreatId: "r999", preCeremonyChecks: [{medicalClearance: "conditional", preCeremonyEkg: {notes: "Ceremony one caution"}, preCeremonyBloodPressure: {notes: "BP recheck instruction"}, medicalClearanceNotes: "Full clearance note"}, {medicalClearanceNotes: "Repeated check preserved"}]},
+        {ceremonyId: "cer1", clientId: "c0", retreatId: "other", medicalClearanceNotes: "Wrong retreat note"}
+      ]});
+      if (p === "/ceremonies/cer2/participants") return route.fulfill({json: [{ceremonyId: "cer2", clientId: {_id: "c0"}, retreatId: "r999", medicalClearance: "approved", medicalClearanceNotes: "Ceremony two clearance"}]});
       if (p === "/retreats/r999") return route.fulfill({ json: retreat });
       if (p === "/retreats") return route.fulfill({ json: [retreat] });
       return route.fulfill({ json: [] });
@@ -79,11 +85,14 @@ for (const width of [1440, 390])
       name: "Medical grid print preview",
     });
     await expect(preview).toBeVisible();
-    await expect(preview.getByRole("table")).toHaveCount(3);
+    await expect(preview.getByRole("table")).toHaveCount(7);
     await expect(preview.getByText(note, { exact: true })).toHaveCount(1);
     await expect(
       preview.getByText("Booking #1306", { exact: true }),
     ).toHaveCount(1);
+    await expect(preview.getByText("Ceremony one caution", {exact: false})).toBeVisible();
+    await expect(preview.getByText("Ceremony two clearance", {exact: false})).toBeVisible();
+    await expect(preview.getByText("Wrong retreat note", {exact: false})).toHaveCount(0);
     await preview.getByRole("button", { name: "Print / Save PDF" }).click();
     expect(await page.evaluate(() => (window as any).__prints)).toBe(1);
     await page.screenshot({

@@ -42,7 +42,7 @@
 }
 .retreat-medical-print-sheet {
   box-sizing: border-box;
-  width: 1100px;
+  width: 760px;
   padding: 28px;
   margin: 0 auto 24px;
   background: white;
@@ -73,7 +73,7 @@
   background: #e7f2ee;
 }
 .retreat-medical-print-sheet th:first-child {
-  width: 16%;
+  width: 19%;
 }
 .retreat-medical-print-sheet p {
   white-space: pre-wrap;
@@ -82,7 +82,7 @@
   margin: 10px 0;
 }
 @page retreat-medical-grid {
-  size: A4 landscape;
+  size: A4 portrait;
   margin: 8mm;
 }
 @media print {
@@ -115,7 +115,8 @@
     width: 100%;
     padding: 0;
     margin: 0;
-    break-after: page;
+    break-after: auto;
+    margin-bottom: 6mm;
   }
   .retreat-medical-print-sheet:last-child {
     break-after: auto;
@@ -124,7 +125,7 @@
     display: table-header-group;
   }
   .retreat-medical-print-sheet table {
-    font-size: 10pt;
+    font-size: 9pt;
   }
   .retreat-medical-print-sheet th,
   .retreat-medical-print-sheet td {
@@ -156,4 +157,23 @@
   .retreat-medical-print-sheet .medical-print-short-row {
     break-inside: avoid;
   }
+}
+
+.medical-print-status, .medical-print-column { display: inline-flex; align-items: baseline; gap: 5px; }
+.medical-print-status svg, .medical-print-column svg { flex-shrink: 0; align-self: center; }
+.medical-print-green { color: #166534; }
+.medical-print-yellow { color: #92400e; background: #fef3c7; }
+.medical-print-red { color: #b91c1c; background: #fee2e2; }
+.medical-print-neutral { color: #475569; }
+.medical-print-ekg { color: #b91c1c; }
+.medical-print-liver { color: #166534; }
+.medical-print-meds { color: #7e22ce; }
+.medical-print-check + .medical-print-check { border-top: 1px solid #a8b8b3; padding-top: 8px; }
+.medical-print-check p { margin: 5px 0; }
+.medical-print-message { padding: 12px 24px; }
+.retreat-medical-print-toolbar button:disabled { opacity: .55; }
+@media print {
+ .retreat-medical-print { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+ .medical-print-message { display: none; }
+ body:has(.medical-print-message) .retreat-medical-print-pages { display: none; }
 }
