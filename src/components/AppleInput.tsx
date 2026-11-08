@@ -15,6 +15,8 @@ interface AppleInputProps {
   icon?: React.ReactNode;
   min?: string;
   max?: string;
+  /** Accessible name when there's no visible `label` and the placeholder is too long/descriptive to double as one (e.g. a search field). */
+  ariaLabel?: string;
 }
 
 const AppleInput: React.FC<AppleInputProps> = ({
@@ -31,7 +33,8 @@ const AppleInput: React.FC<AppleInputProps> = ({
   className = '',
   icon,
   min,
-  max
+  max,
+  ariaLabel
 }) => {
   const inputId = useId();
   const descriptionId = `${inputId}-description`;
@@ -55,7 +58,7 @@ const AppleInput: React.FC<AppleInputProps> = ({
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error || hint ? descriptionId : undefined}
-          aria-label={!label ? placeholder : undefined}
+          aria-label={!label ? (ariaLabel || placeholder) : undefined}
           required={required}
           type={type}
           value={value}

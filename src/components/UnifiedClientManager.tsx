@@ -1,4 +1,4 @@
-import { Camera, Check, ChevronDown, Edit2, Plus, Search as SearchIcon, Trash2, User, UserCheck, X } from 'lucide-react';
+import { Camera, Check, Edit2, Plus, Search as SearchIcon, Trash2, User, UserCheck, X } from 'lucide-react';
 import { matchesPhoneSearch, sanitizePhoneNumber } from '../utils/phoneUtils';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { useDialogFocus } from '../hooks/useDialogFocus';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
 import LoadingSpinner from './LoadingSpinner';
+import { Card, CardHeader, Badge, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, EmptyState } from './ui';
 import { bookingsApi, clientsApi, notesApi, referralsApi, retreatsApi } from '../services/api';
 import { Client, Referral, Retreat, RetreatClient } from '../types';
 import { matchesClientDeepSearch, ClientSearchMatch } from '../utils/clientSearch';
@@ -562,9 +563,9 @@ const UnifiedClientManager: React.FC = () => {
     const normalized = normalizeClientWorkflowStatus(status);
 
     return (
-      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${clientWorkflowStatusTone[normalized] || 'bg-gray-100 text-gray-800'}`}>
+      <Badge colorClassName={clientWorkflowStatusTone[normalized] || 'bg-gray-100 text-gray-800'}>
         {clientWorkflowStatusLabels[normalized] || normalized.replace(/_/g, ' ')}
-      </span>
+      </Badge>
     );
   };
 
@@ -588,248 +589,188 @@ const UnifiedClientManager: React.FC = () => {
   return (
     <div className="p-3 max-w-full">
       {!showForm && <Toast toast={toast} onDismiss={dismissToast} />}
-      {/* Header */}
-      <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h1 className="text-2xl font-bold text-apple-gray-900">Clients</h1>
-        <AppleButton
-          variant="primary"
-          onClick={handleNewClient}
-          className="w-auto shrink-0 whitespace-nowrap"
-        >
-          <Icon icon={Plus} className="w-4 h-4 mr-2" />
-          Add Client
-        </AppleButton>
-      </div>
+      {/* Clients */}
+      <Card className="mb-3">
+        <CardHeader
+          title="Clients"
+          action={
+            <AppleButton
+              variant="primary"
+              onClick={handleNewClient}
+              className="w-auto shrink-0 whitespace-nowrap"
+            >
+              <Icon icon={Plus} className="w-4 h-4 mr-2" />
+              Add Client
+            </AppleButton>
+          }
+        />
 
-      {/* Filters */}
-      <div className="mb-3 flex flex-col sm:flex-row gap-2">
-        <div className="flex-1">
-          <div className="relative">
-            <Icon icon={SearchIcon} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              aria-label="Search clients"
-              placeholder="Search clients, screening, notes, email, phone, or ID…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue"
-            />
-          </div>
+        {/* Filters */}
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row">
+          <AppleInput
+            type="text"
+            placeholder="Search clients, screening, notes, email, phone, or ID…"
+            ariaLabel="Search clients"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            icon={<Icon icon={SearchIcon} className="w-4 h-4" />}
+            className="flex-1"
+          />
+          <select
+            aria-label="Filter clients by status"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue"
+          >
+            <option value="all">All Statuses</option>
+            <option value="leads">Potential + Screening</option>
+            {clientWorkflowStatusSelectOptions.map((status) => (
+              <option key={status} value={status}>{clientWorkflowStatusLabels[status] || status}</option>
+            ))}
+          </select>
         </div>
-        <select
-          aria-label="Filter clients by status"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 border border-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue"
-        >
-          <option value="all">All Statuses</option>
-          <option value="leads">Potential + Screening</option>
-          {clientWorkflowStatusSelectOptions.map((status) => (
-            <option key={status} value={status}>{clientWorkflowStatusLabels[status] || status}</option>
-          ))}
-        </select>
-      </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-apple border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 max-sm:table-fixed">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  onClick={() => handleSort('display_id')}
-                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 max-sm:w-16 max-sm:px-2"
-                >
-                  <div className="flex items-center">
-                    ID
-                    {sortField === 'display_id' &&
-                      <Icon icon={ChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
-                    }
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('lastName')}
-                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 max-sm:px-2"
-                >
-                  <div className="flex items-center">
-                    Name
-                    {sortField === 'lastName' &&
-                      <Icon icon={ChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
-                    }
-                  </div>
-                </th>
-                <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
-                  Contact
-                </th>
-                <th
-                  onClick={() => handleSort('workflowStatus')}
-                  className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sm:table-cell"
-                >
-                  <div className="flex items-center">
-                    Status
-                    {sortField === 'workflowStatus' &&
-                      <Icon icon={ChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
-                    }
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('retreatCode')}
-                  className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sm:table-cell"
-                >
-                  <div className="flex items-center">
-                    Retreat
-                    {sortField === 'retreatCode' &&
-                      <Icon icon={ChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
-                    }
-                  </div>
-                </th>
-                <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
-                  Signup Date
-                </th>
-                <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
-                  Country
-                </th>
-                <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider max-sm:w-28 max-sm:px-2">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {visibleClients.map((client) => (
-                <tr key={client._id} className="hover:bg-gray-50">
-                  <td className="px-3 py-1.5 whitespace-nowrap max-sm:px-2">
-                    <div className="text-sm font-semibold text-gray-900">
-                      {client.display_id || '-'}
-                    </div>
-                  </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap max-sm:px-2">
-                    <div>
-                      <button
-                        onClick={() => handleClientClick(client)}
-                        className="!inline-flex !w-auto !max-w-full !items-center !justify-start gap-2 !rounded-none !border-0 !bg-transparent !p-0 !text-left !text-sm !font-medium !text-gray-900 !shadow-none hover:!bg-transparent hover:!text-gray-950 hover:underline"
-                      >
-                        <ClientListAvatar client={client} name={`${client.firstName || ''} ${client.lastName || ''}`.trim()} />
-                        <span className="truncate">{client.firstName} {client.lastName}</span>
-                      </button>
-                      {client.preferredName && (
-                        <span className="text-xs text-gray-400 ml-1">
-                          ({client.preferredName})
-                        </span>
-                      )}
-                      {searchMatches.get(client._id!)?.snippet && (
-                        <div className="ml-9 mt-0.5 inline-flex items-center gap-1.5 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-800 border border-amber-200 max-w-md truncate">
-                          <span className="font-semibold text-amber-900 shrink-0">{searchMatches.get(client._id!)?.label || 'Match'}:</span>
-                          <span className="italic truncate">{searchMatches.get(client._id!)?.snippet}</span>
-                        </div>
-                      )}
-                      {(typeof client.referralId === 'object' ? client.referralId?.name : client.source) && (
-                        <div className="ml-9 text-xs text-violet-700">Referral: {typeof client.referralId === 'object' ? client.referralId?.name : client.source}</div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
-                    <div className="text-xs text-gray-700">
-                      {client.email && (
-                        <div>{client.email}</div>
-                      )}
-                      <div>{client.phone}</div>
-                    </div>
-                  </td>
-                  <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
-                    {getStatusBadge(client.workflowStatus || 'entered')}
-                  </td>
-                  <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
-                    {getClientRetreatCode(client) ? (
-                      <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
-                        {getClientRetreatCode(client)}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
-                    {getSignupDateBadge(typeof client.signupDate === 'string' ? client.signupDate : client.signupDate?.toISOString().split('T')[0])}
-                  </td>
-                  <td className="hidden px-3 py-1.5 whitespace-nowrap text-sm text-gray-500 sm:table-cell">
-                    {client.country || '-'}
-                  </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium max-sm:px-2">
-                    <div className="flex justify-end space-x-2 max-sm:space-x-1">
-                      <button
-                        type="button"
-                        onMouseDown={(event) => event.stopPropagation()}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleEdit(client);
-                        }}
-                        className="icon-action-btn icon-action-btn-edit"
-                        title="Edit"
-                      >
-                        <Icon icon={Edit2} />
-                      </button>
-                      {normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'entered' && (
+        {filteredClients.length === 0 ? (
+          <EmptyState title="No clients found" description="Try a different search term or status filter." />
+        ) : (
+          <>
+            <Table className="max-sm:table-fixed">
+              <TableHead>
+                <tr>
+                  <TableHeaderCell onSort={() => handleSort('display_id')} sortDirection={sortField === 'display_id' ? sortDirection : undefined} className="max-sm:w-16 max-sm:px-2">ID</TableHeaderCell>
+                  <TableHeaderCell onSort={() => handleSort('lastName')} sortDirection={sortField === 'lastName' ? sortDirection : undefined} className="max-sm:px-2">Name</TableHeaderCell>
+                  <TableHeaderCell className="hidden sm:table-cell">Contact</TableHeaderCell>
+                  <TableHeaderCell onSort={() => handleSort('workflowStatus')} sortDirection={sortField === 'workflowStatus' ? sortDirection : undefined} className="hidden sm:table-cell">Status</TableHeaderCell>
+                  <TableHeaderCell onSort={() => handleSort('retreatCode')} sortDirection={sortField === 'retreatCode' ? sortDirection : undefined} className="hidden sm:table-cell">Retreat</TableHeaderCell>
+                  <TableHeaderCell className="hidden sm:table-cell">Signup Date</TableHeaderCell>
+                  <TableHeaderCell className="hidden sm:table-cell">Country</TableHeaderCell>
+                  <TableHeaderCell align="right" className="max-sm:w-28 max-sm:px-2">Actions</TableHeaderCell>
+                </tr>
+              </TableHead>
+              <TableBody>
+                {visibleClients.map((client) => (
+                  <TableRow key={client._id}>
+                    <TableCell className="whitespace-nowrap max-sm:px-2">
+                      <span className="text-sm font-semibold text-gray-900">{client.display_id || '-'}</span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap max-sm:px-2">
+                      <div>
                         <button
-                          onClick={() => handleWorkflowStatusUpdate(client._id!, 'screening_scheduled')}
-                          className="icon-action-btn icon-action-btn-view"
-                          title="Start Screening"
+                          onClick={() => handleClientClick(client)}
+                          className="!inline-flex !w-auto !max-w-full !items-center !justify-start gap-2 !rounded-none !border-0 !bg-transparent !p-0 !text-left !text-sm !font-medium !text-gray-900 !shadow-none hover:!bg-transparent hover:!text-gray-950 hover:underline"
                         >
-                          <Icon icon={UserCheck} />
+                          <ClientListAvatar client={client} name={`${client.firstName || ''} ${client.lastName || ''}`.trim()} />
+                          <span className="truncate">{client.firstName} {client.lastName}</span>
                         </button>
+                        {client.preferredName && (
+                          <span className="text-xs text-gray-400 ml-1">
+                            ({client.preferredName})
+                          </span>
+                        )}
+                        {searchMatches.get(client._id!)?.snippet && (
+                          <div className="ml-9 mt-0.5 inline-flex items-center gap-1.5 rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-800 border border-amber-200 max-w-md truncate">
+                            <span className="font-semibold text-amber-900 shrink-0">{searchMatches.get(client._id!)?.label || 'Match'}:</span>
+                            <span className="italic truncate">{searchMatches.get(client._id!)?.snippet}</span>
+                          </div>
+                        )}
+                        {(typeof client.referralId === 'object' ? client.referralId?.name : client.source) && (
+                          <div className="ml-9 text-xs text-violet-700">Referral: {typeof client.referralId === 'object' ? client.referralId?.name : client.source}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap sm:table-cell">
+                      <div className="text-xs text-gray-700">
+                        {client.email && (
+                          <div>{client.email}</div>
+                        )}
+                        <div>{client.phone}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap sm:table-cell">
+                      {getStatusBadge(client.workflowStatus || 'entered')}
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap sm:table-cell">
+                      {getClientRetreatCode(client) ? (
+                        <Badge tone="info">{getClientRetreatCode(client)}</Badge>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
                       )}
-                      {normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'screening_scheduled' && (
-                        <>
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap sm:table-cell">
+                      {getSignupDateBadge(typeof client.signupDate === 'string' ? client.signupDate : client.signupDate?.toISOString().split('T')[0])}
+                    </TableCell>
+                    <TableCell className="hidden whitespace-nowrap text-gray-500 sm:table-cell">
+                      {client.country || '-'}
+                    </TableCell>
+                    <TableCell align="right" className="whitespace-nowrap max-sm:px-2">
+                      <div className="flex justify-end space-x-2 max-sm:space-x-1">
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.stopPropagation()}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            handleEdit(client);
+                          }}
+                          className="icon-action-btn icon-action-btn-edit"
+                          title="Edit"
+                        >
+                          <Icon icon={Edit2} />
+                        </button>
+                        {normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'entered' && (
                           <button
-                            onClick={() => handleWorkflowStatusUpdate(client._id!, 'screened_accepted')}
-                            className="icon-action-btn icon-action-btn-success"
-                            title="Approve"
+                            onClick={() => handleWorkflowStatusUpdate(client._id!, 'screening_scheduled')}
+                            className="icon-action-btn icon-action-btn-view"
+                            title="Start Screening"
                           >
-                            <Icon icon={Check} />
+                            <Icon icon={UserCheck} />
                           </button>
-                          <button
-                            onClick={() => handleWorkflowStatusUpdate(client._id!, 'screened_declined', 'Not suitable')}
-                            className="icon-action-btn icon-action-btn-danger"
-                            title="Reject"
-                          >
-                            <Icon icon={X} />
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => handleDelete(client._id!)}
-                        className="icon-action-btn icon-action-btn-danger"
-                        title="Delete"
-                      >
-                        <Icon icon={Trash2} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredClients.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
-                    No clients found
-                  </td>
-                </tr>
-              )}
-              {visibleClientsCount < filteredClients.length && (
-                <tr>
-                  <td colSpan={8} className="px-3 py-3 text-center">
-                    <button
-                      type="button"
-                      onClick={() => setVisibleClientsCount((current) => current + CLIENTS_PAGE_SIZE)}
-                      className="text-sm font-medium text-apple-blue hover:underline"
-                    >
-                      Show more ({filteredClients.length - visibleClientsCount} remaining)
-                    </button>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                        )}
+                        {normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'screening_scheduled' && (
+                          <>
+                            <button
+                              onClick={() => handleWorkflowStatusUpdate(client._id!, 'screened_accepted')}
+                              className="icon-action-btn icon-action-btn-success"
+                              title="Approve"
+                            >
+                              <Icon icon={Check} />
+                            </button>
+                            <button
+                              onClick={() => handleWorkflowStatusUpdate(client._id!, 'screened_declined', 'Not suitable')}
+                              className="icon-action-btn icon-action-btn-danger"
+                              title="Reject"
+                            >
+                              <Icon icon={X} />
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleDelete(client._id!)}
+                          className="icon-action-btn icon-action-btn-danger"
+                          title="Delete"
+                        >
+                          <Icon icon={Trash2} />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {visibleClientsCount < filteredClients.length && (
+              <div className="pt-3 text-center">
+                <button
+                  type="button"
+                  onClick={() => setVisibleClientsCount((current) => current + CLIENTS_PAGE_SIZE)}
+                  className="text-sm font-medium text-apple-blue hover:underline"
+                >
+                  Show more ({filteredClients.length - visibleClientsCount} remaining)
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
 
       {/* Form Modal */}
       {showForm && (
