@@ -15,7 +15,7 @@ export const plannerDay = (value: unknown): number | null => {
   return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === calendar ? time : null;
 };
 export const plannerDate = (day: number) => new Date(day).toISOString().slice(0, 10);
-export interface PlannerStay { id: string; bookingNumber: string; name: string; type: 'Full retreat' | 'Booster'; start: number; end: number; lane: number; room: string }
+export interface PlannerStay { id: string; bookingNumber: string; name: string; type: 'Full retreat' | 'Booster'; start: number; end: number; lane: number; room: string; roomType?: string | null }
 export interface PlannerIssue { id: string; bookingNumber: string; reason: string }
 const ACTIVE = ['confirmed', 'checked-in', 'checked-out'];
 const EXCLUDED = ['cancelled', 'canceled', 'moved', 'declined'];
@@ -42,7 +42,7 @@ export function buildStayPlanner(retreat: {startDate?: unknown; endDate?: unknow
     if (from === null || to === null || to <= from) { issues.push({id,bookingNumber,reason:booster?'Booster arrival/checkout dates need review':'Arrival/checkout dates need review'}); continue; }
     if (to <= start || from >= end) { outside.push({id,bookingNumber,reason:'Stay is outside the retreat dates'}); continue; }
     const client = booking.clientId && typeof booking.clientId === 'object' ? booking.clientId : {};
-    stays.push({id,bookingNumber,name:[client.firstName,client.lastName].filter(Boolean).join(' ') || 'Guest name unavailable',type:booster?'Booster':'Full retreat',start:Math.max(start,from),end:Math.min(end,to),lane:0,room:booking.roomNumber || ''});
+    stays.push({id,bookingNumber,name:[client.firstName,client.lastName].filter(Boolean).join(' ') || 'Guest name unavailable',type:booster?'Booster':'Full retreat',start:Math.max(start,from),end:Math.min(end,to),lane:0,room:booking.roomNumber || '',roomType:typeof booking.roomType === 'string' ? booking.roomType : undefined});
   }
   stays.sort((a,b)=>a.start-b.start || b.end-a.end || a.bookingNumber.localeCompare(b.bookingNumber,undefined,{numeric:true}) || a.id.localeCompare(b.id));
   const laneEnds: number[] = [];

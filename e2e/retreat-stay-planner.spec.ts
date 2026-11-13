@@ -6,7 +6,7 @@ for(const [width,timezoneId] of [[1440,'America/Los_Angeles'],[390,'Pacific/Kiri
  test.use({timezoneId});
  test('full stays and sequential boosters use numbered lanes, survive reload and refresh without writes',async({page})=>{
   await page.setViewportSize({width,height:1000});const writes:string[]=[],errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
-  let rows=[booking('1311'),booking('1312',{bookingType:'booster',checkInDate:'2026-10-24',checkOutDate:'2026-10-27'}),booking('1313',{bookingType:'booster',checkInDate:'2026-10-27',checkOutDate:'2026-10-31'}),booking('canceled',{bookingNumber:999,status:'cancelled'})];let fail=false;
+  let rows=[booking('1311',{roomType:'shared'}),booking('1312',{roomType:'private',bookingType:'booster',checkInDate:'2026-10-24',checkOutDate:'2026-10-25'}),booking('1313',{roomType:'private_ensuite',bookingType:'booster',checkInDate:'2026-10-25',checkOutDate:'2026-10-31'}),booking('canceled',{bookingNumber:999,status:'cancelled'})];let fail=false;
   await page.route('**/*',async route=>{const r=route.request();if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();const p=new URL(r.url()).pathname;
    if(r.method()!=='GET'){writes.push(r.method()+' '+p);return route.fulfill({status:405,json:{}})}
    if(p==='/retreats/r957')return route.fulfill({json:retreat});if(p==='/retreats')return route.fulfill({json:[retreat]});
@@ -18,8 +18,23 @@ for(const [width,timezoneId] of [[1440,'America/Los_Angeles'],[390,'Pacific/Kiri
   await page.goto('/admin/retreats/r957');await expect(page.getByRole('tab',{name:/^Clients/})).toHaveAttribute('aria-selected','true');await expect(page.getByRole('tab',{name:'Stay planner',exact:true})).toHaveCount(0);const views=page.getByRole('group',{name:'Clients view',exact:true});await expect(views.getByRole('button',{name:'Client list',exact:true})).toHaveAttribute('aria-pressed','true');await views.getByRole('button',{name:'Stay planner',exact:true}).click();await expect(page).toHaveURL(/\/stayPlanner$/);await expect(page.getByRole('tab',{name:/^Clients/})).toHaveAttribute('aria-selected','true');
   const planner=page.getByRole('region',{name:'Retreat stay planner',exact:true});await expect(planner.getByRole('link',{name:/Full retreat #1311/})).toHaveAttribute('href','/admin/bookings/1311');await expect(planner.getByLabel('Place 8',{exact:true})).toBeVisible();
   const lane=planner.getByLabel('Place 2',{exact:true});await expect(lane.getByRole('link',{name:/Booster #1312/})).toHaveAttribute('href','/admin/bookings/1312');await expect(lane.getByRole('link',{name:/Booster #1313/})).toHaveAttribute('href','/admin/bookings/1313');await expect(planner.getByText('2 occupied · 6 free',{exact:true})).toHaveCount(7);
+  await expect(planner.getByRole('link',{name:/Full retreat #1311/}).getByRole('img',{name:'Shared room',exact:true})).toBeVisible();
+  await expect(lane.getByRole('link',{name:/Booster #1312/}).getByRole('img',{name:'Private room',exact:true})).toBeVisible();
+  const narrow=lane.getByRole('link',{name:/Booster #1312/});
+  const narrowBadge=await narrow.getByRole('img',{name:'Private room',exact:true}).boundingBox(), narrowBox=await narrow.boundingBox();
+  expect(narrowBadge!.width).toBeLessThanOrEqual(narrowBox!.width);
+
+  const ensuite=lane.getByRole('link',{name:/Booster #1313/}).getByRole('img',{name:'Private room with private bathroom',exact:true});
+  await ensuite.scrollIntoViewIfNeeded(); await expect(ensuite).toBeVisible();
+  const badgeBox=await ensuite.boundingBox(), stayBox=await lane.getByRole('link',{name:/Booster #1313/}).boundingBox();
+  expect(badgeBox!.x).toBeGreaterThanOrEqual(stayBox!.x);expect(badgeBox!.x+badgeBox!.width).toBeLessThanOrEqual(stayBox!.x+stayBox!.width+1);
+
   await expect(planner.getByRole('link',{name:/999/})).toHaveCount(0);await planner.getByRole('region',{name:'Stay lanes by night'}).scrollIntoViewIfNeeded();await page.screenshot({animations:'disabled',path:`${process.env.STAY_PLANNER_ARTIFACT_DIR||'test-results'}/planner-${width}.png`,fullPage:true});
+  await planner.getByRole('region',{name:'Stay lanes by night'}).evaluate(element=>{element.scrollLeft=0;});
+  await page.screenshot({animations:'disabled',path:`${process.env.STAY_PLANNER_ARTIFACT_DIR||'test-results'}/planner-left-${width}.png`,fullPage:true});
   await page.reload();await expect(page.getByRole('tab',{name:/^Clients/})).toHaveAttribute('aria-selected','true');await expect(views.getByRole('button',{name:'Stay planner',exact:true})).toHaveAttribute('aria-pressed','true');await expect(planner.getByLabel('Place 2',{exact:true}).getByRole('link',{name:/Booster #1313/})).toBeVisible();
+  rows=[booking('1311',{roomNumber:'Private 1',clientId:{_id:'c1',firstName:'Guest',roomType:'private'}})];await planner.getByRole('button',{name:'Refresh stays'}).click();
+  await expect(planner.getByRole('img',{name:'Room type unknown',exact:true})).toBeVisible();await expect(planner.getByRole('img',{name:'Shared room',exact:true})).toHaveCount(0);
   rows=[];await planner.getByRole('button',{name:'Refresh stays'}).click();await expect(planner.getByText(/No confirmed full stays/)).toBeVisible();await expect(planner.getByText('0 occupied · 8 free',{exact:true})).toHaveCount(7);
   fail=true;await planner.getByRole('button',{name:'Refresh stays'}).click();await expect(planner.getByRole('alert')).toHaveText(/Could not load/);await expect(planner.getByText('0 occupied · 8 free',{exact:true})).toHaveCount(0);fail=false;await views.getByRole('button',{name:'Client list',exact:true}).click();await expect(page).toHaveURL(/\/r957$/);await expect(views.getByRole('button',{name:'Client list',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.getByRole('region',{name:'Retreat stay planner',exact:true})).toHaveCount(0);expect(writes).toEqual([]);expect(errors).toEqual([]);
  });

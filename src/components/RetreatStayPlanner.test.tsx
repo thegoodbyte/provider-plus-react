@@ -1,4 +1,4 @@
-import {fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {fireEvent,render,screen,waitFor,within} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import RetreatStayPlanner from './RetreatStayPlanner';
 import {bookingsApi} from '../services/api';
@@ -25,4 +25,28 @@ it('does not render old retreat records when a slower previous request resolves'
 });
 it('does not report empty/free capacity for a malformed successful API response',async()=>{
  (bookingsApi.getByRetreatWithDetails as jest.Mock).mockResolvedValue({data:{items:[]}});mount();expect(await screen.findByRole('alert')).toHaveTextContent('Could not load');expect(screen.queryByText('Minimum free places per night')).not.toBeInTheDocument();
+});
+
+it('keeps saved accommodation on each booking when boosters reuse a lane, without guessing from preference or room number',async()=>{
+ const rows=[{...one,roomType:'shared'},
+  {...one,_id:'first-booster',bookingNumber:1312,bookingType:'booster',roomStayStart:'2026-10-24',roomStayEnd:'2026-10-27',roomType:'private'},
+  {...one,_id:'second-booster',bookingNumber:1313,bookingType:'booster',roomStayStart:'2026-10-27',roomStayEnd:'2026-10-31',roomType:'private_ensuite'},
+  {...one,_id:'unknown',bookingNumber:1314,roomNumber:'Private 1',clientId:{firstName:'Other',roomType:'private'}},
+  {...one,_id:'legacy',bookingNumber:1315,roomType:'unexpected-legacy-value'},
+ ];
+ (bookingsApi.getByRetreatWithDetails as jest.Mock).mockResolvedValue({data:rows});mount();
+ const full=await screen.findByRole('link',{name:/Full retreat #1311/});
+ expect(within(full).getByRole('img',{name:'Shared room'})).toBeInTheDocument();
+ const first=screen.getByRole('link',{name:/Booster #1312/}), second=screen.getByRole('link',{name:/Booster #1313/});
+ expect(first.parentElement).toBe(second.parentElement);
+ expect(within(first).getByRole('img',{name:'Private room'})).toBeInTheDocument();
+ expect(within(second).getByRole('img',{name:'Private room with private bathroom'})).toBeInTheDocument();
+ expect(within(screen.getByRole('link',{name:/Full retreat #1314/})).getByRole('img',{name:'Room type unknown'})).toBeInTheDocument();
+ expect(within(screen.getByRole('link',{name:/Full retreat #1315/})).getByRole('img',{name:'Room type unknown'})).toBeInTheDocument();
+ expect(screen.getAllByText('4 occupied · 4 free')).toHaveLength(7);
+});
+it('updates the room indicator after refresh without retaining the previous accommodation',async()=>{
+ (bookingsApi.getByRetreatWithDetails as jest.Mock).mockResolvedValueOnce({data:[{...one,roomType:'shared'}]}).mockResolvedValueOnce({data:[{...one,roomType:'private'}]});mount();
+ await screen.findByRole('img',{name:'Shared room'});fireEvent.click(screen.getByRole('button',{name:'Refresh stays'}));
+ await screen.findByRole('img',{name:'Private room'});expect(screen.queryByRole('img',{name:'Shared room'})).not.toBeInTheDocument();
 });

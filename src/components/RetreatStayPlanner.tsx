@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { bookingsApi } from '../services/api';
 import { buildStayPlanner, plannerDate } from './stayPlannerModel';
 import './RetreatStayPlanner.css';
+import RoomTypeBadge from './RoomTypeBadge';
 const label = (date: string) => new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'2-digit',month:'short',timeZone:'UTC'}).format(new Date(`${date}T00:00:00Z`));
 export default function RetreatStayPlanner({retreatId,retreat}:{retreatId:string;retreat:{startDate?:unknown;endDate?:unknown;capacity?:unknown}}) {
   const [rows,setRows]=useState<any[]|null>(null),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
@@ -10,7 +11,7 @@ export default function RetreatStayPlanner({retreatId,retreat}:{retreatId:string
   const plan=rows?buildStayPlanner(retreat,rows):null;
   return <section aria-label="Retreat stay planner" className="stay-planner">
     <div className="stay-planner-heading"><div><h2>Stay planner</h2><p>Full retreats and boosters across the retreat, with one numbered lane per guest place.</p></div><button type="button" onClick={()=>setRefresh(value=>value+1)} disabled={!rows&&!error}>Refresh stays</button></div>
-    <p className="stay-planner-help">Lanes show guest capacity; they do not assign bedrooms. Check <Link to={`/admin/retreats/${retreatId}/rooms`}>Room allocation</Link> before accepting another guest, especially for private rooms. Checkout frees the place for the next arrival.</p>
+    <p className="stay-planner-help">Lanes show guest capacity; they do not assign bedrooms. Room badges show each booking’s saved accommodation. Check <Link to={`/admin/retreats/${retreatId}/rooms`}>Room allocation</Link> before accepting another guest, especially for private rooms. Checkout frees the place for the next arrival.</p>
     {error?<p role="alert">{error}</p>:!plan?<p role="status">Loading stay planner…</p>:plan.error?<p role="alert">{plan.error}</p>:<>
       <div className="stay-planner-metrics"><div><span>Guest capacity</span><strong>{plan.capacity??'Not configured'}</strong></div><div><span>Peak confirmed occupancy</span><strong>{plan.peak}</strong></div><div><span>Minimum free places per night</span><strong>{plan.minimumFree??'Needs review'}</strong></div></div>
       {(plan.capacity===null||plan.issues.length>0)&&<p role="alert" className="stay-planner-warning">{plan.capacity===null?'Set the retreat capacity before judging availability. ':''}{plan.issues.length>0?'Some confirmed stays have missing or invalid dates/types. Free places cannot be confirmed until these are reviewed.':''}</p>}
@@ -22,7 +23,7 @@ export default function RetreatStayPlanner({retreatId,retreat}:{retreatId:string
           <div className="stay-planner-corner">Place</div>{plan.days.map(day=><div className="stay-planner-day" key={day.date}><strong>{label(day.date)}</strong><span>{day.occupied} occupied · {day.free===null?'?':day.free} free{day.over?` · ${day.over} over`:''}</span></div>)}
           {plan.lanes.map(lane=><React.Fragment key={lane.number}><div className={`stay-planner-lane ${lane.overflow?'stay-planner-lane-over':''}`}>{lane.overflow?'Extra ':''}{lane.number}</div><div className={`stay-planner-track ${lane.overflow?'stay-planner-lane-over':''}`} style={{gridColumn:`2 / span ${plan.days.length}`,gridTemplateColumns:`repeat(${plan.days.length},minmax(0,1fr))`}} aria-label={`Place ${lane.number}${lane.overflow?' overflow':''}`}>
             {plan.days.map(day=><span className="stay-planner-cell" key={day.date}/>)}
-            {lane.stays.map(stay=><Link key={stay.id} to={`/admin/bookings/${encodeURIComponent(stay.id)}`} className={`stay-planner-block ${stay.type==='Booster'?'stay-booster':'stay-full'}`} style={{gridColumn:`${plan.days.findIndex(day=>day.day===stay.start)+1} / span ${(stay.end-stay.start)/86400000}`,gridRow:1}} title={`${stay.type} #${stay.bookingNumber} · ${stay.name} · ${label(plannerDate(stay.start))} → ${label(plannerDate(stay.end))}${stay.room?` · Room ${stay.room}`:''}`}><strong>{stay.type} #{stay.bookingNumber}</strong><span>{stay.name}</span></Link>)}
+            {lane.stays.map(stay=><Link key={stay.id} to={`/admin/bookings/${encodeURIComponent(stay.id)}`} className={`stay-planner-block ${stay.type==='Booster'?'stay-booster':'stay-full'}`} style={{gridColumn:`${plan.days.findIndex(day=>day.day===stay.start)+1} / span ${(stay.end-stay.start)/86400000}`,gridRow:1}} title={`${stay.type} #${stay.bookingNumber} · ${stay.name} · ${label(plannerDate(stay.start))} → ${label(plannerDate(stay.end))}${stay.room?` · Room ${stay.room}`:''}`}><div className="stay-planner-booking-identity"><strong>{stay.type} #{stay.bookingNumber}</strong><RoomTypeBadge roomType={stay.roomType} /></div><span>{stay.name}</span></Link>)}
           </div></React.Fragment>)}
         </div>
       </div>
