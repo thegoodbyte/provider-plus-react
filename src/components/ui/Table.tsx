@@ -35,7 +35,10 @@ export const TableHeaderCell: React.FC<TableHeaderCellProps> = ({ children, alig
     return <th className={`px-4 py-2.5 ${alignClass} text-xs font-semibold uppercase tracking-wide text-apple-gray-500 ${className}`}>{children}</th>;
   }
   return (
-    <th className={`px-4 py-2.5 ${alignClass} text-xs font-semibold uppercase tracking-wide text-apple-gray-500 ${className}`}>
+    <th
+      aria-sort={sortDirection ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={`px-4 py-2.5 ${alignClass} text-xs font-semibold uppercase tracking-wide text-apple-gray-500 ${className}`}
+    >
       <button type="button" onClick={onSort} className={`inline-flex items-center gap-1 hover:text-apple-gray-800 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
         {children}
         {sortDirection && <ChevronDown className={`h-3.5 w-3.5 transition-transform ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />}
