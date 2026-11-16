@@ -5785,6 +5785,36 @@ export type ClientsControllerBlacklistClientResponses = {
 
 export type ClientsControllerBlacklistClientResponse = ClientsControllerBlacklistClientResponses[keyof ClientsControllerBlacklistClientResponses];
 
+export type ClientContactCardControllerPreviewData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: {
+        format?: string;
+    };
+    url: '/clients/{id}/contact-card';
+};
+
+export type ClientContactCardControllerPreviewResponses = {
+    200: unknown;
+};
+
+export type ClientContactCardControllerDownloadData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: {
+        format?: unknown;
+    };
+    url: '/clients/{id}/contact-card.vcf';
+};
+
+export type ClientContactCardControllerDownloadResponses = {
+    200: unknown;
+};
+
 export type ClientsControllerResetLoginPinData = {
     body?: never;
     path: {

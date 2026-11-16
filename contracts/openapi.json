@@ -12203,6 +12203,66 @@
         ]
       }
     },
+    "/clients/{id}/contact-card": {
+      "get": {
+        "operationId": "ClientContactCardController_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientContactCard"
+        ]
+      }
+    },
+    "/clients/{id}/contact-card.vcf": {
+      "get": {
+        "operationId": "ClientContactCardController_download",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "ClientContactCard"
+        ]
+      }
+    },
     "/clients/{id}/login-pin/reset": {
       "post": {
         "operationId": "ClientsController_resetLoginPin",
