@@ -28,6 +28,7 @@ import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import { clientPaymentCreatePath, clientPaymentEditPath } from './clientPaymentNavigation';
 import { loadClientCoreData } from '../services/clientCoreDataService';
+import { Card, Badge, EmptyState } from './ui';
 import './ClientsGrid.css';
 import IntegrationCalls from './IntegrationCalls';
 import { useAuth } from '../context/AuthContext';
@@ -550,11 +551,9 @@ const ClientDetailsPage: React.FC = () => {
     };
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-        statusColors[status] || 'bg-gray-100 text-gray-800'
-      }`}>
+      <Badge colorClassName={statusColors[status] || 'bg-gray-100 text-gray-800'}>
         {status === 'self_submit' ? 'Self-submit — portal access disabled' : status || 'unknown'}
-      </span>
+      </Badge>
     );
   };
 
@@ -1077,7 +1076,7 @@ const ClientDetailsPage: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+      <Card>
         {activeTab === 'integration' && canManageIntegration && <IntegrationCalls clientId={clientId} />}
         {activeTab === 'overview' && (
           <div>
@@ -1162,10 +1161,7 @@ const ClientDetailsPage: React.FC = () => {
               <div className="hidden lg:block">
                 <h3 className="text-sm font-medium text-gray-500 mb-3">Status & Dates</h3>
                 <dl className="space-y-2">
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-gray-600">Status:</dt>
-                    <dd>{getStatusBadge(client.status)}</dd>
-                  </div>
+                  {/* Status is already shown in the page header above; repeating it here would show the same fact twice on one screen. */}
                   <div className="flex justify-between">
                     <dt className="text-sm text-gray-600">Workflow Status:</dt>
                     <dd>{getStatusBadge(client.workflowStatus)}</dd>
@@ -1193,10 +1189,7 @@ const ClientDetailsPage: React.FC = () => {
             <details className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-3 lg:hidden">
               <summary className="cursor-pointer text-sm font-semibold text-gray-700">More details</summary>
               <dl className="mt-3 space-y-2">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-sm text-gray-600">Status:</dt>
-                  <dd>{getStatusBadge(client.status)}</dd>
-                </div>
+                {/* Status is already shown in the page header above; repeating it here would show the same fact twice on one screen. */}
                 <div className="flex justify-between gap-3">
                   <dt className="text-sm text-gray-600">Workflow:</dt>
                   <dd>{getStatusBadge(client.workflowStatus)}</dd>
@@ -2056,17 +2049,15 @@ const ClientDetailsPage: React.FC = () => {
                 onCompleteTask={handleCompleteTask}
               />
             ) : (
-              <div className="text-center py-12">
-                <Icon icon={CheckSquare} className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks yet</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Add a task to keep track of client-related activities.
-                </p>
-              </div>
+              <EmptyState
+                icon={<Icon icon={CheckSquare} className="h-5 w-5" />}
+                title="No tasks yet"
+                description="Add a task to keep track of client-related activities."
+              />
             )}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Add Note Modal */}
       {showAddNoteModal && (
