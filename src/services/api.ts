@@ -189,6 +189,7 @@ export const housesApi = {
 };
 
 export const clientsApi = {
+  contactCard: (id: string, format = 'compact') => api.get(`/clients/${id}/contact-card`, { params: { format }, suppressGlobalError: true } as any),
   getScreeningClients: () => api.get<Client[]>('/clients/screening-grid'),
   getAll: () => cachedGet<Client[]>('clients:all', () => api.get<Client[]>('/clients')),
   getBookingOptions: () => cachedGet<Client[]>('clients:booking-options', () => api.get<Client[]>('/clients/booking-options'), 30000),

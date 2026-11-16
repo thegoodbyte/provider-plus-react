@@ -1,3 +1,4 @@
+import ClientContactCard from './ClientContactCard';
 import { Activity, AlertCircle, ArrowLeft, Bell, Calendar, Camera, CheckSquare, DollarSign, Edit2, ExternalLink, Eye, EyeOff, FileText, Heart as HeartIcon, Mail, MapPin, MessageSquare, Plus, Trash2, User } from 'lucide-react';
 import EkgRequirementStatus from './EkgRequirementStatus';
 import ScreeningPdfViewer from './ScreeningPdfViewer';
@@ -103,6 +104,7 @@ const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
 
 const ClientDetailsPage: React.FC = () => {
   const { user } = useAuth();
+  const canExportContact = ['admin','user','facilitator','medical_staff','medical_advisor'].includes(user?.role || '');
   const canManageIntegration = ['admin', 'facilitator'].includes(user?.role || '');
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
@@ -1007,6 +1009,7 @@ const ClientDetailsPage: React.FC = () => {
                   <Icon icon={Edit2} className="h-4 w-4" />
                 </button>
               </div>
+              {canExportContact && clientId && <ClientContactCard clientId={clientId} />}
             </div>
           </div>
         </div>
