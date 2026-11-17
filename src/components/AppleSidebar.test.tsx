@@ -149,3 +149,91 @@ it('limits payment focus to its permitted tools without exposing settings, and p
  v.rerender(<AppleSidebar {...p} staffFocus="tasks" focusedWorkMode/>);
  expect(screen.getByText('Medical work mode')).toBeVisible();expect(screen.queryByText('Process payments')).not.toBeInTheDocument();
 });
+
+describe('AppleSidebar "Simple view" nav preference (PPVC-1036)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('sidebarCollapsed', 'false');
+  });
+
+  const baseProps = {
+    activeItem: 'launcher',
+    isOpen: true,
+    onClose: jest.fn(),
+    onItemClick: jest.fn(),
+    onLogout: jest.fn(),
+    userRole: 'admin',
+  };
+
+  it('renders exactly the 5 simple-view sections and no Settings & Setup when navPreference is simple', () => {
+    render(
+      <AppleSidebar
+        {...baseProps}
+        user={{ email: 'partner@example.com', role: 'admin', navPreference: 'simple' }}
+      />
+    );
+
+    // The 5 permitted sections are present.
+    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Clients')).toBeInTheDocument();
+    expect(screen.getByText('Bookings')).toBeInTheDocument();
+    expect(screen.getByText('Payments')).toBeInTheDocument();
+    expect(screen.getByText('Retreat Operations')).toBeInTheDocument();
+
+    // Nothing else -- no Settings & Setup, no other sections/items that only exist outside the 5.
+    expect(screen.queryByText('Settings & Setup')).not.toBeInTheDocument();
+    expect(screen.queryByText('Medical')).not.toBeInTheDocument();
+    expect(screen.queryByText('Client Forms')).not.toBeInTheDocument();
+    expect(screen.queryByText('Operations')).not.toBeInTheDocument();
+    expect(screen.queryByText('Files & Reports')).not.toBeInTheDocument();
+    expect(screen.queryByText('Activity')).not.toBeInTheDocument();
+    expect(screen.queryByText('Focused work')).not.toBeInTheDocument();
+    expect(screen.queryByText('User Management')).not.toBeInTheDocument();
+    expect(screen.queryByText('Permission Management')).not.toBeInTheDocument();
+    expect(screen.queryByText('Audit Logs')).not.toBeInTheDocument();
+    expect(screen.queryByText('Data Backup')).not.toBeInTheDocument();
+    expect(screen.queryByText('Languages')).not.toBeInTheDocument();
+
+    // Exactly 5 top-level section buttons were rendered.
+    const sectionButtons = screen.getAllByRole('button').filter((button) =>
+      ['Home', 'Clients', 'Bookings', 'Payments', 'Retreat Operations'].includes(button.textContent?.trim() || '')
+    );
+    expect(sectionButtons).toHaveLength(5);
+  });
+
+  it('renders the full current section set when navPreference is "full" (regression guard)', () => {
+    render(
+      <AppleSidebar
+        {...baseProps}
+        user={{ email: 'owner@example.com', role: 'admin', navPreference: 'full' }}
+      />
+    );
+
+    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Clients')).toBeInTheDocument();
+    expect(screen.getByText('Bookings')).toBeInTheDocument();
+    expect(screen.getByText('Payments')).toBeInTheDocument();
+    expect(screen.getByText('Retreat Operations')).toBeInTheDocument();
+    expect(screen.getByText('Settings & Setup')).toBeInTheDocument();
+    expect(screen.getByText('Medical')).toBeInTheDocument();
+    expect(screen.getByText('Operations')).toBeInTheDocument();
+  });
+
+  it('renders the full current section set when navPreference is unset (regression guard for existing users)', () => {
+    render(
+      <AppleSidebar
+        {...baseProps}
+        user={{ email: 'legacy-admin@example.com', role: 'admin' }}
+      />
+    );
+
+    expect(screen.getByText('Settings & Setup')).toBeInTheDocument();
+    expect(screen.getByText('Medical')).toBeInTheDocument();
+    expect(screen.getByText('Operations')).toBeInTheDocument();
+  });
+
+  it('also renders the full nav set when the user prop is absent entirely', () => {
+    render(<AppleSidebar {...baseProps} />);
+    expect(screen.getByText('Settings & Setup')).toBeInTheDocument();
+  });
+});

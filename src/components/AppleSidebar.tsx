@@ -20,6 +20,7 @@ interface AppleSidebarProps {
     originalRole?: string;
     impersonatedBy?: string;
     impersonationType?: string;
+    navPreference?: 'full' | 'simple';
   } | null;
   appMode?: 'normal' | 'retreat' | 'shopping';
   selectedRetreatLabel?: string;
@@ -157,6 +158,12 @@ const getNavigationRole = (userRole?: string) => {
   return userRole;
 };
 
+// "Simple view" (PPVC-1036) is a per-user, backend-persisted preference (User.navPreference) that
+// narrows the sidebar to these 5 sections only. It is UI density only -- it must never gate route
+// access (see ProtectedRoute/App.tsx), and it is intentionally independent of the StaffFocus work-mode
+// system below (focusedWorkMode / staffFocus), which is a separate, opt-in, localStorage-backed feature.
+export const SIMPLE_NAV_SECTION_IDS = ['home', 'clients', 'bookings-group', 'payments', 'retreats'];
+
 const getTextColor = (isActive: boolean = false): string => {
   return isActive ? 'rgb(17, 24, 39)' : 'rgb(55, 65, 81)';
 };
@@ -234,6 +241,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   }, [openSections]);
 
   const navigationRole = getNavigationRole(userRole);
+  const navPreference = user?.navPreference;
 
   const getMenuSectionsForRole = useCallback((): MenuSection[] => {
     switch (navigationRole) {
@@ -402,8 +410,14 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
       bookingItems.push({id:'booking-settings',label:'Booking settings',Icon:FiSettings});
       daily.splice(2,0,{id:'bookings-group',label:'Bookings',Icon:FiBookOpen,items:bookingItems});
     }
-    return [...daily.filter(section=>section.items.length), ...(setup.length ? [{ id: 'setup', label: SETTINGS_LABEL, Icon: FiSettings, items: setup }] : [])];
-  }, [focusedWorkMode, staffFocus, appMode, getMenuSectionsForRole, selectedRetreatLabel, navigationRole, preferences]);
+    const dailySections = daily.filter(section => section.items.length);
+    // Simple view (PPVC-1036): show only the 5 core sections, never Settings & Setup, and never
+    // restrict which routes are reachable -- this only changes what the sidebar renders.
+    if (navPreference === 'simple') {
+      return dailySections.filter(section => SIMPLE_NAV_SECTION_IDS.includes(section.id));
+    }
+    return [...dailySections, ...(setup.length ? [{ id: 'setup', label: SETTINGS_LABEL, Icon: FiSettings, items: setup }] : [])];
+  }, [focusedWorkMode, staffFocus, appMode, getMenuSectionsForRole, selectedRetreatLabel, navigationRole, preferences, navPreference]);
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase();
   const visibleMenuSections = useMemo(() => {

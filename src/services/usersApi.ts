@@ -13,6 +13,9 @@ export interface User {
   preferredReviewLanguage?: 'en' | 'pl' | 'cs';
   understoodReviewLanguages?: Array<'en' | 'pl' | 'cs'>;
   medicalTranslationPreference?: 'unsupported' | 'always_english' | 'never';
+  // PPVC-1036: per-user sidebar density preference. UI-only -- never gates route access.
+  // Defaults to 'full' server-side when unset.
+  navPreference?: 'full' | 'simple';
 }
 
 export interface CreateUserData {
@@ -35,6 +38,7 @@ export interface UpdateUserData {
   understoodReviewLanguages?: Array<'en' | 'pl' | 'cs'>;
   medicalTranslationPreference?: 'unsupported' | 'always_english' | 'never';
   isActive?: boolean;
+  navPreference?: 'full' | 'simple';
 }
 
 export const usersApi = {

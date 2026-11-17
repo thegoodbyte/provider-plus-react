@@ -35,7 +35,7 @@ const UserManagement: React.FC = () => {
   const [validationError, setValidationError] = useState('');
   const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<Partial<CreateUserData & { confirmPassword: string; isActive: boolean }>>({
+  const [formData, setFormData] = useState<Partial<CreateUserData & { confirmPassword: string; isActive: boolean; navPreference: 'full' | 'simple' }>>({
     email: '',
     password: '',
     confirmPassword: '',
@@ -45,6 +45,7 @@ const UserManagement: React.FC = () => {
     preferredReviewLanguage: 'en',
     understoodReviewLanguages: ['en'],
     medicalTranslationPreference: 'unsupported',
+    navPreference: 'full',
   });
 
   useEffect(() => {
@@ -120,6 +121,7 @@ const UserManagement: React.FC = () => {
         preferredReviewLanguage: formData.preferredReviewLanguage,
         understoodReviewLanguages: formData.understoodReviewLanguages,
         medicalTranslationPreference: formData.medicalTranslationPreference,
+        navPreference: formData.navPreference,
       };
 
       await usersApi.update(editingUser._id, updateData);
@@ -164,6 +166,7 @@ const UserManagement: React.FC = () => {
       preferredReviewLanguage: user.preferredReviewLanguage || 'en',
       understoodReviewLanguages: user.understoodReviewLanguages?.length ? user.understoodReviewLanguages : ['en'],
       medicalTranslationPreference: user.medicalTranslationPreference || 'unsupported',
+      navPreference: user.navPreference || 'full',
     });
   };
 
@@ -265,6 +268,7 @@ const UserManagement: React.FC = () => {
       preferredReviewLanguage: 'en',
       understoodReviewLanguages: ['en'],
       medicalTranslationPreference: 'unsupported',
+      navPreference: 'full',
     });
   };
 
@@ -682,6 +686,21 @@ const UserManagement: React.FC = () => {
                 </select>
               </div>
               {reviewLanguageFields}
+              <div>
+                <label htmlFor="navPreference" className="block text-sm font-medium text-gray-700 mb-2">Navigation view</label>
+                <select
+                  id="navPreference"
+                  value={formData.navPreference || 'full'}
+                  onChange={(e) => setFormData({ ...formData, navPreference: e.target.value as 'full' | 'simple' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="full">Full (all sections)</option>
+                  <option value="simple">Simple (Home, Clients, Bookings, Payments, Retreats only)</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Simple view only hides sidebar sections for this user -- it does not restrict which pages they can open.
+                </p>
+              </div>
               <div className="flex items-center">
                 <input
                   type="checkbox"
