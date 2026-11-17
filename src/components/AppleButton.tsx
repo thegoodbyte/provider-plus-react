@@ -11,6 +11,8 @@ interface AppleButtonProps {
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   className?: string;
+  /** Accessible name when the visible label doesn't uniquely identify this button (e.g. one of several "Remove" buttons in a list). */
+  'aria-label'?: string;
 }
 
 const AppleButton: React.FC<AppleButtonProps> = ({
@@ -22,7 +24,8 @@ const AppleButton: React.FC<AppleButtonProps> = ({
   loading = false,
   onClick,
   type = 'button',
-  className = ''
+  className = '',
+  'aria-label': ariaLabel
 }) => {
   const baseStyles = `
     inline-flex items-center justify-center
@@ -70,6 +73,7 @@ const AppleButton: React.FC<AppleButtonProps> = ({
   return (
     <button
       aria-busy={loading}
+      aria-label={ariaLabel}
       type={type}
       onClick={onClick}
       disabled={disabled || loading}

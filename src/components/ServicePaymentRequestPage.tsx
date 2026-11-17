@@ -11,9 +11,17 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { clientsApi, serviceRequestsApi } from "../services/api";
 import { getServicePaymentUrl } from "./paymentRequestLinks";
-import "./ServicePaymentRequestPage.css";
 import EmailComposeModal from "./EmailComposeModal";
 import SearchableClientSelect from "./SearchableClientSelect";
+import AppleButton from "./AppleButton";
+import AppleInput from "./AppleInput";
+import { Card, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from "./ui";
+
+const selectClasses = "w-full p-2 border border-apple-gray-200 rounded-apple bg-white text-apple-gray-900 focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue";
+const labelClasses = "flex flex-col gap-1.5 text-sm font-medium text-apple-gray-700";
+const linkButtonClasses = "inline-flex items-center justify-center rounded-apple px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200";
+const primaryLinkClasses = `${linkButtonClasses} bg-apple-blue text-white hover:bg-blue-600 shadow-apple-sm`;
+const secondaryLinkClasses = `${linkButtonClasses} bg-apple-gray-50 text-apple-gray-600 border border-apple-gray-200 hover:bg-white`;
 const money = (n: number, c: string) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: c }).format(
     n || 0,
@@ -260,78 +268,79 @@ export default function ServicePaymentRequestPage() {
     }
   };
   if (!settings && !error)
-    return <div className="service-request-page">Loading service billing…</div>;
+    return <div className="mx-auto max-w-[1040px] px-6 py-8 text-apple-gray-900">Loading service billing…</div>;
   return (
-    <main className="service-request-page">
+    <main className="mx-auto max-w-[1040px] px-6 py-8 text-apple-gray-900">
       <Toast toast={toast} onDismiss={dismiss} />
-      <header className="sr-heading">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-5">
         <div>
-          <Link to="/admin/payment-requests">← Payment requests</Link>
-          <p className="sr-eyebrow">Standalone services</p>
-          <h1>
+          <Link to="/admin/payment-requests" className="text-sm text-apple-blue hover:underline">← Payment requests</Link>
+          <p className="mt-2 text-xs font-bold uppercase tracking-wide text-apple-gray-500">Standalone services</p>
+          <h1 className="text-[30px] font-bold tracking-tight">
             {id
               ? request?.serviceDocument?.title || "Service payment request"
               : "New itemized payment request"}
           </h1>
-          <p>Itemized services, clear terms, one private payment link.</p>
+          <p className="mt-2 text-apple-gray-500">Itemized services, clear terms, one private payment link.</p>
         </div>
         <Link
-          className="sr-secondary"
+          className={secondaryLinkClasses}
           to="/admin/payment-requests/services/settings"
         >
           Service & policy settings
         </Link>
       </header>
       {id && request && <div className="mb-4"><DuplicatePaymentRequestButton request={request}/></div>}
-      {!id && duplicateFrom && <p role="status" className="sr-card">New draft copied from payment request. Review the recipient, items and a new due date before issuing. Nothing has been sent. <Link to={`/admin/payment-requests/services/${encodeURIComponent(duplicateFrom)}`}>View original request</Link></p>}
+      {!id && duplicateFrom && <Card className="mb-5"><p role="status">New draft copied from payment request. Review the recipient, items and a new due date before issuing. Nothing has been sent. <Link to={`/admin/payment-requests/services/${encodeURIComponent(duplicateFrom)}`} className="text-apple-blue hover:underline">View original request</Link></p></Card>}
       {!id && (
-        <section className="sr-card" aria-label="Invoice draft">
+        <section aria-label="Invoice draft">
+        <Card className="mb-5">
           <p role="status" aria-live="polite">
             {draft.status}
           </p>
           {draft.issuing && (
-            <button
+            <AppleButton
               type="button"
-              className="sr-primary"
+              className="mt-3"
               disabled={busy}
               onClick={issue}
             >
               Retry issuance
-            </button>
+            </AppleButton>
           )}
           {draft.restored && (
-            <p>Recovered your saved draft. Review it again before issuing.</p>
+            <p className="mt-2">Recovered your saved draft. Review it again before issuing.</p>
           )}
-          {draft.error && <p role="alert">{draft.error}</p>}
-          <div className="sr-actions">
-            <button
+          {draft.error && <p role="alert" className="mt-2 text-apple-red">{draft.error}</p>}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <AppleButton
               type="button"
-              className="sr-secondary"
+              variant="secondary"
               disabled={!draft.ready || busy || draft.issuing}
               onClick={() => draftAction(draft.flush)}
             >
               Save draft now
-            </button>
-            <button
+            </AppleButton>
+            <AppleButton
               type="button"
-              className="sr-secondary"
+              variant="secondary"
               disabled={!draft.ready || busy || draft.issuing}
               onClick={() => draftAction(draft.startNew)}
             >
               New draft
-            </button>
+            </AppleButton>
             {draft.error && !draft.issuing && (
-              <button
+              <AppleButton
                 type="button"
-                className="sr-secondary"
+                variant="secondary"
                 onClick={draft.copy}
               >
                 Save as a copy
-              </button>
+              </AppleButton>
             )}
-            <button
+            <AppleButton
               type="button"
-              className="sr-secondary"
+              variant="secondary"
               disabled={!draft.ready || busy || draft.issuing}
               onClick={() =>
                 Modal.confirm({
@@ -345,10 +354,10 @@ export default function ServicePaymentRequestPage() {
               }
             >
               Discard draft
-            </button>
+            </AppleButton>
           </div>
           {draft.drafts.length > 0 && (
-            <label>
+            <label className={`${labelClasses} mt-4`}>
               Saved drafts
               <select
                 disabled={busy || draft.issuing}
@@ -356,6 +365,7 @@ export default function ServicePaymentRequestPage() {
                 onChange={(e) =>
                   draftAction(() => draft.select(e.target.value))
                 }
+                className={selectClasses}
               >
                 <option value="">Select a saved draft</option>
                 {draft.drafts.map((d: any) => (
@@ -367,6 +377,7 @@ export default function ServicePaymentRequestPage() {
               </select>
             </label>
           )}
+        </Card>
         </section>
       )}
       <Modal
@@ -391,9 +402,10 @@ export default function ServicePaymentRequestPage() {
         items to preserve them.
       </Modal>
       {currencyUndo && (
-        <button
+        <AppleButton
           type="button"
-          className="sr-secondary"
+          variant="secondary"
+          className="mb-4"
           disabled={busy || draft.issuing}
           onClick={() => {
             setCurrency(currencyUndo.currency);
@@ -404,15 +416,15 @@ export default function ServicePaymentRequestPage() {
           }}
         >
           Undo currency change
-        </button>
+        </AppleButton>
       )}
       {error && (
-        <p className="sr-error" role="alert">
+        <p className="mb-4 rounded-apple bg-red-50 px-4 py-3 text-red-700" role="alert">
           {error}
         </p>
       )}
       {notice && (
-        <p className="sr-notice" role="status">
+        <p className="mb-4 rounded-apple bg-emerald-50 px-4 py-3 text-emerald-800" role="status">
           {notice}
         </p>
       )}
@@ -448,12 +460,12 @@ export default function ServicePaymentRequestPage() {
       )}
       {request ? (
         <>
-          <section className="sr-card">
-            <div className="sr-heading">
+          <Card className="mb-5">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-5">
               <div>
-                <p className="sr-eyebrow">Request #{request.invoiceNumber}</p>
-                <h2>{request.serviceDocument.client.name}</h2>
-                <p>{request.serviceDocument.client.email}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-apple-gray-500">Request #{request.invoiceNumber}</p>
+                <h2 className="text-xl font-bold">{request.serviceDocument.client.name}</h2>
+                <p className="mt-1 text-apple-gray-600">{request.serviceDocument.client.email}</p>
               </div>
               <strong>
                 {request.status === "paid"
@@ -463,76 +475,73 @@ export default function ServicePaymentRequestPage() {
                     : `Outstanding ${money(request.amountOutstanding, request.currency)}`}
               </strong>
             </div>
-            <div className="sr-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Service</th>
-                    <th>Quantity</th>
-                    <th>Unit price</th>
-                    <th>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {request.lineItems.map((item: any, i: number) => (
-                    <tr key={i}>
-                      <td>{item.description}</td>
-                      <td>{item.quantity}</td>
-                      <td>{money(item.unitPrice, request.currency)}</td>
-                      <td>{money(item.amount, request.currency)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <dl className="sr-totals">
-              <div>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Service</TableHeaderCell>
+                  <TableHeaderCell>Quantity</TableHeaderCell>
+                  <TableHeaderCell>Unit price</TableHeaderCell>
+                  <TableHeaderCell>Amount</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {request.lineItems.map((item: any, i: number) => (
+                  <TableRow key={i}>
+                    <TableCell>{item.description}</TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>{money(item.unitPrice, request.currency)}</TableCell>
+                    <TableCell>{money(item.amount, request.currency)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <dl className="ml-auto mt-5 max-w-[380px]">
+              <div className="flex justify-between py-2">
                 <dt>Total</dt>
                 <dd>{money(request.requestedAmount, request.currency)}</dd>
               </div>
-              <div>
+              <div className="flex justify-between py-2">
                 <dt>Received</dt>
                 <dd>{money(request.amountReceived, request.currency)}</dd>
               </div>
-              <div>
+              <div className="flex justify-between py-2">
                 <dt>Outstanding</dt>
                 <dd>{money(request.amountOutstanding, request.currency)}</dd>
               </div>
             </dl>
-            <h3>Payment & cancellation terms</h3>
-            <p>{request.serviceDocument.policy.paymentTerms}</p>
-            <p>{request.serviceDocument.policy.cancellationTerms}</p>
-            <p className="sr-muted">
+            <h3 className="mb-2.5 mt-5 font-semibold">Payment & cancellation terms</h3>
+            <p className="my-2.5 leading-relaxed">{request.serviceDocument.policy.paymentTerms}</p>
+            <p className="my-2.5 leading-relaxed">{request.serviceDocument.policy.cancellationTerms}</p>
+            <p className="text-sm text-apple-gray-500">
               {request.invoiceDocument
                 ? "Issued invoice details and totals are preserved. Use an audited financial correction; the original invoice cannot be overwritten."
                 : "Issued terms are preserved. To correct items, cancel this request and issue a replacement."}
             </p>
-          </section>
-          <section className="sr-card">
-            <h2>Invoice</h2>
+          </Card>
+          <Card className="mb-5">
+            <h2 className="mb-4 text-xl font-bold">Invoice</h2>
             {request.invoiceDocument ? (
               <>
-                <p>
+                <p className="my-2.5">
                   Invoice {request.invoiceDocument.number} · issued{" "}
                   {String(request.invoiceDocument.issuedAt).slice(0, 10)}
                 </p>
-                <p>
+                <p className="my-2.5">
                   {request.invoiceDocument.recipient.name} ·{" "}
                   {request.invoiceDocument.recipient.address}
                 </p>
-                <div className="sr-actions">
-                  <button
+                <div className="flex flex-wrap gap-3">
+                  <AppleButton
                     type="button"
                     disabled={invoiceBusy}
-                    className="sr-primary"
                     onClick={() => invoiceAction(true)}
                   >
                     Download invoice PDF
-                  </button>
+                  </AppleButton>
                   {!request.publicLinkRevokedAt && (
-                    <button
+                    <AppleButton
                       type="button"
-                      className="sr-secondary"
+                      variant="secondary"
                       onClick={async () => {
                         try {
                           await navigator.clipboard.writeText(invoiceUrl);
@@ -545,16 +554,16 @@ export default function ServicePaymentRequestPage() {
                       }}
                     >
                       Copy invoice link
-                    </button>
+                    </AppleButton>
                   )}
                 </div>
                 {!request.publicLinkRevokedAt && (
-                  <label>
+                  <label className={`${labelClasses} mt-4`}>
                     Private invoice link
-                    <input readOnly value={invoiceUrl} />
+                    <input readOnly value={invoiceUrl} className={selectClasses} />
                   </label>
                 )}
-                <p className="sr-muted">
+                <p className="mt-4 text-sm text-apple-gray-500">
                   Issued billing details and totals are preserved. Payment
                   status remains on the payment request.
                 </p>
@@ -565,43 +574,43 @@ export default function ServicePaymentRequestPage() {
                   value={billingRecipient}
                   onChange={setBillingRecipient}
                 />
-                <p>
+                <p className="my-2.5">
                   Issue a separate invoice using the configured seller and
                   recipient billing details. This does not record a payment.
                 </p>
-                <button
-                  type="button"
-                  className="sr-primary"
-                  disabled={invoiceBusy || request.status === "cancelled"}
-                  onClick={() => invoiceAction()}
-                >
-                  Issue invoice
-                </button>
-                <button
-                  type="button"
-                  className="sr-secondary"
-                  disabled={invoiceBusy}
-                  onClick={() => invoiceAction("preview")}
-                >
-                  Preview invoice PDF
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <AppleButton
+                    type="button"
+                    disabled={invoiceBusy || request.status === "cancelled"}
+                    onClick={() => invoiceAction()}
+                  >
+                    Issue invoice
+                  </AppleButton>
+                  <AppleButton
+                    type="button"
+                    variant="secondary"
+                    disabled={invoiceBusy}
+                    onClick={() => invoiceAction("preview")}
+                  >
+                    Preview invoice PDF
+                  </AppleButton>
+                </div>
               </>
             )}
-          </section>
-          <section className="sr-card">
-            <h2>Share with your client</h2>
-            <p>Anyone with this private link can view the payment request.</p>
+          </Card>
+          <Card className="mb-5">
+            <h2 className="mb-2 text-xl font-bold">Share with your client</h2>
+            <p className="mb-4">Anyone with this private link can view the payment request.</p>
             {request.publicLinkRevokedAt ? (
               <p>Link revoked</p>
             ) : (
               <>
-                <label>
+                <label className={labelClasses}>
                   Private payment link
-                  <input readOnly value={getServicePaymentUrl(request)} />
+                  <input readOnly value={getServicePaymentUrl(request)} className={selectClasses} />
                 </label>
-                <div className="sr-actions">
-                  <button
-                    className="sr-primary"
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <AppleButton
                     onClick={async () => {
                       try {
                         await navigator.clipboard.writeText(
@@ -616,64 +625,64 @@ export default function ServicePaymentRequestPage() {
                     }}
                   >
                     Copy link
-                  </button>
+                  </AppleButton>
                   <a
-                    className="sr-secondary"
+                    className={secondaryLinkClasses}
                     href={getServicePaymentUrl(request)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     Open client page
                   </a>
-                  <button
+                  <AppleButton
                     type="button"
-                    className="sr-secondary"
+                    variant="secondary"
                     disabled={request.status === "cancelled"}
                     onClick={() => setSending(true)}
                   >
                     Send payment request
-                  </button>
+                  </AppleButton>
                 </div>
               </>
             )}
-            <div className="sr-actions">
+            <div className="mt-4 flex flex-wrap gap-3">
               {request.status !== "paid" && request.status !== "cancelled" && (
                 <Link
-                  className="sr-primary"
+                  className={primaryLinkClasses}
                   to={`/admin/payments/new?paymentRequestId=${id}`}
                 >
                   Record payment
                 </Link>
               )}
-              <button
+              <AppleButton
+                variant="secondary"
                 disabled={busy}
-                className="sr-secondary"
                 onClick={() => linkAction("rotate")}
               >
                 Replace private link
-              </button>
+              </AppleButton>
               {!request.publicLinkRevokedAt && (
-                <button
+                <AppleButton
+                  variant="secondary"
                   disabled={busy}
-                  className="sr-secondary"
                   onClick={() => linkAction("revoke")}
                 >
                   Revoke link
-                </button>
+                </AppleButton>
               )}
               {!request.invoiceDocument &&
                 request.status !== "paid" &&
                 request.status !== "cancelled" && (
-                  <button
+                  <AppleButton
+                    variant="secondary"
                     disabled={busy}
-                    className="sr-secondary"
                     onClick={() => linkAction("cancel")}
                   >
                     Cancel request
-                  </button>
+                  </AppleButton>
                 )}
             </div>
-          </section>
+          </Card>
         </>
       ) : (
         !id && (
@@ -689,9 +698,9 @@ export default function ServicePaymentRequestPage() {
               disabled={!draft.ready || busy || draft.issuing}
               style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
             >
-              <section className="sr-card">
-                <h2>1. Client & request</h2>
-                <label>
+              <Card className="mb-5">
+                <h2 className="mb-4 text-xl font-bold">1. Client & request</h2>
+                <label className={labelClasses}>
                   Recipient type
                   <select
                     value={recipientMode}
@@ -699,14 +708,15 @@ export default function ServicePaymentRequestPage() {
                       setRecipientMode(e.target.value);
                       setPreview(false);
                     }}
+                    className={selectClasses}
                   >
                     <option value="client">Existing client</option>
                     <option value="recipient">One-off billing recipient</option>
                   </select>
                 </label>
                 {recipientMode === "client" && (
-                  <div className="sr-fields">
-                    <label>
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className={labelClasses}>
                       Client
                       <SearchableClientSelect
                         ariaLabel="Client"
@@ -721,8 +731,8 @@ export default function ServicePaymentRequestPage() {
                     </label>
                   </div>
                 )}
-                <h3>Billing recipient</h3>
-                <p className="sr-muted">
+                <h3 className="mb-2.5 mt-5 font-semibold">Billing recipient</h3>
+                <p className="mb-4 text-sm text-apple-gray-500">
                   For a one-off recipient, enter name and email. To issue an
                   invoice, also enter their billing address. Existing clients
                   can use different company billing details.
@@ -734,20 +744,18 @@ export default function ServicePaymentRequestPage() {
                     setPreview(false);
                   }}
                 />
-                <div className="sr-fields">
-                  <label>
-                    Request title
-                    <input
-                      required
-                      maxLength={200}
-                      value={title}
-                      onChange={(e) => {
-                        setTitle(e.target.value);
-                        setPreview(false);
-                      }}
-                    />
-                  </label>
-                  <label>
+                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <AppleInput
+                    label="Request title"
+                    required
+                    maxLength={200}
+                    value={title}
+                    onChange={(value) => {
+                      setTitle(value);
+                      setPreview(false);
+                    }}
+                  />
+                  <label className={labelClasses}>
                     Currency
                     <select
                       value={currency}
@@ -759,13 +767,14 @@ export default function ServicePaymentRequestPage() {
                         setCurrency(e.target.value);
                         setPreview(false);
                       }}
+                      className={selectClasses}
                     >
                       {["EUR", "CZK", "PLN", "USD"].map((c) => (
                         <option key={c}>{c}</option>
                       ))}
                     </select>
                   </label>
-                  <label>
+                  <label className={labelClasses}>
                     Document language
                     <select
                       value={language}
@@ -773,32 +782,32 @@ export default function ServicePaymentRequestPage() {
                         setLanguage(e.target.value);
                         setPreview(false);
                       }}
+                      className={selectClasses}
                     >
                       {["en", "cz", "pl", "de", "ru"].map((l) => (
                         <option key={l}>{l}</option>
                       ))}
                     </select>
                   </label>
-                  <label>
-                    Due date (optional)
-                    <input
-                      type="date"
-                      value={dueDate}
-                      onChange={(e) => {
-                        setDue(e.target.value);
-                        setPreview(false);
-                      }}
-                    />
-                  </label>
-                  <Link to="/admin/clients/new">Create a client first ↗</Link>
+                  <AppleInput
+                    label="Due date (optional)"
+                    type="date"
+                    value={dueDate}
+                    onChange={(value) => {
+                      setDue(value);
+                      setPreview(false);
+                    }}
+                  />
+                  <Link to="/admin/clients/new" className="text-sm text-apple-blue hover:underline self-center">Create a client first ↗</Link>
                 </div>
-              </section>
-              <section className="sr-card">
-                <h2>2. Items</h2>
-                <label>
+              </Card>
+              <Card className="mb-5">
+                <h2 className="mb-4 text-xl font-bold">2. Items</h2>
+                <label className={labelClasses}>
                   Add a configured service
                   <select
                     value=""
+                    className={selectClasses}
                     onChange={(e) => {
                       const s = settings.services.find(
                         (s: any) => s.code === e.target.value,
@@ -835,53 +844,44 @@ export default function ServicePaymentRequestPage() {
                   </select>
                 </label>
                 {items.map((item, i) => (
-                  <fieldset key={i} className="sr-item">
-                    <legend>
+                  <fieldset key={i} className="mt-4 grid grid-cols-1 sm:grid-cols-[2fr_0.7fr_1fr_auto] gap-3.5 items-end border-t border-apple-gray-200 pt-4">
+                    <legend className="col-span-full text-xs text-apple-gray-500 pt-2 sm:pt-0">
                       {item.type === "discount" ? "Discount" : "Item"} {i + 1}
                     </legend>
-                    <label>
-                      Description
-                      <input
-                        required
-                        maxLength={1000}
-                        value={item.description}
-                        onChange={(e) =>
-                          editItem(i, "description", e.target.value)
-                        }
-                      />
-                    </label>
-                    <label>
-                      Quantity
-                      <input
-                        required
-                        type="number"
-                        min="1"
-                        max="10000"
-                        step="1"
-                        disabled={item.type === "discount"}
-                        value={item.quantity}
-                        onChange={(e) =>
-                          editItem(i, "quantity", Number(e.target.value))
-                        }
-                      />
-                    </label>
-                    <label>
-                      {item.type === "discount" ? "Discount" : "Unit price"} (
-                      {currency})
-                      <input
-                        required
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.unitPrice}
-                        onChange={(e) =>
-                          editItem(i, "unitPrice", Number(e.target.value))
-                        }
-                      />
-                    </label>
-                    <button
+                    <AppleInput
+                      label="Description"
+                      required
+                      maxLength={1000}
+                      value={item.description}
+                      onChange={(value) =>
+                        editItem(i, "description", value)
+                      }
+                    />
+                    <AppleInput
+                      label="Quantity"
+                      required
+                      type="number"
+                      min="1"
+                      max="10000"
+                      disabled={item.type === "discount"}
+                      value={item.quantity}
+                      onChange={(value) =>
+                        editItem(i, "quantity", Number(value))
+                      }
+                    />
+                    <AppleInput
+                      label={`${item.type === "discount" ? "Discount" : "Unit price"} (${currency})`}
+                      required
+                      type="number"
+                      min="0"
+                      value={item.unitPrice}
+                      onChange={(value) =>
+                        editItem(i, "unitPrice", Number(value))
+                      }
+                    />
+                    <AppleButton
                       type="button"
-                      className="sr-secondary"
+                      variant="secondary"
                       aria-label={`Remove item ${i + 1}`}
                       onClick={() => {
                         setItems(items.filter((_, j) => j !== i));
@@ -889,13 +889,13 @@ export default function ServicePaymentRequestPage() {
                       }}
                     >
                       Remove
-                    </button>
+                    </AppleButton>
                   </fieldset>
                 ))}
-                <div className="sr-actions">
-                  <button
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <AppleButton
                     type="button"
-                    className="sr-secondary"
+                    variant="secondary"
                     onClick={() => {
                       setItems([
                         ...items,
@@ -910,10 +910,10 @@ export default function ServicePaymentRequestPage() {
                     }}
                   >
                     Add custom service
-                  </button>
-                  <button
+                  </AppleButton>
+                  <AppleButton
                     type="button"
-                    className="sr-secondary"
+                    variant="secondary"
                     onClick={() => {
                       setItems([
                         ...items,
@@ -928,16 +928,16 @@ export default function ServicePaymentRequestPage() {
                     }}
                   >
                     Add discount
-                  </button>
+                  </AppleButton>
                 </div>
-                <div className="sr-total">
+                <div className="mt-6 flex justify-between border-t border-apple-gray-200 pt-5 text-xl">
                   <span>Total</span>
                   <strong>{money(total, currency)}</strong>
                 </div>
-              </section>
-              <section className="sr-card">
-                <h2>3. Payment & cancellation terms</h2>
-                <label>
+              </Card>
+              <Card className="mb-5">
+                <h2 className="mb-4 text-xl font-bold">3. Payment & cancellation terms</h2>
+                <label className={labelClasses}>
                   Policy template
                   <select
                     value={policyCode}
@@ -945,6 +945,7 @@ export default function ServicePaymentRequestPage() {
                       setPolicy(e.target.value);
                       setPreview(false);
                     }}
+                    className={selectClasses}
                   >
                     {settings?.policies.map((p: any) => (
                       <option key={p.code} value={p.code}>
@@ -953,16 +954,16 @@ export default function ServicePaymentRequestPage() {
                     ))}
                   </select>
                 </label>
-                <p>{selectedPolicy?.paymentTerms}</p>
-                <p>{selectedPolicy?.cancellationTerms}</p>
-                <p className="sr-muted">
+                <p className="my-2.5">{selectedPolicy?.paymentTerms}</p>
+                <p className="my-2.5">{selectedPolicy?.cancellationTerms}</p>
+                <p className="text-sm text-apple-gray-500">
                   Full payment upfront is a payment term. “Paid in full” appears
                   only after the payments settle the request.
                 </p>
-              </section>
-              <section className="sr-card">
-                <h2>4. Payment instructions</h2>
-                <label>
+              </Card>
+              <Card className="mb-5">
+                <h2 className="mb-4 text-xl font-bold">4. Payment instructions</h2>
+                <label className={labelClasses}>
                   Recipients
                   <select
                     value={overrideMethods ? "custom" : "default"}
@@ -970,6 +971,7 @@ export default function ServicePaymentRequestPage() {
                       setOverrideMethods(e.target.value === "custom");
                       setPreview(false);
                     }}
+                    className={selectClasses}
                   >
                     <option value="default">
                       Use configured payment methods
@@ -978,44 +980,42 @@ export default function ServicePaymentRequestPage() {
                   </select>
                 </label>
                 {overrideMethods && (
-                  <div className="sr-fields">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {Object.entries(methods || {}).map(([key, value]) => (
-                      <label key={key}>
-                        {key}
-                        <input
-                          required
-                          value={String(value)}
-                          onChange={(e) => {
-                            setMethods({ ...methods, [key]: e.target.value });
-                            setPreview(false);
-                          }}
-                        />
-                      </label>
+                      <AppleInput
+                        key={key}
+                        label={key}
+                        required
+                        value={String(value)}
+                        onChange={(v) => {
+                          setMethods({ ...methods, [key]: v });
+                          setPreview(false);
+                        }}
+                      />
                     ))}
                   </div>
                 )}
-              </section>
+              </Card>
               {preview && (
-                <section className="sr-card sr-preview">
-                  <h2>Ready to issue</h2>
-                  <p>
+                <Card className="mb-5 border-apple-teal bg-teal-50/40">
+                  <h2 className="mb-4 text-xl font-bold">Ready to issue</h2>
+                  <p className="my-2.5">
                     {billingRecipient.name ||
                       clients.find((c) => c._id === clientId)?.firstName}{" "}
                     {clients.find((c) => c._id === clientId)?.lastName} ·{" "}
                     {title}
                   </p>
                   <strong>{money(total, currency)}</strong>
-                  <p>
+                  <p className="my-2.5">
                     Items, client details and terms will be preserved on this
                     request. Issuing creates the private link; it does not send
                     an email.
                   </p>
-                </section>
+                </Card>
               )}
-              <div className="sr-actions">
-                <button
+              <div className="flex flex-wrap gap-3">
+                <AppleButton
                   disabled={!valid || busy || !draft.ready}
-                  className="sr-primary"
                   type="submit"
                 >
                   {busy
@@ -1023,15 +1023,15 @@ export default function ServicePaymentRequestPage() {
                     : preview
                       ? "Issue payment request"
                       : "Review request"}
-                </button>
+                </AppleButton>
                 {preview && (
-                  <button
+                  <AppleButton
                     type="button"
-                    className="sr-secondary"
+                    variant="secondary"
                     onClick={() => setPreview(false)}
                   >
                     Back to editing
-                  </button>
+                  </AppleButton>
                 )}
               </div>
             </fieldset>
