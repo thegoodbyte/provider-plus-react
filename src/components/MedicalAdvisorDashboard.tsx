@@ -6,8 +6,10 @@ import { medicalReviewRequestsApi } from '../services/api';
 import { MedicalReviewRequest } from '../types';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
-import './MedicalAdvisorDashboard.css';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
+import AppleButton from './AppleButton';
+import { Card, Badge, EmptyState } from './ui';
+import type { BadgeTone } from './ui';
 
 type ReviewFilter = 'open' | 'all' | 'pending' | 'in_review' | 'needs_resubmission' | 'approved' | 'rejected' | 'caution' | 'completed';
 
@@ -82,21 +84,35 @@ const getUrgency = (request: MedicalReviewRequest): 'urgent' | 'high' | 'normal'
   return 'normal';
 };
 
-const getStatusClass = (status: string) => {
-  if (approvedStatuses.has(status)) return 'medical-status approved';
-  if (rejectedStatuses.has(status)) return 'medical-status rejected';
-  if (needsAttentionStatuses.has(status)) return 'medical-status attention';
-  return 'medical-status open';
+const getStatusTone = (status: string): BadgeTone => {
+  if (approvedStatuses.has(status)) return 'success';
+  if (rejectedStatuses.has(status)) return 'critical';
+  if (needsAttentionStatuses.has(status)) return 'warning';
+  return 'info';
 };
 
 const getStatusIcon = (status: string) => {
-  if (approvedStatuses.has(status)) return <CheckCircle2 size={18} />;
-  if (rejectedStatuses.has(status)) return <XCircle size={18} />;
-  if (needsAttentionStatuses.has(status)) return <AlertCircle size={18} />;
-  return <Clock3 size={18} />;
+  if (approvedStatuses.has(status)) return <CheckCircle2 size={14} />;
+  if (rejectedStatuses.has(status)) return <XCircle size={14} />;
+  if (needsAttentionStatuses.has(status)) return <AlertCircle size={14} />;
+  return <Clock3 size={14} />;
 };
 
 const reviewFilters: ReviewFilter[] = ['pending', 'open', 'all', 'in_review', 'needs_resubmission', 'caution', 'approved', 'rejected', 'completed'];
+
+const urgencyBorderClass: Record<'urgent' | 'high' | 'normal', string> = {
+  urgent: 'border-l-4 border-l-apple-red',
+  high: 'border-l-4 border-l-apple-orange',
+  normal: 'border-l-4 border-l-apple-gray-300',
+};
+
+const statTileBorderClass: Record<'open' | 'urgent' | 'attention' | 'approved' | 'rejected', string> = {
+  open: 'border-l-4 border-l-apple-gray-400',
+  urgent: 'border-l-4 border-l-apple-red',
+  attention: 'border-l-4 border-l-apple-orange',
+  approved: 'border-l-4 border-l-apple-green',
+  rejected: 'border-l-4 border-l-red-800',
+};
 
 const MedicalAdvisorDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -162,86 +178,94 @@ const MedicalAdvisorDashboard: React.FC = () => {
     return <LoadingSpinner message="Loading medical review queue..." />;
   }
 
+  const selectClasses = 'rounded-apple border border-apple-gray-200 bg-white px-3 py-2 text-sm text-apple-gray-900 focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue';
+
   return (
-    <div className="medical-dashboard">
-      <div className="medical-dashboard-header">
-        <div>
-          <h1>{NAVIGATION['medical-dashboard'].label}</h1>
-          <p>
-            {isMedicalAdvisor
-              ? 'Reviews assigned to you. Pending items first.'
-              : 'Operational view of medical reviews, advisor progress, and review outcomes.'}
-          </p>
-        </div>
-        <button type="button" onClick={loadData} className="medical-refresh-button">
-          <RefreshCw size={16} />
-          Refresh
-        </button>
-      </div>
-
-      <div className="medical-stat-grid">
-        <button type="button" className="medical-stat-card" onClick={() => setFilter('open')}>
-          <span className="medical-stat-value">{stats.open}</span>
-          <span className="medical-stat-label">Open</span>
-        </button>
-        <button type="button" className="medical-stat-card urgent" onClick={() => setFilter('open')}>
-          <span className="medical-stat-value">{stats.overdue}</span>
-          <span className="medical-stat-label">Overdue</span>
-        </button>
-        <button type="button" className="medical-stat-card attention" onClick={() => setFilter('needs_resubmission')}>
-          <span className="medical-stat-value">{stats.attention}</span>
-          <span className="medical-stat-label">Need more info / Caution</span>
-        </button>
-        <button type="button" className="medical-stat-card approved" onClick={() => setFilter('approved')}>
-          <span className="medical-stat-value">{stats.approved}</span>
-          <span className="medical-stat-label">Approved / OK</span>
-        </button>
-        <button type="button" className="medical-stat-card rejected" onClick={() => setFilter('rejected')}>
-          <span className="medical-stat-value">{stats.rejected}</span>
-          <span className="medical-stat-label">Declined / Not OK</span>
-        </button>
-      </div>
-
-      <div className="medical-dashboard-controls">
-        <div className="medical-filter-tabs">
-          {reviewFilters.map((status) => (
-            <button
-              key={status}
-              type="button"
-              className={filter === status ? 'active' : ''}
-              onClick={() => setFilter(status)}
-            >
-              {status.replace(/_/g, ' ')}
-            </button>
-          ))}
-        </div>
-        <label className="medical-mobile-filter">
-          <span>View</span>
-          <select value={filter} onChange={(event) => setFilter(event.target.value as ReviewFilter)}>
-            {reviewFilters.map((status) => (
-              <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-        </label>
-        <label className="medical-sort-control">
-          <span>Sort</span>
-          <select value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)}>
-            <option value="urgency">Urgency</option>
-            <option value="requested">Newest requested</option>
-            <option value="due">Due date</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="medical-review-list">
-        {visibleRequests.length === 0 ? (
-          <div className="medical-empty-state">
-            <FileText size={28} />
-            <p>{isMedicalAdvisor && filter === 'pending'
-              ? `You are all caught up ${user?.firstName || ''}`.trim()
-              : 'No medical review requests match this view.'}
+    <div className="min-h-full bg-apple-gray-50 p-6">
+      <Card className="mb-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-apple-gray-900">{NAVIGATION['medical-dashboard'].label}</h1>
+            <p className="mt-1 text-sm text-apple-gray-500">
+              {isMedicalAdvisor
+                ? 'Reviews assigned to you. Pending items first.'
+                : 'Operational view of medical reviews, advisor progress, and review outcomes.'}
             </p>
           </div>
+          <AppleButton variant="secondary" onClick={loadData}>
+            <RefreshCw size={16} />
+            Refresh
+          </AppleButton>
+        </div>
+      </Card>
+
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <button type="button" className={`rounded-apple-lg border border-apple-gray-200 bg-apple-surface p-3.5 text-left shadow-apple-sm hover:border-apple-gray-300 ${statTileBorderClass.open}`} onClick={() => setFilter('open')}>
+          <span className="block text-[28px] font-extrabold leading-none text-apple-gray-900">{stats.open}</span>
+          <span className="mt-2 block text-xs font-bold uppercase text-apple-gray-500">Open</span>
+        </button>
+        <button type="button" className={`rounded-apple-lg border border-apple-gray-200 bg-apple-surface p-3.5 text-left shadow-apple-sm hover:border-apple-gray-300 ${statTileBorderClass.urgent}`} onClick={() => setFilter('open')}>
+          <span className="block text-[28px] font-extrabold leading-none text-apple-gray-900">{stats.overdue}</span>
+          <span className="mt-2 block text-xs font-bold uppercase text-apple-gray-500">Overdue</span>
+        </button>
+        <button type="button" className={`rounded-apple-lg border border-apple-gray-200 bg-apple-surface p-3.5 text-left shadow-apple-sm hover:border-apple-gray-300 ${statTileBorderClass.attention}`} onClick={() => setFilter('needs_resubmission')}>
+          <span className="block text-[28px] font-extrabold leading-none text-apple-gray-900">{stats.attention}</span>
+          <span className="mt-2 block text-xs font-bold uppercase text-apple-gray-500">Need more info / Caution</span>
+        </button>
+        <button type="button" className={`rounded-apple-lg border border-apple-gray-200 bg-apple-surface p-3.5 text-left shadow-apple-sm hover:border-apple-gray-300 ${statTileBorderClass.approved}`} onClick={() => setFilter('approved')}>
+          <span className="block text-[28px] font-extrabold leading-none text-apple-gray-900">{stats.approved}</span>
+          <span className="mt-2 block text-xs font-bold uppercase text-apple-gray-500">Approved / OK</span>
+        </button>
+        <button type="button" className={`rounded-apple-lg border border-apple-gray-200 bg-apple-surface p-3.5 text-left shadow-apple-sm hover:border-apple-gray-300 ${statTileBorderClass.rejected}`} onClick={() => setFilter('rejected')}>
+          <span className="block text-[28px] font-extrabold leading-none text-apple-gray-900">{stats.rejected}</span>
+          <span className="mt-2 block text-xs font-bold uppercase text-apple-gray-500">Declined / Not OK</span>
+        </button>
+      </div>
+
+      <Card className="mb-3" padding="sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="hidden flex-wrap gap-2 md:flex">
+            {reviewFilters.map((status) => (
+              <AppleButton
+                key={status}
+                size="sm"
+                variant={filter === status ? 'primary' : 'secondary'}
+                className="capitalize"
+                onClick={() => setFilter(status)}
+              >
+                {status.replace(/_/g, ' ')}
+              </AppleButton>
+            ))}
+          </div>
+          <label className="flex flex-col gap-1.5 text-xs font-bold text-apple-gray-600 md:hidden">
+            <span>View</span>
+            <select value={filter} onChange={(event) => setFilter(event.target.value as ReviewFilter)} className={selectClasses}>
+              {reviewFilters.map((status) => (
+                <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
+              ))}
+            </select>
+          </label>
+          <label className="inline-flex items-center gap-2 text-xs font-bold text-apple-gray-600">
+            <span>Sort</span>
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)} className={selectClasses}>
+              <option value="urgency">Urgency</option>
+              <option value="requested">Newest requested</option>
+              <option value="due">Due date</option>
+            </select>
+          </label>
+        </div>
+      </Card>
+
+      <div className="flex flex-col gap-2">
+        {visibleRequests.length === 0 ? (
+          <Card>
+            <EmptyState
+              icon={<FileText size={28} />}
+              title={isMedicalAdvisor && filter === 'pending'
+                ? `You are all caught up ${user?.firstName || ''}`.trim()
+                : 'No medical review requests match this view.'}
+            />
+          </Card>
         ) : (
           visibleRequests.map((request) => {
             const urgency = getUrgency(request);
@@ -250,39 +274,39 @@ const MedicalAdvisorDashboard: React.FC = () => {
               <button
                 type="button"
                 key={request._id || `${getObjectId(request.clientId)}:${request.display_id}`}
-                className={`medical-review-card urgency-${urgency}`}
+                className={`grid w-full grid-cols-[36px_minmax(0,1fr)] items-center gap-3.5 rounded-apple-lg border border-apple-gray-200 bg-apple-surface p-3.5 text-left shadow-apple-sm hover:border-apple-gray-300 hover:bg-apple-gray-50/40 sm:grid-cols-[44px_minmax(0,1fr)_auto] ${urgencyBorderClass[urgency]}`}
                 onClick={() => openRequest(request)}
               >
-                <span className="medical-review-icon">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-apple bg-indigo-50 text-indigo-800">
                   <FileText size={22} />
                 </span>
-                <span className="medical-review-main">
-                  <span className="medical-review-title">
-                    <strong>#{request.display_id || request._id?.slice(-6)}</strong>
-                    <span>{getClientName(request)}</span>
+                <span className="flex min-w-0 flex-col gap-1.5">
+                  <span className="flex min-w-0 items-center gap-2.5 text-base text-apple-gray-900">
+                    <strong className="truncate font-bold">#{request.display_id || request._id?.slice(-6)}</strong>
+                    <span className="truncate font-bold">{getClientName(request)}</span>
                   </span>
-                  <span className="medical-review-meta">
+                  <span className="flex flex-wrap items-center gap-2.5 text-xs font-semibold capitalize text-apple-gray-500">
                     <MedicalReviewTypeBadge requestType={request.requestType || request.documentType || request.artifactSnapshot?.documentType} />
                     <span>{getRetreatName(request)}</span>
                     {!isMedicalAdvisor && (
-                      <span className="medical-assignee">
+                      <span className="inline-flex items-center gap-1">
                         <UserCheck size={13} />
                         {getAssignedName(request)}
                       </span>
                     )}
                   </span>
-                  <span className="medical-review-dates">
+                  <span className="flex flex-wrap gap-2.5 text-xs font-semibold capitalize text-apple-gray-500">
                     <span>Requested {requestedDays === 0 ? 'today' : `${requestedDays}d ago`}</span>
                     <span>Due {formatDate(getDueDate(request))}</span>
                     {request.reviewedAt && <span>Reviewed {formatDate(request.reviewedAt)}</span>}
                   </span>
                 </span>
-                <span className="medical-review-side">
-                  <span className={getStatusClass(request.status)}>
+                <span className="col-span-full flex items-center justify-between gap-1.5 sm:col-span-1 sm:flex-col sm:items-end">
+                  <Badge tone={getStatusTone(request.status)} className="capitalize">
                     {getStatusIcon(request.status)}
                     {request.status.replace(/_/g, ' ')}
-                  </span>
-                  {urgency === 'urgent' && <span className="medical-urgency-pill">Urgent</span>}
+                  </Badge>
+                  {urgency === 'urgent' && <Badge tone="critical">Urgent</Badge>}
                 </span>
               </button>
             );
