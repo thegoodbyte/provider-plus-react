@@ -22,15 +22,17 @@ export const TableRow: React.FC<{ children: React.ReactNode; className?: string;
 
 interface TableHeaderCellProps {
   children: React.ReactNode;
-  align?: 'left' | 'right';
+  align?: 'left' | 'right' | 'center';
   sortDirection?: 'asc' | 'desc';
   onSort?: () => void;
   className?: string;
 }
 
+const ALIGN_CLASS: Record<'left' | 'right' | 'center', string> = { left: 'text-left', right: 'text-right', center: 'text-center' };
+
 /** A plain header cell, or a sortable one when `onSort` is given — same visual weight either way. */
 export const TableHeaderCell: React.FC<TableHeaderCellProps> = ({ children, align = 'left', sortDirection, onSort, className = '' }) => {
-  const alignClass = align === 'right' ? 'text-right' : 'text-left';
+  const alignClass = ALIGN_CLASS[align];
   if (!onSort) {
     return <th className={`px-4 py-2.5 ${alignClass} text-xs font-semibold uppercase tracking-wide text-apple-gray-500 ${className}`}>{children}</th>;
   }
@@ -47,6 +49,6 @@ export const TableHeaderCell: React.FC<TableHeaderCellProps> = ({ children, alig
   );
 };
 
-export const TableCell: React.FC<{ children: React.ReactNode; align?: 'left' | 'right'; className?: string; colSpan?: number }> = ({ children, align = 'left', className = '', colSpan }) => (
-  <td colSpan={colSpan} className={`px-4 py-2.5 text-sm text-apple-gray-700 ${align === 'right' ? 'text-right' : ''} ${className}`}>{children}</td>
+export const TableCell: React.FC<{ children: React.ReactNode; align?: 'left' | 'right' | 'center'; className?: string; colSpan?: number }> = ({ children, align = 'left', className = '', colSpan }) => (
+  <td colSpan={colSpan} className={`px-4 py-2.5 text-sm text-apple-gray-700 ${ALIGN_CLASS[align]} ${className}`}>{children}</td>
 );
