@@ -45,7 +45,7 @@ const AppleInput: React.FC<AppleInputProps> = ({
       {label && (
         <label htmlFor={inputId} className="block text-sm font-medium text-apple-gray-700 mb-1.5">
           {label}
-          {required && <span className="text-apple-red ml-1">*</span>}
+          {required && <span aria-hidden="true" className="text-apple-red ml-1">*</span>}
         </label>
       )}
 
@@ -60,7 +60,7 @@ const AppleInput: React.FC<AppleInputProps> = ({
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error || hint ? descriptionId : undefined}
-          aria-label={!label ? (ariaLabel || placeholder) : undefined}
+          aria-label={ariaLabel || label || placeholder}
           required={required}
           type={type}
           value={value}
