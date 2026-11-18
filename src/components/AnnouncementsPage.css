@@ -5,34 +5,14 @@
   color: #172b36;
   font-family: inherit;
 }
-.announcements button,
 .announcements input,
 .announcements select {
   font: inherit;
 }
-.announcements button {
-  border: 1px solid #cbd5df;
-  border-radius: 8px;
-  padding: 9px 13px;
-  background: white;
-  cursor: pointer;
-  font-size: 13px;
-}
-.announcements button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.announcements button:focus-visible,
 .announcements input:focus-visible,
 .announcements select:focus-visible {
   outline: 3px solid #60a5fa;
   outline-offset: 2px;
-}
-.announcements .announcement-primary {
-  background: #146d63;
-  border-color: #146d63;
-  color: white;
-  font-weight: 600;
 }
 .announcement-header,
 .announcement-card-heading,
@@ -85,11 +65,6 @@
   border-bottom: 1px solid #dae2e9;
   padding-bottom: 12px;
   margin-bottom: 20px;
-}
-.announcement-views button[aria-pressed="true"] {
-  background: #172b36;
-  color: white;
-  border-color: #172b36;
 }
 .announcement-toolbar {
   display: flex;
