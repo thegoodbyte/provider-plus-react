@@ -9,6 +9,7 @@ import { Client, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, Retr
 import LoadingSpinner from './LoadingSpinner';
 import MrrCreatedModal from './MrrCreatedModal';
 import { formatCalendarDate } from '../utils/dateFormat';
+import AppleButton from './AppleButton';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
   ekg: 'EKG',
@@ -213,7 +214,7 @@ const MedicalArtifactInlinePreview: React.FC<{
   }, [artifactId, storedPath, file.mimeType, file.uploadedAt]);
 
   return (
-    <div className="rounded-md border border-gray-200 bg-white p-4">
+    <div className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4">
       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-semibold text-gray-900">{fileName}</div>
@@ -524,10 +525,10 @@ const MedicalArtifactDetailPage: React.FC = () => {
   if (!artifact) {
     return (
       <div className="p-6">
-        <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+        <AppleButton variant="secondary" onClick={() => navigate(`${routePrefix}/medical-artifacts`)}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </AppleButton>
         <div className="mt-6 rounded-md border border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">Medical artifact not found.</div>
       </div>
     );
@@ -555,7 +556,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const renderRecordSummary = () => (
     <><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {detailItems.map((item) => (
-        <div key={item.label} className="rounded-md border border-gray-200 bg-white p-3">
+        <div key={item.label} className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-3">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
           <div className="mt-1 text-sm font-medium text-gray-900">{item.value}</div>
         </div>
@@ -565,7 +566,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
       <div className="mt-4 rounded-md border border-indigo-200 bg-indigo-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><div className="font-semibold text-indigo-950">AI assessment</div><div className="mt-1 text-sm text-indigo-900">Clinical summary only; a medical advisor must make the final decision.</div></div>
-          <button type="button" onClick={handleAiAssessment} disabled={assessing} className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-60">{assessing ? 'Assessing…' : artifact.aiAssessment?.status === 'ready' ? 'Re-run AI assessment' : 'Run AI assessment'}</button>
+          <AppleButton onClick={handleAiAssessment} disabled={assessing}>{assessing ? 'Assessing…' : artifact.aiAssessment?.status === 'ready' ? 'Re-run AI assessment' : 'Run AI assessment'}</AppleButton>
         </div>
         {artifact.aiAssessment?.status === 'ready' && <details className="mt-3 rounded border border-indigo-200 bg-white p-3"><summary className="cursor-pointer text-sm font-bold text-indigo-950">View assessment ({artifact.aiAssessment.assessedAt ? new Date(artifact.aiAssessment.assessedAt).toLocaleString() : 'saved'})</summary><div className="mt-2 space-y-2 text-sm text-gray-800">{!!artifact.aiAssessment.extractedValues?.length && <div><strong>Extracted values</strong><ul className="list-disc pl-5">{artifact.aiAssessment.extractedValues.map((item) => <li key={item.label}>{item.label}: {item.value}</li>)}</ul></div>}{!!artifact.aiAssessment.missingOrUnreadable?.length && <div><strong>Missing or unreadable</strong><ul className="list-disc pl-5">{artifact.aiAssessment.missingOrUnreadable.map((item) => <li key={item}>{item}</li>)}</ul></div>}{!!artifact.aiAssessment.potentialConcerns?.length && <div className="text-amber-800"><strong>Potential concerns</strong><ul className="list-disc pl-5">{artifact.aiAssessment.potentialConcerns.map((item) => <li key={item}>{item}</li>)}</ul></div>}<div className="border-t pt-2 text-xs font-semibold">Requires medical advisor review.</div></div></details>}
       </div>
@@ -601,25 +602,24 @@ const MedicalArtifactDetailPage: React.FC = () => {
                       <div className="font-medium text-gray-900">{getFileName(file) || `File ${index + 1}`}</div>
                       <div className="mt-1 text-xs text-gray-500">{file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
+                        <AppleButton
+                          size="sm"
                           onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/files/${index}`)}
                           disabled={!storedPath}
-                          className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                         >
                           <Eye className="h-3 w-3" />
                           View File
-                        </button>
+                        </AppleButton>
                         {isEditMode && (
-                          <button
-                            type="button"
+                          <AppleButton
+                            variant="danger"
+                            size="sm"
                             onClick={() => handleDeleteFile(file)}
                             disabled={!storedPath || deletingPath === storedPath}
-                            className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
                           >
                             <Trash2 className="h-3 w-3" />
                             {deletingPath === storedPath ? 'Deleting...' : 'Delete'}
-                          </button>
+                          </AppleButton>
                         )}
                       </div>
                     </div>
@@ -632,7 +632,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
           </div>
         </details>
       ) : (
-        <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
+        <div className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4 text-sm">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Files</h2>
           {isEditMode && (
             <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3">
@@ -654,15 +654,15 @@ const MedicalArtifactDetailPage: React.FC = () => {
                   ))}
                 </div>
               )}
-              <button
-                type="button"
+              <AppleButton
+                size="sm"
+                className="mt-3"
                 onClick={handleUploadFiles}
                 disabled={uploading || selectedFiles.length === 0}
-                className="mt-3 inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-black disabled:opacity-50"
               >
                 <Upload className="h-3.5 w-3.5" />
                 {uploading ? 'Uploading...' : 'Upload Selected'}
-              </button>
+              </AppleButton>
             </div>
           )}
           {artifact.files?.length ? (
@@ -678,25 +678,24 @@ const MedicalArtifactDetailPage: React.FC = () => {
                       {storedPath || 'No storage path recorded'}
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
+                      <AppleButton
+                        size="sm"
                         onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/files/${index}`)}
                         disabled={!storedPath}
-                        className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                       >
                         <Eye className="h-3 w-3" />
                         View File
-                      </button>
+                      </AppleButton>
                       {isEditMode && (
-                      <button
-                        type="button"
+                      <AppleButton
+                        variant="danger"
+                        size="sm"
                         onClick={() => handleDeleteFile(file)}
                         disabled={!storedPath || deletingPath === storedPath}
-                        className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
                       >
                         <Trash2 className="h-3 w-3" />
                         {deletingPath === storedPath ? 'Deleting...' : 'Delete'}
-                      </button>
+                      </AppleButton>
                       )}
                     </div>
                   </div>
@@ -753,20 +752,18 @@ const MedicalArtifactDetailPage: React.FC = () => {
           </div>
         </details>
       ) : (
-        <section className="mt-6 rounded-md border border-gray-200 bg-white p-4">
+        <section className="mt-6 rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-gray-900">Medical Review History</h2>
               <p className="text-sm text-gray-500">All medical review requests linked to this artifact.</p>
             </div>
-            <button
-              type="button"
+            <AppleButton
               onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`, { state: location.state })}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               <Plus className="h-4 w-4" />
               Create MRR
-            </button>
+            </AppleButton>
           </div>
 
           {reviewRequests.length > 0 ? (
@@ -879,15 +876,15 @@ const MedicalArtifactDetailPage: React.FC = () => {
       {viewerPath && <MedicalArtifactDocumentViewer key={artifactId} artifactId={artifactId} files={previewFiles} initialPath={viewerPath} identity={`${clientLabel} · Record #${artifact.display_id || artifactId}`} onClose={() => setViewerPath(null)}/>}
       <MrrCreatedModal request={createdMrr} onDismiss={() => setCreatedMrr(null)} onViewMrr={() => { setCreatedMrr(null); if (createdMrr) navigate(`${routePrefix}/medical-review-requests/${createdMrr._id}`, { state: location.state }); }} onBackToArtifacts={() => navigate(location.state?.artifactReturnTo || `${routePrefix}/medical-artifacts`, { state: location.state })} />
       <div className="medical-artifact-page-actions mb-4 flex items-start justify-between gap-3 sm:mb-6">
-        <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+        <AppleButton variant="secondary" onClick={() => navigate(`${routePrefix}/medical-artifacts`)}>
           <ArrowLeft className="h-4 w-4" />
           Back
-        </button>
+        </AppleButton>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <button type="button" onClick={() => setCaptureMode((current) => !current)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+          <AppleButton variant="secondary" onClick={() => setCaptureMode((current) => !current)}>
             <Camera className="h-4 w-4" />
             {captureMode ? 'Exit capture mode' : 'Capture full page'}
-          </button>
+          </AppleButton>
           <div className="flex items-center gap-1">
             <select
               value={downloadFileLanguage}
@@ -898,40 +895,39 @@ const MedicalArtifactDetailPage: React.FC = () => {
               <option value="original">Original</option>
               <option value="en">English</option>
             </select>
-            <button type="button" onClick={handleDownloadArtifact} disabled={downloading} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+            <AppleButton variant="secondary" onClick={handleDownloadArtifact} disabled={downloading}>
               <Download className="h-4 w-4" />
               {downloading ? 'Preparing…' : 'Download'}
-            </button>
+            </AppleButton>
           </div>
           {artifact.translation?.status === 'ready' && (
-            <button type="button" onClick={handleGenerateEnglish} disabled={translating} className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
+            <AppleButton onClick={handleGenerateEnglish} disabled={translating}>
               {translating ? 'Regenerating…' : 'Regenerate English translation'}
-            </button>
+            </AppleButton>
           )}
           {!isEditMode && (
-            <button onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/edit`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            <AppleButton variant="secondary" onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/edit`)}>
               <Edit className="h-4 w-4" />
               Edit
-            </button>
+            </AppleButton>
           )}
-          <button onClick={openQuickMrr} className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-sm font-semibold text-amber-800 hover:bg-amber-100" title="Create quick medical review request" aria-label="Quick MRR">
+          <AppleButton className="!bg-amber-50 !text-amber-800 hover:!bg-amber-100" onClick={openQuickMrr} title="Create quick medical review request" aria-label="Quick MRR">
             <Zap className="h-4 w-4" />
             <span className="hidden sm:inline">Quick MRR</span>
-          </button>
-          <button onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`, { state: location.state })} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          </AppleButton>
+          <AppleButton variant="secondary" onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`, { state: location.state })}>
             <Plus className="h-4 w-4" />
             Full MRR
-          </button>
+          </AppleButton>
           {routePrefix === '/admin' && (
-            <button
-              type="button"
+            <AppleButton
+              variant="danger"
               onClick={handleDeleteArtifact}
               disabled={deletingArtifact}
-              className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" />
               {deletingArtifact ? 'Deleting...' : 'Delete'}
-            </button>
+            </AppleButton>
           )}
         </div>
       </div>
@@ -976,8 +972,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
               </label>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setQuickMrrOpen(false)} className="rounded border px-3 py-2">Cancel</button>
-              <button type="button" onClick={createQuickMrr} disabled={quickMrrSaving || !quickMrr.advisorId || !quickMrr.groupId} className="rounded bg-blue-600 px-3 py-2 font-medium text-white disabled:opacity-50">{quickMrrSaving ? 'Creating…' : 'Assign MRR'}</button>
+              <AppleButton variant="secondary" onClick={() => setQuickMrrOpen(false)}>Cancel</AppleButton>
+              <AppleButton onClick={createQuickMrr} disabled={quickMrrSaving || !quickMrr.advisorId || !quickMrr.groupId}>{quickMrrSaving ? 'Creating…' : 'Assign MRR'}</AppleButton>
             </div>
           </div>
         </div>
@@ -991,9 +987,9 @@ const MedicalArtifactDetailPage: React.FC = () => {
       <div className="mb-5 rounded-md border border-blue-200 bg-blue-50 p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div><div className="font-semibold text-blue-950">English advisor version</div><div className="mt-1 text-sm text-blue-900">{artifact.translation?.status === 'ready' ? `Ready · translated from ${artifact.translation.sourceLanguage.toUpperCase()}` : artifact.translation?.status === 'failed' ? `Failed: ${artifact.translation.error || 'Retry translation'}` : 'Generate an English equivalent while preserving the signed original.'}</div></div>
-          <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-semibold text-blue-900">Original language<select value={translationLanguage} onChange={(event) => setTranslationLanguage(event.target.value)} className="mt-1 block rounded-md border border-blue-300 bg-white px-3 py-2 text-sm"><option value="pl">Polish</option><option value="cs">Czech</option><option value="de">German</option><option value="es">Spanish</option><option value="fr">French</option><option value="other">Other</option></select></label><button type="button" onClick={handleGenerateEnglish} disabled={translating} className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">{translating ? 'Generating…' : artifact.translation?.status === 'ready' ? 'Regenerate English' : 'Generate English'}</button>
-            <button type="button" disabled={!originalPreviewFile} onClick={() => originalPreviewFile && setViewerPath(getFileStoredPath(originalPreviewFile))} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-teal-700 bg-white px-3 py-2 text-sm font-semibold text-teal-800 disabled:opacity-50"><Maximize2 size={16} aria-hidden="true"/>View original full screen</button>
-            <button type="button" disabled={translating || !englishPreviewFile} title={englishPreviewFile ? 'Open the saved English document' : 'Generate the English version first'} onClick={() => englishPreviewFile && setViewerPath(getFileStoredPath(englishPreviewFile))} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-teal-700 bg-white px-3 py-2 text-sm font-semibold text-teal-800 disabled:opacity-50"><Maximize2 size={16} aria-hidden="true"/>View English full screen</button>
+          <div className="flex flex-wrap items-end gap-2"><label className="text-xs font-semibold text-blue-900">Original language<select value={translationLanguage} onChange={(event) => setTranslationLanguage(event.target.value)} className="mt-1 block rounded-md border border-blue-300 bg-white px-3 py-2 text-sm"><option value="pl">Polish</option><option value="cs">Czech</option><option value="de">German</option><option value="es">Spanish</option><option value="fr">French</option><option value="other">Other</option></select></label><AppleButton onClick={handleGenerateEnglish} disabled={translating}>{translating ? 'Generating…' : artifact.translation?.status === 'ready' ? 'Regenerate English' : 'Generate English'}</AppleButton>
+            <AppleButton variant="secondary" className="!border-teal-700 !text-teal-800" disabled={!originalPreviewFile} onClick={() => originalPreviewFile && setViewerPath(getFileStoredPath(originalPreviewFile))}><Maximize2 size={16} aria-hidden="true"/>View original full screen</AppleButton>
+            <AppleButton variant="secondary" className="!border-teal-700 !text-teal-800" disabled={translating || !englishPreviewFile} title={englishPreviewFile ? 'Open the saved English document' : 'Generate the English version first'} onClick={() => englishPreviewFile && setViewerPath(getFileStoredPath(englishPreviewFile))}><Maximize2 size={16} aria-hidden="true"/>View English full screen</AppleButton>
           </div>
         </div>
         {artifact.translation?.status === 'ready' && <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">AI-generated translation. The original signed submission remains authoritative.</div>}
@@ -1013,7 +1009,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
           </div>
         </div>
         {isEditMode ? (
-          <form onSubmit={handleSave} className="space-y-4 rounded-none border-x-0 border-y border-gray-200 bg-white p-4 md:rounded-md md:border">
+          <form onSubmit={handleSave} className="space-y-4 rounded-none border-x-0 border-y border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4 md:rounded-apple-lg md:border">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block text-sm font-medium text-gray-700">
                 Title
@@ -1123,19 +1119,19 @@ const MedicalArtifactDetailPage: React.FC = () => {
             </label>
 
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+              <AppleButton variant="secondary" onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)}>
                 Cancel
-              </button>
-              <button type="submit" disabled={saving || uploading || !form.title.trim()} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50">
+              </AppleButton>
+              <AppleButton type="submit" disabled={saving || uploading || !form.title.trim()}>
                 <Save className="h-4 w-4" />
                 {uploading ? 'Uploading files...' : saving ? 'Saving...' : 'Save Changes'}
-              </button>
+              </AppleButton>
             </div>
           </form>
         ) : (
           <div className="space-y-4">
             {artifact.data?.answers && Object.keys(artifact.data.answers).length > 0 && (
-              <section className="rounded-none border-x-0 border-y border-gray-200 bg-white p-4 md:rounded-md md:border" aria-labelledby="artifact-answers-heading">
+              <section className="rounded-none border-x-0 border-y border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4 md:rounded-apple-lg md:border" aria-labelledby="artifact-answers-heading">
                 <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                   <div>
                     <h2 id="artifact-answers-heading" className="text-sm font-semibold uppercase tracking-wide text-gray-500">Submitted answers</h2>
@@ -1166,7 +1162,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
                 ))}
               </div>
             )}
-            <div className="space-y-4 rounded-none border-x-0 border-y border-gray-200 bg-white p-4 text-sm md:rounded-md md:border">
+            <div className="space-y-4 rounded-none border-x-0 border-y border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4 text-sm md:rounded-apple-lg md:border">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Title</div>
                 <div className="mt-1 text-base font-semibold text-gray-900">{artifact.title || '-'}</div>
