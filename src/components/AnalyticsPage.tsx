@@ -14,7 +14,7 @@ import {
 import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi } from '../services/api';
 import { buildBookingPriceTimeline, BookingTimelineSource } from './bookingPriceTimeline';
-import './AnalyticsPage.css';
+import { Card } from './ui';
 
 const usd = (value: number) => `$${Math.round(value).toLocaleString()}`;
 
@@ -52,13 +52,13 @@ const AnalyticsPage: React.FC = () => {
   }
 
   return (
-    <div className="analytics-page">
-      <header className="analytics-header">
+    <div className="mx-auto max-w-[1200px] p-6">
+      <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1>{NAVIGATION.analytics.label}</h1>
-          <p>When clients book, plotted against price, so you can spot correlation between pricing and booking volume over time.</p>
+          <h1 className="text-2xl font-bold text-apple-gray-900">{NAVIGATION.analytics.label}</h1>
+          <p className="mt-1.5 max-w-[620px] text-sm text-apple-gray-500">When clients book, plotted against price, so you can spot correlation between pricing and booking volume over time.</p>
         </div>
-        <label className="analytics-toggle">
+        <label className="flex items-center gap-2 whitespace-nowrap rounded-apple border border-apple-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-apple-gray-600">
           <input
             type="checkbox"
             checked={includeCancelled}
@@ -68,33 +68,33 @@ const AnalyticsPage: React.FC = () => {
         </label>
       </header>
 
-      {error && <div className="analytics-error">{error}</div>}
+      {error && <div className="mb-4 rounded-apple border border-red-300 bg-red-50 px-3.5 py-3 text-sm text-red-700">{error}</div>}
 
-      <div className="analytics-summary">
-        <div>
-          <strong>{timeline.includedCount}</strong>
-          <span>Bookings plotted</span>
-        </div>
-        <div>
-          <strong>{timeline.buckets.length}</strong>
-          <span>Months covered</span>
-        </div>
-        <div>
-          <strong>{timeline.excludedMissingPrice}</strong>
-          <span>Missing a USD price (pending backfill)</span>
-        </div>
-        <div>
-          <strong>{timeline.excludedMissingDate}</strong>
-          <span>Missing a booking date</span>
-        </div>
+      <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+        <Card padding="sm">
+          <strong className="block text-2xl text-apple-gray-900">{timeline.includedCount}</strong>
+          <span className="text-xs text-apple-gray-500">Bookings plotted</span>
+        </Card>
+        <Card padding="sm">
+          <strong className="block text-2xl text-apple-gray-900">{timeline.buckets.length}</strong>
+          <span className="text-xs text-apple-gray-500">Months covered</span>
+        </Card>
+        <Card padding="sm">
+          <strong className="block text-2xl text-apple-gray-900">{timeline.excludedMissingPrice}</strong>
+          <span className="text-xs text-apple-gray-500">Missing a USD price (pending backfill)</span>
+        </Card>
+        <Card padding="sm">
+          <strong className="block text-2xl text-apple-gray-900">{timeline.excludedMissingDate}</strong>
+          <span className="text-xs text-apple-gray-500">Missing a booking date</span>
+        </Card>
       </div>
 
       {timeline.buckets.length === 0 ? (
-        <div className="analytics-empty">
-          <p>No bookings with both a date and a USD-normalized price yet. Once historical bookings are backfilled, this chart will populate automatically.</p>
-        </div>
+        <Card>
+          <p className="text-center text-apple-gray-500">No bookings with both a date and a USD-normalized price yet. Once historical bookings are backfilled, this chart will populate automatically.</p>
+        </Card>
       ) : (
-        <div className="analytics-chart">
+        <Card>
           <ResponsiveContainer width="100%" height={420}>
             <ComposedChart data={timeline.buckets} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -109,7 +109,7 @@ const AnalyticsPage: React.FC = () => {
               <Line yAxisId="price" dataKey="avgPriceUsd" name="Avg price (USD)" stroke="#d97706" strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
       )}
     </div>
   );
