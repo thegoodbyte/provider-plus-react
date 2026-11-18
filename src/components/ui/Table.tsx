@@ -47,6 +47,6 @@ export const TableHeaderCell: React.FC<TableHeaderCellProps> = ({ children, alig
   );
 };
 
-export const TableCell: React.FC<{ children: React.ReactNode; align?: 'left' | 'right'; className?: string }> = ({ children, align = 'left', className = '' }) => (
-  <td className={`px-4 py-2.5 text-sm text-apple-gray-700 ${align === 'right' ? 'text-right' : ''} ${className}`}>{children}</td>
+export const TableCell: React.FC<{ children: React.ReactNode; align?: 'left' | 'right'; className?: string; colSpan?: number }> = ({ children, align = 'left', className = '', colSpan }) => (
+  <td colSpan={colSpan} className={`px-4 py-2.5 text-sm text-apple-gray-700 ${align === 'right' ? 'text-right' : ''} ${className}`}>{children}</td>
 );

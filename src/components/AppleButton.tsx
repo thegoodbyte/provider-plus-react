@@ -13,6 +13,9 @@ interface AppleButtonProps {
   className?: string;
   /** Accessible name when the visible label doesn't uniquely identify this button (e.g. one of several "Remove" buttons in a list). */
   'aria-label'?: string;
+  /** For a toggle/tab-style button that represents one of a set of selectable states. */
+  'aria-pressed'?: boolean;
+  title?: string;
 }
 
 const AppleButton: React.FC<AppleButtonProps> = ({
@@ -25,7 +28,9 @@ const AppleButton: React.FC<AppleButtonProps> = ({
   onClick,
   type = 'button',
   className = '',
-  'aria-label': ariaLabel
+  'aria-label': ariaLabel,
+  'aria-pressed': ariaPressed,
+  title
 }) => {
   const baseStyles = `
     inline-flex items-center justify-center
@@ -74,6 +79,8 @@ const AppleButton: React.FC<AppleButtonProps> = ({
     <button
       aria-busy={loading}
       aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
+      title={title}
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
