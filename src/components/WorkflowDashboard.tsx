@@ -27,8 +27,19 @@ import {
   MedicalReviewRequest,
 } from '../types';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
+import AppleButton from './AppleButton';
+import { Badge, Card, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './ui';
+import type { BadgeTone } from './ui';
 import './WorkflowDashboard.css';
 import type { WorkflowSummaryRow, WorkflowMedicalRequirement } from '../types/workflowSummary';
+
+const PILL_TONE: Record<string, BadgeTone> = {
+  ready: 'success',
+  attention: 'warning',
+  blocked: 'critical',
+  neutral: 'neutral',
+  unknown: 'neutral',
+};
 
 const inlineErrors = { suppressGlobalError: true };
 
@@ -411,7 +422,7 @@ const WorkflowDashboard: React.FC = () => {
   return (
     <div className="workflow-dashboard">
       <div className="workflow-shell">
-        <div className="workflow-header">
+        <Card padding="none" className="workflow-header">
           <div>
             <h1>{NAVIGATION.workflow.label}</h1>
             <p>{NAVIGATION.workflow.description}</p>
@@ -430,23 +441,23 @@ const WorkflowDashboard: React.FC = () => {
                 </option>
               ))}
             </select>
-            <button
+            <AppleButton
               type="button"
-              className="workflow-button secondary"
+              variant="secondary"
               disabled={isLoading}
               onClick={() => loadRetreatWorkflow(selectedRetreatId)}
             >
               <Icon icon={RefreshCw} className="w-4 h-4" />
               Refresh
-            </button>
+            </AppleButton>
           </div>
-        </div>
+        </Card>
 
         {incomplete && <div role="alert" className="workflow-load-warning">
           Unable to load all workflow data{loadErrors.length ? `: ${loadErrors.join(', ')}` : ''}. Readiness and counts are incomplete.
-          <button type="button" className="workflow-button secondary" disabled={isLoading} onClick={() => loadRetreatWorkflow(selectedRetreatId)}>Retry unavailable data</button>
+          <AppleButton type="button" variant="secondary" disabled={isLoading} onClick={() => loadRetreatWorkflow(selectedRetreatId)}>Retry unavailable data</AppleButton>
         </div>}
-        <div className="workflow-toolbar">
+        <Card padding="none" className="workflow-toolbar">
           <div className="workflow-toolbar-left">
             <input
               className="workflow-filter"
@@ -473,33 +484,33 @@ const WorkflowDashboard: React.FC = () => {
               {selectedRetreat ? `${selectedRetreat.name} • ${formatDate(selectedRetreat.startDate)}` : 'No retreat selected'}
             </span>
           </div>
-        </div>
+        </Card>
 
         {!loadErrors.includes('Bookings') && !loadErrors.includes('Workflow data') && !(loadErrors.includes('Retreats') && !workflowRows.length) && <><div className="workflow-stat-grid">
-          <div className="workflow-stat">
+          <Card padding="sm" className="workflow-stat">
             <span className="workflow-stat-label">Bookings</span>
             <div className="workflow-stat-value">{summary.total}</div>
             <div className="workflow-stat-hint">In the selected retreat</div>
-          </div>
-          <div className="workflow-stat">
+          </Card>
+          <Card padding="sm" className="workflow-stat">
             <span className="workflow-stat-label">Ready</span>
             <div className="workflow-stat-value">{summary.ready}</div>
             <div className="workflow-stat-hint">Fully cleared</div>
-          </div>
-          <div className="workflow-stat">
+          </Card>
+          <Card padding="sm" className="workflow-stat">
             <span className="workflow-stat-label">Attention</span>
             <div className="workflow-stat-value">{summary.attention}</div>
             <div className="workflow-stat-hint">Needs follow-up</div>
-          </div>
-          <div className="workflow-stat">
+          </Card>
+          <Card padding="sm" className="workflow-stat">
             <span className="workflow-stat-label">Queue</span>
             <div className="workflow-stat-value">{remindersUnavailable ? '—' : summary.reminders}</div>
             <div className="workflow-stat-hint">Open reminders</div>
-          </div>
+          </Card>
         </div>
 
         <div className="workflow-queue-grid">
-          <div className="workflow-card">
+          <Card className="workflow-card">
             <div className="workflow-section-header">
               <h3>Task inbox</h3>
               <span>{taskInbox.length} open</span>
@@ -519,16 +530,16 @@ const WorkflowDashboard: React.FC = () => {
                       <div className="workflow-task-meta">{task.detail || 'No additional detail'}</div>
                     </div>
                     <div className="workflow-task-right">
-                      <div className={`workflow-pill ${task.state}`}>{task.state}</div>
+                      <Badge tone={PILL_TONE[task.state] || 'neutral'}>{task.state}</Badge>
                       <div className="workflow-task-meta">{task.dueText}</div>
                     </div>
                   </div>
                 ))
               )}
             </div>
-          </div>
+          </Card>
 
-          <div className="workflow-card">
+          <Card className="workflow-card">
             <div className="workflow-section-header">
               <h3>Message queue</h3>
               <span>{remindersUnavailable ? 'Unknown' : `${messageQueue.length} queued`}</span>
@@ -551,10 +562,10 @@ const WorkflowDashboard: React.FC = () => {
                 ))
               )}
             </div>
-          </div>
+          </Card>
         </div>
 
-        <div className="workflow-grid">
+        <Card padding="none" className="workflow-grid">
           <div className="workflow-list">
             <div className="workflow-list-header">
               <h2>Bookings</h2>
@@ -583,23 +594,23 @@ const WorkflowDashboard: React.FC = () => {
                       <span>{row.clientEmail || 'No email'}</span>
                     </div>
                     <div>
-                      <div className={`workflow-pill ${row.readinessState}`}>
+                      <Badge tone={PILL_TONE[row.readinessState] || 'neutral'}>
                         {row.readinessState === 'ready' ? <CheckCircle2 className="w-3.5 h-3.5" /> : row.readinessState === 'blocked' ? <AlertTriangle className="w-3.5 h-3.5" /> : <Clock3 className="w-3.5 h-3.5" />}
                         {row.readinessState}
-                      </div>
+                      </Badge>
                       <div className="workflow-booking-sub">{row.nextAction}</div>
                     </div>
                     <div>
                       <div className="workflow-booking-sub">Medical</div>
-                      <div className={`workflow-pill ${row.unavailable.some(label => /Medical|documents/.test(label)) ? 'unknown' : row.medicalRequirements.every((item) => ['approved','accepted','waived','not_applicable','caution'].includes(item.state)) ? 'ready' : row.medicalRequirements.some((item) => item.state === 'missing' || item.state === 'rejected') ? 'blocked' : 'attention'}`}>
+                      <Badge tone={PILL_TONE[row.unavailable.some(label => /Medical|documents/.test(label)) ? 'unknown' : row.medicalRequirements.every((item) => ['approved','accepted','waived','not_applicable','caution'].includes(item.state)) ? 'ready' : row.medicalRequirements.some((item) => item.state === 'missing' || item.state === 'rejected') ? 'blocked' : 'attention']}>
                         {row.unavailable.some(label => /Medical|documents/.test(label)) ? 'Unable to load' : row.medicalRequirements.every((item) => ['approved','accepted','waived','not_applicable','caution'].includes(item.state)) ? 'Approved' : 'Incomplete'}
-                      </div>
+                      </Badge>
                     </div>
                     <div>
                       <div className="workflow-booking-sub">Payments</div>
-                      <div className={`workflow-pill ${row.unavailable.includes('Payments') ? 'unknown' : row.depositPaid ? 'ready' : 'blocked'}`}>
+                      <Badge tone={PILL_TONE[row.unavailable.includes('Payments') ? 'unknown' : row.depositPaid ? 'ready' : 'blocked']}>
                         {row.unavailable.includes('Payments') ? 'Unable to load' : row.depositPaid ? 'Deposit paid' : 'Deposit due'}
-                      </div>
+                      </Badge>
                     </div>
                   </div>
                 ))
@@ -615,10 +626,10 @@ const WorkflowDashboard: React.FC = () => {
                     <h2>{detail.clientName}</h2>
                     <span>#{detail.clientDisplayId || detail.bookingNumber || '—'} • {detail.retreatName}</span>
                   </div>
-                  <div className={`workflow-pill ${detail.readinessState}`}>
+                  <Badge tone={PILL_TONE[detail.readinessState] || 'neutral'}>
                     {detail.readinessState === 'ready' ? <ShieldCheck className="w-3.5 h-3.5" /> : detail.readinessState === 'blocked' ? <AlertTriangle className="w-3.5 h-3.5" /> : <Clock3 className="w-3.5 h-3.5" />}
                     {detail.readinessState}
-                  </div>
+                  </Badge>
                 </div>
 
                 {detail.unavailable.length > 0 && <p role="status" className="workflow-load-warning">Unable to load: {detail.unavailable.join(', ')}. Readiness unknown.</p>}
@@ -669,9 +680,9 @@ const WorkflowDashboard: React.FC = () => {
                 )}
 
                 {detailPending && <p role="status">Loading {activeTab}…</p>}
-                {detailError && !detailPending && <button className="workflow-button secondary" onClick={() => setDetailRetry(value => value + 1)}>Retry details</button>}
+                {detailError && !detailPending && <AppleButton variant="secondary" onClick={() => setDetailRetry(value => value + 1)}>Retry details</AppleButton>}
                 {activeTab === 'requirements' && !detailPending && (
-                  <div className="workflow-card">
+                  <Card className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Requirements</h3>
                       <span>{detail.unavailable.includes('Requirements') ? 'Unknown' : `${detail.requirements.length} records`}</span>
@@ -679,32 +690,30 @@ const WorkflowDashboard: React.FC = () => {
                     {detail.unavailable.includes('Requirements') ? <div className="workflow-empty">Unable to load requirements.</div> : detail.requirements.length === 0 ? (
                       <div className="workflow-empty">No client requirements initialized.</div>
                     ) : (
-                      <div className="workflow-table">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Requirement</th>
-                              <th>Status</th>
-                              <th>Due</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {detail.requirements.map((item) => (
-                              <tr key={item._id}>
-                                <td>{item.requirement?.name || (typeof item.requirementId === 'object' ? (item.requirementId as any)?.name : item.requirementId)}</td>
-                                <td>{item.status || 'pending'}</td>
-                                <td>{formatDate(item.dueDate)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Table>
+                        <TableHead>
+                          <tr>
+                            <TableHeaderCell>Requirement</TableHeaderCell>
+                            <TableHeaderCell>Status</TableHeaderCell>
+                            <TableHeaderCell>Due</TableHeaderCell>
+                          </tr>
+                        </TableHead>
+                        <TableBody>
+                          {detail.requirements.map((item) => (
+                            <TableRow key={item._id}>
+                              <TableCell>{item.requirement?.name || (typeof item.requirementId === 'object' ? (item.requirementId as any)?.name : item.requirementId)}</TableCell>
+                              <TableCell>{item.status || 'pending'}</TableCell>
+                              <TableCell>{formatDate(item.dueDate)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     )}
-                  </div>
+                  </Card>
                 )}
 
                 {activeTab === 'medical' && !detailPending && (
-                  <div className="workflow-card">
+                  <Card className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Medical</h3>
                       <span>{detail.unavailable.some(label => /Medical|documents/.test(label)) ? 'Unable to load' : detail.medicalRequirements.every((item) => ['approved','accepted','waived','not_applicable','caution'].includes(item.state)) ? 'Ready' : 'Action required'}</span>
@@ -714,9 +723,9 @@ const WorkflowDashboard: React.FC = () => {
                         <div data-ekg-state={requirement.type==='ekg'?requirement.state:undefined} className="workflow-detail-item workflow-medical-requirement" key={requirement.type}>
                           <div className="workflow-medical-requirement-head">
                             <h4>{requirement.label}</h4>
-                            <span className={`workflow-pill ${getMedicalRequirementPill(requirement.state)}`}>
+                            <Badge tone={PILL_TONE[getMedicalRequirementPill(requirement.state)] || 'neutral'}>
                               {getMedicalRequirementLabel(requirement.state)}
-                            </span>
+                            </Badge>
                           </div>
                           {requirement.state !== 'unavailable' && <><p>Artifact: {requirement.artifact?.display_id ? `#${requirement.artifact.display_id}` : 'No artifact linked'}</p>
                           <p>Received: {formatDate(requirement.artifact?.receivedAt || requirement.artifact?.createdAt)}</p>
@@ -725,11 +734,11 @@ const WorkflowDashboard: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </Card>
                 )}
 
                 {activeTab === 'payments' && !detailPending && (
-                  <div className="workflow-card">
+                  <Card className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Payments</h3>
                       <span>{detail.unavailable.includes('Payments') ? 'Unknown' : `${detail.payments.length} records`}</span>
@@ -737,34 +746,32 @@ const WorkflowDashboard: React.FC = () => {
                     {detail.unavailable.includes('Payments') ? <div className="workflow-empty">Unable to load payments.</div> : detail.payments.length === 0 ? (
                       <div className="workflow-empty">No payments recorded for this booking.</div>
                     ) : (
-                      <div className="workflow-table">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Date</th>
-                              <th>Amount</th>
-                              <th>Method</th>
-                              <th>Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {detail.payments.map((payment) => (
-                              <tr key={payment._id}>
-                                <td>{formatDate(payment.paymentDate)}</td>
-                                <td><CurrencyDisplay amount={payment.amount} currency={payment.currency} /></td>
-                                <td>{payment.paymentMethod.replace(/_/g, ' ')}</td>
-                                <td>{payment.status}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Table>
+                        <TableHead>
+                          <tr>
+                            <TableHeaderCell>Date</TableHeaderCell>
+                            <TableHeaderCell>Amount</TableHeaderCell>
+                            <TableHeaderCell>Method</TableHeaderCell>
+                            <TableHeaderCell>Status</TableHeaderCell>
+                          </tr>
+                        </TableHead>
+                        <TableBody>
+                          {detail.payments.map((payment) => (
+                            <TableRow key={payment._id}>
+                              <TableCell>{formatDate(payment.paymentDate)}</TableCell>
+                              <TableCell><CurrencyDisplay amount={payment.amount} currency={payment.currency} /></TableCell>
+                              <TableCell>{payment.paymentMethod.replace(/_/g, ' ')}</TableCell>
+                              <TableCell>{payment.status}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     )}
-                  </div>
+                  </Card>
                 )}
 
                 {activeTab === 'messages' && (
-                  <div className="workflow-card">
+                  <Card className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Message Queue</h3>
                       <span>{detail.unavailable.includes('Reminders') ? 'Unknown' : `${detail.reminders.length} reminders`}</span>
@@ -801,16 +808,16 @@ const WorkflowDashboard: React.FC = () => {
                         </>
                       )}
                     </div>
-                  </div>
+                  </Card>
                 )}
               </>
             ) : (
-              <div className="workflow-card">
+              <Card className="workflow-card">
                 <div className="workflow-empty">Select a booking to see detail tabs.</div>
-              </div>
+              </Card>
             )}
           </div>
-        </div></>}
+        </Card></>}
       </div>
     </div>
   );

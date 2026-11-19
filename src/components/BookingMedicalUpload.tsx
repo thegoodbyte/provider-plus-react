@@ -6,7 +6,19 @@ import { useNavigate } from 'react-router-dom';
 import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BloodPressureReading, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
+import AppleButton from './AppleButton';
+import { Badge, Card, Modal } from './ui';
+import type { BadgeTone } from './ui';
 import './BookingMedicalUpload.css';
+
+const STATUS_BADGE_TONE: Record<string, BadgeTone> = {
+  'badge-pending': 'warning',
+  'badge-received': 'neutral',
+  'badge-approved': 'success',
+  'badge-rejected': 'critical',
+  'badge-caution': 'warning',
+  'badge-default': 'neutral',
+};
 
 interface BookingMedicalUploadProps {
   bookingId: string;
@@ -479,9 +491,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           <h3>{hideRequiredDocumentCards ? 'Additional medical monitoring' : 'Booking Medical Tests'}</h3>
           <p>{hideRequiredDocumentCards ? 'Blood pressure readings and other tracked documents for this booking.' : 'Each booking requires an EKG and liver panel artifact, plus a linked medical review request.'}</p>
         </div>
-        <button className="btn btn-sm btn-secondary" onClick={loadMedicalArtifacts} disabled={loading}>
+        <AppleButton variant="secondary" size="sm" onClick={loadMedicalArtifacts} disabled={loading}>
           <RefreshCw size={16} /> {loading ? 'Loading...' : 'Refresh'}
-        </button>
+        </AppleButton>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
@@ -546,7 +558,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           const isMarkedReceived = !!receiptItem && ['received', 'reviewed', 'approved', 'caution', 'completed'].includes(receiptItem.status);
 
           return (
-            <div key={section.type} className="booking-document-card">
+            <Card key={section.type} className="booking-document-card">
               <div className="booking-document-card-header">
                 <FileText size={20} />
                 <div>
@@ -566,9 +578,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                     )}
                   </div>
                   {!isMarkedReceived && (
-                    <button className="btn btn-sm btn-secondary" type="button" disabled={markingReceivedType === section.type} onClick={() => handleMarkReceived(section, latestArtifact)}>
+                    <AppleButton variant="secondary" size="sm" type="button" disabled={markingReceivedType === section.type} onClick={() => handleMarkReceived(section, latestArtifact)}>
                       {markingReceivedType === section.type ? 'Marking...' : `Mark ${section.title} received`}
-                    </button>
+                    </AppleButton>
                   )}
                 </div>
               )}
@@ -580,15 +592,15 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
               ) : (
                 <div className="booking-medical-status-row">
-                  <span className={`status-badge ${latestArtifact ? 'badge-received' : 'badge-pending'}`}>
+                  <Badge tone={STATUS_BADGE_TONE[latestArtifact ? 'badge-received' : 'badge-pending']}>
                     {latestArtifact ? 'artifact stored' : 'missing artifact'}
-                  </span>
-                  <span className={`status-badge ${getReviewBadgeClass(latestReview)}`}>
+                  </Badge>
+                  <Badge tone={STATUS_BADGE_TONE[getReviewBadgeClass(latestReview)]}>
                     {getReviewLabel(latestReview)}
-                  </span>
-                  <span className={`status-badge ${latestResult ? 'badge-approved' : 'badge-pending'}`}>
+                  </Badge>
+                  <Badge tone={STATUS_BADGE_TONE[latestResult ? 'badge-approved' : 'badge-pending']}>
                     {latestResult ? 'results saved' : 'results missing'}
-                  </span>
+                  </Badge>
                 </div>
               )}
 
@@ -638,7 +650,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
                 <div>
                   <span className="booking-medical-required-label">Decision</span>
-                  {loading ? <span>Loading…</span> : <span className={`status-badge ${latestDecision.className}`}>{latestDecision.label}</span>}
+                  {loading ? <span>Loading…</span> : <Badge tone={STATUS_BADGE_TONE[latestDecision.className]}>{latestDecision.label}</Badge>}
                 </div>
               </div>
 
@@ -682,7 +694,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                               'No review'
                             )}
                           </span>
-                          <span className={`status-badge ${decision.className}`}>{decision.label}</span>
+                          <Badge tone={STATUS_BADGE_TONE[decision.className]}>{decision.label}</Badge>
                         </div>
                         <div className="booking-document-file-list">
                           {(artifact.files || []).length === 0 ? (
@@ -697,31 +709,34 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                         </div>
                         <div className="booking-medical-actions">
                           {artifact._id && (
-                            <button
-                              className="btn btn-sm btn-secondary"
+                            <AppleButton
+                              variant="secondary"
+                              size="sm"
                               type="button"
                               onClick={() => navigate(`/medical-artifacts/${artifact._id}`)}
                             >
                               <Eye size={16} /> Artifact
-                            </button>
+                            </AppleButton>
                           )}
                           {review?._id ? (
-                            <button
-                              className="btn btn-sm btn-secondary"
+                            <AppleButton
+                              variant="secondary"
+                              size="sm"
                               type="button"
                               onClick={() => navigate(`/medical-review-requests/${review._id}`)}
                             >
                               <Eye size={16} /> Review #{review.display_id || review._id}
-                            </button>
+                            </AppleButton>
                           ) : (
-                            <button
-                              className="btn btn-sm btn-primary"
+                            <AppleButton
+                              variant="primary"
+                              size="sm"
                               type="button"
                               disabled={!artifact._id || creatingReviewFor === artifact._id}
                               onClick={() => createReviewRequest(artifact, section)}
                             >
                               <Send size={16} /> {creatingReviewFor === artifact._id ? 'Creating...' : 'Create Review'}
-                            </button>
+                            </AppleButton>
                           )}
                         </div>
                       </div>
@@ -730,23 +745,24 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 )}
               </div>
 
-            </div>
+            </Card>
           );
         })}
       </div>}
 
       {uploadModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="booking-medical-upload-title">
-          <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-6">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h3 id="booking-medical-upload-title" className="text-xl font-bold text-slate-900">Upload medical artifact</h3>
-                <p className="mt-1 text-sm text-slate-600">The client, retreat, and booking are already linked.</p>
-              </div>
-              <button type="button" onClick={() => setUploadModalOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100" aria-label="Close upload">
-                <X size={22} />
-              </button>
-            </div>
+        <Modal
+          open={uploadModalOpen}
+          onClose={() => setUploadModalOpen(false)}
+          title="Upload medical artifact"
+          footer={<>
+            <AppleButton variant="secondary" type="button" onClick={() => setUploadModalOpen(false)}>Cancel</AppleButton>
+            <AppleButton variant="primary" type="button" onClick={handleUpload} disabled={Boolean(uploadingType)}>
+              <Upload size={18} /> {uploadingType ? 'Uploading…' : 'Upload'}
+            </AppleButton>
+          </>}
+        >
+            <p className="mb-4 text-sm text-apple-gray-600">The client, retreat, and booking are already linked.</p>
 
             {error && <div className="alert alert-danger mb-4">{error}</div>}
 
@@ -805,15 +821,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 <p className="mt-1 text-xs text-slate-500">PDF or photo. On mobile you can use the camera.</p>
               </div>
             </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setUploadModalOpen(false)} className="min-h-12 rounded-xl border border-slate-300 bg-white font-semibold text-slate-700">Cancel</button>
-              <button type="button" onClick={handleUpload} disabled={Boolean(uploadingType)} className="btn btn-primary min-h-12 justify-center">
-                <Upload size={18} /> {uploadingType ? 'Uploading…' : 'Upload'}
-              </button>
-            </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

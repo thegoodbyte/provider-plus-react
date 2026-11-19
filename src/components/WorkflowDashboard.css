@@ -10,18 +10,6 @@
   gap: 16px;
 }
 
-.workflow-header,
-.workflow-toolbar,
-.workflow-stats,
-.workflow-grid,
-.workflow-card,
-.workflow-table,
-.workflow-panel {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
 
 .workflow-header {
   display: flex;
@@ -63,31 +51,6 @@
   font-size: 14px;
 }
 
-.workflow-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: auto;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #374151 0%, #7c3aed 100%);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.workflow-button.secondary {
-  background: #e2e8f0;
-  color: #0f172a;
-}
-
-.workflow-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .workflow-toolbar {
   display: flex;
   justify-content: space-between;
@@ -114,10 +77,6 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-}
-
-.workflow-stat {
-  padding: 16px 18px;
 }
 
 .workflow-stat-label {
@@ -227,37 +186,6 @@
   font-size: 13px;
 }
 
-.workflow-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  width: fit-content;
-}
-
-.workflow-pill.ready {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.workflow-pill.attention {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.workflow-pill.blocked {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.workflow-pill.neutral {
-  background: #e2e8f0;
-  color: #334155;
-}
-
 .workflow-progress {
   height: 8px;
   background: #e2e8f0;
@@ -269,14 +197,6 @@
 .workflow-progress-bar {
   height: 100%;
   border-radius: inherit;
-}
-
-.workflow-card {
-  padding: 18px;
-}
-
-.workflow-card + .workflow-card {
-  margin-top: 16px;
 }
 
 .workflow-tabs {
@@ -345,32 +265,6 @@
 
 .workflow-medical-requirement-head h4 {
   margin-bottom: 0;
-}
-
-.workflow-table {
-  overflow: hidden;
-}
-
-.workflow-table table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.workflow-table th,
-.workflow-table td {
-  border-bottom: 1px solid #e2e8f0;
-  padding: 12px 14px;
-  text-align: left;
-  vertical-align: top;
-  font-size: 13px;
-}
-
-.workflow-table th {
-  background: #f8fafc;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  font-size: 11px;
 }
 
 .workflow-empty {
@@ -473,4 +367,3 @@
 
 .workflow-load-warning { padding: 14px; margin: 12px 0; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #334155; }
 .workflow-load-warning button { margin-left: 12px; }
-.workflow-pill.unknown { background: #e2e8f0; color: #334155; }
