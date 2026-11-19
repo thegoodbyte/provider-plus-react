@@ -231,9 +231,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         bookingId,
         retreatId: resolveId(booking.retreatId),
         accommodationKey: prev.accommodationKey ?? booking.accommodationKey ?? (booking.roomType !== 'unspecified' ? booking.roomType : undefined),
-        requestType: 'balance',
+        requestType: paymentRequest?.requestType || 'balance',
         fullPriceQuote: String(fullPrice),
-        requestedAmount: String(remaining),
+        requestedAmount: paymentRequest?.requestType === 'deposit'
+          ? prev.requestedAmount || String(Math.round(fullPrice * planSettings.depositPercentage) / 100)
+          : String(remaining),
         currency,
       }));
       setBookingDefaultsMessage(`Active booking defaults loaded${lastPayment ? ` · currency from last payment (${currency})` : ''}.`);
@@ -356,14 +358,15 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     if (!showFinalPaymentRequestOption) return null;
     const selectedRetreat = retreats.find((retreat) => retreat._id === formData.retreatId);
     const startDate = parseCalendarDate(selectedRetreat?.startDate);
-    const fullPrice = calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? lineItems : []);
+    const booking = bookings.find(value => value._id === formData.bookingId);
+    const fullPrice = booking ? Number(booking.totalAmount) : calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? lineItems : []);
     const depositAmount = parseFloat(formData.requestedAmount);
     if (!startDate || !Number.isFinite(fullPrice) || !Number.isFinite(depositAmount)) return null;
     const dueDate = new Date(startDate);
     dueDate.setDate(dueDate.getDate() - planSettings.balanceDueDaysBeforeRetreat);
     return {
       dueDate: toDateInputValue(dueDate),
-      requestedAmount: Math.max(0, Math.round((fullPrice - depositAmount) * 100) / 100),
+      requestedAmount: Math.max(0, Math.round((fullPrice - Number(booking?.amountPaid || 0) - depositAmount) * 100) / 100),
       fullPrice,
       currency: formData.currency,
     };
@@ -795,7 +798,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 <strong>Final balance — after the deposit is paid</strong>
                 <p className="mt-1 text-sm text-gray-600">Only this deposit request is created now. After it is fully paid and linked to a booking, the final balance request is created automatically for that booking, due {planSettings.balanceDueDaysBeforeRetreat} days before the retreat. The booking payment plan must be enabled.</p>
                 {!planSettings.automatic && <p className="mt-2 text-sm text-amber-700">Automatic balance requests are disabled in payment settings. Enable them or create the balance from the booking after the deposit is paid.</p>}
-                {finalPaymentRequestPreview ? <p className="mt-2 text-sm">Planned balance: {finalPaymentRequestPreview.requestedAmount.toLocaleString()} {finalPaymentRequestPreview.currency} · due {finalPaymentRequestPreview.dueDate}. This is a preview, not an issued request.</p> : <p className="mt-2 text-sm">Choose a retreat with a start date to preview the planned balance.</p>}
+                {finalPaymentRequestPreview ? <p className="mt-2 text-sm">Planned balance: {finalPaymentRequestPreview.requestedAmount.toLocaleString()} {finalPaymentRequestPreview.currency} · due {finalPaymentRequestPreview.dueDate}. This is a preview, not an issued request. The final amount follows the booking price and payments recorded.</p> : <p className="mt-2 text-sm">Choose a retreat with a start date to preview the planned balance.</p>}
               </div>
             )}
 

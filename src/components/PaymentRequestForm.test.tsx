@@ -407,6 +407,13 @@ describe('PaymentRequestForm', () => {
   });
 
   describe('deferred final balance plan', () => {
+    it('keeps an explicitly requested deposit and previews the booked price after existing payments', async () => {
+      setUp({bookings:[{_id:'chosen',clientId:'client-1',retreatId:'retreat-1',status:'confirmed',totalAmount:5000,amountPaid:1000,currency:'EUR'}]});
+      view({paymentRequest:{clientId:'client-1',retreatId:'retreat-1',bookingId:'chosen',requestType:'deposit'}});
+      await waitFor(()=>expect(screen.getByLabelText('Requested Amount *')).toHaveValue(2000));
+      expect(screen.getByLabelText('Request Type')).toHaveValue('deposit');
+      expect(screen.getByLabelText('Final balance plan')).toHaveTextContent('2,000 EUR');
+    });
     it('previews the remaining balance and due date without an immediate-create checkbox or second-request payload', async () => {
       const { onSave } = view();
       await screen.findByLabelText('Client');
