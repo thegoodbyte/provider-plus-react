@@ -72,14 +72,17 @@
 .admin-workspace .bg-apple-blue:hover { background:#115748; }
 .admin-workspace .hover-lift:hover,.admin-workspace .card-hover:hover { transform:translateY(-2px); box-shadow:0 8px 24px #20332f0d; }
 .workspace-page .retreat-register-page { width:auto; margin:0; border-radius:18px; box-shadow:none; overflow:hidden; }
-.workspace-page .retreat-register-header { padding:24px; border-bottom:1px solid var(--workspace-line); }
-.workspace-page .retreat-register-header p { color:var(--workspace-muted); font-size:13px; margin-top:8px; }
-.workspace-page .retreat-register-tabs { gap:4px; flex-wrap:wrap; margin-top:18px; }
+.workspace-page .retreat-register-header { padding:24px; gap:16px; border-bottom:1px solid var(--workspace-line); }
+.workspace-page .retreat-register-heading p { color:var(--workspace-muted); font-size:13px; margin-top:2px; }
+.workspace-page .retreat-register-tabs { gap:4px; flex-wrap:wrap; }
 .workspace-page .retreat-register-tabs :is(button,a) { border:0; border-radius:9px; background:#f3f6f4; padding:10px 14px; }
 .workspace-page .retreat-register-tabs .is-active { background:var(--workspace-accent); color:#fff; }
+.workspace-page .retreat-register-search { border-color:var(--workspace-line); background:#f8faf9; width:200px; }
+.workspace-page .retreat-register-status-select { border-color:var(--workspace-line); background:#f8faf9; }
+.workspace-page .retreat-register-primary-actions { margin-left:auto; }
 .workspace-page .retreat-register-primary-actions button { border-radius:10px; min-height:40px; }
 .workspace-page .retreat-register-primary-actions .retreat-register-add { background:var(--workspace-accent); border-color:var(--workspace-accent); }
-.workspace-page .retreat-register-filters { background:#f8faf9; border-color:var(--workspace-line); }
+.workspace-page .retreat-register-primary-actions .retreat-register-refresh { width:40px; min-width:40px; padding:0; border-radius:50%; background:#f3f6f4; border-color:var(--workspace-line); color:var(--workspace-ink); justify-content:center; }
 .workspace-page .retreat-month > header { border-color:var(--workspace-line); padding:20px 8px 12px; }
 .workspace-page .retreat-register-card { grid-template-columns:115px minmax(180px,1.4fr) 75px 85px minmax(80px,.8fr) 160px; min-height:98px; gap:8px; border-color:var(--workspace-line); }
 .workspace-page .retreat-register-code { border-radius:8px; }
@@ -108,13 +111,14 @@
   .workspace-page h1 { font-size:25px; }
   .workspace-page .retreat-register-page { padding:0!important; }
   .workspace-page .retreat-register-header { padding:20px 16px 14px; gap:12px; }
-  .workspace-page .retreat-register-header h1 { font-size:25px; }
-  .workspace-page .retreat-register-header p { font-size:12px; }
-  .workspace-page .retreat-register-tabs { display:flex!important; }
+  .workspace-page .retreat-register-heading { flex-basis:100%; }
+  .workspace-page .retreat-register-heading h1 { font-size:25px; }
+  .workspace-page .retreat-register-heading p { font-size:12px; }
+  .workspace-page .retreat-register-tabs { display:flex!important; flex-basis:100%; }
   .workspace-page .retreat-register-tabs :is(button,a) { font-size:11px; padding:8px 10px; }
-  .workspace-page .retreat-register-filters { display:flex; flex-wrap:wrap; padding:12px 16px; }
-  .workspace-page .retreat-register-filters input { width:100%; flex:1 1 160px; min-width:0; }
-  .workspace-page .retreat-register-filters select { display:block; flex:1 1 100px; min-width:0; }
+  .workspace-page .retreat-register-search { width:100%; flex:1 1 160px; min-width:0; }
+  .workspace-page .retreat-register-status-select { display:block; flex:1 1 100px; min-width:0; }
+  .workspace-page .retreat-register-primary-actions { margin-left:0; }
   .workspace-page .retreat-register-card { display:grid; grid-template-columns:1fr auto; gap:12px; min-height:0; margin:12px 0; border:1px solid var(--workspace-line); padding:16px; border-radius:12px; }
   .workspace-page .retreat-register-card::before { border-radius:12px 0 0 12px; }
   .workspace-page .retreat-register-details strong { font-size:14px; }

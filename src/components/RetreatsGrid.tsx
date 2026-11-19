@@ -1,4 +1,4 @@
-import { Edit2, Eye, List as ListIcon, Plus, Trash2 } from 'lucide-react';
+import { Edit2, Eye, List as ListIcon, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { countOccupyingRetreatBookings } from './RetreatsGrid.helpers';
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -423,52 +423,75 @@ const RetreatsGrid: React.FC = () => {
   return (
     <div className="retreat-register-page">
       <div className="retreat-register-header">
-        <div>
+        <div className="retreat-register-heading">
           <h1>Retreats</h1>
           <p>{operationalRetreats.length} upcoming · {operationalRetreats.reduce((sum, retreat) => sum + Math.max(0, Number(retreat.capacity || 0) - countOccupyingRetreatBookings(getRetreatBookings(retreat))), 0)} places still open{operationalRetreats[0]?.startDate ? ` · next one starts in ${Math.max(0, Math.ceil((new Date(operationalRetreats[0].startDate).getTime() - Date.now()) / 86400000))} days` : ''}</p>
-          <div className="retreat-register-tabs">
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={viewMode === 'list' ? 'is-active' : ''}
-            >
-              Retreat List
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('holistic')}
-              className={viewMode === 'holistic' ? 'is-active' : ''}
-            >
-              Holistic View
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('requirements')}
-              className={viewMode === 'requirements' ? 'is-active' : ''}
-            >
-              Requirements
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('referrals')}
-              className={viewMode === 'referrals' ? 'is-active' : ''}
-            >
-              Referrals View
-            </button>
-            <Link
-              to={`/${routePrefix}/booking-step-deadlines`}
-              className=""
-            >
-              Step Deadlines
-            </Link>
-          </div>
         </div>
+        <div className="retreat-register-tabs">
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={viewMode === 'list' ? 'is-active' : ''}
+          >
+            Retreat List
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('holistic')}
+            className={viewMode === 'holistic' ? 'is-active' : ''}
+          >
+            Holistic View
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('requirements')}
+            className={viewMode === 'requirements' ? 'is-active' : ''}
+          >
+            Requirements
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('referrals')}
+            className={viewMode === 'referrals' ? 'is-active' : ''}
+          >
+            Referrals View
+          </button>
+          <Link
+            to={`/${routePrefix}/booking-step-deadlines`}
+            className=""
+          >
+            Step Deadlines
+          </Link>
+        </div>
+
+        {viewMode === 'list' && (
+          <>
+            <input
+              value={retreatSearch}
+              onChange={(event) => setRetreatSearch(event.target.value)}
+              placeholder="Find retreat or code"
+              aria-label="Find retreat or code"
+              className="retreat-register-search"
+            />
+            <select
+              value={retreatStatusFilter}
+              onChange={(event) => setRetreatStatusFilter(event.target.value)}
+              aria-label="Filter retreats by status"
+              className="retreat-register-status-select"
+            >
+              <option value="all">All statuses</option><option value="full">Full</option><option value="filling">Filling</option><option value="upcoming">Upcoming</option><option value="active">Active</option>
+            </select>
+          </>
+        )}
+
         <div className="retreat-register-primary-actions">
           <button
             onClick={fetchRetreats}
             className="retreat-register-refresh"
+            aria-label="Refresh"
+            title="Refresh"
           >
-            Refresh
+            <Icon icon={RefreshCw} className="w-4 h-4" />
           </button>
           <button
             onClick={() => {
@@ -495,13 +518,6 @@ const RetreatsGrid: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {viewMode === 'list' && <div className="retreat-register-filters">
-        <input value={retreatSearch} onChange={(event) => setRetreatSearch(event.target.value)} placeholder="Find retreat or code" aria-label="Find retreat or code" />
-        <select value={retreatStatusFilter} onChange={(event) => setRetreatStatusFilter(event.target.value)} aria-label="Filter retreats by status">
-          <option value="all">All statuses</option><option value="full">Full</option><option value="filling">Filling</option><option value="upcoming">Upcoming</option><option value="active">Active</option>
-        </select>
-      </div>}
 
       {viewMode === 'referrals' ? (
         <RetreatReferralsHolisticView
