@@ -96,7 +96,11 @@ for(const width of [1440,390]) test(`duplicate retreat pricing without booking-d
  await page.getByLabel('Item 3 description',{exact:true}).fill('Edited copied retreat item');
  await page.getByRole('button',{name:'Create Request',exact:true}).click();
  await expect(page).toHaveURL(/\/admin\/payment-requests$/);
- const after=await snapshot();expect(after.requests).toHaveLength(2);const created=after.requests.find((r:any)=>r._id!==seed.sourceId);
+ const after=await snapshot();expect(after.requests).toHaveLength(before.requests.length+1);
+ const created=after.requests.find((r:any)=>!before.requests.some((original:any)=>original._id===r._id));
+ // A paid first request can already have its automatic booking balance. The
+ // duplicate creates one independent request and must preserve both originals.
+ for(const original of before.requests)expect(after.requests.find((r:any)=>r._id===original._id)).toEqual(original);
  expect(created.lineItems).toHaveLength(8);expect(created.requestType).toBe('payment');expect(created.requestedAmount).toBe(110);expect(created.lineItems[5].discountPercent).toBe(10);expect(created.lineItems[2].description).toBe('Edited copied retreat item');expect(created.status).toBe('pending');
  expect(after.bookings).toEqual(before.bookings);expect(after.payments).toEqual(before.payments);expect(after.receipts).toEqual(before.receipts);expect(after.effects.emails).toEqual([]);
  expect(created.invoiceNumber).not.toBe(before.requests[0].invoiceNumber);expect(created.publicHash).not.toBe(before.requests[0].publicHash);
