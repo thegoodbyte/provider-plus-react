@@ -42,12 +42,12 @@ for(const width of [1440,390])test(`saved simple navigation survives real login 
   await page.reload();await expect(page.getByRole('row').filter({hasText:'partner@example.invalid'})).toBeVisible();
   let nav=page.getByRole('navigation',{name:'Main navigation'});
   if(width<768)await page.getByRole('button',{name:'Toggle menu',exact:true}).click();
-  await expect(nav).toBeVisible();
+  await expect(nav).toBeVisible();await expect(nav).toBeInViewport({ratio:0.9});
   const sections=nav.locator('ul').first().locator(':scope > li > button');
   await expect(sections).toHaveText(['Home','Bookings','Clients','Retreat Operations','Payments']);
   await expect(nav.getByText('Settings & Setup',{exact:true})).toHaveCount(0);
   await expect(nav.getByText('Medical',{exact:true})).toHaveCount(0);
-  await page.screenshot({path:info.outputPath(`simple-${width}.png`)});
+  await page.screenshot({animations:'disabled',path:info.outputPath(`simple-${width}.png`)});
   expect((await request.put(f.url+'/users/'+f.ids.partner,{headers,data:{navPreference:'full'}})).status()).toBe(200);
   await page.unrouteAll({behavior:'wait'});
 });
