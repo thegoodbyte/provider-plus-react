@@ -80,10 +80,16 @@ for (const [width, timezoneId] of [
       await dialog.screenshot({
         path: `${process.env.RESCHEDULE_STAY_ARTIFACT_DIR || "test-results"}/dialog-${width}.png`,
       });
+      const feedback = page.getByRole("button", {
+        name: "Dismiss loading message",
+      });
+      if (await feedback.isVisible()) await feedback.click();
       await dialog.getByRole("button", { name: "Confirm reschedule" }).click();
       await expect(dialog).toHaveCount(0);
       await page.reload();
-      await expect(page.getByRole("region", { name: "Retreat stay", exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("region", { name: "Retreat stay", exact: true }),
+      ).toBeVisible();
       await expect(
         page.getByText("Mar 28, 2099 · 17:30", { exact: true }),
       ).toBeVisible();
@@ -122,7 +128,9 @@ for (const [width, timezoneId] of [
         .screenshot({
           path: `${process.env.RESCHEDULE_STAY_ARTIFACT_DIR || "test-results"}/repair-${width}.png`,
         });
-      await expect(page.getByRole("region", { name: "Retreat stay", exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("region", { name: "Retreat stay", exact: true }),
+      ).toBeVisible();
       await expect(
         page.getByText("Mar 28, 2099 · 17:30", { exact: true }),
       ).toBeVisible();
@@ -176,3 +184,8 @@ for (const [width, timezoneId] of [
       });
     });
   });
+
+// Drain real API proxy requests before Playwright disposes its HTTP context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});

@@ -1,0 +1,330 @@
+/* Reproducible no-skip coverage for suites formerly gated by private snapshots or
+ * missing ticket fixtures. Requires built matching API, disposable loopback Mongo,
+ * admin production server, admin/IR Vite harnesses and public invoice renderer.
+ * These explicit URLs allow CI/release orchestration to own builds and processes.
+ * This runner owns only its synthetic API fixture children and cleans them up. */
+const fs = require("node:fs"),
+  path = require("node:path"),
+  os = require("node:os"),
+  net = require("node:net"),
+  { spawn, execFileSync } = require("node:child_process");
+const root = path.resolve(__dirname, ".."),
+  children = [];
+const required = [
+  "TEST_API_CHECKOUT",
+  "TEST_MONGO_URL",
+  "PLAYWRIGHT_BASE_URL",
+  "PLAYWRIGHT_FIXTURE_BASE_URL",
+  "CLIENT_PORTAL_FIXTURE_BASE_URL",
+  "INVOICE_CLIENT_WEBSITE_URL",
+];
+const freePort = () =>
+  new Promise((resolve, reject) => {
+    const s = net.createServer();
+    s.on("error", reject);
+    s.listen(0, "127.0.0.1", () => {
+      const n = s.address().port;
+      s.close(() => resolve(n));
+    });
+  });
+function loopback(value, protocol) {
+  const u = new URL(value);
+  if (
+    !["127.0.0.1", "localhost", "[::1]"].includes(u.hostname) ||
+    u.protocol !== protocol ||
+    u.username ||
+    u.password
+  )
+    throw Error(
+      "Synthetic coverage only permits loopback " + protocol + " endpoints",
+    );
+  return u;
+}
+function start(args, cwd, env, log) {
+  const fd = fs.openSync(log, "w"),
+    p = spawn(process.execPath, args, { cwd, env, stdio: ["ignore", fd, fd] });
+  fs.closeSync(fd);
+  children.push(p);
+  return p;
+}
+async function ready(p, file, port) {
+  for (let i = 0; i < 400; i++) {
+    if (p.exitCode !== null)
+      throw Error("Fixture exited " + p.exitCode + ": " + file);
+    if (fs.existsSync(file)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(file));
+        await new Promise((resolve, reject) => {
+          const s = net.connect(port, "127.0.0.1", () => {
+            s.end();
+            resolve();
+          });
+          s.on("error", reject);
+        });
+        return data;
+      } catch {}
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  throw Error("Fixture readiness timeout: " + file);
+}
+const factory = {
+  "paid-request-booking": ["paired-balance-booking", "PAID_BOOKING_FIXTURE"],
+  "booking-reschedule-stay": [
+    "booking-reschedule-stay",
+    "RESCHEDULE_STAY_FIXTURE",
+  ],
+  "required-room-type": ["required-room-type", "REQUIRED_ROOM_FIXTURE"],
+  "itemized-invoice": ["invoice-drafts", "ITEMIZED_INVOICE_FIXTURE"],
+  "payment-consent-policy": [
+    "payment-consent-policy",
+    "PAYMENT_CONSENT_FIXTURE",
+  ],
+  "screening-workspace": ["screening-workspace", "SCREENING_WORKSPACE_FIXTURE"],
+  "settled-scratchpad": ["settled-scratchpad", "SETTLED_SCRATCHPAD_FIXTURE"],
+  "task-identity": ["task-identity", "TASK_IDENTITY_FIXTURE"],
+  "balance-reminder": ["balance-reminder", "BALANCE_REMINDER_FIXTURE"],
+  "client-contact-card": ["client-contact-card", "CONTACT_CARD_FIXTURE"],
+};
+const legacy = {
+  "booking-request-discovery": "PPVC901_FIXTURE",
+  "payment-booking-integrity": "PPVC902_FIXTURE",
+  "request-first-booking": "PPVC903_FIXTURE",
+  "request-currency": "PPVC899_FIXTURE",
+  "legacy-referral-payments": "PPVC821_FIXTURE",
+  "medical-work-mode": "MEDICAL_WORK_FIXTURE",
+  "work-modes": "WORK_MODES_FIXTURE",
+  languages: "LANGUAGES_FIXTURE_PATH",
+  "integration-calls": "INTEGRATION_CALLS_FIXTURE",
+  "canonical-ekg": "EKG_FIXTURE",
+  "payment-booking-linking": "PPVC920_FIXTURE",
+  "booster-offers": "BOOSTER_FIXTURE_FILE",
+  "receipt-split": "PPVC918_FIXTURE",
+  "referral-report-pages": "PPVC893_FIXTURE",
+};
+const files = [
+  "booking-date-prefill",
+  "booking-request-discovery",
+  "booking-reschedule-stay",
+  "client-management",
+  "client-tasks-local",
+  "configurable-languages",
+  "forms-validation",
+  "itemized-invoice",
+  "lazy-routes",
+  "legacy-referral-payments",
+  "medical-work-mode",
+  "mrr-follow-up-persistence",
+  "mrr-whatsapp-save-contract",
+  "navigation",
+  "paid-request-booking",
+  "paired-balance-booking",
+  "payment-booking-integrity",
+  "payment-booking-linking",
+  "payment-consent-policy",
+  "payments",
+  "receipt-split",
+  "referral-date-packages",
+  "referral-history",
+  "request-booking-settlement",
+  "request-currency-payment",
+  "request-first-booking",
+  "required-room-type",
+  "retreat-management",
+  "screening-room-validation",
+  "screening-workspace",
+  "settled-scratchpad",
+  "task-identity",
+  "work-modes-persistence",
+];
+const smoke = [
+  "balance-reminder",
+  "booster-offers",
+  "canonical-ekg",
+  "client-contact-card",
+  "deferred-pdf",
+  "integration-calls",
+  "referral-report-pages",
+];
+(async () => {
+  for (const k of required)
+    if (!process.env[k])
+      throw Error(k + " required; see docs/testing/coverage-resolution.md");
+  const mongo = loopback(process.env.TEST_MONGO_URL, "mongodb:");
+  if (!["", "/"].includes(mongo.pathname) || mongo.search)
+    throw Error("TEST_MONGO_URL must not name an application database");
+  for (const k of required.slice(2)) loopback(process.env[k], "http:");
+  const api = path.resolve(process.env.TEST_API_CHECKOUT),
+    output = path.resolve(
+      process.env.COVERAGE_OUTPUT ||
+        fs.mkdtempSync(path.join(os.tmpdir(), "release-coverage-")),
+    );
+  fs.mkdirSync(output, { recursive: true });
+  const env = {
+    ...process.env,
+    APP_ENV: "production",
+    PLAYWRIGHT_SKIP_WEB_SERVER: "1",
+    PLAYWRIGHT_PRODUCTION_BUILD: "1",
+    REQUIRED_ROOM_IR_URL: process.env.CLIENT_PORTAL_FIXTURE_BASE_URL,
+    EKG_IR_URL:
+      process.env.COVERAGE_IR_URL || process.env.CLIENT_PORTAL_FIXTURE_BASE_URL,
+    PAYMENT_CONSENT_CZ_URL: process.env.INVOICE_CLIENT_WEBSITE_URL,
+    PAYMENT_CONSENT_PL_URL: process.env.INVOICE_CLIENT_WEBSITE_URL,
+    SMOKE_BASE_URL: process.env.PLAYWRIGHT_BASE_URL,
+    PPVC894_AUDIT:
+      process.env.PPVC894_AUDIT || path.join(output, "bundle-content.json"),
+  };
+  const evidence = {
+    started_at: new Date().toISOString(),
+    sources: {
+      frontend: execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: root,
+        encoding: "utf8",
+      }).trim(),
+      api: execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: api,
+        encoding: "utf8",
+      }).trim(),
+    },
+    checks: [],
+    fixtures: [],
+  };
+  const record = () =>
+    fs.writeFileSync(
+      path.join(output, "validation.json"),
+      JSON.stringify(evidence, null, 2),
+    );
+  record();
+  try {
+    for (const name of [...Object.keys(factory), ...Object.keys(legacy)]) {
+      const port = await freePort(),
+        file = path.join(output, name + ".json"),
+        e = {
+          ...env,
+          TEST_FIXTURE_PORT: String(port),
+          TEST_FIXTURE_OUTPUT: file,
+        };
+      let args, varname;
+      if (factory[name]) {
+        const [module, key] = factory[name];
+        args = ["test/coverage-fixture-host.cjs", module + ".fixture.cjs"];
+        varname = key;
+      } else {
+        varname = legacy[name];
+        args = ["test/" + name + ".fixture.cjs"];
+        if (name === "receipt-split") {
+          args = ["test/receipt-split.integration.cjs", "--serve"];
+          Object.assign(e, {
+            RECEIPT_SPLIT_FIXTURE_PATH: file,
+            RECEIPT_SPLIT_HTTP_PORT: String(port),
+            RECEIPT_SPLIT_ORIGIN: env.PLAYWRIGHT_BASE_URL,
+          });
+        }
+        if (name === "referral-report-pages") {
+          args = ["test/referral-report-pages.integration.cjs", "--serve"];
+          e.PPVC893_FIXTURE = file;
+        }
+      }
+      const p = start(args, api, e, path.join(output, name + ".log")),
+        data = await ready(p, file, port);
+      env[varname] = file;
+      if (name === "booster-offers") env.BOOSTER_FIXTURE_URL = data.url;
+      evidence.fixtures.push({ name, pid: p.pid, port });
+      record();
+    }
+    const run = async (label, args, overrides = {}) => {
+      const log = path.join(output, label + ".log"),
+        started_at = new Date().toISOString(),
+        p = start(args, root, { ...env, ...overrides }, log),
+        exit_code = await new Promise((resolve) =>
+          p.once("exit", (code, signal) => resolve(signal ? 1 : code)),
+        );
+      const row = {
+        label,
+        command: [process.execPath, ...args],
+        started_at,
+        finished_at: new Date().toISOString(),
+        exit_code,
+        log,
+      };
+      evidence.checks.push(row);
+      record();
+      if (exit_code !== 0) throw Error(label + " failed: " + log);
+      return row;
+    };
+    if (!process.env.PPVC894_AUDIT)
+      await run("bundle-audit", [
+        "scripts/audit-bundle.mjs",
+        env.PPVC894_AUDIT,
+      ]);
+    const cli = require.resolve("@playwright/test/cli");
+    for (const [label, args, overrides] of [
+      ["broad", files.map((x) => "e2e/" + x + ".spec.ts"), {}],
+      [
+        "smoke",
+        [
+          "--config=playwright.smoke.config.ts",
+          ...smoke.map((x) => "smoke/" + x + ".spec.ts"),
+        ],
+        {},
+      ],
+      [
+        "hmr",
+        ["--config=playwright.hmr.config.ts"],
+        { SMOKE_DEV: "true", SMOKE_BASE_URL: env.PLAYWRIGHT_FIXTURE_BASE_URL },
+      ],
+    ]) {
+      const row = await run(
+        label,
+        [
+          cli,
+          "test",
+          ...args,
+          "--workers=1",
+          "--retries=0",
+          "--reporter=json",
+          "--output=" + path.join(output, label + "-artifacts"),
+        ],
+        overrides,
+      );
+      const report = JSON.parse(fs.readFileSync(row.log, "utf8"));
+      row.stats = report.stats;
+      record();
+      if (
+        report.stats.unexpected ||
+        report.stats.flaky ||
+        report.stats.skipped ||
+        report.errors?.length
+      )
+        throw Error(
+          label +
+            " must have zero failures, flakes and skips; inspect " +
+            row.log,
+        );
+    }
+    evidence.passed = true;
+    evidence.finished_at = new Date().toISOString();
+    record();
+    console.log("No-skip coverage passed. Evidence: " + output);
+  } finally {
+    for (const p of children) if (p.exitCode === null) p.kill("SIGTERM");
+    await Promise.all(
+      children.map((p) =>
+        p.exitCode === null
+          ? new Promise((resolve) => {
+              p.once("exit", resolve);
+              setTimeout(() => {
+                if (p.exitCode === null) p.kill("SIGKILL");
+                resolve();
+              }, 10000).unref();
+            })
+          : Promise.resolve(),
+      ),
+    );
+    evidence.cleaned_up_at = new Date().toISOString();
+    record();
+  }
+})().catch((e) => {
+  console.error(e);
+  process.exitCode = 1;
+});

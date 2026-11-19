@@ -116,3 +116,8 @@ for (const width of [1440, 390])
       after.receipts.find((r: any) => r._id === ids.receipts[1]).status,
     ).toBe("unassigned");
   });
+
+// Drain real API proxy requests before Playwright disposes its HTTP context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});

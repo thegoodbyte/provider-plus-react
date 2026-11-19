@@ -1,158 +1,129 @@
-import { test, expect } from '@playwright/test';
-
-test.skip(process.env.PLAYWRIGHT_LIVE !== '1', 'Requires a seeded live API and authorized test credentials');
-
-test.describe('Payments Management', () => {
-  test.beforeEach(async ({ page }) => {
-    // Navigate to the payments page
-    // Note: You'll need to handle authentication in a real scenario
-    await page.goto('/payments');
-  });
-
-  test('should display payments page', async ({ page }) => {
-    // Check if the page title is visible
-    await expect(page.locator('h1')).toContainText('Payments');
-
-    // Check if Add Payment button is visible
-    await expect(page.getByRole('button', { name: /Add Payment/i })).toBeVisible();
-  });
-
-  test('should open add payment modal', async ({ page }) => {
-    // Click Add Payment button
-    await page.getByRole('button', { name: /Add Payment/i }).click();
-
-    // Check if modal is visible
-    await expect(page.locator('text=Add New Payment')).toBeVisible();
-
-    // Check if form fields are present
-    await expect(page.getByLabel(/Client/i)).toBeVisible();
-    await expect(page.getByLabel(/Retreat/i)).toBeVisible();
-    await expect(page.getByLabel(/Amount/i)).toBeVisible();
-    await expect(page.getByLabel(/Currency/i)).toBeVisible();
-    await expect(page.getByLabel(/Payment Method/i)).toBeVisible();
-  });
-
-  test('should close modal on cancel', async ({ page }) => {
-    // Open modal
-    await page.getByRole('button', { name: /Add Payment/i }).click();
-    await expect(page.locator('text=Add New Payment')).toBeVisible();
-
-    // Click cancel
-    await page.getByRole('button', { name: /Cancel/i }).click();
-
-    // Modal should be closed
-    await expect(page.locator('text=Add New Payment')).not.toBeVisible();
-  });
-
-  test('should create a new payment', async ({ page }) => {
-    // Open modal
-    await page.getByRole('button', { name: /Add Payment/i }).click();
-
-    // Fill in the form
-    await page.getByLabel(/Client/i).selectOption({ index: 1 }); // Select first client
-    await page.getByLabel(/Retreat/i).selectOption({ index: 1 }); // Select first retreat
-    await page.getByLabel(/Amount/i).fill('1500');
-    await page.getByLabel(/Currency/i).selectOption('EUR');
-    await page.getByLabel(/Payment Method/i).selectOption('bank_transfer');
-    await page.getByLabel(/Status/i).selectOption('completed');
-
-    // Submit the form
-    await page.getByRole('button', { name: /Add Payment$/i }).click();
-
-    // Wait for modal to close and check if payment appears in the list
-    await expect(page.locator('text=Add New Payment')).not.toBeVisible();
-
-    // Verify the new payment appears in the table (amount should be visible)
-    await expect(page.locator('text=1,500.00')).toBeVisible();
-  });
-
-  test('should filter and search payments', async ({ page }) => {
-    // Wait for payments to load
-    await page.waitForSelector('table');
-
-    // Check if table headers are present
-    await expect(page.locator('th:has-text("Date")')).toBeVisible();
-    await expect(page.locator('th:has-text("Client")')).toBeVisible();
-    await expect(page.locator('th:has-text("Amount")')).toBeVisible();
-    await expect(page.locator('th:has-text("Status")')).toBeVisible();
-  });
-
-  test('should display payment statistics', async ({ page }) => {
-    // Wait for statistics to load
-    await page.waitForSelector('text=/Showing \\d+ payment/');
-
-    // Check if statistics are displayed
-    await expect(page.locator('text=/Total: \\d+ completed/')).toBeVisible();
-    await expect(page.locator('text=/Pending: \\d+/')).toBeVisible();
-  });
-
-  test('should handle edit payment action', async ({ page }) => {
-    // Wait for payments table to load
-    await page.waitForSelector('table');
-
-    // Find and click the first edit button
-    const editButton = page.locator('button[title="Edit"]').first();
-
-    // Check if edit button exists before clicking
-    const editButtonCount = await editButton.count();
-    if (editButtonCount > 0) {
-      await editButton.click();
-
-      // Check if modal opens with Edit title
-      await expect(page.locator('text=Edit Payment')).toBeVisible();
-
-      // Check if form is populated (amount field should have a value)
-      const amountField = page.getByLabel(/Amount/i);
-      const amountValue = await amountField.inputValue();
-      expect(Number(amountValue)).toBeGreaterThan(0);
-    }
-  });
-
-  test('should handle delete payment with confirmation', async ({ page }) => {
-    // Wait for payments table to load
-    await page.waitForSelector('table');
-
-    // Setup dialog handler before clicking delete
-    page.on('dialog', dialog => {
-      expect(dialog.message()).toContain('Are you sure you want to delete this payment?');
-      dialog.accept();
+import { test, expect } from "./fixtures/payment-workspace";
+import { dismissFeedback } from "./fixtures/booking-room";
+test.beforeEach(async ({ paymentWorkspace }) => {
+  expect(paymentWorkspace.tokens.admin).toBeTruthy();
+});
+test("payment grid shows numbered records", async ({ page }) => {
+  await page.goto("/admin/payments");
+  await expect(
+    page.getByRole("heading", { name: "Payments", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("tbody tr")).toHaveCount(3);
+});
+test("add payment opens the dedicated editor", async ({ page }) => {
+  await page.goto("/admin/payments");
+  await page.getByRole("button", { name: "Add Payment", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/payments\/new$/);
+  await expect(
+    page.getByRole("spinbutton", { name: "Amount", exact: true }),
+  ).toBeVisible();
+});
+test("cancel returns without writing a payment", async ({
+  page,
+  paymentWorkspace: f,
+}) => {
+  await page.goto("/admin/payments/new");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/payments$/);
+  expect(await f.models.Payment.countDocuments()).toBe(3);
+});
+test("creates a payment for an exact booking and reloads it", async ({
+  page,
+  paymentWorkspace: f,
+}) => {
+  await page.goto("/admin/payments/new");
+  await page
+    .getByRole("textbox", { name: "Payment client", exact: true })
+    .fill("330");
+  await page.getByText("Anna Synthetic", { exact: true }).last().click();
+  await page
+    .getByRole("combobox", { name: "Search and select booking", exact: true })
+    .fill("9501");
+  await page.getByRole("option", { name: /#9501/ }).click();
+  await page
+    .getByRole("spinbutton", { name: "Amount", exact: true })
+    .fill("100");
+  await page.getByLabel("Currency", { exact: true }).selectOption("PLN");
+  await page.getByLabel("Status", { exact: true }).selectOption("completed");
+  await dismissFeedback(page);
+  await page.getByRole("button", { name: "Add Payment", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/payments$/);
+  const saved = await f.models.Payment.findOne({ amount: 100 }).lean();
+  expect(String(saved.bookingId)).toBe("000000000000000000001001");
+  expect(await f.models.Payment.countDocuments()).toBe(4);
+  await page.reload();
+  await expect(page.locator("tbody tr")).toHaveCount(4);
+});
+test("search filters by payment number and clears", async ({ page }) => {
+  await page.goto("/admin/payments");
+  await page
+    .getByRole("searchbox", { name: "Search payments", exact: true })
+    .fill("1201");
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await page
+    .getByRole("button", { name: "Clear payment search", exact: true })
+    .click();
+  await expect(page.locator("tbody tr")).toHaveCount(3);
+});
+test("completed statistics agree with seeded records", async ({ page }) => {
+  await page.goto("/admin/payments");
+  await expect(
+    page.getByText("Total: 3 completed", { exact: true }),
+  ).toBeVisible();
+});
+test("edit action opens the correct numbered payment", async ({
+  page,
+  paymentWorkspace: f,
+}) => {
+  await page.goto("/admin/payments");
+  await page
+    .locator("tbody tr")
+    .filter({ hasText: "#1201" })
+    .getByTitle("Edit", { exact: true })
+    .click();
+  await expect(page).toHaveURL(
+    new RegExp("/admin/payments/" + f.ids.payments[1] + "/edit$"),
+  );
+  await expect(
+    page.getByRole("spinbutton", { name: "Amount", exact: true }),
+  ).toHaveValue("600");
+});
+test("cancelled deletion leaves every payment unchanged", async ({
+  page,
+  paymentWorkspace: f,
+}) => {
+  const before = JSON.stringify(
+    await f.models.Payment.find().sort({ _id: 1 }).lean(),
+  );
+  page.on("dialog", (dialog) => dialog.dismiss());
+  await page.goto("/admin/payments");
+  await page
+    .locator("tbody tr")
+    .first()
+    .getByTitle("Delete", { exact: true })
+    .click();
+  expect(
+    JSON.stringify(await f.models.Payment.find().sort({ _id: 1 }).lean()),
+  ).toBe(before);
+  await expect(page.locator("tbody tr")).toHaveCount(3);
+});
+for (const width of [390, 768])
+  test(`payment controls and rows remain usable at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 950 });
+    await page.goto("/admin/payments");
+    await expect(
+      page.getByRole("button", { name: "Add Payment", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("tbody tr")).toHaveCount(3);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: info.outputPath("payments.png"),
+      fullPage: true,
     });
-
-    // Find and click the first delete button
-    const deleteButton = page.locator('button[title="Delete"]').first();
-    const deleteButtonCount = await deleteButton.count();
-
-    if (deleteButtonCount > 0) {
-      await deleteButton.click();
-
-      // Wait for the deletion to process
-      await page.waitForTimeout(1000);
-    }
   });
-});
-
-test.describe('Payments Page Responsive Design', () => {
-  test('should be responsive on mobile', async ({ page }) => {
-    // Set mobile viewport
-    await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/payments');
-
-    // Check if page adapts to mobile
-    await expect(page.locator('h1')).toContainText('Payments');
-    await expect(page.getByRole('button', { name: /Add Payment/i })).toBeVisible();
-
-    // Table should be scrollable on mobile
-    const table = page.locator('.overflow-x-auto');
-    await expect(table).toBeVisible();
-  });
-
-  test('should be responsive on tablet', async ({ page }) => {
-    // Set tablet viewport
-    await page.setViewportSize({ width: 768, height: 1024 });
-    await page.goto('/payments');
-
-    // Check if page displays correctly on tablet
-    await expect(page.locator('h1')).toContainText('Payments');
-    await expect(page.getByRole('button', { name: /Add Payment/i })).toBeVisible();
-  });
-});
