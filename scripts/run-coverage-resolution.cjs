@@ -194,6 +194,14 @@ const smoke = [
     );
   record();
   try {
+    if (process.env.COVERAGE_REUSE_BROAD_EVIDENCE) {
+      if (process.env.COVERAGE_FULL !== "1" || !process.env.COVERAGE_REUSE_BROAD_GATE_RECORD)
+        throw Error("Broad reuse requires full coverage and its original gate record");
+      evidence.checks.push(require("./coverage-reuse.cjs").verifyBroadReuse(
+        process.env.COVERAGE_REUSE_BROAD_EVIDENCE, process.env.COVERAGE_REUSE_BROAD_GATE_RECORD,
+        root, api, process.env));
+      record();
+    }
     for (const name of [...Object.keys(factory), ...Object.keys(legacy)]) {
       const port = await freePort(),
         file = path.join(output, name + ".json"),
@@ -342,6 +350,7 @@ const smoke = [
         { SMOKE_DEV: "true", SMOKE_BASE_URL: env.PLAYWRIGHT_FIXTURE_BASE_URL },
       ],
     ]) {
+      if (label === "broad" && evidence.checks.some(row => row.label === "broad" && row.reused)) continue;
       const row = await run(
         label,
         [

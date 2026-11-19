@@ -90,3 +90,17 @@ suite retains real task visibility and captured status notifications.
 
 No retired scenario counts toward passing totals. Keep the pre-resolution skip
 inventory and before/after source IDs with each release, alongside final reports.
+
+### Reusing an unchanged completed broad result
+
+After a smoke-only fixture-wiring repair, `COVERAGE_REUSE_BROAD_EVIDENCE` and
+`COVERAGE_REUSE_BROAD_GATE_RECORD` may point to the original complete broad
+receipt and its outer command/environment record. The runner rejects any failed,
+flaky or skipped broad report, changed application/schema/dependency/broad-test
+files, non-ancestor sources, changed application URLs or Mongo/API environment.
+Only the explicitly listed smoke-service infrastructure paths are eligible.
+`node --test scripts/coverage-reuse.test.cjs` exercises this with real temporary
+Git histories and rejected application/environment/report changes. The original
+broad command, source IDs and UTC times are retained as reused evidence; smoke
+and development HMR must still execute and pass. This is never a skip or an
+exception for a failed check.
