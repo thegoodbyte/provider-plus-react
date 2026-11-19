@@ -84,6 +84,7 @@ test.describe("PPVC-896 real language settings", () => {
       const row = page
         .locator("div")
         .filter({ has: page.getByLabel("Name for " + code, { exact: true }) })
+        .filter({ has: page.getByRole("checkbox") })
         .last();
       await row.getByRole("checkbox").uncheck();
       await row.getByRole("button", { name: "Save", exact: true }).click();
