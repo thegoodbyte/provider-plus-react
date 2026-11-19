@@ -1,0 +1,53 @@
+import {test,expect} from '@playwright/test';
+import fs from 'node:fs';
+const fixture=process.env.NAV_PREFERENCE_FIXTURE;
+for(const width of [1440,390])test(`saved simple navigation survives real login and reload at ${width}px`,async({page,request,baseURL},info)=>{
+  test.skip(!fixture,'Start test/nav-preference.fixture.cjs with a disposable MongoDB');
+  const f=JSON.parse(fs.readFileSync(fixture!,'utf8'));
+  const headers={Authorization:'Bearer '+f.tokens.owner};
+  expect((await request.put(f.url+'/users/'+f.ids.partner,{headers,data:{navPreference:'full'}})).status()).toBe(200);
+  await page.setViewportSize({width,height:1000});
+  await page.route('**/*',async route=>{
+    const u=new URL(route.request().url());
+    if(u.origin===new URL(baseURL!).origin&&!u.pathname.startsWith('/api/'))return route.continue();
+    const p=u.pathname.replace(/^\/api(?=\/)/,'');
+    if(p==='/auth/login'||p.startsWith('/users'))return route.fulfill({response:await route.fetch({url:f.url+p+u.search})});
+    let data:any=[];
+    if(p==='/health')data={status:'ok'};
+    if(p==='/environment/status')data={production:true};
+    if(p.includes('navigation-permissions')||p==='/config-summary')data={};
+    if(p.includes('unread-count'))data={count:0};
+    return route.fulfill({json:data});
+  });
+  const login=async(email:string)=>{
+    await page.goto('/');
+    await page.getByLabel('Email address').fill(email);
+    await page.getByLabel('Password',{exact:true}).fill(f.password);
+    await page.getByRole('button',{name:'Sign in',exact:true}).click();
+    await expect(page.getByLabel('Email address')).toHaveCount(0);
+  };
+  await login('owner@example.invalid');await page.goto('/admin/users');
+  const row=page.getByRole('row').filter({hasText:'partner@example.invalid'});
+  await row.getByLabel('Edit user',{exact:true}).click();
+  await page.getByLabel('Navigation view').selectOption('simple');
+  await page.getByRole('button',{name:'Update User',exact:true}).click();
+  await expect(page.getByLabel('Navigation view')).toHaveCount(0);
+  const saved=await request.get(f.url+'/users/'+f.ids.partner,{headers});expect(saved.status()).toBe(200);expect((await saved.json()).navPreference).toBe('simple');
+  expect((await (await request.get(f.url+'/users/'+f.ids.owner,{headers})).json()).navPreference).toBe('full');
+  await page.evaluate(()=>localStorage.clear());
+  await login('partner@example.invalid');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('user')!).navPreference)).toBe('simple');
+  await page.goto('/admin/users'); // direct settings URL still works for a simple-view admin
+  await expect(page.getByText('partner@example.invalid',{exact:true})).toBeVisible();
+  await page.reload();await expect(page.getByText('partner@example.invalid',{exact:true})).toBeVisible();
+  let nav=page.getByRole('navigation',{name:'Main navigation'});
+  if(!await nav.isVisible())await page.getByRole('button',{name:/open.*menu|open.*navigation|toggle.*menu|menu/i}).first().click();
+  await expect(nav).toBeVisible();
+  const sections=nav.locator('ul').first().locator(':scope > li > button');
+  await expect(sections).toHaveText(['Home','Clients','Bookings','Retreat Operations','Payments']);
+  await expect(nav.getByText('Settings & Setup',{exact:true})).toHaveCount(0);
+  await expect(nav.getByText('Medical',{exact:true})).toHaveCount(0);
+  await page.screenshot({path:info.outputPath(`simple-${width}.png`)});
+  expect((await request.put(f.url+'/users/'+f.ids.partner,{headers,data:{navPreference:'full'}})).status()).toBe(200);
+  await page.unrouteAll({behavior:'wait'});
+});
