@@ -130,6 +130,31 @@ for (const width of [1440, 390])
       await expect(
         page.getByRole("link", { name: "Request a task", exact: true }),
       ).toHaveAttribute("href", "/support");
+      // The current UI links to Support; keep the legacy task API's privacy/throttle contract covered too.
+      const asked = await request.post(api + "/client-portal/tasks", {
+        headers: clientHeaders,
+        data: {
+          name: "Synthetic client request",
+          description: "Please help with this synthetic request.",
+        },
+      });
+      expect(asked.status(), await asked.text()).toBe(201);
+      const requested = await f.models.Task.findOne({
+        name: "Synthetic client request",
+      }).lean();
+      expect(String(requested.clientId)).toBe(f.ids.client);
+      expect(requested.sourceType).toBe("client_portal_request");
+      expect(
+        (
+          await request.post(api + "/client-portal/tasks", {
+            headers: clientHeaders,
+            data: { name: "Second request", description: "Throttled" },
+          })
+        ).status(),
+      ).toBe(429);
+      expect(
+        await f.models.Task.countDocuments({ clientId: f.ids.otherClient }),
+      ).toBe(1);
       await page.screenshot({
         path: info.outputPath("client-tasks.png"),
         fullPage: true,
