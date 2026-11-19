@@ -41,7 +41,7 @@ for(const width of [1440,390])test(`saved simple navigation survives real login 
   await expect(page.getByRole('row').filter({hasText:'partner@example.invalid'})).toBeVisible();
   await page.reload();await expect(page.getByRole('row').filter({hasText:'partner@example.invalid'})).toBeVisible();
   let nav=page.getByRole('navigation',{name:'Main navigation'});
-  if(!await nav.isVisible())await page.getByRole('button',{name:/open.*menu|open.*navigation|toggle.*menu|menu/i}).first().click();
+  if(width<768)await page.getByRole('button',{name:'Toggle menu',exact:true}).click();
   await expect(nav).toBeVisible();
   const sections=nav.locator('ul').first().locator(':scope > li > button');
   await expect(sections).toHaveText(['Home','Bookings','Clients','Retreat Operations','Payments']);
