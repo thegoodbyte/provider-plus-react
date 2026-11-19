@@ -38,6 +38,18 @@ export interface Task {
     status?: string;
   };
   assignedTo?: string;
+  // PPVC-1047: real user reference, populated by the API with
+  // { _id, firstName, lastName, email, role } when a task has an assignee.
+  // Still a bare id string on payloads the client itself constructed
+  // (e.g. right after a create/update) before the next fetch repopulates it.
+  assignedToUserId?: string | {
+    _id?: string;
+    id?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    role?: string;
+  };
   completedAt?: string;
   completedBy?: string;
   tags: string[];
@@ -78,6 +90,8 @@ export interface CreateTaskDto {
   retreatId?: string;
   bookingId?: string;
   assignedTo?: string;
+  // PPVC-1047: optional real user reference sent to POST/PATCH /tasks.
+  assignedToUserId?: string;
   tags?: string[];
   notes?: string;
   sourceType?: string;
@@ -103,6 +117,12 @@ export interface TaskFilters {
   overdue?: boolean;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  // PPVC-1047: GET /tasks?assignedToUserId=<id> filters to a specific user's
+  // tasks; GET /tasks?mine=true filters to the caller's own tasks (resolved
+  // server-side from the JWT) and takes precedence over assignedToUserId if
+  // both are somehow set. Omitting both returns the unfiltered list.
+  assignedToUserId?: string;
+  mine?: boolean;
 }
 
 export interface TaskStatistics {

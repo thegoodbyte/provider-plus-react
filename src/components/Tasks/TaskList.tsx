@@ -30,6 +30,19 @@ export const TaskList: React.FC<TaskListProps> = ({
     }
   };
 
+  // PPVC-1047: assignedToUserId is only ever a populated object (or absent)
+  // coming from the API -- a bare string would mean the caller constructed
+  // it client-side, which doesn't happen on this read path.
+  const getAssigneeName = (assignee: Task['assignedToUserId']) => {
+    if (!assignee || typeof assignee === 'string') return '';
+    return [assignee.firstName, assignee.lastName].filter(Boolean).join(' ').trim() || assignee.email || '';
+  };
+
+  const getAssigneeInitials = (name: string) => {
+    const initials = name.split(/\s+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2);
+    return (initials || '?').toUpperCase();
+  };
+
   const sortedTasks = [...tasks].sort((a, b) => {
     let aVal: any = a[sortField as keyof Task];
     let bVal: any = b[sortField as keyof Task];
@@ -53,6 +66,9 @@ export const TaskList: React.FC<TaskListProps> = ({
     } else if (sortField === 'bookingNumber') {
       aVal = getBookingSortValue(a.bookingId);
       bVal = getBookingSortValue(b.bookingId);
+    } else if (sortField === 'assigneeName') {
+      aVal = getAssigneeName(a.assignedToUserId);
+      bVal = getAssigneeName(b.assignedToUserId);
     }
 
     if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -153,6 +169,12 @@ export const TaskList: React.FC<TaskListProps> = ({
           </div>
           <div
             className="header-cell sortable"
+            onClick={() => handleSort('assigneeName')}
+          >
+            Assignee {getSortIcon('assigneeName')}
+          </div>
+          <div
+            className="header-cell sortable"
             onClick={() => handleSort('dueDate')}
           >
             Due Date {getSortIcon('dueDate')}
@@ -207,6 +229,18 @@ export const TaskList: React.FC<TaskListProps> = ({
             <div className="task-cell">
               <span className="task-cell-label">Status</span>
               {getStatusBadge(task.status)}
+            </div>
+
+            <div className="task-cell">
+              <span className="task-cell-label">Assignee</span>
+              {task.assignedToUserId && typeof task.assignedToUserId === 'object' ? (
+                <div className="assignee-info">
+                  <span className="assignee-avatar" aria-hidden="true">{getAssigneeInitials(getAssigneeName(task.assignedToUserId))}</span>
+                  <span className="assignee-name" title={getAssigneeName(task.assignedToUserId)}>{getAssigneeName(task.assignedToUserId)}</span>
+                </div>
+              ) : (
+                <span className="no-assignee">Unassigned</span>
+              )}
             </div>
 
             <div className="task-cell due-date">

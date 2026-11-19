@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Task, CreateTaskDto } from '../../services/taskService';
 import { bookingsApi, clientsApi, retreatsApi } from '../../services/api';
+import { usersApi, User } from '../../services/usersApi';
 import { SearchableSelect } from './SearchableSelect';
 import './TaskForm.css';
 
@@ -37,6 +38,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     clientId: clientId || '',
     retreatId: retreatId || '',
     bookingId: bookingId || '',
+    assignedToUserId: '',
     tags: [],
     notes: '',
     sourceType: '',
@@ -52,6 +54,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [clients, setClients] = useState<any[]>([]);
   const [retreats, setRetreats] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [assignableUsers, setAssignableUsers] = useState<User[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [loadingRetreats, setLoadingRetreats] = useState(false);
   const [loadingBookings, setLoadingBookings] = useState(false);
@@ -77,6 +80,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         clientId: typeof task.clientId === 'string' ? task.clientId : ((task.clientId as any)?._id || (task.clientId as any)?.id || clientId || ''),
         retreatId: typeof task.retreatId === 'string' ? task.retreatId : ((task.retreatId as any)?._id || (task.retreatId as any)?.id || retreatId || ''),
         bookingId: typeof task.bookingId === 'string' ? task.bookingId : (task.bookingId?._id || task.bookingId?.id || ''),
+        assignedToUserId: typeof task.assignedToUserId === 'string' ? task.assignedToUserId : ((task.assignedToUserId as any)?._id || (task.assignedToUserId as any)?.id || ''),
         tags: task.tags,
         notes: task.notes || '',
         sourceType: task.sourceType || '',
@@ -108,15 +112,19 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         setLoadingRetreats(true);
         setLoadingBookings(true);
 
-        const [clientsResponse, retreatsResponse, bookingsResponse] = await Promise.all([
+        const [clientsResponse, retreatsResponse, bookingsResponse, usersResponse] = await Promise.all([
           clientsApi.getAll(),
           retreatsApi.getAll(),
           bookingsApi.getAll(),
+          usersApi.getAll().catch(() => ({ data: [] as User[] })),
         ]);
 
         setClients(normalizeList(clientsResponse));
         setRetreats(normalizeList(retreatsResponse));
         setBookings(normalizeList(bookingsResponse));
+        // PPVC-1047: anyone with a staff account can be assigned a task --
+        // no role filter, just drop deactivated accounts.
+        setAssignableUsers((usersResponse.data || []).filter((candidate) => candidate.isActive !== false));
       } catch (error) {
         console.error('Error loading clients and retreats:', error);
       } finally {
@@ -268,6 +276,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       clientId: formData.clientId || undefined,
       retreatId: formData.retreatId || undefined,
       bookingId: formData.bookingId || undefined,
+      // PPVC-1047: assignee is optional -- not every task needs one, so an
+      // empty selection omits the field rather than sending a null/empty id.
+      assignedToUserId: formData.assignedToUserId || undefined,
       notes: formData.notes || undefined,
       sourceType: formData.sourceType || undefined,
     };
@@ -350,6 +361,24 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                   <option value="operations">Operations</option>
                 </select>
               </div>
+            </div>
+
+            {/* PPVC-1047: who this task belongs to. Optional -- most
+                historical and system tasks have no assignee at all. */}
+            <div className="form-group">
+              <label htmlFor="assignedToUserId">Assigned to</label>
+              <select
+                id="assignedToUserId"
+                name="assignedToUserId"
+                value={formData.assignedToUserId || ''}
+                onChange={handleChange}
+              >
+                <option value="">Unassigned</option>
+                {assignableUsers.map((candidate) => {
+                  const name = [candidate.firstName, candidate.lastName].filter(Boolean).join(' ') || candidate.email;
+                  return <option key={candidate._id} value={candidate._id}>{name}</option>;
+                })}
+              </select>
             </div>
 
             {/* Dynamic fields based on type -- skipped entirely when the

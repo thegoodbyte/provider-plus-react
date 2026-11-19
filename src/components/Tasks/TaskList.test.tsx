@@ -82,6 +82,28 @@ describe('TaskList', () => {
     expect(rowNames()).toEqual([...ascending].reverse());
   });
 
+  it('shows the populated assignee and an Unassigned state when absent (PPVC-1047)', () => {
+    const tasks = [
+      makeTask({ assignedToUserId: { _id: 'user-1', firstName: 'Kasia', lastName: 'Nowak', email: 'kasia@example.com', role: 'user' } }),
+      makeTask({ id: 'two', name: 'No assignee yet' }),
+    ];
+    render(<TaskList tasks={tasks} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
+    expect(screen.getByText('Kasia Nowak')).toHaveAttribute('title', 'Kasia Nowak');
+    expect(screen.getByText('KN')).toBeInTheDocument();
+    expect(screen.getByText('Unassigned')).toBeInTheDocument();
+  });
+
+  it('sorts by Assignee and reverses on a second click (PPVC-1047)', () => {
+    const alpha = makeTask({ id: 'a', name: 'Alpha', assignedToUserId: { firstName: 'A', lastName: 'Staff', email: '' } });
+    const beta = makeTask({ id: 'b', name: 'Beta', assignedToUserId: { firstName: 'B', lastName: 'Staff', email: '' } });
+    render(<TaskList tasks={[beta, alpha]} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
+    const cell = Array.from(document.querySelectorAll('.task-grid-header .sortable')).find((node) => node.textContent?.startsWith('Assignee'))!;
+    fireEvent.click(cell);
+    expect(rowNames()).toEqual(['Alpha', 'Beta']);
+    fireEvent.click(cell);
+    expect(rowNames()).toEqual(['Beta', 'Alpha']);
+  });
+
   it('handles legacy names and relationship identifiers safely', () => {
     render(<TaskList tasks={[
       makeTask({ clientId: { firstName: '', lastName: '', fname: 'Legacy', lname: 'Person', email: '', displayId: 88 } as any, bookingId: { id: 'booking-id' }, retreatId: { name: 'Named retreat', code: '', startDate: '', endDate: '' } }),

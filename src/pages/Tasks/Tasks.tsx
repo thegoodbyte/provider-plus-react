@@ -3,6 +3,7 @@ import ClientSupportInbox from '../../components/Tasks/ClientSupportInbox';
 import React, { useState, useEffect, useMemo } from 'react';
 import { BookingFlowItem } from '../../types';
 import { bookingFlowApi } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { Task, TaskFilters, taskService } from '../../services/taskService';
 import { TaskList } from '../../components/Tasks/TaskList';
 import { TaskForm } from '../../components/Tasks/TaskForm';
@@ -13,6 +14,7 @@ import './Tasks.css';
 
 const TaskWorkspaceTabs = ({support}:{support:boolean}) => <nav className="task-workspace-tabs" aria-label="Task workspaces"><Link aria-current={!support?'page':undefined} to="/admin/tasks">Operational tasks</Link><Link aria-current={support?'page':undefined} to="/admin/tasks?support=all">IbogaReady tasks</Link></nav>;
 export const Tasks: React.FC = () => {
+  const { user } = useAuth();
   const supportLocation = useLocation();
   const isSupport = new URLSearchParams(supportLocation.search).has('support');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -25,6 +27,12 @@ export const Tasks: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>('list');
   const [activeContext, setActiveContext] = useState<'client' | 'booking' | 'retreat' | 'generic'>('client');
   const [originFilter, setOriginFilter] = useState<'all' | 'custom' | 'system' | 'client'>('all');
+  // PPVC-1047: who the list is scoped to, separate from the origin filter
+  // above (provenance) -- this is about assignment. Admins need oversight
+  // across everyone's tasks, so they default to "All"; every other staff
+  // role (helper/facilitator/user, e.g. Kasia on customer care) defaults to
+  // "Mine" since that's the view they actually need day to day.
+  const [scopeFilter, setScopeFilter] = useState<'mine' | 'all'>(() => (user?.role === 'admin' ? 'all' : 'mine'));
   const [categoryFilter, setCategoryFilter] = useState<'all' | Task['category']>('all');
   const [newTaskContext, setNewTaskContext] = useState<'client' | 'booking' | 'retreat' | 'generic'>('client');
   const [newTaskSprint, setNewTaskSprint] = useState<string | null>(null);
@@ -37,8 +45,11 @@ export const Tasks: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      // PPVC-1047: "Mine" sends mine=true to the server (resolved from the
+      // caller's own JWT there, not a client-known user id); "All" omits it
+      // entirely, which is the existing unfiltered-list behavior unchanged.
       const [tasksData, deadlinesResponse] = await Promise.all([
-        taskService.getTasks(filters),
+        taskService.getTasks({ ...filters, mine: scopeFilter === 'mine' ? true : undefined }),
         bookingFlowApi.getItems({}).catch(() => ({ data: [] as BookingFlowItem[] })),
       ]);
       setTasks(tasksData);
@@ -52,7 +63,7 @@ export const Tasks: React.FC = () => {
 
   useEffect(() => {
     if (!isSupport) loadTasks();
-  }, [filters, isSupport]);
+  }, [filters, isSupport, scopeFilter]);
 
   const handleCreateTask = (context = activeContext, sprint: string | null = null) => {
     setEditingTask(null);
@@ -210,6 +221,10 @@ export const Tasks: React.FC = () => {
       </nav>
 
       <div className="task-origin-bar">
+        <div className="task-scope-filter" aria-label="Task scope">
+          <strong>View</strong>
+          {(['mine', 'all'] as const).map(scope => <button key={scope} type="button" className={scopeFilter === scope ? 'active' : ''} onClick={() => setScopeFilter(scope)}>{scope === 'mine' ? 'My tasks' : 'All tasks'}</button>)}
+        </div>
         <div><strong>Show</strong>{(['all', 'client', 'custom', 'system'] as const).map(origin => <button key={origin} type="button" className={originFilter === origin ? 'active' : ''} onClick={() => setOriginFilter(origin)}>{origin === 'all' ? 'All' : origin === 'client' ? 'Client requests' : origin === 'custom' ? 'Custom — created by me' : 'System generated'}</button>)}</div>
         <div className="task-category-filter" aria-label="Task category"><strong>Category</strong>{(['all', 'medical', 'documents', 'financial', 'communication', 'operations'] as const).map(category => <button key={category} type="button" className={categoryFilter === category ? 'active' : ''} onClick={() => setCategoryFilter(category)}>{category === 'all' ? 'All' : category[0].toUpperCase() + category.slice(1)}</button>)}</div>
         <details><summary>Advanced filters</summary><TaskFiltersPanel filters={filters} onFiltersChange={handleFiltersChange} /></details>

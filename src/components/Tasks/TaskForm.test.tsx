@@ -1,10 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { bookingsApi, clientsApi, retreatsApi } from '../../services/api';
+import { usersApi } from '../../services/usersApi';
 import { TaskForm } from './TaskForm';
 
 jest.mock('../../services/api', () => ({
   clientsApi: { getAll: jest.fn() }, retreatsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() },
 }));
+jest.mock('../../services/usersApi', () => ({ usersApi: { getAll: jest.fn() } }));
 jest.mock('./SearchableSelect', () => ({
   SearchableSelect: ({ id, value, options, onChange, loading, placeholder }: any) => <div>
     <span>{loading ? `Loading ${id}` : `Ready ${id}`}</span>
@@ -17,6 +19,7 @@ jest.mock('./SearchableSelect', () => ({
 const clients = clientsApi as jest.Mocked<typeof clientsApi>;
 const retreats = retreatsApi as jest.Mocked<typeof retreatsApi>;
 const bookings = bookingsApi as jest.Mocked<typeof bookingsApi>;
+const users = usersApi as jest.Mocked<typeof usersApi>;
 
 // PPVC-868: Type/Category/the context selector/Source/checkboxes/Urgency/Due
 // Date/Tags/Notes all live behind a collapsed "More options" accordion now --
@@ -29,6 +32,11 @@ describe('TaskForm', () => {
     (clients.getAll as jest.Mock).mockResolvedValue({ data: [{ _id: 'client-1', display_id: 1201, firstName: 'Eva', lastName: 'Novak', email: 'eva@example.com', phone: '123', workflowStatus: 'active' }] });
     (retreats.getAll as jest.Mock).mockResolvedValue({ data: { data: [{ _id: 'retreat-1', display_id: 44, name: 'September', startDate: '2026-09-01', endDate: '2026-09-08', location: 'Prague', status: 'active' }] } });
     (bookings.getAll as jest.Mock).mockResolvedValue({ data: { items: [{ _id: 'booking-1', bookingNumber: 1267, clientId: { _id: 'client-1', firstName: 'Eva', lastName: 'Novak' }, retreatId: { _id: 'retreat-1', code: 'SEP-26' }, status: 'active' }] } });
+    (users.getAll as jest.Mock).mockResolvedValue({ data: [
+      { _id: 'user-1', email: 'kasia@example.com', firstName: 'Kasia', lastName: 'Nowak', role: 'user', isActive: true },
+      { _id: 'user-2', email: 'owner@example.com', firstName: 'Martin', lastName: 'Owner', role: 'admin', isActive: true },
+      { _id: 'user-3', email: 'inactive@example.com', firstName: 'Old', lastName: 'Staff', role: 'helper', isActive: false },
+    ] });
   });
   afterEach(async () => { await act(async () => { await Promise.resolve(); await Promise.resolve(); }); });
 
@@ -193,6 +201,54 @@ describe('TaskForm', () => {
     fireEvent.change(screen.getByLabelText('Type *'), { target: { value: 'generic' } });
     expect(screen.queryByLabelText('Source')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Email client on status change')).not.toBeInTheDocument();
+  });
+
+  it('renders the assignee dropdown with active users only and defaults to Unassigned (PPVC-1047)', async () => {
+    render(<TaskForm onSubmit={jest.fn()} onCancel={jest.fn()} />);
+    openMore();
+    const select = await screen.findByLabelText('Assigned to');
+    expect(select).toHaveValue('');
+    expect(screen.getByRole('option', { name: 'Unassigned' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Kasia Nowak' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Martin Owner' })).toBeInTheDocument();
+    // Deactivated accounts are not offered as assignees.
+    expect(screen.queryByRole('option', { name: 'Old Staff' })).not.toBeInTheDocument();
+  });
+
+  it('selects an assignee and sends assignedToUserId on submit (PPVC-1047)', async () => {
+    const onSubmit = jest.fn();
+    render(<TaskForm onSubmit={onSubmit} onCancel={jest.fn()} />);
+    openMore();
+    fireEvent.change(screen.getByLabelText('Task Name *'), { target: { value: 'Call Kasia back' } });
+    const select = await screen.findByLabelText('Assigned to');
+    fireEvent.change(select, { target: { value: 'user-1' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Create Task' }).closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ assignedToUserId: 'user-1' }));
+  });
+
+  it('omits assignedToUserId when no assignee is selected -- assignee is optional (PPVC-1047)', async () => {
+    const onSubmit = jest.fn();
+    render(<TaskForm onSubmit={onSubmit} onCancel={jest.fn()} />);
+    openMore();
+    fireEvent.change(screen.getByLabelText('Task Name *'), { target: { value: 'Unassigned task' } });
+    await screen.findByLabelText('Assigned to');
+    fireEvent.submit(screen.getByRole('button', { name: 'Create Task' }).closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ assignedToUserId: undefined }));
+  });
+
+  it('preselects the current assignee when editing a task with a populated assignedToUserId (PPVC-1047)', async () => {
+    const onSubmit = jest.fn();
+    const item: any = {
+      id: 'task', name: 'Existing', description: 'Details', type: 'generic', urgency: 'low', status: 'pending',
+      assignedToUserId: { _id: 'user-1', firstName: 'Kasia', lastName: 'Nowak', email: 'kasia@example.com', role: 'user' },
+      tags: [], createdAt: '', updatedAt: '',
+    };
+    render(<TaskForm task={item} onSubmit={onSubmit} onCancel={jest.fn()} />);
+    const select = await screen.findByLabelText('Assigned to');
+    expect(select).toHaveValue('user-1');
+    fireEvent.change(select, { target: { value: '' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Update Task' }).closest('form')!);
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ assignedToUserId: undefined }));
   });
 
   it('stops loading and logs API failures without crashing the form', async () => {

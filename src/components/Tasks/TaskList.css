@@ -26,7 +26,7 @@
 
 .task-grid-header {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) 88px 88px 112px 136px 112px minmax(130px, 1fr) minmax(145px, 1fr) 168px;
+  grid-template-columns: minmax(220px, 2fr) 88px 88px 112px 128px 136px 112px minmax(130px, 1fr) minmax(145px, 1fr) 168px;
   background-color: #f9fafb;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -58,7 +58,7 @@
 
 .task-row {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) 88px 88px 112px 136px 112px minmax(130px, 1fr) minmax(145px, 1fr) 168px;
+  grid-template-columns: minmax(220px, 2fr) 88px 88px 112px 128px 136px 112px minmax(130px, 1fr) minmax(145px, 1fr) 168px;
   border-bottom: 1px solid #eef2f7;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
   min-height: 44px;
@@ -230,11 +230,42 @@
 
 .no-client,
 .no-retreat,
-.no-booking {
+.no-booking,
+.no-assignee {
   color: #adb5bd;
   font-style: italic;
   font-size: 12px;
   text-align: center;
+}
+
+/* PPVC-1047: assignee avatar + name shown when assignedToUserId is populated. */
+.assignee-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.assignee-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.assignee-info .assignee-name {
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-cell.actions .action-buttons {
@@ -394,6 +425,6 @@
 
 @media (min-width: 769px) {
   .task-grid { overflow-x: auto; }
-  .task-grid-header, .task-row { min-width: 1310px; }
+  .task-grid-header, .task-row { min-width: 1438px; }
   .task-cell.actions, .task-grid-header > .header-cell:last-child { position: sticky; right: 0; background: #fff; z-index: 1; border-left: 1px solid #e5e7eb; }
 }
