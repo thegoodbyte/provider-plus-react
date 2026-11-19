@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+const receiptUrl=process.env.RECEIPT_FIXTURE_URL || 'http://127.0.0.1:4391';
 // Requires test/payment-receipt-browser-fixture.cjs in the API repository.
 // Receipt operations reach a real Nest controller/service and isolated local MongoDB.
 test.beforeEach(async ({ page }) => {
@@ -8,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
     if (!['xhr','fetch'].includes(route.request().resourceType())) return route.continue();
-    if (url.pathname.startsWith('/payments/receipts') || url.pathname === '/fixture') { const response=await route.fetch({url:'http://127.0.0.1:4391'+url.pathname+url.search});return route.fulfill({response,headers:{...response.headers(),'access-control-allow-origin':new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin,'access-control-allow-credentials':'true'}}); }
+    if (url.pathname.startsWith('/payments/receipts') || url.pathname === '/fixture') { const response=await route.fetch({url:receiptUrl+url.pathname+url.search});return route.fulfill({response,headers:{...response.headers(),'access-control-allow-origin':new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin,'access-control-allow-credentials':'true'}}); }
     // Unrelated shell data is synthetic. Receipt APIs are never intercepted.
     if (url.pathname === '/environment/status') return route.fulfill({ json: { environment: 'test', outboundMode: 'capture', enabledJobs: [] } });
     if (url.pathname === '/assistant/tasks-for-today') return route.fulfill({ json: { tasks: [], retreats: [] } });
@@ -20,7 +21,7 @@ test.beforeEach(async ({ page }) => {
   page.on('dialog', dialog => dialog.accept());
 });
 test('automatic PDF, download, regeneration, email attachment and persisted history', async ({ page, request }, info) => {
-  const fixture = await (await request.get('http://127.0.0.1:4391/fixture')).json();
+  const fixture = await (await request.get(receiptUrl+'/fixture')).json();
   expect(fixture.automaticPdf).toBe(true);
   await page.goto(`/admin/payments/receipts?receiptId=${fixture.receiptId}`);
   await expect(page.getByText(`Receipt #${fixture.displayId}`, { exact: true })).toBeVisible();
@@ -33,14 +34,14 @@ test('automatic PDF, download, regeneration, email attachment and persisted hist
   await expect(page.getByText('Receipt PDF regenerated.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Email receipt' }).click();
   await expect(page.getByText(/Email \(sent\)/).first()).toBeVisible();
-  const after = await (await request.get('http://127.0.0.1:4391/fixture')).json();
+  const after = await (await request.get(receiptUrl+'/fixture')).json();
   expect(after.captures.at(-1).attachments).toEqual([`payment-receipt-${fixture.displayId}.pdf`, 'ibogaspirit-logo.png']);
   expect(after.captures.at(-1).bodyHtml).toContain('TEST-750');
   await page.reload(); await expect(page.getByText(/Email \(sent\)/).first()).toBeVisible();
   await page.screenshot({ path: `test-results/${info.project.name}-receipt.png`, fullPage: true });
 });
 test('client without email can download and record a manual WhatsApp send', async ({ page, request }) => {
-  const fixture = await (await request.get('http://127.0.0.1:4391/fixture')).json();
+  const fixture = await (await request.get(receiptUrl+'/fixture')).json();
   await page.goto(`/admin/payments/receipts?receiptId=${fixture.whatsappReceiptId}`);
   await expect(page.getByRole('button', { name: 'Email receipt' })).toBeDisabled();
   await page.getByRole('button', { name: 'Mark WhatsApp sent' }).click();
@@ -48,12 +49,12 @@ test('client without email can download and record a manual WhatsApp send', asyn
   await page.reload(); await expect(page.getByText(/WhatsApp \(manually confirmed\)/).first()).toBeVisible();
 });
 test('private PDF routes reject clients and allocations from another receipt', async ({ request }) => {
-  const fixture = await (await request.get('http://127.0.0.1:4391/fixture')).json();
-  const endpoint = `http://127.0.0.1:4391/payments/receipts/${fixture.receiptId}/pdf?allocationId=${fixture.paymentId}`;
+  const fixture = await (await request.get(receiptUrl+'/fixture')).json();
+  const endpoint = `${receiptUrl}/payments/receipts/${fixture.receiptId}/pdf?allocationId=${fixture.paymentId}`;
   expect((await request.get(endpoint)).status()).toBe(403);
   expect((await request.get(endpoint, { headers: { Authorization: 'Bearer receipt-test-client' } })).status()).toBe(403);
-  expect((await request.get(`http://127.0.0.1:4391/payments/receipts/${fixture.receiptId}/pdf?allocationId=${fixture.whatsappPaymentId}`, { headers: { Authorization: 'Bearer receipt-test-staff' } })).status()).toBe(400);
-  const detail = await (await request.get(`http://127.0.0.1:4391/payments/receipts/${fixture.receiptId}`, { headers: { Authorization: 'Bearer receipt-test-staff' } })).json();
+  expect((await request.get(`${receiptUrl}/payments/receipts/${fixture.receiptId}/pdf?allocationId=${fixture.whatsappPaymentId}`, { headers: { Authorization: 'Bearer receipt-test-staff' } })).status()).toBe(400);
+  const detail = await (await request.get(`${receiptUrl}/payments/receipts/${fixture.receiptId}`, { headers: { Authorization: 'Bearer receipt-test-staff' } })).json();
   expect(detail.pdfDocuments).toBeUndefined();
 });
 
