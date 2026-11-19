@@ -33,6 +33,10 @@ COVERAGE_OUTPUT=/absolute/path/to/evidence \
 node scripts/run-coverage-resolution.cjs
 ```
 
+`node --test scripts/coverage-process.test.cjs` verifies signalled-child cleanup,
+cooperative and forced termination, failure propagation, and missing-configuration
+rejection. Keep this regression check alongside the browser gate.
+
 The port numbers above are examples; all fixture ports are allocated dynamically.
 The runner rejects remote URLs, starts each domain fixture on its own database,
 serializes shared fixture resets, saves source IDs/commands/UTC/exits/raw reports,

@@ -1,3 +1,6 @@
+const { running, stopChildren } = require("./coverage-process.cjs");
+// Default failure survives even an unexpected exit during asynchronous teardown.
+process.exitCode = 1;
 /* Reproducible no-skip coverage for suites formerly gated by private snapshots or
  * missing ticket fixtures. Requires built matching API, disposable loopback Mongo,
  * admin production server, admin/IR Vite harnesses and public invoice renderer.
@@ -49,8 +52,7 @@ function start(args, cwd, env, log) {
 }
 async function ready(p, file, port) {
   for (let i = 0; i < 400; i++) {
-    if (p.exitCode !== null)
-      throw Error("Fixture exited " + p.exitCode + ": " + file);
+    if (!running(p)) throw Error("Fixture exited " + p.exitCode + ": " + file);
     if (fs.existsSync(file)) {
       try {
         const data = JSON.parse(fs.readFileSync(file));
@@ -315,22 +317,11 @@ const smoke = [
     record();
     console.log("No-skip coverage passed. Evidence: " + output);
   } finally {
-    for (const p of children) if (p.exitCode === null) p.kill("SIGTERM");
-    await Promise.all(
-      children.map((p) =>
-        p.exitCode === null
-          ? new Promise((resolve) => {
-              p.once("exit", resolve);
-              setTimeout(() => {
-                if (p.exitCode === null) p.kill("SIGKILL");
-                resolve();
-              }, 10000).unref();
-            })
-          : Promise.resolve(),
-      ),
-    );
+    evidence.cleanup = await stopChildren(children);
     evidence.cleaned_up_at = new Date().toISOString();
     record();
+    if (evidence.passed && !evidence.cleanup.some((row) => row.forced))
+      process.exitCode = 0;
   }
 })().catch((e) => {
   console.error(e);
