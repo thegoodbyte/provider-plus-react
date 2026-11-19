@@ -82,62 +82,9 @@
 .program-actions select {
   max-width: 440px;
 }
-.integration-programs button {
-  color: #243b35;
-  border: 1px solid #8aa59a;
-  border-radius: 6px;
-  padding: 8px 13px;
-  background: #eff6f2;
-  cursor: pointer;
-}
-.integration-programs button:hover:not(:disabled) {
-  background: #dcebe3;
-  color: #243b35;
-}
-.integration-programs button[aria-pressed="true"]:hover {
-  background: #255a45;
-  color: white;
-}
-.integration-view-tabs button {
-  padding: 8px 12px;
-  border: 1px solid #a5b7af;
-  border-radius: 6px;
-  color: #243b35;
-  background: #fff;
-}
-.integration-view-tabs button[aria-pressed="true"] {
-  background: #255a45;
-  color: white;
-}
-.integration-programs button[aria-pressed="true"] {
-  background: #255a45;
-  color: white;
-}
-.integration-programs button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
 .integration-programs :focus-visible {
   outline: 3px solid #ba7730;
   outline-offset: 2px;
-}
-.program-table-wrap {
-  overflow-x: auto;
-  margin: 16px 0;
-}
-.integration-programs table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.integration-programs th,
-.integration-programs td {
-  padding: 8px;
-  border-bottom: 1px solid #dae5df;
-  text-align: left;
-}
-.integration-programs th {
-  font-size: 0.85rem;
-  white-space: nowrap;
 }
 .program-fields td input[type="number"] {
   min-width: 75px;

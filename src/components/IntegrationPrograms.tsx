@@ -1,6 +1,8 @@
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
+import AppleButton from './AppleButton';
+import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './ui';
 import React, { useEffect, useState } from "react";
 import {
   BookingOption,
@@ -65,76 +67,75 @@ export function ProgramFields({
         Targets and flexible windows are proposals. Confirmed appointments have
         their own dates.
       </p>
-      <div className="program-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Target day</th>
-              <th>Earliest day</th>
-              <th>Latest day</th>
-              <th>Minutes</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {c.groupCalls.map((call, index) => (
-              <tr key={call.key}>
-                {(
-                  [
-                    "title",
-                    "targetDay",
-                    "earliestDay",
-                    "latestDay",
-                    "durationMinutes",
-                  ] as const
-                ).map((key) => (
-                  <td key={key}>
-                    <input
-                      aria-label={`${call.title} ${key}`}
-                      type={key === "title" ? "text" : "number"}
-                      min="0"
-                      value={call[key]}
-                      onChange={(e) =>
-                        field(
-                          "groupCalls",
-                          c.groupCalls.map((row, i) =>
-                            i === index
-                              ? {
-                                  ...row,
-                                  [key]:
-                                    key === "title"
-                                      ? e.target.value
-                                      : Number(e.target.value),
-                                }
-                              : row,
-                          ),
-                        )
-                      }
-                    />
-                  </td>
-                ))}
-                <td>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${call.title}`}
-                    onClick={() =>
+      <Table>
+        <TableHead>
+          <tr>
+            <TableHeaderCell>Title</TableHeaderCell>
+            <TableHeaderCell>Target day</TableHeaderCell>
+            <TableHeaderCell>Earliest day</TableHeaderCell>
+            <TableHeaderCell>Latest day</TableHeaderCell>
+            <TableHeaderCell>Minutes</TableHeaderCell>
+            <TableHeaderCell>{null}</TableHeaderCell>
+          </tr>
+        </TableHead>
+        <TableBody>
+          {c.groupCalls.map((call, index) => (
+            <TableRow key={call.key}>
+              {(
+                [
+                  "title",
+                  "targetDay",
+                  "earliestDay",
+                  "latestDay",
+                  "durationMinutes",
+                ] as const
+              ).map((key) => (
+                <TableCell key={key}>
+                  <input
+                    aria-label={`${call.title} ${key}`}
+                    type={key === "title" ? "text" : "number"}
+                    min="0"
+                    value={call[key]}
+                    onChange={(e) =>
                       field(
                         "groupCalls",
-                        c.groupCalls.filter((_, i) => i !== index),
+                        c.groupCalls.map((row, i) =>
+                          i === index
+                            ? {
+                                ...row,
+                                [key]:
+                                  key === "title"
+                                    ? e.target.value
+                                    : Number(e.target.value),
+                              }
+                            : row,
+                        ),
                       )
                     }
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <button
-        type="button"
+                  />
+                </TableCell>
+              ))}
+              <TableCell>
+                <AppleButton
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Remove ${call.title}`}
+                  onClick={() =>
+                    field(
+                      "groupCalls",
+                      c.groupCalls.filter((_, i) => i !== index),
+                    )
+                  }
+                >
+                  Remove
+                </AppleButton>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <AppleButton
+        variant="secondary"
         disabled={c.groupCalls.length >= 20}
         onClick={() =>
           field("groupCalls", [
@@ -151,7 +152,7 @@ export function ProgramFields({
         }
       >
         Add group call
-      </button>
+      </AppleButton>
       <h4>Personal sessions</h4>
       <div className="program-grid">
         {(["count", "durationMinutes", "accessDays"] as const).map((key) => (
@@ -261,8 +262,9 @@ export function ProgramFields({
               }
             />
           </label>
-          <button
-            type="button"
+          <AppleButton
+            variant="ghost"
+            size="sm"
             onClick={() =>
               field(
                 "emails",
@@ -271,11 +273,11 @@ export function ProgramFields({
             }
           >
             Remove email
-          </button>
+          </AppleButton>
         </div>
       ))}
-      <button
-        type="button"
+      <AppleButton
+        variant="secondary"
         disabled={c.emails.length >= 100}
         onClick={() =>
           field("emails", [
@@ -285,7 +287,7 @@ export function ProgramFields({
         }
       >
         Add support email
-      </button>
+      </AppleButton>
       <h4>Contact preferences</h4>
       <div className="program-grid">
         <label>
@@ -477,22 +479,22 @@ export default function IntegrationPrograms() {
         preview.
       </p>
       <div className="program-actions">
-        <button
-          type="button"
+        <AppleButton
+          variant={tab === "programs" ? "primary" : "secondary"}
           aria-pressed={tab === "programs"}
           onClick={() => setTab("programs")}
         >
           Program templates
-        </button>
-        <button
-          type="button"
+        </AppleButton>
+        <AppleButton
+          variant={tab === "enrollments" ? "primary" : "secondary"}
           aria-pressed={tab === "enrollments"}
           onClick={() => setTab("enrollments")}
         >
           Client enrollments
-        </button>
-        <button
-          type="button"
+        </AppleButton>
+        <AppleButton
+          variant="ghost"
           disabled={busy}
           onClick={() =>
             run(async () => {
@@ -506,7 +508,7 @@ export default function IntegrationPrograms() {
           }
         >
           Reload records
-        </button>
+        </AppleButton>
       </div>
       {error && (
         <p role="alert" className="program-error">
@@ -536,13 +538,13 @@ export default function IntegrationPrograms() {
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
+              <AppleButton
+                variant="secondary"
                 disabled={!starter}
                 onClick={() => select()}
               >
                 Create program
-              </button>
+              </AppleButton>
             </div>
             <div className="program-grid">
               {["regular", "booster"].map((type) => (
@@ -597,8 +599,7 @@ export default function IntegrationPrograms() {
                     }}
                   />
                   <div className="program-actions">
-                    <button
-                      type="button"
+                    <AppleButton
                       onClick={() =>
                         run(async () => {
                           const p = (
@@ -617,9 +618,9 @@ export default function IntegrationPrograms() {
                       }
                     >
                       Save draft
-                    </button>
-                    <button
-                      type="button"
+                    </AppleButton>
+                    <AppleButton
+                      variant="secondary"
                       disabled={!selected || dirty}
                       onClick={() =>
                         run(async () => {
@@ -633,13 +634,13 @@ export default function IntegrationPrograms() {
                       }
                     >
                       Publish saved draft
-                    </button>
+                    </AppleButton>
                   </div>
                 </fieldset>
                 {selected && (
                   <>
-                    <button
-                      type="button"
+                    <AppleButton
+                      variant="secondary"
                       onClick={() =>
                         run(async () => {
                           const p = (await service.archive(selected)).data;
@@ -656,7 +657,7 @@ export default function IntegrationPrograms() {
                       {selected.archived
                         ? "Restore program"
                         : "Archive program"}
-                    </button>
+                    </AppleButton>
                     <h4>Published versions</h4>
                     {selected.versions.map((v) => (
                       <details key={v.number}>
@@ -703,58 +704,57 @@ export default function IntegrationPrograms() {
           </>
         ) : (
           <>
-            <button type="button" onClick={newEnrollment}>
+            <AppleButton onClick={newEnrollment}>
               Enroll client
-            </button>
-            <div className="program-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Client</th>
-                    <th>Program version</th>
-                    <th>Homecoming</th>
-                    <th>Owner</th>
-                    <th>Status</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {enrollments.map((e) => (
-                    <tr key={e._id}>
-                      <td>{clientName(e)}</td>
-                      <td>
-                        {programs.find((p) => p._id === e.programId)?.name ||
-                          "Program"}{" "}
-                        · v{e.programVersion}
-                      </td>
-                      <td>{e.homecomingDate}</td>
-                      <td>{e.snapshot.owner}</td>
-                      <td>{e.status}</td>
-                      <td>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditing(e);
-                            setPreview(undefined);
-                            setInput({
-                              bookingId: e.bookingId,
-                              expectedRevision: e.revision,
-                              programId: e.programId,
-                              programVersion: e.programVersion,
-                              homecomingDate: e.homecomingDate,
-                              status: e.status,
-                              config: clone(e.snapshot),
-                            });
-                          }}
-                        >
-                          Edit enrollment
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            </AppleButton>
+            <Table>
+              <TableHead>
+                <tr>
+                  <TableHeaderCell>Client</TableHeaderCell>
+                  <TableHeaderCell>Program version</TableHeaderCell>
+                  <TableHeaderCell>Homecoming</TableHeaderCell>
+                  <TableHeaderCell>Owner</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>{null}</TableHeaderCell>
+                </tr>
+              </TableHead>
+              <TableBody>
+                {enrollments.map((e) => (
+                  <TableRow key={e._id}>
+                    <TableCell>{clientName(e)}</TableCell>
+                    <TableCell>
+                      {programs.find((p) => p._id === e.programId)?.name ||
+                        "Program"}{" "}
+                      · v{e.programVersion}
+                    </TableCell>
+                    <TableCell>{e.homecomingDate}</TableCell>
+                    <TableCell>{e.snapshot.owner}</TableCell>
+                    <TableCell>{e.status}</TableCell>
+                    <TableCell>
+                      <AppleButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditing(e);
+                          setPreview(undefined);
+                          setInput({
+                            bookingId: e.bookingId,
+                            expectedRevision: e.revision,
+                            programId: e.programId,
+                            programVersion: e.programVersion,
+                            homecomingDate: e.homecomingDate,
+                            status: e.status,
+                            config: clone(e.snapshot),
+                          });
+                        }}
+                      >
+                        Edit enrollment
+                      </AppleButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
             {input && (
               <div className="program-enrollment">
                 <h4>
@@ -879,8 +879,8 @@ export default function IntegrationPrograms() {
                   />
                 </details>
                 <div className="program-actions">
-                  <button
-                    type="button"
+                  <AppleButton
+                    variant="secondary"
                     onClick={() =>
                       run(async () => {
                         setPreview(undefined);
@@ -891,9 +891,8 @@ export default function IntegrationPrograms() {
                     }
                   >
                     Preview plan
-                  </button>
-                  <button
-                    type="button"
+                  </AppleButton>
+                  <AppleButton
                     disabled={!preview}
                     onClick={() =>
                       run(async () => {
@@ -912,16 +911,16 @@ export default function IntegrationPrograms() {
                     }
                   >
                     Apply previewed plan
-                  </button>
-                  <button
-                    type="button"
+                  </AppleButton>
+                  <AppleButton
+                    variant="ghost"
                     onClick={() => {
                       setInput(undefined);
                       setPreview(undefined);
                     }}
                   >
                     Cancel edit
-                  </button>
+                  </AppleButton>
                 </div>
                 {preview && (
                   <div role="region" aria-label="Enrollment preview">
@@ -929,40 +928,38 @@ export default function IntegrationPrograms() {
                     {preview.warnings.map((w) => (
                       <p key={w}>{w}</p>
                     ))}
-                    <div className="program-table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Call</th>
-                            <th>Previous target</th>
-                            <th>New target</th>
-                            <th>Flexible window</th>
-                            <th>Planning</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {preview.schedule.groupCalls.map((c) => (
-                            <tr key={c.key}>
-                              <td>{c.title}</td>
-                              <td>
-                                {preview.beforeSchedule?.groupCalls.find(
-                                  (old) => old.key === c.key,
-                                )?.targetDate || "—"}
-                              </td>
-                              <td>{c.targetDate}</td>
-                              <td>
-                                {c.earliestDate} – {c.latestDate}
-                              </td>
-                              <td>
-                                {c.pastWindow
-                                  ? "Past window · review manually"
-                                  : c.planningState}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    <Table>
+                      <TableHead>
+                        <tr>
+                          <TableHeaderCell>Call</TableHeaderCell>
+                          <TableHeaderCell>Previous target</TableHeaderCell>
+                          <TableHeaderCell>New target</TableHeaderCell>
+                          <TableHeaderCell>Flexible window</TableHeaderCell>
+                          <TableHeaderCell>Planning</TableHeaderCell>
+                        </tr>
+                      </TableHead>
+                      <TableBody>
+                        {preview.schedule.groupCalls.map((c) => (
+                          <TableRow key={c.key}>
+                            <TableCell>{c.title}</TableCell>
+                            <TableCell>
+                              {preview.beforeSchedule?.groupCalls.find(
+                                (old) => old.key === c.key,
+                              )?.targetDate || "—"}
+                            </TableCell>
+                            <TableCell>{c.targetDate}</TableCell>
+                            <TableCell>
+                              {c.earliestDate} – {c.latestDate}
+                            </TableCell>
+                            <TableCell>
+                              {c.pastWindow
+                                ? "Past window · review manually"
+                                : c.planningState}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                     <p>
                       Personal session access ends{" "}
                       {preview.schedule.personalExpiresOn}.

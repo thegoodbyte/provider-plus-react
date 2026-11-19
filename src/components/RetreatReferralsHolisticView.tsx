@@ -6,6 +6,7 @@ import { BookingType } from '../constants/eventTypes';
 import { formatRetreatCalendarDate } from './RetreatsGrid.helpers';
 import { bookingsApi } from '../services/api';
 import { formatRefereeId } from '../utils/refereeId';
+import { Badge } from './ui';
 
 type Props = {
   retreats: Retreat[];
@@ -352,17 +353,17 @@ export const RetreatReferralsHolisticView: React.FC<Props> = ({
   const getAttributionBadge = (attribution: string) => {
     switch (attribution) {
       case 'direct':
-        return <span className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-black text-blue-800">DIRECT</span>;
+        return <Badge tone="info">DIRECT</Badge>;
       case 'self_identified':
-        return <span className="inline-flex items-center rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-black text-emerald-800">Self-Identified</span>;
+        return <Badge tone="success">Self-Identified</Badge>;
       case 'declined':
-        return <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-800">Declined</span>;
+        return <Badge tone="warning">Declined</Badge>;
       case 'unknown':
-        return <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-600">Unknown</span>;
+        return <Badge tone="neutral">Unknown</Badge>;
       case 'self':
-        return <span className="inline-flex items-center rounded-md bg-purple-100 px-2 py-0.5 text-xs font-black text-purple-800">SELF</span>;
+        return <Badge colorClassName="bg-purple-100 text-purple-800">SELF</Badge>;
       default:
-        return <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{attribution || 'Unassigned'}</span>;
+        return <Badge tone="neutral">{attribution || 'Unassigned'}</Badge>;
     }
   };
 
