@@ -234,6 +234,64 @@ const smoke = [
       evidence.fixtures.push({ name, pid: p.pid, port });
       record();
     }
+    // Full mode owns every supplemental fixture too. Reusing a JSON path from
+    // an interrupted run can retain writes and turn a clean journey into a false
+    // regression. Each child below gets a fresh database, port and output file.
+    if (process.env.COVERAGE_FULL === "1") {
+      const jobs = [
+        ["whatsapp-download-names", "PPVC924_FIXTURE"],
+        ["payment-detail-receipt", "PPVC927_FIXTURE"],
+        ["mrr-booking-link", "MRR_BOOKING_LINK_FIXTURE"],
+        ["client-ekg-mrr", "CLIENT_EKG_MRR_FIXTURE"],
+        ["invoice-preview", "INVOICE_PREVIEW_FIXTURE"],
+        ["scratchpad-email", "SCRATCHPAD_EMAIL_FIXTURE"],
+        ["previous-food-form", "PREVIOUS_FOOD_FORM_FIXTURE"],
+        ["scratchpad-payment-search", "SCRATCHPAD_SEARCH_FIXTURE"],
+        ["payment-relationship-edit", "PAYMENT_EDIT_FIXTURE"],
+        ["client-support", "CLIENT_SUPPORT_FIXTURE"],
+        ["support-requests", "IBOGAREADY_REQUEST_FIXTURE", "client-support"],
+        ["medical-preparation-calendar", "PPVC922_FIXTURE"],
+        ["guided-scratchpad", "GUIDED_SCRATCHPAD_FIXTURE"],
+        ["booking-payment-reconciliation", "BOOKING_RECONCILIATION_FIXTURE"],
+        ["preparation-workspace", "PREPARATION_FIXTURE"],
+        ["screening-print", "SCREENING_PRINT_FIXTURE"],
+        ["payment-request-duplication", "PAYMENT_REQUEST_DUPLICATION_FIXTURE", null, "factory"],
+        ["invoice-drafts", "INVOICE_DRAFTS_FIXTURE", null, "factory"],
+        ["nav-preference", "NAV_PREFERENCE_FIXTURE"],
+        ["scratchpad-broad", "SCRATCHPAD_FIXTURE_PATH", null, "scratchpad"],
+        ["scratchpad-smoke", "SMOKE_SCRATCHPAD_FIXTURE_PATH", null, "scratchpad"],
+        ["mrr-download", "MRR_VIEW_DOWNLOAD_FIXTURE", null, "frontend"],
+        ["whatsapp-result", "WHATSAPP_RESULT_FIXTURE", null, "frontend"],
+        ["payment-receipt-browser", "RECEIPT_FIXTURE_URL", null, "receipt"],
+      ];
+      for (const [name, variable, alias, kind] of jobs) {
+        const port = await freePort(), file = path.join(output, name + ".json");
+        const e = { ...env, TEST_FIXTURE_PORT: String(port), TEST_FIXTURE_OUTPUT: file };
+        let cwd = api, args = ["test/" + (alias || name) + ".fixture.cjs"];
+        if (name === "preparation-workspace") e.PREPARATION_FIXTURE_OUTPUT = file;
+        if (kind === "factory") args = ["test/coverage-fixture-host.cjs", name + ".fixture.cjs"];
+        if (kind === "scratchpad") {
+          args = ["test/payment-scratchpad.integration.cjs", "--serve"];
+          e.SCRATCHPAD_MONGO_PORT = mongo.port || "27017";
+          e.SCRATCHPAD_HTTP_PORT = String(port); e.SCRATCHPAD_FIXTURE_PATH = file;
+        }
+        if (kind === "frontend") {
+          cwd = root;
+          args = ["e2e/fixtures/" + (name === "mrr-download" ? "mrr-view-download.cjs" : "whatsapp-result.fixture.cjs")];
+          e.DOWNLOAD_FIXTURE_SOURCE = api; e.MEDICAL_REVIEW_API_CHECKOUT = api;
+        }
+        if (kind === "receipt") {
+          args = ["test/payment-receipt-browser-fixture.cjs"];
+          e.RECEIPT_TEST_MONGO_URI = mongo.href.replace(/\/$/, "") + "/test_receipts_" + require("node:crypto").randomUUID().replaceAll("-", "");
+          e.RECEIPT_TEST_OUTPUT = path.join(output, "receipt-files");
+          e.TEST_FIXTURE_ORIGIN = env.PLAYWRIGHT_BASE_URL;
+        }
+        const p = start(args, cwd, e, path.join(output, name + ".log"));
+        const data = await ready(p, file, port);
+        env[variable] = kind === "receipt" ? data.url : file;
+        evidence.fixtures.push({ name, pid: p.pid, port, fresh: true }); record();
+      }
+    }
     const run = async (label, args, overrides = {}) => {
       const log = path.join(output, label + ".log"),
         started_at = new Date().toISOString(),
@@ -276,7 +334,7 @@ const smoke = [
             ? []
             : smoke.map((x) => "smoke/" + x + ".spec.ts")),
         ],
-        {},
+        env.SMOKE_SCRATCHPAD_FIXTURE_PATH ? { SCRATCHPAD_FIXTURE_PATH: env.SMOKE_SCRATCHPAD_FIXTURE_PATH } : {},
       ],
       [
         "hmr",

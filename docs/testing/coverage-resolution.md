@@ -38,6 +38,10 @@ cooperative and forced termination, failure propagation, and missing-configurati
 rejection. Keep this regression check alongside the browser gate.
 
 The port numbers above are examples; all fixture ports are allocated dynamically.
+With `COVERAGE_FULL=1`, the runner starts every supplemental API/domain fixture
+itself and overwrites any stale fixture-file environment values. It owns separate
+scratchpad databases for broad and smoke coverage. Do not reuse a prior run's
+fixture output after interruption: those synthetic records may already be edited.
 The runner rejects remote URLs, starts each domain fixture on its own database,
 serializes shared fixture resets, saves source IDs/commands/UTC/exits/raw reports,
 and closes only its own fixture children. It runs broad, smoke and development
