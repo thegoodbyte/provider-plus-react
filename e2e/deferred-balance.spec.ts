@@ -48,6 +48,7 @@ for(const width of [1440,390])test(`deposit is issued alone; actual settlement c
   saved=await snapshot();const balances=saved.requests.filter((r:any)=>r.requestType==='balance');expect(balances).toHaveLength(1);
   expect(balances[0]).toMatchObject({bookingId:ids.bookings[0],requestedAmount:1500,currency:'PLN',dueDate:'2098-12-02T00:00:00.000Z'});
   await expect(page.getByRole('link',{name:'Review existing balance request #'+balances[0].invoiceNumber})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Dismiss loading message',exact:true})).toHaveCount(0);
   await page.getByLabel('Existing final balance').scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath(`balance-${width}.png`)});
   expect(saved.payments).toHaveLength(2);expect(saved.emails).toEqual([]);
   expect(saved.requests.find((r:any)=>r._id===ids.requests[1])).toEqual(before.requests.find((r:any)=>r._id===ids.requests[1]));
