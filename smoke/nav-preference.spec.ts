@@ -11,7 +11,7 @@ for(const width of [1440,390])test(`saved simple navigation survives real login 
     const u=new URL(route.request().url());
     if(u.origin===new URL(baseURL!).origin&&!u.pathname.startsWith('/api/'))return route.continue();
     const p=u.pathname.replace(/^\/api(?=\/)/,'');
-    if(p==='/auth/login'||p.startsWith('/users'))return route.fulfill({response:await route.fetch({url:f.url+p+u.search})});
+    if(p==='/auth/login'||p==='/users'||/^\/users\/[a-f0-9]{24}$/.test(p)||p==='/users/profile')return route.fulfill({response:await route.fetch({url:f.url+p+u.search})});
     let data:any=[];
     if(p==='/health')data={status:'ok'};
     if(p==='/environment/status')data={production:true};
@@ -44,7 +44,7 @@ for(const width of [1440,390])test(`saved simple navigation survives real login 
   if(!await nav.isVisible())await page.getByRole('button',{name:/open.*menu|open.*navigation|toggle.*menu|menu/i}).first().click();
   await expect(nav).toBeVisible();
   const sections=nav.locator('ul').first().locator(':scope > li > button');
-  await expect(sections).toHaveText(['Home','Clients','Bookings','Retreat Operations','Payments']);
+  await expect(sections).toHaveText(['Home','Bookings','Clients','Retreat Operations','Payments']);
   await expect(nav.getByText('Settings & Setup',{exact:true})).toHaveCount(0);
   await expect(nav.getByText('Medical',{exact:true})).toHaveCount(0);
   await page.screenshot({path:info.outputPath(`simple-${width}.png`)});
