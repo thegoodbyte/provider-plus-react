@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-const fixture = 'http://127.0.0.1:43849';
+const fixture = process.env.SCREENING_PDF_FIXTURE_URL;
+if(!fixture)throw Error('SCREENING_PDF_FIXTURE_URL required; use the full coverage runner');
 const clientId = '507f1f77bcf86cd799439849';
 const client = { _id: clientId, firstName: 'Screening', lastName: 'Fixture', display_id: 1849, email: 'screening@example.invalid', screeningData: { mainIntent: 'Synthetic test' } };
 
@@ -98,3 +99,5 @@ test('initial generation failure can be retried without closing the viewer', asy
   await expect(page.getByTitle('Screening PDF document')).toHaveAttribute('src', /^blob:/);
   expect(await (await request.get(fixture + '/__fixture/state')).json()).toEqual({ generations: 2, stored: 1 });
 });
+
+test.afterEach(async({page})=>{await page.unrouteAll({behavior:"wait"});});

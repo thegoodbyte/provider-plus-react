@@ -1,6 +1,7 @@
 import { test,expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-const fixture=JSON.parse(readFileSync('/tmp/ppvc857-fixture.json','utf8'));
+if(!process.env.SCREENING_CALL_FIXTURE)throw Error('SCREENING_CALL_FIXTURE required; use the full coverage runner');
+const fixture=JSON.parse(readFileSync(process.env.SCREENING_CALL_FIXTURE,'utf8'));
 const headers={Authorization:`Bearer ${fixture.token}`};
 const path=`/admin/clients/${fixture.clientId}?tab=screening`;
 for(const viewport of [{width:1365,height:1000},{width:390,height:844}])test(`save/reload and explicitly send before-call email at ${viewport.width}px`,async({page,baseURL,request})=>{
@@ -63,3 +64,5 @@ test('failed save retains the draft, clearing persists, and undated preview send
  await page.getByRole('button',{name:'Cancel',exact:true}).click();
  const client=await(await request.get(`${fixture.url}/clients/${fixture.clientId}`,{headers})).json();expect(client.screeningCallAt).toBeNull();
 });
+
+test.afterEach(async({page})=>{await page.unrouteAll({behavior:"wait"});});

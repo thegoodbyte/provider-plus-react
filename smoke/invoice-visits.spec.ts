@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-const fixture = 'http://127.0.0.1:43784';
+const fixture = process.env.INVOICE_VISITS_FIXTURE_URL;
+if(!fixture)throw Error('INVOICE_VISITS_FIXTURE_URL required; use the full coverage runner');
 const id = '507f1f77bcf86cd799439783'; const hash = 'synthetic-invoice-783';
 const headers = { Authorization: 'Bearer local-invoice-visits' };
 const visitHeaders = { Origin: 'https://ibogaspirit.com', 'User-Agent': 'Mozilla/5.0 Windows Chrome/130' };
@@ -58,3 +59,5 @@ test('link previews are logged but do not notify, and private history/settings r
   expect((await request.get(fixture+'/invoice-visits/settings',{headers:{...headers,'x-fixture-role':'medical_staff'}})).status()).toBe(403);
   expect((await request.get(fixture+'/public/invoices/invalid',{headers:visitHeaders})).status()).toBe(400);
 });
+
+test.afterEach(async({page})=>{await page.unrouteAll({behavior:"wait"});});

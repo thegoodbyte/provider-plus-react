@@ -259,11 +259,15 @@ const smoke = [
         ["mrr-download", "MRR_VIEW_DOWNLOAD_FIXTURE", null, "frontend"],
         ["whatsapp-result", "WHATSAPP_RESULT_FIXTURE", null, "frontend"],
         ["payment-receipt-browser", "RECEIPT_FIXTURE_URL", null, "receipt"],
+        ["invoice-visits", "INVOICE_VISITS_FIXTURE_URL", null, "legacy-serve"],
+        ["screening-call", "SCREENING_CALL_FIXTURE", null, "legacy-serve"],
+        ["screening-pdf-viewer", "SCREENING_PDF_FIXTURE_URL"],
       ];
       for (const [name, variable, alias, kind] of jobs) {
         const port = await freePort(), file = path.join(output, name + ".json");
         const e = { ...env, TEST_FIXTURE_PORT: String(port), TEST_FIXTURE_OUTPUT: file };
         let cwd = api, args = ["test/" + (alias || name) + ".fixture.cjs"];
+        if (kind === "legacy-serve") args = ["test/" + name + ".integration.cjs", "--serve"];
         if (name === "preparation-workspace") e.PREPARATION_FIXTURE_OUTPUT = file;
         if (kind === "factory") args = ["test/coverage-fixture-host.cjs", name + ".fixture.cjs"];
         if (kind === "scratchpad") {
@@ -284,7 +288,7 @@ const smoke = [
         }
         const p = start(args, cwd, e, path.join(output, name + ".log"));
         const data = await ready(p, file, port);
-        env[variable] = kind === "receipt" ? data.url : file;
+        env[variable] = variable.endsWith("_URL") ? data.url : file;
         evidence.fixtures.push({ name, pid: p.pid, port: Number(new URL(data.url).port), requested_port: port, fresh: true }); record();
       }
     }
