@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckSquare, Clock, GripVertical, Plus, Search, Trash2, Users } from 'lucide-react';
 import { clientsApi, waitingListApi } from '../services/api';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import Card, { CardHeader } from './ui/Card';
+import Badge from './ui/Badge';
+import AppleButton from './AppleButton';
 
 type ClientSearchResult = {
   _id: string;
@@ -57,6 +60,7 @@ const getClientLabel = (client?: WaitingListClient | string | null) => {
 const formatDate = (value?: string) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? '-' : formatted; };
 
 const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retreatId, retreatName }) => {
+  const searchInput = useRef<HTMLInputElement>(null);
   const { toast, showError, dismiss: dismissToast } = useToast();
   const [entries, setEntries] = useState<WaitingListEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,26 +183,21 @@ const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retre
   return (
     <div className="space-y-4">
       <Toast toast={toast} onDismiss={dismissToast} />
-      <div className="rounded-2xl border border-gray-200 bg-white p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold uppercase tracking-wide text-blue-700">Reserve list</div>
-            <h3 className="mt-1 text-lg font-semibold text-gray-900">{retreatName || 'This retreat'}</h3>
-            <p className="mt-1 text-sm text-gray-600">
-              Add clients who can step into this retreat if a place opens up.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-            <Users className="h-4 w-4" />
-            {entries.length} reservist{entries.length === 1 ? '' : 's'}
-          </div>
-        </div>
+      <Card>
+        <CardHeader className="flex-col sm:flex-row" title="Reserve list"
+          subtitle={`${retreatName || 'This retreat'} · Add clients who can step in if a place opens up.`}
+          action={<div className="flex flex-wrap items-center gap-2">
+            <Badge tone="info"><Users className="mr-1 h-4 w-4" />{entries.length} reservist{entries.length === 1 ? '' : 's'}</Badge>
+            <AppleButton variant="primary" className="gap-2" onClick={() => searchInput.current?.focus()}><Plus className="h-4 w-4" />Add reservist</AppleButton>
+          </div>} />
 
         <div className="mt-4">
-          <label className="mb-2 block text-sm font-medium text-gray-700">Search client</label>
+          <label htmlFor={`reserve-client-search-${retreatId}`} className="mb-2 block text-sm font-medium text-gray-700">Search client</label>
           <div className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2">
             <Search className="h-4 w-4 text-gray-400" />
             <input
+              ref={searchInput}
+              id={`reserve-client-search-${retreatId}`}
               value={searchQuery}
               onChange={(e) => void handleSearch(e.target.value)}
               placeholder="Search clients by name, email, or phone..."
@@ -226,7 +225,7 @@ const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retre
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
         <div className="mb-4 flex items-center justify-between gap-3">

@@ -3,6 +3,9 @@ import { roomAllocationApi } from '../services/api';
 import { authService } from '../services/authService';
 import RoomGuestPicker from './RoomGuestPicker';
 import ClientAvatar from './ClientAvatar';
+import Card, { CardHeader } from './ui/Card';
+import Badge from './ui/Badge';
+import AppleButton from './AppleButton';
 
 export interface AllocationGuest { id: string; clientId?: string; profilePictureUrl?: string; profilePictureS3Key?: string; profilePictureFileUploadId?: string; name: string; bookingNumber?: number; clientNumber?: number; roomType: string; amountPaid: number; currency: string }
 export interface AllocationRoom { id: string; name: string; floor: string; bedCount: number; hasBathroom: boolean; allowsSharing: boolean; availableBeds: number; use?: 'private' | 'shared' | 'blocked'; occupants: Array<{ bed: number; bookingId: string }> }
@@ -57,10 +60,13 @@ export default function RoomAllocationBoard({ retreatId }: { retreatId: string }
   const occupied = board?.rooms.reduce((sum, room) => sum + room.occupants.length, 0) || 0;
   const offered = board?.rooms.reduce((sum, room) => sum + room.availableBeds, 0) || 0;
   return <section className="space-y-5" aria-label="Room allocation board">
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div><h2 className="text-2xl font-semibold text-slate-900">Room allocation</h2><p className="mt-1 text-sm text-slate-600">{board?.houseName || 'Retreat accommodation'} · {occupied} assigned · {offered - occupied} available</p></div>
-      <div className="flex gap-2"><button type="button" disabled={busy || Boolean(editingSlot)} onClick={load} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">Refresh allocations</button>{canEdit && <button type="button" disabled={busy || Boolean(editingSlot) || occupied > 0 || !board} onClick={() => change({ action: 'refresh' })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm" title="Release all assignments first">Refresh from house</button>}</div>
-    </div>
+    <Card><CardHeader className="!mb-0 flex-col xl:flex-row" title="Room allocation" subtitle={board?.houseName || 'Retreat accommodation'} action={
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone="info">{occupied} assigned</Badge><Badge tone="neutral">{offered - occupied} available</Badge>
+        <AppleButton variant="secondary" disabled={busy || Boolean(editingSlot)} onClick={load}>Refresh allocations</AppleButton>
+        {canEdit && <AppleButton variant="secondary" disabled={busy || Boolean(editingSlot) || occupied > 0 || !board} onClick={() => change({ action: 'refresh' })} title="Release all assignments first">Refresh from house</AppleButton>}
+      </div>
+    } /></Card>
     {savedMessage && <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{savedMessage}</p>}
     {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>}
     {board?.houseChanged && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">The retreat house has changed. Release existing assignments, then refresh from the house to use its bedrooms.</p>}

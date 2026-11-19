@@ -18,6 +18,8 @@ import {
   RetreatMedicalRow,
 } from './RetreatMedicalGrid.helpers';
 import './RetreatTrackingGrid.css';
+import Card, { CardHeader } from './ui/Card';
+import AppleButton from './AppleButton';
 
 interface RetreatTrackingGridProps {
   retreatId: string;
@@ -327,29 +329,21 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
           </div>
         )}
       </Modal>
-      <div className="medical-grid-header">
-        <div>
-          <h3>
-            Medical Grid {gridData.retreatCode || retreat?.retreatCode || retreat?.code || retreatId}
-          </h3>
-          <p>
-            EKG, liver, and medication-form review requests with linked artifacts, MRR numbers, submitted dates, decisions, and notes.
-          </p>
-        </div>
-        <div className="medical-grid-header-actions">
-          <button type="button" className="medical-grid-refresh-btn" onClick={() => setPrintSnapshot({ retreatId, data: gridData, preparationItems, generatedAt: new Date().toISOString() })}>
+      <Card><CardHeader className="!mb-0 flex-col xl:flex-row" title={<>Medical Grid {gridData.retreatCode || retreat?.retreatCode || retreat?.code || retreatId}</>}
+        subtitle="EKG, liver, and medication-form review requests with linked artifacts, MRR numbers, submitted dates, decisions, and notes."
+        action={<div className="flex flex-wrap items-center gap-2">
+          <AppleButton variant="secondary" onClick={() => setPrintSnapshot({ retreatId, data: gridData, preparationItems, generatedAt: new Date().toISOString() })}>
             Print medical grid
-          </button>
-          <button type="button" onClick={() => setIsFullscreen((current) => !current)} className="medical-grid-refresh-btn" aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}>
+          </AppleButton>
+          <AppleButton variant="secondary" onClick={() => setIsFullscreen((current) => !current)} aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}>
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             {isFullscreen ? 'Exit full screen' : 'Full screen'}
-          </button>
-          <button type="button" onClick={fetchGridData} className="medical-grid-refresh-btn">
+          </AppleButton>
+          <AppleButton variant="secondary" onClick={fetchGridData}>
             <RefreshCw className="h-4 w-4" />
             Refresh
-          </button>
-        </div>
-      </div>
+          </AppleButton>
+        </div>} /></Card>
 
       <div className="medical-grid-summary">
         {summaryCards.map((card) => (
