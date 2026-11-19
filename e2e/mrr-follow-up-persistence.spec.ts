@@ -127,6 +127,8 @@ test("follow-up persists through the real local API, MongoDB and Home", async ({
       }),
     ).toBe(2);
   } finally {
+    // Drain pending proxy responses before their real local API closes.
+    await page.unrouteAll({ behavior: "wait" });
     await f.close();
   }
 });

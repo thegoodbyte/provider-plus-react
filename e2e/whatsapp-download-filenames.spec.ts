@@ -38,3 +38,8 @@ for (const width of [1440, 390]) for (const clipboardFails of [false, true]) tes
   await page.reload();
   await expect(page.getByRole('region', { name: 'WhatsApp download filenames' }).getByText(names.fileNames[0], { exact: true })).toBeVisible();
 });
+
+// A proxy response must finish before Playwright disposes the request context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});
