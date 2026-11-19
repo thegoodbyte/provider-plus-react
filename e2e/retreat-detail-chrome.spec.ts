@@ -4,17 +4,13 @@ for (const width of [1440, 390]) {
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.setViewportSize({ width, height: 1000 });
-    await page.addInitScript(() => {
-      localStorage.setItem('token', 'synthetic-chrome-read-only');
-      localStorage.setItem('user', JSON.stringify({ role: 'admin', email: 'synthetic@example.invalid' }));
-    });
     let roomReads = 0;
     await page.route('**/retreats/*/room-allocation', async route => {
       expect(route.request().method()).toBe('GET');
       roomReads++;
       return route.fulfill({ json: { retreatId: f.retreat._id, houseName: 'Synthetic house', houseChanged: false, revision: 0, rooms: [], guests: [] } });
     });
-    await page.route('**/booking-flow/matrix/*', route => route.fulfill({ json: { bookings: f.bookings, templates: [], items: [], actionLogs: [] } }));
+    await page.route('**/booking-flow/matrix/*', route => { expect(route.request().method()).toBe('GET'); return route.fulfill({ json: { bookings: f.bookings, templates: [], items: [], actionLogs: [] } }); });
     await page.goto('/admin/retreats/' + f.retreat._id);
     const tabs = page.locator('.retreat-detail-tabs').getByRole('tab');
     await expect(tabs.first()).toBeVisible();
