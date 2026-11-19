@@ -231,7 +231,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         bookingId,
         retreatId: resolveId(booking.retreatId),
         accommodationKey: prev.accommodationKey ?? booking.accommodationKey ?? (booking.roomType !== 'unspecified' ? booking.roomType : undefined),
-        requestType: paymentRequest?.requestType || 'balance',
+        requestType: paymentRequest?.requestType === 'additional' ? 'payment' : paymentRequest?.requestType || 'balance',
         fullPriceQuote: String(fullPrice),
         requestedAmount: paymentRequest?.requestType === 'deposit'
           ? prev.requestedAmount || String(Math.round(fullPrice * planSettings.depositPercentage) / 100)
