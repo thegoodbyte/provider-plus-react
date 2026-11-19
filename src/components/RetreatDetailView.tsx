@@ -1,4 +1,6 @@
 import BalanceReminderButton from './BalanceReminderButton';
+import AppleButton from './AppleButton';
+import { Badge, Card, CardHeader } from './ui';
 import RoomTypeBadge from './RoomTypeBadge';
 import PreparationContextLink from './PreparationContextLink';
 import MedicalPayoutPanel from './MedicalPayoutPanel';
@@ -1026,68 +1028,68 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <div className="retreat-heading-group">
           <h1 className="retreat-page-title">{retreat.name || retreatCode}</h1>
         <div className="retreat-compact-summary">
-          <span>{activeClientCount}/{retreatCapacity} spots taken</span>
+          <Badge tone="info">{activeClientCount}/{retreatCapacity} spots</Badge>
           <span aria-hidden="true">·</span>
           <span>{retreatDateText}</span>
           <span aria-hidden="true">·</span>
-          <span title="Total booking prices for non-cancelled bookings, using ECB reference rates">Total: {missingUsdQuotes ? 'USD conversion unavailable' : formatUSD(totalExpectedUSD)}</span>
+          <span title="Total booking prices for non-cancelled bookings, using ECB reference rates">{missingUsdQuotes ? 'USD conversion unavailable' : formatUSD(totalExpectedUSD)}</span>
         </div>
         </div>
         <div className="retreat-detail-actions">
-          <button onClick={onBack} className="edit-retreat-btn retreat-icon-action" title="Back to all retreats">
+          <AppleButton variant="ghost" size="sm" onClick={onBack} title="Back to all retreats">
             All retreats
-          </button>
-          <button
-            type="button"
+          </AppleButton>
+          <AppleButton
+            variant="secondary"
+            size="sm"
             onClick={() => navigateToRetreat(previousRetreat)}
             disabled={!previousRetreat}
-            className="edit-retreat-btn retreat-icon-action disabled:cursor-not-allowed disabled:opacity-40"
             title={previousRetreat ? `Previous retreat: ${previousRetreat.name || previousRetreat.code || formatDate(previousRetreat.startDate || '')}` : 'No previous scheduled retreat'}
             aria-label="Previous scheduled retreat"
           >
             <Icon icon={ChevronLeft} className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
+          </AppleButton>
+          <AppleButton
+            variant="secondary"
+            size="sm"
             onClick={() => navigateToRetreat(nextRetreat)}
             disabled={!nextRetreat}
-            className="edit-retreat-btn retreat-icon-action disabled:cursor-not-allowed disabled:opacity-40"
             title={nextRetreat ? `Next retreat: ${nextRetreat.name || nextRetreat.code || formatDate(nextRetreat.startDate || '')}` : 'No next scheduled retreat'}
             aria-label="Next scheduled retreat"
           >
             <Icon icon={ChevronRight} className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
+          </AppleButton>
+          <AppleButton
+            variant="secondary"
+            size="sm"
             onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/helpers?add=helper`)}
-            className="edit-retreat-btn retreat-icon-action"
             title="Add helper to this retreat"
           >
             <Icon icon={Users} className="w-4 h-4" />
             <span>Add helper</span>
-          </button>
-          <button
-            type="button"
+          </AppleButton>
+          <AppleButton
+            variant="secondary"
+            size="sm"
             onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/helpers`)}
-            className="edit-retreat-btn retreat-icon-action"
             title="Manage cooks and helpers"
           >
             <Icon icon={Users} className="w-4 h-4" />
             <span className="retreat-action-label">Helpers</span>
-          </button>
-          <button
-            type="button"
+          </AppleButton>
+          <AppleButton
+            variant="secondary"
+            size="sm"
             onClick={() => setMetricsCollapsed(false)}
-            className="edit-retreat-btn retreat-icon-action"
             title="View financial metrics"
           >
             <Icon icon={TrendingUp} className="w-4 h-4" />
             <span className="retreat-action-label">Metrics</span>
-          </button>
-          <button onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/edit`)} className="edit-retreat-btn retreat-icon-action" title="Edit retreat" aria-label="Edit retreat">
+          </AppleButton>
+          <AppleButton variant="secondary" size="sm" onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/edit`)} title="Edit retreat" aria-label="Edit retreat">
             <Icon icon={Edit2} className="w-4 h-4" />
             <span className="retreat-action-label">Edit Retreat</span>
-          </button>
+          </AppleButton>
         </div>
 
       </div>
@@ -1180,9 +1182,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {isTabAvailableForRetreat('rooms', retreat) && (
           <button className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'rooms'} onClick={() => handleTabChange('rooms')}>Room allocation</button>
         )}
-        {isTabAvailableForRetreat('occupancy', retreat) && (
-          <button className={`tab-btn ${activeTab === 'occupancy' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'occupancy'} onClick={() => handleTabChange('occupancy')}>Occupancy</button>
-        )}
         {isTabAvailableForRetreat('announcements', retreat) && authService.getUser()?.role === 'admin' && (
           <button className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'announcements'} onClick={() => handleTabChange('announcements')}>Announcements</button>
         )}
@@ -1240,6 +1239,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <Icon icon={ListChecks} className="retreat-tab-icon" />
             <span>Medical Grid</span>
           </button>
+        )}
+        {isTabAvailableForRetreat('occupancy', retreat) && (
+          <button className={`tab-btn ${activeTab === 'occupancy' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'occupancy'} onClick={() => handleTabChange('occupancy')}>Occupancy</button>
         )}
         {isTabAvailableForRetreat('foodMatrix', retreat) && (
           <button
@@ -1332,58 +1334,60 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'integration' && ['admin','facilitator'].includes(authService.getUser()?.role || '') && <RouteContentBoundary><IntegrationCalendar retreatId={retreatId} /></RouteContentBoundary>}
         {activeTab === 'rooms' && <details className="mb-4"><summary className="cursor-pointer">Accommodation rates and room settings</summary><RouteContentBoundary><RetreatRoomsTab retreatId={retreatId} /></RouteContentBoundary></details>}
         {activeTab === 'announcements' && authService.getUser()?.role === 'admin' && <RouteContentBoundary><AnnouncementsPage retreatId={retreatId} /></RouteContentBoundary>}
-        {['clients', 'stayPlanner'].includes(activeTab) && isTabAvailableForRetreat('stayPlanner', retreat) && (
-          <div className="mb-5 flex flex-wrap items-center gap-2" role="group" aria-label="Clients view">
-            <span className="mr-2 text-sm font-medium text-slate-600">Clients view</span>
-            <button type="button" aria-pressed={activeTab === 'clients'} onClick={() => handleTabChange('clients')} className={`rounded-md border px-4 py-2 text-sm ${activeTab === 'clients' ? 'border-teal-700 bg-teal-50 text-teal-900' : 'border-slate-300 bg-white'}`}>Client list</button>
-            <button type="button" aria-pressed={activeTab === 'stayPlanner'} onClick={() => handleTabChange('stayPlanner')} className={`rounded-md border px-4 py-2 text-sm ${activeTab === 'stayPlanner' ? 'border-teal-700 bg-teal-50 text-teal-900' : 'border-slate-300 bg-white'}`}>Stay planner</button>
-          </div>
-        )}
         {activeTab === 'clients' && (
         <div className="clients-section">
-          <div className="section-header">
-            <h2>📋 Retreat Clients ({activeClientCount} active)</h2>
-            <div className="section-actions">
-              <button
-                onClick={() => navigate(`${location.pathname.replace(/\/$/, '')}/clients-print`)}
-                className="retreat-client-action retreat-client-action-print"
-                title="Open the A4 landscape client grid"
-                aria-label="Print retreat client grid"
-              >
-                <Icon icon={Printer} className="w-4 h-4" />
-                <span>Print Client Grid</span>
-              </button>
-
-              <button
-                onClick={() => setShowExistingClientModal(true)}
-                className="retreat-client-action retreat-client-action-existing"
-                title="Add existing client"
-                aria-label="Add existing client"
-              >
-                <Icon icon={UserPlus} className="w-4 h-4" />
-                <span>Add Existing Client</span>
-              </button>
-              <button
-                onClick={openRetreatEmailModal}
-                className="retreat-client-action retreat-client-action-email"
-                disabled={retreatEmailRecipientCount === 0}
-                title={retreatEmailRecipientCount === 0 ? 'No clients with email addresses in this retreat' : 'Send email to all clients in this retreat'}
-                aria-label={`Email retreat clients (${retreatEmailRecipientCount})`}
-              >
-                <Icon icon={Mail} className="w-4 h-4" />
-                <span>Email Retreat ({retreatEmailRecipientCount})</span>
-              </button>
-              <button
-                onClick={() => fetchRetreatData()}
-                className="retreat-client-action retreat-client-action-refresh"
-                title="Refresh"
-                aria-label="Refresh retreat clients"
-              >
-                <Icon icon={RefreshCw} className="w-4 h-4" />
-                <span>Refresh</span>
-              </button>
-            </div>
-          </div>
+          <CardHeader
+            title={<>Clients <span className="text-slate-400 font-normal">· {activeClientCount} active</span></>}
+            action={(
+              <div className="flex flex-wrap items-center gap-2">
+                {isTabAvailableForRetreat('stayPlanner', retreat) && (
+                  <div className="inline-flex rounded-apple border border-apple-gray-200 p-0.5" role="group" aria-label="Clients view">
+                    <button type="button" aria-pressed="true" onClick={() => handleTabChange('clients')} className="rounded-apple px-3 py-1 text-sm font-medium bg-apple-gray-900 text-white">List</button>
+                    <button type="button" aria-pressed="false" onClick={() => handleTabChange('stayPlanner')} className="rounded-apple px-3 py-1 text-sm font-medium text-apple-gray-700">Stay planner</button>
+                  </div>
+                )}
+                <AppleButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fetchRetreatData()}
+                  title="Refresh"
+                  aria-label="Refresh retreat clients"
+                >
+                  <Icon icon={RefreshCw} className="w-4 h-4" />
+                </AppleButton>
+                <AppleButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate(`${location.pathname.replace(/\/$/, '')}/clients-print`)}
+                  title="Open the A4 landscape client grid"
+                  aria-label="Print retreat client grid"
+                >
+                  <Icon icon={Printer} className="w-4 h-4" />
+                </AppleButton>
+                <AppleButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={openRetreatEmailModal}
+                  disabled={retreatEmailRecipientCount === 0}
+                  title={retreatEmailRecipientCount === 0 ? 'No clients with email addresses in this retreat' : 'Send email to all clients in this retreat'}
+                  aria-label={`Email retreat clients (${retreatEmailRecipientCount})`}
+                >
+                  <Icon icon={Mail} className="w-4 h-4" />
+                  <span>Email all ({retreatEmailRecipientCount})</span>
+                </AppleButton>
+                <AppleButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowExistingClientModal(true)}
+                  title="Add existing client"
+                  aria-label="Add existing client"
+                >
+                  <Icon icon={UserPlus} className="w-4 h-4" />
+                  <span>Add existing client</span>
+                </AppleButton>
+              </div>
+            )}
+          />
 
           <div className="retreat-clients-table-shell bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="retreat-clients-table-scroll overflow-x-auto overflow-y-auto">
@@ -1599,7 +1603,17 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
         {activeTab === 'rooms' && <RoomAllocationBoard retreatId={retreatId} />}
 
-        {activeTab === 'stayPlanner' && <RouteContentBoundary><RetreatStayPlanner retreatId={retreatId} retreat={retreat} /></RouteContentBoundary>}
+        {activeTab === 'stayPlanner' && (
+        <div className="clients-section">
+          <div className="mb-4 flex justify-end">
+            <div className="inline-flex rounded-apple border border-apple-gray-200 p-0.5" role="group" aria-label="Clients view">
+              <button type="button" aria-pressed="false" onClick={() => handleTabChange('clients')} className="rounded-apple px-3 py-1 text-sm font-medium text-apple-gray-700">List</button>
+              <button type="button" aria-pressed="true" onClick={() => handleTabChange('stayPlanner')} className="rounded-apple px-3 py-1 text-sm font-medium bg-apple-gray-900 text-white">Stay planner</button>
+            </div>
+          </div>
+          <RouteContentBoundary><RetreatStayPlanner retreatId={retreatId} retreat={retreat} /></RouteContentBoundary>
+        </div>
+        )}
         {activeTab === 'occupancy' && <RouteContentBoundary><RetreatOccupancyTab retreatId={retreatId} /></RouteContentBoundary>}
 
         {activeTab === 'reserveList' && (

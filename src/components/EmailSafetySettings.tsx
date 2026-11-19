@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { emailSafetyApi } from '../services/api';
 import { authService } from '../services/authService';
+import { Badge } from './ui';
 
 type Safety = { enabled: boolean; recipient: string };
 export default function EmailSafetySettings({ compact = false }: { compact?: boolean }) {
@@ -33,6 +34,18 @@ export default function EmailSafetySettings({ compact = false }: { compact?: boo
     } catch (caught: any) { setError(caught?.response?.data?.message || 'Could not save email safety settings.'); }
     finally { setBusy(false); }
   };
+  if (compact) {
+    return <span aria-label="Email safety">
+      {!saved ? (
+        <Badge tone="neutral">Checking email safety…</Badge>
+      ) : saved.enabled ? (
+        <Badge tone="success">Email safety on · {saved.recipient}</Badge>
+      ) : (
+        <Badge tone="warning">Email safety off · sending to real recipients</Badge>
+      )}
+      {error && <span role="alert" className="ml-2 text-red-700 text-sm">{error}</span>}
+    </span>;
+  }
   return <section className={`rounded-lg border p-4 my-4 ${saved?.enabled ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`} aria-label="Email safety">
     <h2 className="font-semibold">{!saved ? 'Checking email safety…' : saved.enabled ? `Email safety ON — all mail goes only to ${saved.recipient}` : 'Email safety OFF — emails go to real recipients'}</h2>
     {error && <p role="alert" className="mt-2 text-red-700">{error}</p>}

@@ -3,6 +3,7 @@ import { Button, Checkbox, DatePicker, Input, Modal, Radio, Tag, Upload, message
 import type { UploadFile } from 'antd/es/upload/interface';
 import dayjs from 'dayjs';
 import { drugScreeningsApi } from '../services/api';
+import { Badge, CardHeader } from './ui';
 
 type RetreatClient = { _id: string; clientId: string; clientName: string; bookingNumber?: string | number };
 type Screening = { _id: string; bookingId: string; clientId: string; administeredAt: string; testedFor: string[]; result: string; notes?: string; imageUrl?: string; imageFileName?: string };
@@ -38,12 +39,19 @@ const DrugScreeningTab: React.FC<{ retreatId: string; clients: RetreatClient[] }
   };
   const complete = records.length;
 
+  const positiveOrInconclusive = records.filter(r => r.result === 'positive' || r.result === 'inconclusive').length;
   return <div className="drug-screening-panel">
-    <div className="drug-screening-heading">
-      <div><h2>Drug Screening</h2><p>One on-site screening per retreat attendee. Records are stored against the attendee's booking.</p></div>
-      <div className="drug-screening-progress"><strong>{complete} / {clients.length}</strong><span>completed</span></div>
-    </div>
-    <div className="drug-screening-summary"><div><span>Completed</span><strong>{complete}</strong></div><div><span>Remaining</span><strong>{Math.max(clients.length - complete, 0)}</strong></div><div><span>Positive / inconclusive</span><strong>{records.filter(r => r.result === 'positive' || r.result === 'inconclusive').length}</strong></div></div>
+    <CardHeader
+      title="Drug screening"
+      subtitle="One on-site screening per attendee, stored on their booking."
+      action={(
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="success">{complete}/{clients.length} completed</Badge>
+          <Badge tone="neutral">{Math.max(clients.length - complete, 0)} remaining</Badge>
+          <Badge tone={positiveOrInconclusive ? 'critical' : 'neutral'}>{positiveOrInconclusive} positive / inconclusive</Badge>
+        </div>
+      )}
+    />
     <div className="drug-screening-table-wrap"><table className="drug-screening-table"><thead><tr><th>Attendee</th><th>Status</th><th>Time given</th><th>Tested for</th><th>Result</th><th>Image</th><th></th></tr></thead><tbody>
       {clients.map(client => { const r = recordByBooking.get(client._id); return <tr key={client._id}><td><strong>{client.clientName}</strong><small>Booking #{client.bookingNumber || '—'}</small></td><td>{r ? <Tag color="green">Test recorded</Tag> : <Tag>Not tested</Tag>}</td><td>{r ? dayjs(r.administeredAt).format('MMM D, YYYY h:mm A') : '—'}</td><td><div className="drug-tags">{r?.testedFor?.slice(0, 3).map(v => <Tag key={v}>{v}</Tag>)}{(r?.testedFor?.length || 0) > 3 && <Tag>+{r!.testedFor.length - 3}</Tag>}</div></td><td>{r ? <Tag color={r.result === 'negative' ? 'green' : r.result === 'positive' ? 'red' : 'orange'}>{r.result.toUpperCase()}</Tag> : '—'}</td><td>{r?.imageUrl ? <a href={r.imageUrl} target="_blank" rel="noreferrer">View image</a> : '—'}</td><td><Button onClick={() => open(client)}>{r ? 'View / edit' : 'Record test'}</Button></td></tr>; })}
       {!clients.length && !loading && <tr><td colSpan={7} className="drug-empty">No attendees are booked on this retreat.</td></tr>}
