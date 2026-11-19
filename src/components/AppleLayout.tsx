@@ -4,7 +4,7 @@ import BookingSettingsHome from './BookingSettingsHome';
 import { useWorkMode } from '../workModes/WorkModeContext';
 import WorkModePage from '../workModes/WorkModePage';
 import { BookOpen, Calendar, ChevronDown, CreditCard, Grid, Menu as MenuIcon, ShoppingBag, Users, X } from 'lucide-react';
-import EnvironmentBanner from './EnvironmentBanner';
+import EnvironmentBanner, { EnvironmentBadge } from './EnvironmentBanner';
 import React, { Suspense, lazy, useState, useEffect, useRef } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { NAVIGATION } from '../navigation/navigation';
@@ -170,6 +170,7 @@ const HeaderIcon: React.FC<{ icon: any; className?: string }> = ({ icon: IconCom
 
 const AppleLayout: React.FC = () => {
   const accountRef = useRef<HTMLDetailsElement>(null);
+  const modeSelectRef = useRef<HTMLDetailsElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -568,6 +569,7 @@ const AppleLayout: React.FC = () => {
   useEffect(() => {
     const closeAccount = (event: MouseEvent) => {
       if (!accountRef.current?.contains(event.target as Node)) accountRef.current?.removeAttribute('open');
+      if (!modeSelectRef.current?.contains(event.target as Node)) modeSelectRef.current?.removeAttribute('open');
     };
     document.addEventListener('click', closeAccount);
     return () => document.removeEventListener('click', closeAccount);
@@ -583,6 +585,7 @@ const AppleLayout: React.FC = () => {
         setQuickMenuOpen(false);
         setShowSettings(false);
         accountRef.current?.removeAttribute('open');
+        modeSelectRef.current?.removeAttribute('open');
       }
     };
     document.addEventListener('keydown', handleEscape);
@@ -665,13 +668,28 @@ const AppleLayout: React.FC = () => {
 
       {/* Main Content */}
       <div className={`workspace-frame ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
-        <EnvironmentBanner />
         <header className="workspace-header">
           <div className="workspace-header-leading">
+            <EnvironmentBadge />
             <button type="button" className="workspace-icon-button md:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle menu" aria-expanded={sidebarOpen} aria-controls="workspace-navigation">
               <HeaderIcon icon={MenuIcon} className="h-5 w-5" />
             </button>
             <span className="workspace-context">Workspace <span>/</span> <strong>{NAVIGATION[activeItem]?.label || activeItem.replace(/-/g, ' ')}</strong></span>
+            {user?.role === 'admin' && !focusedWorkMode && (
+              <details ref={modeSelectRef} className="workspace-mode-select" key={location.pathname}>
+                <summary aria-label="Work mode" title="Work mode">
+                  <HeaderIcon icon={Grid} className="h-4 w-4" />
+                  <span className="workspace-mode-select-label">Mode</span>
+                  <strong>{staffFocusModes[staffFocus.mode].label}</strong>
+                  <HeaderIcon icon={ChevronDown} className="h-3 w-3" />
+                </summary>
+                <div className="workspace-mode-menu" onClick={(event) => { if ((event.target as HTMLElement).closest('button')) modeSelectRef.current?.removeAttribute('open'); }}>
+                  {staffFocus.mode !== 'all' && <button type="button" onClick={() => navigate(staffFocusModes[staffFocus.mode].route)}>Return to focus</button>}
+                  <button type="button" onClick={() => navigate('/admin/focus')}>Choose work mode</button>
+                  <button type="button" onClick={() => { staffFocus.setMode('all'); navigate('/admin/launcher'); }}>All tools</button>
+                </div>
+              </details>
+            )}
           </div>
           {!focusedWorkMode && <div className="workspace-search"><GlobalSearch routePrefix={routePrefix} onNavigate={navigate} /></div>}
           <div className="workspace-header-tools">
@@ -691,6 +709,7 @@ const AppleLayout: React.FC = () => {
             </details>
           </div>
         </header>
+        <EnvironmentBanner hideProductionBadge />
         {!focusedWorkMode && appMode.mode !== 'normal' && <div className="workspace-mode"><span>{appMode.mode === 'shopping' ? 'Shopping Mode · Receipts & expenses only' : `Retreat Mode · ${appMode.retreatLabel || 'Selected retreat'}`}</span><button type="button" onClick={() => setQuickMenuOpen(true)}>Switch mode</button></div>}
 
         {isImpersonating && (
@@ -714,7 +733,6 @@ const AppleLayout: React.FC = () => {
         )}
 
         {focusedWorkMode && <div className="wm-mode-banner" aria-label="Active work mode"><strong>Medical work mode</strong><a href={workMode.data?.workspace?.sessionId ? `/admin/work-modes/sessions/${workMode.data.workspace.sessionId}` : '/admin/work-modes'}>Return to work session</a><button onClick={() => navigate('/admin/focus')}>Switch mode or session</button><button onClick={() => void workMode.exit().catch(() => {})}>Exit work mode</button>{workMode.error && <span role="alert">{workMode.error}</span>}</div>}
-        {user?.role === 'admin' && !focusedWorkMode && <div className="staff-focus-banner" aria-label="Staff focus"><strong>{staffFocusModes[staffFocus.mode].label}</strong>{staffFocus.mode!=='all' && <button onClick={()=>navigate(staffFocusModes[staffFocus.mode].route)}>Return to focus</button>}<button onClick={()=>navigate('/admin/focus')}>Choose work mode</button><button onClick={()=>{staffFocus.setMode('all');navigate('/admin/launcher');}}>All tools</button></div>}
         <StorageOverrideBanner />
         <AiHealthBanner />
 

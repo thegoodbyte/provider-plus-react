@@ -22,6 +22,14 @@
 .workspace-account-info small { color:var(--workspace-muted); overflow-wrap:anywhere; }
 .workspace-account-menu button { display:block; width:100%; min-height:42px; padding:10px; text-align:left; border-radius:8px; font-size:13px; }
 .workspace-account-menu button:hover { background:var(--workspace-soft); }
+.workspace-mode-select { position:relative; flex-shrink:0; }
+.workspace-mode-select summary { list-style:none; display:flex; align-items:center; gap:6px; cursor:pointer; padding:6px 10px; border:1px solid var(--workspace-line); border-radius:10px; background:var(--workspace-soft); color:var(--workspace-ink); font-size:12px; white-space:nowrap; }
+.workspace-mode-select summary::-webkit-details-marker { display:none; }
+.workspace-mode-select-label { color:var(--workspace-muted); font-weight:500; }
+.workspace-mode-select summary strong { max-width:120px; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+.workspace-mode-menu { position:absolute; left:0; top:44px; z-index:40; width:220px; padding:8px; border:1px solid var(--workspace-line); border-radius:16px; background:#fff; box-shadow:0 16px 50px #20332f20; }
+.workspace-mode-menu button { display:block; width:100%; min-height:42px; padding:10px; text-align:left; border-radius:8px; font-size:13px; }
+.workspace-mode-menu button:hover { background:var(--workspace-soft); }
 .workspace-mode { display:flex; flex-shrink:0; justify-content:space-between; align-items:center; gap:12px; padding:10px 24px; background:var(--workspace-soft); font-size:13px; }
 .workspace-mode button { padding:6px 10px; border:1px solid #b7cfc2; border-radius:8px; background:#fff; }
 .workspace-content { flex:1; min-height:0; overflow:auto; padding:28px; scrollbar-gutter:stable; overscroll-behavior-y:contain; }
@@ -79,13 +87,15 @@
 .workspace-page .retreat-register-progress > div { overflow:hidden; border-radius:6px; }
 @media (max-width:1199px) and (min-width:768px) {
   .workspace-context { display:none; }
+  .workspace-mode-select-label { display:none; }
+  .workspace-mode-select summary strong { display:none; }
   .workspace-header { gap:12px; padding-inline:20px; }
   .workspace-page .retreat-register-card { grid-template-columns:100px minmax(140px,1fr) 72px 65px 150px; }
   .workspace-page .retreat-register-progress { display:none; }
 }
 @media (max-width:767px) {
   .workspace-header { display:grid; grid-template-columns:1fr auto; gap:10px; padding:12px 16px; }
-  .workspace-header-leading { grid-column:1; grid-row:1; }
+  .workspace-header-leading { grid-column:1; grid-row:1; flex-wrap:wrap; row-gap:6px; min-width:0; }
   .workspace-context { font-size:12px; gap:6px; }
   .workspace-context strong { max-width:120px; }
   .workspace-context > span { display:none; }
@@ -188,6 +198,9 @@
  .workspace-context strong { max-width:150px; }
  .communications-header { flex-direction:column; }
  .workspace-page .communications-header > div:last-child { width:100%; }
+ .workspace-mode-select-label { display:none; }
+ .workspace-mode-select summary { padding:6px 8px; }
+ .workspace-mode-select summary strong { max-width:70px; }
 }
 .workspace-empty-state { display:grid; place-items:center; padding:48px 24px; border:1px dashed #c8d8ce; border-radius:14px; background:#f8faf9; color:var(--workspace-muted); font-size:14px; text-align:center; }
 .workspace-page .workflow-booking-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; border-radius:12px; border-color:var(--workspace-line); }

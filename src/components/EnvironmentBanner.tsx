@@ -27,13 +27,9 @@ export function captureLinks(text: string): string[] {
       }
     });
 }
-export default function EnvironmentBanner() {
+function useEnvironmentStatus() {
   const [status, setStatus] = useState<any>(null);
   const [error, setError] = useState("");
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<any[]>([]);
-  const [selected, setSelected] = useState<any>(null);
   useEffect(() => {
     let active = true;
     environmentApi
@@ -54,6 +50,28 @@ export default function EnvironmentBanner() {
       active = false;
     };
   }, []);
+  return { status, error };
+}
+
+// Compact, inline production tag for use in a single-row header -- renders
+// nothing outside the production case (loading, error, non-production).
+export function EnvironmentBadge() {
+  const { status } = useEnvironmentStatus();
+  if (!status?.production) return null;
+  return <Tag>Production</Tag>;
+}
+
+export default function EnvironmentBanner({
+  hideProductionBadge = false,
+}: {
+  hideProductionBadge?: boolean;
+}) {
+  const { status, error: statusError } = useEnvironmentStatus();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any>(null);
+  const [error, setError] = useState("");
   const load = async () => {
     setOpen(true);
     setLoading(true);
@@ -78,9 +96,9 @@ export default function EnvironmentBanner() {
       setLoading(false);
     }
   };
-  if (!status) return error ? <Alert type="warning" message={error} /> : null;
+  if (!status) return statusError ? <Alert type="warning" message={statusError} /> : null;
   if (status.production)
-    return (
+    return hideProductionBadge ? null : (
       <div style={{ padding: "4px 24px" }}>
         <Tag>Production</Tag>
       </div>
