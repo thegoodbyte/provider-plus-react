@@ -38,8 +38,8 @@ for(const width of [1440,390])test(`saved simple navigation survives real login 
   await login('partner@example.invalid');
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('user')!).navPreference)).toBe('simple');
   await page.goto('/admin/users'); // direct settings URL still works for a simple-view admin
-  await expect(page.getByText('partner@example.invalid',{exact:true})).toBeVisible();
-  await page.reload();await expect(page.getByText('partner@example.invalid',{exact:true})).toBeVisible();
+  await expect(page.getByRole('row').filter({hasText:'partner@example.invalid'})).toBeVisible();
+  await page.reload();await expect(page.getByRole('row').filter({hasText:'partner@example.invalid'})).toBeVisible();
   let nav=page.getByRole('navigation',{name:'Main navigation'});
   if(!await nav.isVisible())await page.getByRole('button',{name:/open.*menu|open.*navigation|toggle.*menu|menu/i}).first().click();
   await expect(nav).toBeVisible();
