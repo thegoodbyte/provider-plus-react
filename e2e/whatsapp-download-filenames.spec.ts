@@ -35,8 +35,12 @@ for (const width of [1440, 390]) for (const clipboardFails of [false, true]) tes
   }
   const bounds = await panel.boundingBox(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
   await panel.screenshot({ path: `../whatsapp-filename-screenshots/filenames-${width}-${clipboardFails ? 'fallback' : 'copy'}.png` });
+  // The filename panel can render while other detail requests are proxied.
+  // Finish that traffic before document reload cancels the old requests.
+  await page.waitForLoadState('networkidle');
   await page.reload();
   await expect(page.getByRole('region', { name: 'WhatsApp download filenames' }).getByText(names.fileNames[0], { exact: true })).toBeVisible();
+  await page.waitForLoadState('networkidle');
 });
 
 // A proxy response must finish before Playwright disposes the request context.
