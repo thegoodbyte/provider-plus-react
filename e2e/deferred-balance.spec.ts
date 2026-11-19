@@ -4,6 +4,7 @@ const file=process.env.DEFERRED_BALANCE_FIXTURE;
 test.skip(!file,'Start API test/deferred-balance.fixture.cjs with disposable local MongoDB; complete coverage runner starts it automatically.');
 test.describe.configure({mode:'serial'});
 for(const width of [1440,390])test(`deposit is issued alone; actual settlement creates one booked balance at ${width}px`,async({page,request},info)=>{
+  const browserErrors:string[]=[];page.on('pageerror',error=>browserErrors.push(error.message));
   const f=JSON.parse(fs.readFileSync(file!,'utf8'));
   expect((await request.post(f.url+'/fixture/deferred-new')).ok()).toBe(true);
   const snapshot=async()=>{const r=await request.get(f.url+'/fixture/edit-snapshot');expect(r.ok()).toBe(true);return r.json();};
@@ -17,7 +18,7 @@ for(const width of [1440,390])test(`deposit is issued alone; actual settlement c
     if(/^\/(payment-requests|payments|bookings|clients|retreats)(\/|$)/.test(u.pathname))return route.fulfill({response:await route.fetch({url:f.url+u.pathname+u.search})});
     if(req.method()!=='GET')throw Error('Unexpected write '+req.method()+' '+u.pathname);
     const option={key:'shared',legacyRoomType:'shared',labels:{en:'Shared room'},occupancy:'shared',active:true,supported:true,availableUnits:null,unit:'beds'};
-    if(u.pathname.startsWith('/room-inventory/payment-accommodation/'))return route.fulfill({json:{options:[option],configured:false,house:null}});
+    if(u.pathname.startsWith('/room-inventory/payment-accommodation/'))return route.fulfill({json:{options:[option],rooms:[],configured:false,house:null}});
     if(u.pathname==='/room-inventory/options')return route.fulfill({json:[option]});
     if(u.pathname.startsWith('/room-inventory/preference/'))return route.fulfill({json:{key:'shared',label:'Shared room'}});
     if(u.pathname==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
@@ -50,5 +51,6 @@ for(const width of [1440,390])test(`deposit is issued alone; actual settlement c
   await page.getByLabel('Existing final balance').scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath(`balance-${width}.png`)});
   expect(saved.payments).toHaveLength(2);expect(saved.emails).toEqual([]);
   expect(saved.requests.find((r:any)=>r._id===ids.requests[1])).toEqual(before.requests.find((r:any)=>r._id===ids.requests[1]));
+  expect(browserErrors).toEqual([]);
   await page.unrouteAll({behavior:'wait'});
 });
