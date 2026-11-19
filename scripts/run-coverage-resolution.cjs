@@ -1,4 +1,4 @@
-const { running, stopChildren } = require("./coverage-process.cjs");
+const { running, stopChildren, probeFixtureListener } = require("./coverage-process.cjs");
 // Default failure survives even an unexpected exit during asynchronous teardown.
 process.exitCode = 1;
 /* Reproducible no-skip coverage for suites formerly gated by private snapshots or
@@ -56,13 +56,9 @@ async function ready(p, file, port) {
     if (fs.existsSync(file)) {
       try {
         const data = JSON.parse(fs.readFileSync(file));
-        await new Promise((resolve, reject) => {
-          const s = net.connect(port, "127.0.0.1", () => {
-            s.end();
-            resolve();
-          });
-          s.on("error", reject);
-        });
+        // Some existing fixtures deliberately bind port zero. The published
+        // loopback URL is authoritative, rather than the requested hint.
+        await probeFixtureListener(data);
         return data;
       } catch {}
     }
@@ -231,7 +227,7 @@ const smoke = [
         data = await ready(p, file, port);
       env[varname] = file;
       if (name === "booster-offers") env.BOOSTER_FIXTURE_URL = data.url;
-      evidence.fixtures.push({ name, pid: p.pid, port });
+      evidence.fixtures.push({ name, pid: p.pid, port: Number(new URL(data.url).port), requested_port: port });
       record();
     }
     // Full mode owns every supplemental fixture too. Reusing a JSON path from
@@ -289,7 +285,7 @@ const smoke = [
         const p = start(args, cwd, e, path.join(output, name + ".log"));
         const data = await ready(p, file, port);
         env[variable] = kind === "receipt" ? data.url : file;
-        evidence.fixtures.push({ name, pid: p.pid, port, fresh: true }); record();
+        evidence.fixtures.push({ name, pid: p.pid, port: Number(new URL(data.url).port), requested_port: port, fresh: true }); record();
       }
     }
     const run = async (label, args, overrides = {}) => {

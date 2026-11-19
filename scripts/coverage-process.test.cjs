@@ -57,3 +57,17 @@ test("missing required coverage configuration fails closed before starting fixtu
   assert.equal(result.status, 1);
   assert.match(result.stderr, /TEST_API_CHECKOUT required/);
 });
+
+test('readiness probes the actual published loopback listener and rejects remote or credentialed URLs', async () => {
+  const { probeFixtureListener } = require('./coverage-process.cjs');
+  const server = require('node:net').createServer(socket => socket.end());
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const actual = server.address().port;
+    assert.equal(await probeFixtureListener({ url: `http://127.0.0.1:${actual}` }), actual);
+    await assert.rejects(probeFixtureListener({ url: 'https://example.com' }), /loopback/);
+    await assert.rejects(probeFixtureListener({ url: `http://secret@127.0.0.1:${actual}` }), /loopback/);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});

@@ -30,4 +30,18 @@ async function stopChildren(children, timeoutMs = 10000) {
     }),
   );
 }
-module.exports = { running, stopChildren };
+async function probeFixtureListener(data) {
+  const url = new URL(data.url);
+  if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) || url.username || url.password)
+    throw Error('Fixture readiness requires a credential-free loopback HTTP URL');
+  const port = Number(url.port || 80);
+  await new Promise((resolve, reject) => {
+    const socket = require('node:net').connect(port, '127.0.0.1', () => {
+      socket.end(); resolve();
+    });
+    socket.setTimeout(2000, () => socket.destroy(Error('Fixture listener timeout')));
+    socket.once('error', reject);
+  });
+  return port;
+}
+module.exports = { running, stopChildren, probeFixtureListener };
