@@ -2,10 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  workers: process.env.CI ? 1 : undefined,
+  // Legacy scratchpad files share a disposable fixture and reset it.
+  // Serialize that fixture until each file owns an independent database.
+  workers: process.env.SCRATCHPAD_FIXTURE_PATH || process.env.CI ? 1 : undefined,
   reporter: [
     ['html'],
     ['json', { outputFile: 'e2e/reports/results.json' }],

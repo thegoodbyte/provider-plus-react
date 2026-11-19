@@ -61,7 +61,7 @@ test.describe('Medical review group page', () => {
       const request = route.request();
       const url = new URL(request.url());
 
-      if (url.port === '3001' && !['xhr', 'fetch'].includes(request.resourceType())) {
+      if (!['xhr', 'fetch'].includes(request.resourceType())) {
         await route.continue();
         return;
       }
@@ -133,7 +133,7 @@ test.describe('Medical review group page', () => {
     });
   });
 
-  test('shows only pending requests in the packet and issues expiring links', async ({ page }) => {
+  test('shows pending requests and shares only the stable login-gated packet link', async ({ page }) => {
     let capturedExpiry = 0;
 
     await page.route('**/medical-review-requests/groups/507f1f77bcf86cd799439500/access-links', async (route) => {
@@ -167,11 +167,10 @@ test.describe('Medical review group page', () => {
     await expect(page.getByRole('heading', { name: 'Add MRRs to packet' })).toBeVisible();
     await page.getByRole('button', { name: 'Cancel' }).last().click();
 
-    await page.getByLabel('Expire in').fill('14');
-    await page.getByRole('button', { name: 'Issue new link' }).click();
-
-    await expect.poll(() => capturedExpiry).toBe(14);
-    await expect(page.getByText('expires 7/24/2026')).toBeVisible();
+    await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (value: string) => { (window as any).__copiedPacketLink = value; } } }); });
+    await page.getByRole('button', {name: 'Copy packet link', exact: true}).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__copiedPacketLink)).toBe(new URL('/medical/review-groups/' + groupId, page.url()).href);
+    expect(capturedExpiry).toBe(0);
 
     await page.getByLabel('Edit packet').click();
     await expect(page.getByRole('button', { name: 'Remove from packet' })).toBeVisible();

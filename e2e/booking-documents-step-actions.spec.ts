@@ -67,6 +67,14 @@ test.describe('Booking document step actions', () => {
         return;
       }
 
+      if (url.pathname === `/booking-flow/bookings/${bookingId}/workflow-snapshot`) {
+        return route.fulfill({json:{items:[{_id:contractSentStepId,key:'contract_sent',title:'Contract sent',status:'pending',category:'contract',bookingId,clientId,retreatId,emailEnabled:true,emailTemplateId:'template-contract',metadata:{expectedArtifact:'contract'}},{_id:contractReceivedStepId,key:'contract_signed',title:'Contract received',status:'pending',category:'contract',bookingId,clientId,retreatId,metadata:{expectedArtifact:'contract'}}],documents:[],actionLogs:[],templates:[]}});
+      }
+      if (url.pathname === `/bookings/${bookingId}/activity`) return route.fulfill({json:[{id:'log-email-1',type:'email',title:'Contract sent · email #2101',occurredAt:'2026-07-01T08:00:00Z'},{id:'log-upload-1',type:'file_uploaded',title:'Contract received',description:'Contract uploaded from booking documents.',occurredAt:'2026-07-01T08:05:00Z'}]});
+      if (url.pathname === '/communications/send' && request.method()==='POST') {sentRequest=true;return route.fulfill({json:{_id:'sent-email-1',display_id:2202,status:'sent'}});}
+      if (url.pathname === `/booking-flow/items/${contractSentStepId}/email-compose-data`) return route.fulfill({json:{to:'denis@example.com',subject:'Contract request',bodyText:'Please upload your signed contract.',clientId,bookingId,retreatId}});
+      if (url.pathname === '/communications/preview') return route.fulfill({json:{subject:'Contract request',bodyText:'Please upload your signed contract.'}});
+      if (url.pathname === '/communications/templates') return route.fulfill({json:[{_id:'template-contract',name:'Contract',language:'en',subject:'Contract request',bodyText:'Please upload your signed contract.'}]});
       if (url.pathname === '/booking-flow/items' && url.searchParams.get('bookingId') === bookingId) {
         await route.fulfill({
           contentType: 'application/json',
@@ -182,14 +190,19 @@ test.describe('Booking document step actions', () => {
     await page.goto(`/admin/bookings/${bookingId}`);
     await expect(page.getByRole('heading', { name: /Booking #1247/i })).toBeVisible();
 
+    await page.getByRole('tab',{name:'Activity',exact:true}).click();
+    await expect(page.getByText('Contract sent · email #2101',{exact:true})).toBeVisible();
+    await expect(page.getByText('Contract uploaded from booking documents.',{exact:true})).toBeVisible();
+    expect(sentRequest).toBe(false);
     await page.getByRole('tab', { name: 'Documents' }).click();
-    await expect(page.getByText('Email step: Contract sent (pending)')).toBeVisible();
-    await expect(page.getByText('Upload step: Contract received (pending)')).toBeVisible();
-    await expect(page.getByText('Mark "Contract received" received after upload')).toBeVisible();
-    await expect(page.getByText(/email #2101/)).toBeVisible();
-    await expect(page.getByText(/Contract uploaded from booking documents/)).toBeVisible();
-
-    await page.getByRole('button', { name: /Send Contract Request/ }).click();
-    await expect.poll(() => sentRequest).toBe(true);
+    const contract=page.getByRole('article').filter({has:page.getByText('Contract',{exact:true})});
+    await expect(contract.getByRole('button',{name:'Upload',exact:true})).toBeVisible();
+    // Step email actions now live in Workflow; Documents is the file library.
+    await page.getByRole('tab',{name:'Workflow',exact:true}).click();
+    await expect(page.getByText('Contract sent',{exact:true}).first()).toBeVisible();
+    await page.getByRole('button',{name:'Send email',exact:true}).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('button',{name:'Send Email',exact:true}).click();
+    await expect.poll(()=>sentRequest).toBe(true);
   });
 });

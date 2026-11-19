@@ -17,7 +17,7 @@ for(const width of [1440,390])test(`read-only booking review at ${width}px`,asyn
  await page.goto('/admin/payments/scratchpad');await page.getByRole('button',{name:'Booking review',exact:true}).click();
  await expect(page.getByText('Review booking creation',{exact:true})).toBeVisible();
  await expect(page.getByText('Review existing booking',{exact:true})).toBeVisible();
- await expect(page.getByText('Check payment purpose',{exact:true})).toBeVisible();
+ await expect(page.getByRole('row').filter({hasText:'Purpose candidate 907'}).getByText('Check payment purpose',{exact:true})).toBeVisible();
  const candidate=page.getByRole('row').filter({hasText:'Booking candidate 907'});
  await expect(candidate.getByRole('link',{name:'Review request'})).toHaveAttribute('href','/admin/payment-requests/'+f.reviewRequestId);
  await expect(candidate).toContainText('1907');await expect(candidate).not.toContainText('wrong-capture-hint');

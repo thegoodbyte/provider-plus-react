@@ -2,6 +2,34 @@
 
 This directory contains the comprehensive E2E testing suite for the Provider Plus application using Playwright.
 
+## Isolated release fixtures
+
+Client form, tag and medical-note persistence tests use real production API
+controllers, services, Mongoose schemas and indexes. Build the sibling API before
+starting fixture services, set `TEST_API_CHECKOUT` to its checkout and
+`TEST_MONGO_URL` to a disposable loopback MongoDB. No production snapshot or
+`AppModule` environment is loaded. Each client/medical test owns its database and
+closes it after the test; email and S3 delivery stay captured.
+
+The legacy scratchpad fixture is shared by files which reset its database.
+`SCRATCHPAD_FIXTURE_PATH` therefore defaults the suite to one worker; global
+setup rejects an unsafe CLI override. Reset restores all matching transactions
+and keeps unrelated booking scenarios in different retreats. Do not increase
+workers without isolating those databases first.
+
+Run built application screens through `PLAYWRIGHT_BASE_URL`. The component
+harness HTML files require a separate Vite server at
+`PLAYWRIGHT_FIXTURE_BASE_URL`; they are not shipped in production assets. Set
+`CLIENT_PORTAL_FIXTURE_BASE_URL` for the portal harness and
+`INVOICE_CLIENT_WEBSITE_URL` for the real public website renderer. Build the local
+admin with `REACT_APP_CLIENT_INVOICE_PREVIEW_URL` pointing to that website's
+`/clients/payment/admin-preview` route. Production iframe origin checks must
+remain enabled; do not bypass them to make localhost tests pass.
+
+Keep failure and skip inventories separate. A test skipped for an absent fixture
+or a retired quick-book entry point has not passed. The older optional scenarios
+remain visible in the report; targeted repairs must not convert failures into skips.
+
 ## 📋 Test Coverage
 
 Our E2E tests cover the following key areas:

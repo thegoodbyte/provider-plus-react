@@ -122,16 +122,14 @@ test.describe('New feature flows', () => {
 
     await page.goto('/admin/retreats/retreat-1');
 
-    await expect(page.getByRole('heading', { name: 'Helper Directory Assignments' })).toBeVisible();
-    await page.getByRole('button', { name: /Edit assignments/i }).click();
-
-    await expect(page.getByRole('heading', { name: /Edit Retreat/i })).toBeVisible();
+    await page.getByRole('button', { name: 'Helpers', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Cooks and helpers' })).toBeVisible();
     await page.getByRole('button', { name: /Add person/i }).click();
 
     await page.getByLabel('Directory person').selectOption('contact-helper-1');
-    await page.getByLabel('Planned salary').fill('12500');
-    await page.getByLabel('Notes').fill('Full week from ceremony afternoon through discovery morning.');
-    await page.getByRole('button', { name: /Update Retreat/i }).click();
+    await page.getByLabel('From date',{exact:true}).fill('2026-07-25');
+    await page.getByLabel('From time',{exact:true}).fill('15:00');
+    await page.getByRole('button', { name: 'Save team', exact:true }).click();
 
     await expect.poll(() => patchPayload?.retreatStaff?.length).toBe(1);
     expect(patchPayload.retreatStaff[0]).toEqual(expect.objectContaining({
@@ -140,9 +138,10 @@ test.describe('New feature flows', () => {
       name: 'Maria Helper',
       phone: '+420 111 222',
       email: 'maria@example.com',
-      plannedSalary: 12500,
+      startDate: '2026-07-25',
+      startTime: '15:00',
       salaryCurrency: 'CZK',
-      notes: 'Full week from ceremony afternoon through discovery morning.',
+
     }));
   });
 

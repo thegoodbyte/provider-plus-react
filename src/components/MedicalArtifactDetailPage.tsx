@@ -9,6 +9,7 @@ import { Client, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, Retr
 import LoadingSpinner from './LoadingSpinner';
 import MrrCreatedModal from './MrrCreatedModal';
 import { formatCalendarDate } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
   ekg: 'EKG',
@@ -357,6 +358,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
     }
     setSaving(true);
     setError(null);
+    let uploadingFiles = false;
     try {
       const response = await medicalArtifactsApi.update(id, {
         ...form,
@@ -365,6 +367,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
       });
       setArtifact(response.data);
       if (selectedFiles.length > 0) {
+        uploadingFiles = true;
         setUploading(true);
         await medicalArtifactsApi.uploadFiles(id, selectedFiles, {
           reviewRequestNumber: reviewRequests[0]?.display_id,
@@ -373,7 +376,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
         await reloadArtifact();
       }
     } catch (saveError: any) {
-      setError(getUploadErrorMessage(saveError));
+      setError(uploadingFiles ? getUploadErrorMessage(saveError) : apiErrorMessage(saveError, 'Could not save this medical record. Your changes are retained.'));
     } finally {
       setSaving(false);
       setUploading(false);
@@ -1002,7 +1005,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 lg:col-span-2">
+          <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 lg:col-span-2">
             {error}
           </div>
         )}

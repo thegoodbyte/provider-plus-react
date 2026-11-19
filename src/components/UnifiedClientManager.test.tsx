@@ -30,6 +30,25 @@ async function openEditor() {
   await act(async () => { await Promise.resolve(); });
   return dialog;
 }
+it('keeps one update in flight and unlocks retry after a failed request', async () => {
+  let reject!: (reason: any) => void;
+  (clientsApi.update as jest.Mock).mockClear().mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+  const dialog = await openEditor();
+  expect(within(dialog).getByLabelText('Phone *')).toHaveValue(client.phone);
+  const submit = within(dialog).getByRole('button', { name: 'Update Client' });
+  fireEvent.click(submit);fireEvent.click(submit);
+  expect(submit).toBeDisabled();expect(clientsApi.update).toHaveBeenCalledTimes(1);
+  await act(async () => reject({response:{status:503,data:{message:'Synthetic outage'}}}));
+  expect(submit).toBeEnabled();expect(within(dialog).getByLabelText('Email')).toHaveValue(client.email);
+});
+it('rejects an invalid email before sending a client update', async () => {
+  (clientsApi.update as jest.Mock).mockClear();
+  const dialog = await openEditor();
+  fireEvent.change(within(dialog).getByLabelText('Email'), {target:{value:'invalid-email'}});
+  fireEvent.click(within(dialog).getByRole('button',{name:'Update Client'}));
+  expect(within(dialog).getByRole('alert')).toHaveTextContent('Enter a valid email address.');
+  expect(clientsApi.update).not.toHaveBeenCalled();
+});
 it('shows a styled duplicate toast within the editor, retains edits and allows correction', async () => {
   const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
   const alert = jest.spyOn(window, 'alert').mockImplementation(() => {});

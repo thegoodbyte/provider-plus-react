@@ -143,24 +143,25 @@ test.describe('Retreat bulk email', () => {
     await expect(dialog).toBeVisible();
     const languageCheckbox = dialog.getByRole('checkbox', { name: 'Use each recipient’s preferred language' });
     await expect(languageCheckbox).toBeChecked();
-    await languageCheckbox.uncheck();
+    await expect(languageCheckbox).toBeDisabled();
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
     await page.getByRole('button', { name: /Email retreat clients \(2\)/ }).click();
     await expect(languageCheckbox).toBeChecked();
+    await dialog.getByLabel('Template', { exact: true }).click();
+    await page.getByText('Arrival address Polish · PL', { exact: true }).click();
+    await expect(languageCheckbox).toBeEnabled();
     if (useRecipientLanguage) {
-      await dialog.getByLabel('Template', { exact: true }).click();
-      await page.getByText('Arrival address Polish · PL', { exact: true }).click();
       await expect(dialog.getByLabel('Subject')).toHaveValue('Adres');
-      await expect(dialog.getByLabel('Message')).toHaveValue('Polish arrival instructions');
-      await expect(dialog.getByLabel('Message')).toHaveAttribute('readonly', '');
+      await expect(dialog.getByLabel('Message',{exact:true})).toHaveValue('Polish arrival instructions');
+      await expect(dialog.getByLabel('Message',{exact:true})).toHaveAttribute('readonly', '');
     } else {
       await languageCheckbox.uncheck();
-      await expect(dialog.getByLabel('Message')).not.toHaveAttribute('readonly', '');
+      await expect(dialog.getByLabel('Message',{exact:true})).not.toHaveAttribute('readonly', '');
     }
 
     if (!useRecipientLanguage) {
       await dialog.getByLabel('Subject').fill('Important retreat update');
-      await dialog.getByLabel('Message').fill('Please read this update before arrival.');
+      await dialog.getByLabel('Message',{exact:true}).fill('Please read this update before arrival.');
     }
     await dialog.getByRole('button', { name: 'Send to 2' }).click();
 

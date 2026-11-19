@@ -137,6 +137,7 @@ const UnifiedClientManager: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>(() => getInitialClientFilter(location.pathname, location.search));
   const [sortField, setSortField] = useState<ClientSortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -293,6 +294,7 @@ const UnifiedClientManager: React.FC = () => {
   // Filter and search clients
   useEffect(() => {
     let filtered = [...clients];
+    if (tagFilter) filtered = filtered.filter(client => (Array.isArray(client.tags) ? client.tags : []).includes(tagFilter));
 
     // Filter by status
     if (filterStatus === LEADS_FILTER) {
@@ -325,7 +327,7 @@ const UnifiedClientManager: React.FC = () => {
     });
 
     setFilteredClients(filtered);
-  }, [clients, filterStatus, searchTerm, sortField, sortDirection, getClientRetreatCode, notes]);
+  }, [clients, filterStatus, tagFilter, searchTerm, sortField, sortDirection, getClientRetreatCode, notes]);
 
   // Render only a bounded page of rows -- without this, a growing client
   // list renders every row on every keystroke/sort, which degrades as
@@ -338,12 +340,22 @@ const UnifiedClientManager: React.FC = () => {
   }, [filteredClients]);
   const visibleClients = filteredClients.slice(0, visibleClientsCount);
 
+  const clientSavePending = useRef(false);
+  const [clientSaving, setClientSaving] = useState(false);
   const handleSave = async () => {
+    if (clientSavePending.current) return;
     if (!formData.firstName?.trim() || !formData.lastName?.trim() || !formData.phone?.trim()) {
       showError('First name, last name, and phone are required.');
       return;
     }
-
+    const emailField = clientDialogRef.current?.querySelector<HTMLInputElement>('input[type="email"]');
+    if (emailField && !emailField.checkValidity()) {
+      showError('Enter a valid email address.');
+      emailField.focus();
+      return;
+    }
+    clientSavePending.current = true;
+    setClientSaving(true);
     try {
       // Define allowed fields for client creation/update
       const allowedFields = [
@@ -435,6 +447,9 @@ const UnifiedClientManager: React.FC = () => {
       showSuccess(selectedClient?._id ? 'Client updated successfully.' : 'Client created successfully.');
     } catch (error: any) {
       showError(clientSaveErrorMessage(error));
+    } finally {
+      clientSavePending.current = false;
+      setClientSaving(false);
     }
   };
 
@@ -603,6 +618,7 @@ const UnifiedClientManager: React.FC = () => {
 
       {/* Filters */}
       <div className="mb-3 flex flex-col sm:flex-row gap-2">
+<select aria-label="Filter clients by tag" value={tagFilter} onChange={event=>setTagFilter(event.target.value)} className="rounded-apple border border-gray-200 px-4 py-2"><option value="">All tags</option>{Array.from(new Set(clients.flatMap(client=>Array.isArray(client.tags) ? client.tags : []))).sort().map(tag=><option key={tag} value={tag}>{tag}</option>)}</select>
         <div className="flex-1">
           <div className="relative">
             <Icon icon={SearchIcon} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -920,8 +936,8 @@ const UnifiedClientManager: React.FC = () => {
                       />
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
                         <AppleInput
+                          label="Phone *"
                           value={formData.phone || ''}
                           onChange={handlePhoneChange}
                           placeholder="Enter full number with country code"
@@ -997,7 +1013,7 @@ const UnifiedClientManager: React.FC = () => {
                 <AppleButton variant="secondary" onClick={handleCloseForm}>
                   Cancel
                 </AppleButton>
-                <AppleButton variant="primary" onClick={handleSave}>
+                <AppleButton variant="primary" aria-label={`${selectedClient ? 'Update' : 'Create'} Client`} onClick={handleSave} loading={clientSaving}>
                   {selectedClient ? 'Update' : 'Create'} Client
                 </AppleButton>
               </div>
