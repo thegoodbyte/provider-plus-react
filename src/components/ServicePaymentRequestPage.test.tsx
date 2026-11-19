@@ -160,7 +160,7 @@ test("invalidates review on item changes and shows server errors without losing 
     target: { value: "medical" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Review request" }));
-  fireEvent.change(screen.getByLabelText("Unit price (EUR)"), {
+  fireEvent.change(screen.getByLabelText("Unit price (EUR)", { exact: false }), {
     target: { value: "30" },
   });
   expect(screen.queryByText("Ready to issue")).not.toBeInTheDocument();
@@ -170,7 +170,7 @@ test("invalidates review on item changes and shows server errors without losing 
   );
   await screen.findByRole("alert");
   expect(screen.getByRole("alert")).toHaveTextContent("Settings changed");
-  expect(screen.getByLabelText("Unit price (EUR)")).toHaveValue(30);
+  expect(screen.getByLabelText("Unit price (EUR)", { exact: false })).toHaveValue(30);
 });
 test("offers copy/open/send and recording for partial payment but never claims paid", async () => {
   const request = {
@@ -390,7 +390,7 @@ test("a mistaken currency change cannot remove eight recovered items, and an exp
   });
   mount();
   await screen.findByDisplayValue("Item 8");
-  expect(screen.getAllByLabelText("Description")).toHaveLength(8);
+  expect(screen.getAllByLabelText("Description", { exact: false })).toHaveLength(8);
   fireEvent.change(screen.getByLabelText("Currency"), {
     target: { value: "PLN" },
   });
@@ -401,7 +401,7 @@ test("a mistaken currency change cannot remove eight recovered items, and an exp
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
   );
-  expect(screen.getAllByLabelText("Description")).toHaveLength(8);
+  expect(screen.getAllByLabelText("Description", { exact: false })).toHaveLength(8);
   expect(screen.getByLabelText("Currency")).toHaveValue("EUR");
   expect(invoiceDraftsApi.issue).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText("Currency"), {
@@ -413,8 +413,8 @@ test("a mistaken currency change cannot remove eight recovered items, and an exp
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
   );
-  expect(screen.queryAllByLabelText("Description")).toHaveLength(0);
+  expect(screen.queryAllByLabelText("Description", { exact: false })).toHaveLength(0);
   fireEvent.click(screen.getByRole("button", { name: "Undo currency change" }));
-  expect(screen.getAllByLabelText("Description")).toHaveLength(8);
+  expect(screen.getAllByLabelText("Description", { exact: false })).toHaveLength(8);
   expect(screen.getByLabelText("Currency")).toHaveValue("EUR");
 });

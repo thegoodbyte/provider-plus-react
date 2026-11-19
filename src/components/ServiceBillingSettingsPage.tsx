@@ -2,7 +2,14 @@ import { BillingPartyFields } from './BillingPartyFields';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { serviceRequestsApi } from "../services/api";
-import "./ServicePaymentRequestPage.css";
+import AppleButton from "./AppleButton";
+import AppleInput from "./AppleInput";
+import { Card } from "./ui";
+
+const selectClasses = "w-full p-2 border border-apple-gray-200 rounded-apple bg-white text-apple-gray-900 focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue";
+const textareaClasses = "mt-1.5 w-full rounded-apple border border-apple-gray-200 bg-white px-4 py-2 text-apple-gray-900 transition-all duration-200 hover:border-apple-gray-300 focus:border-apple-blue focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:ring-offset-1";
+const labelClasses = "flex flex-col gap-1.5 text-sm font-medium text-apple-gray-700";
+
 export default function ServiceBillingSettingsPage() {
   const [settings, setSettings] = useState<any>(null),
     [busy, setBusy] = useState(false),
@@ -43,92 +50,89 @@ export default function ServiceBillingSettingsPage() {
     }
   };
   return (
-    <main className="service-request-page">
-      <header className="sr-heading">
+    <main className="mx-auto max-w-[1040px] px-6 py-8 text-apple-gray-900">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-5">
         <div>
-          <Link to="/admin/payment-requests/services/new">
+          <Link to="/admin/payment-requests/services/new" className="text-sm text-apple-blue hover:underline">
             ← New service request
           </Link>
-          <h1>Service billing settings</h1>
-          <p>
+          <h1 className="mt-2 text-[30px] font-bold tracking-tight">Service billing settings</h1>
+          <p className="mt-2 text-apple-gray-500">
             Configure your catalog, policy templates and payment recipients.
           </p>
         </div>
       </header>
       {error && (
-        <p className="sr-error" role="alert">
+        <p className="mb-4 rounded-apple bg-red-50 px-4 py-3 text-red-700" role="alert">
           {error}
         </p>
       )}
       {notice && (
-        <p className="sr-notice" role="status">
+        <p className="mb-4 rounded-apple bg-emerald-50 px-4 py-3 text-emerald-800" role="status">
           {notice}
         </p>
       )}
       {config ? (
         <form onSubmit={save}>
-          <section className="sr-card"><h2>Invoice seller</h2><p>Enter the legal billing identity and exact tax wording to print on invoices. Required before issuing an invoice; existing invoices keep their original details.</p><BillingPartyFields issuer value={config.issuer} onChange={issuer => setSettings((s:any)=>({...s,configuration:{...s.configuration,issuer}}))}/></section>
-          <section className="sr-card">
-            <h2>Services</h2>
-            <p>
+          <Card className="mb-5">
+            <h2 className="mb-4 text-xl font-bold">Invoice seller</h2>
+            <p className="mb-4">Enter the legal billing identity and exact tax wording to print on invoices. Required before issuing an invoice; existing invoices keep their original details.</p>
+            <BillingPartyFields issuer value={config.issuer} onChange={issuer => setSettings((s:any)=>({...s,configuration:{...s.configuration,issuer}}))}/>
+          </Card>
+          <Card className="mb-5">
+            <h2 className="mb-2 text-xl font-bold">Services</h2>
+            <p className="mb-4">
               Medical verification starts at €25. Add rituals with the prices
               you choose.
             </p>
             {config.services.map((s: any, i: number) => (
-              <fieldset className="sr-card" key={i}>
-                <legend>Service {i + 1}</legend>
-                <div className="sr-fields">
-                  <label>
-                    Stable service code
-                    <input
-                      required
-                      value={s.code}
-                      onChange={(e) =>
-                        change("services", i, "code", e.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    English name
-                    <input
-                      required
-                      value={s.names.en}
-                      onChange={(e) =>
-                        change("services", i, "names", {
-                          ...s.names,
-                          en: e.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Czech name
-                    <input
-                      value={s.names.cz || ""}
-                      onChange={(e) =>
-                        change("services", i, "names", {
-                          ...s.names,
-                          cz: e.target.value || s.names.en,
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Polish name
-                    <input
-                      value={s.names.pl || ""}
-                      onChange={(e) =>
-                        change("services", i, "names", {
-                          ...s.names,
-                          pl: e.target.value || s.names.en,
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
+              <fieldset className="mt-4 rounded-apple-lg border border-apple-gray-200 bg-apple-surface p-5" key={i}>
+                <legend className="px-1 text-sm font-semibold text-apple-gray-700">Service {i + 1}</legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <AppleInput
+                    label="Stable service code"
+                    required
+                    value={s.code}
+                    onChange={(value) =>
+                      change("services", i, "code", value)
+                    }
+                  />
+                  <AppleInput
+                    label="English name"
+                    required
+                    value={s.names.en}
+                    onChange={(value) =>
+                      change("services", i, "names", {
+                        ...s.names,
+                        en: value,
+                      })
+                    }
+                  />
+                  <AppleInput
+                    label="Czech name"
+                    value={s.names.cz || ""}
+                    onChange={(value) =>
+                      change("services", i, "names", {
+                        ...s.names,
+                        cz: value || s.names.en,
+                      })
+                    }
+                  />
+                  <AppleInput
+                    label="Polish name"
+                    value={s.names.pl || ""}
+                    onChange={(value) =>
+                      change("services", i, "names", {
+                        ...s.names,
+                        pl: value || s.names.en,
+                      })
+                    }
+                  />
+                  <label className={`${labelClasses} col-span-full`}>
                     English description
                     <textarea
                       maxLength={500}
+                      rows={2}
                       value={s.descriptions?.en || ""}
                       onChange={(e) =>
                         change("services", i, "descriptions", {
@@ -136,12 +140,14 @@ export default function ServiceBillingSettingsPage() {
                           en: e.target.value,
                         })
                       }
+                      className={textareaClasses}
                     />
                   </label>
-                  <label>
+                  <label className={`${labelClasses} col-span-full`}>
                     Czech description
                     <textarea
                       maxLength={500}
+                      rows={2}
                       value={s.descriptions?.cz || ""}
                       onChange={(e) =>
                         change("services", i, "descriptions", {
@@ -149,12 +155,14 @@ export default function ServiceBillingSettingsPage() {
                           cz: e.target.value,
                         })
                       }
+                      className={textareaClasses}
                     />
                   </label>
-                  <label>
+                  <label className={`${labelClasses} col-span-full`}>
                     Polish description
                     <textarea
                       maxLength={500}
+                      rows={2}
                       value={s.descriptions?.pl || ""}
                       onChange={(e) =>
                         change("services", i, "descriptions", {
@@ -162,41 +170,41 @@ export default function ServiceBillingSettingsPage() {
                           pl: e.target.value,
                         })
                       }
+                      className={textareaClasses}
                     />
                   </label>
-                  <label>
-                    Default price
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={s.price}
-                      onChange={(e) =>
-                        change("services", i, "price", Number(e.target.value))
-                      }
-                    />
-                  </label>
-                  <label>
+                  <AppleInput
+                    label="Default price"
+                    required
+                    type="number"
+                    min="0"
+                    value={s.price}
+                    onChange={(value) =>
+                      change("services", i, "price", Number(value))
+                    }
+                  />
+                  <label className={labelClasses}>
                     Currency
                     <select
                       value={s.currency}
                       onChange={(e) =>
                         change("services", i, "currency", e.target.value)
                       }
+                      className={selectClasses}
                     >
                       {["EUR", "CZK", "PLN", "USD"].map((c) => (
                         <option key={c}>{c}</option>
                       ))}
                     </select>
                   </label>
-                  <label>
+                  <label className={labelClasses}>
                     Default policy
                     <select
                       value={s.policyCode}
                       onChange={(e) =>
                         change("services", i, "policyCode", e.target.value)
                       }
+                      className={selectClasses}
                     >
                       {config.policies.map((p: any) => (
                         <option key={p.code} value={p.code}>
@@ -205,7 +213,7 @@ export default function ServiceBillingSettingsPage() {
                       ))}
                     </select>
                   </label>
-                  <label>
+                  <label className={labelClasses}>
                     Availability
                     <select
                       value={s.active ? "active" : "inactive"}
@@ -217,6 +225,7 @@ export default function ServiceBillingSettingsPage() {
                           e.target.value === "active",
                         )
                       }
+                      className={selectClasses}
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
@@ -225,8 +234,9 @@ export default function ServiceBillingSettingsPage() {
                 </div>
               </fieldset>
             ))}
-            <button
-              className="sr-secondary"
+            <AppleButton
+              variant="secondary"
+              className="mt-4"
               type="button"
               onClick={() =>
                 setSettings({
@@ -249,48 +259,45 @@ export default function ServiceBillingSettingsPage() {
               }
             >
               Add service
-            </button>
-          </section>
-          <section className="sr-card">
-            <h2>Payment & cancellation policies</h2>
-            <p>
+            </AppleButton>
+          </Card>
+          <Card className="mb-5">
+            <h2 className="mb-2 text-xl font-bold">Payment & cancellation policies</h2>
+            <p className="mb-4">
               Review final payment, cancellation and tax wording with the
               business before use. These templates are not legally validated.
               Saving a changed policy creates a new version.
             </p>
             {config.policies.map((p: any, i: number) => (
-              <fieldset className="sr-card" key={i}>
-                <legend>
+              <fieldset className="mt-4 rounded-apple-lg border border-apple-gray-200 bg-apple-surface p-5" key={i}>
+                <legend className="px-1 text-sm font-semibold text-apple-gray-700">
                   Policy {i + 1} · version {p.version || 1}
                 </legend>
-                <div className="sr-fields">
-                  <label>
-                    Stable policy code
-                    <input
-                      required
-                      value={p.code}
-                      onChange={(e) =>
-                        change("policies", i, "code", e.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
-                    Template name
-                    <input
-                      required
-                      value={p.name}
-                      onChange={(e) =>
-                        change("policies", i, "name", e.target.value)
-                      }
-                    />
-                  </label>
-                  <label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <AppleInput
+                    label="Stable policy code"
+                    required
+                    value={p.code}
+                    onChange={(value) =>
+                      change("policies", i, "code", value)
+                    }
+                  />
+                  <AppleInput
+                    label="Template name"
+                    required
+                    value={p.name}
+                    onChange={(value) =>
+                      change("policies", i, "name", value)
+                    }
+                  />
+                  <label className={labelClasses}>
                     Terms language
                     <select
                       value={p.language}
                       onChange={(e) =>
                         change("policies", i, "language", e.target.value)
                       }
+                      className={selectClasses}
                     >
                       {["en", "cz", "pl", "de", "ru"].map((l) => (
                         <option key={l}>{l}</option>
@@ -298,7 +305,7 @@ export default function ServiceBillingSettingsPage() {
                     </select>
                   </label>
                 </div>
-                <label>
+                <label className={`${labelClasses} mt-4`}>
                   Policy acknowledgement
                   <select
                     value={p.acknowledgementRequired ? "required" : "optional"}
@@ -310,6 +317,7 @@ export default function ServiceBillingSettingsPage() {
                         e.target.value === "required",
                       )
                     }
+                    className={selectClasses}
                   >
                     <option value="optional">No acknowledgement needed</option>
                     <option value="required">
@@ -317,7 +325,7 @@ export default function ServiceBillingSettingsPage() {
                     </option>
                   </select>
                 </label>
-                <label className="mt-4">
+                <label className={`${labelClasses} mt-4`}>
                   Payment terms
                   <textarea
                     required
@@ -327,9 +335,10 @@ export default function ServiceBillingSettingsPage() {
                     onChange={(e) =>
                       change("policies", i, "paymentTerms", e.target.value)
                     }
+                    className={textareaClasses}
                   />
                 </label>
-                <label className="mt-4">
+                <label className={`${labelClasses} mt-4`}>
                   Cancellation & refund terms
                   <textarea
                     required
@@ -339,12 +348,14 @@ export default function ServiceBillingSettingsPage() {
                     onChange={(e) =>
                       change("policies", i, "cancellationTerms", e.target.value)
                     }
+                    className={textareaClasses}
                   />
                 </label>
               </fieldset>
             ))}
-            <button
-              className="sr-secondary"
+            <AppleButton
+              variant="secondary"
+              className="mt-4"
               type="button"
               onClick={() =>
                 setSettings({
@@ -367,14 +378,15 @@ export default function ServiceBillingSettingsPage() {
               }
             >
               Add policy
-            </button>
-          </section>
-          <section className="sr-card">
-            <h2>Payment methods</h2>
-            <div className="sr-fields">
+            </AppleButton>
+          </Card>
+          <Card className="mb-5">
+            <h2 className="mb-4 text-xl font-bold">Payment methods</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {Object.entries(config.paymentMethods).map(([key, value]) => (
-                <label key={key}>
-                  {
+                <AppleInput
+                  key={key}
+                  label={
                     (
                       {
                         revolutUrl: "Revolut link",
@@ -389,29 +401,27 @@ export default function ServiceBillingSettingsPage() {
                       } as any
                     )[key]
                   }
-                  <input
-                    required
-                    value={String(value)}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        configuration: {
-                          ...config,
-                          paymentMethods: {
-                            ...config.paymentMethods,
-                            [key]: e.target.value,
-                          },
+                  required
+                  value={String(value)}
+                  onChange={(v) =>
+                    setSettings({
+                      ...settings,
+                      configuration: {
+                        ...config,
+                        paymentMethods: {
+                          ...config.paymentMethods,
+                          [key]: v,
                         },
-                      })
-                    }
-                  />
-                </label>
+                      },
+                    })
+                  }
+                />
               ))}
             </div>
-          </section>
-          <button disabled={busy} type="submit" className="sr-primary">
+          </Card>
+          <AppleButton disabled={busy} type="submit">
             {busy ? "Saving…" : "Save settings"}
-          </button>
+          </AppleButton>
         </form>
       ) : (
         !error && <p>Loading settings…</p>

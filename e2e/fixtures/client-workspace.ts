@@ -43,6 +43,9 @@ export const test = base.extend<{ clientWorkspace: any }>({
       });
       await use({ ...f, url, token });
     } finally {
+      await page.unrouteAll({ behavior: "wait" });
+      await page.close();
+      f.app.getHttpServer().closeIdleConnections?.();
       await f.close();
     }
   },

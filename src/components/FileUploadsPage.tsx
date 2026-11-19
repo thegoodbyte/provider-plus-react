@@ -3,6 +3,8 @@ import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { configSummaryApi, fileUploadsApi, storageSettingsApi, S3ReadOverrideSettings } from '../services/api';
 import { FileUpload } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import AppleButton from './AppleButton';
+import { Card, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './ui';
 
 const formatBytes = (size?: number) => {
   if (!size) return '-';
@@ -154,10 +156,10 @@ const FileUploadsPage: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-900">File Uploads</h1>
           <p className="text-sm text-gray-600">Registry of uploaded files, storage paths, thumbnails, sizes, and related records.</p>
         </div>
-        <button onClick={loadData} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+        <AppleButton variant="secondary" onClick={loadData}>
           <RefreshCw className="h-4 w-4" />
           Refresh
-        </button>
+        </AppleButton>
       </div>
 
       <div className="mb-4">
@@ -172,7 +174,7 @@ const FileUploadsPage: React.FC = () => {
         </select>
       </div>
 
-      <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
+      <Card className="mb-6">
         <div className="mb-3">
           <h2 className="text-lg font-semibold text-gray-900">Upload Storage Config</h2>
           <p className="text-sm text-gray-600">Current generated paths for uploaded files. Use this to review the bucket layout before changing directory conventions.</p>
@@ -217,10 +219,10 @@ const FileUploadsPage: React.FC = () => {
         ) : (
           <p className="text-sm text-gray-500">Configuration summary is only visible to admins or could not be loaded.</p>
         )}
-      </div>
+      </Card>
 
       {configSummary && configSummary.runtime?.nodeEnv !== 'production' && (
-        <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
+        <Card className="mb-6">
           <div className="mb-3">
             <h2 className="text-lg font-semibold text-gray-900">S3 Read Override (PPVC-64)</h2>
             <p className="text-sm text-gray-600">
@@ -279,63 +281,64 @@ const FileUploadsPage: React.FC = () => {
             </p>
           )}
 
-          <button
+          <AppleButton
+            variant="secondary"
+            className="mt-4"
             onClick={saveS3Override}
             disabled={s3OverrideSaving}
-            className="mt-4 inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             {s3OverrideSaving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
+          </AppleButton>
+        </Card>
       )}
 
-      <div className="overflow-hidden rounded-md border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
-            <tr>
-              <th className="px-4 py-3">Uploaded</th>
-              <th className="px-4 py-3">Preview</th>
-              <th className="px-4 py-3">Original Name</th>
-              <th className="px-4 py-3">Section</th>
-              <th className="px-4 py-3">Stored Name</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Size</th>
-              <th className="px-4 py-3">Thumbnail</th>
-              <th className="px-4 py-3">Path</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 bg-white">
+      <Card padding="none" className="overflow-hidden">
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableHeaderCell>Uploaded</TableHeaderCell>
+              <TableHeaderCell>Preview</TableHeaderCell>
+              <TableHeaderCell>Original Name</TableHeaderCell>
+              <TableHeaderCell>Section</TableHeaderCell>
+              <TableHeaderCell>Stored Name</TableHeaderCell>
+              <TableHeaderCell>Type</TableHeaderCell>
+              <TableHeaderCell>Size</TableHeaderCell>
+              <TableHeaderCell>Thumbnail</TableHeaderCell>
+              <TableHeaderCell>Path</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {filteredFiles.map((file) => (
-              <tr key={file._id || file.fileHash} className="hover:bg-gray-50">
-                <td className="whitespace-nowrap px-4 py-3 text-gray-700">{file.uploadedAt ? new Date(file.uploadedAt).toLocaleString() : '-'}</td>
-                <td className="px-4 py-3 text-gray-700"><FilePreview file={file} /></td>
-                <td className="px-4 py-3 font-medium text-gray-900">{file.originalFileName}</td>
-                <td className="px-4 py-3">
+              <TableRow key={file._id || file.fileHash}>
+                <TableCell className="whitespace-nowrap">{file.uploadedAt ? new Date(file.uploadedAt).toLocaleString() : '-'}</TableCell>
+                <TableCell><FilePreview file={file} /></TableCell>
+                <TableCell className="font-medium text-gray-900">{file.originalFileName}</TableCell>
+                <TableCell>
                   <div className="capitalize text-gray-900">{file.documentKind.replace(/_/g, ' ')}</div>
                   <div className="text-xs text-gray-500">{file.section || file.foreignKey}</div>
-                </td>
-                <td className="px-4 py-3 text-gray-700">{file.storedFileName}</td>
-                <td className="px-4 py-3 text-gray-700">{file.mimeType}</td>
-                <td className="px-4 py-3 text-gray-700">{formatBytes(file.fileSize)}</td>
-                <td className="px-4 py-3 text-gray-700">
+                </TableCell>
+                <TableCell>{file.storedFileName}</TableCell>
+                <TableCell>{file.mimeType}</TableCell>
+                <TableCell>{formatBytes(file.fileSize)}</TableCell>
+                <TableCell>
                   {file.thumbnailPath ? (
                     <div>
                       <div>{file.thumbnailFileName || 'Thumbnail'}</div>
                       <div className="text-xs text-gray-500">{file.thumbnailConfig?.width || 160} x {file.thumbnailConfig?.height || 120}</div>
                     </div>
                   ) : '-'}
-                </td>
-                <td className="max-w-xs break-all px-4 py-3 text-xs text-gray-600">{file.filePath}</td>
-              </tr>
+                </TableCell>
+                <TableCell className="max-w-xs break-all text-xs text-gray-600">{file.filePath}</TableCell>
+              </TableRow>
             ))}
             {filteredFiles.length === 0 && (
-              <tr>
-                <td className="px-4 py-8 text-center text-gray-500" colSpan={9}>No file uploads found.</td>
-              </tr>
+              <TableRow>
+                <TableCell className="py-8 text-center text-gray-500" colSpan={9}>No file uploads found.</TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   );
 };

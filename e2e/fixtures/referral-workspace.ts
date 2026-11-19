@@ -37,6 +37,9 @@ export const test = base.extend<{ referralWorkspace: any }>({
       });
       await use({ ...f, url });
     } finally {
+      await page.unrouteAll({ behavior: "wait" });
+      await page.close();
+      f.app.getHttpServer().closeIdleConnections?.();
       await f.close();
     }
   },

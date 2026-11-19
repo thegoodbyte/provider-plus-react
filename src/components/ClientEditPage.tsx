@@ -8,6 +8,8 @@ import { clientsApi, referralsApi } from '../services/api';
 import { Client, Referral } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
+import AppleInput from './AppleInput';
+import { Card, CardHeader } from './ui';
 import { clientWorkflowStatusLabels, clientWorkflowStatusSelectOptions, type ClientWorkflowStatus } from '../config/clientWorkflowStatus';
 import './ClientEditPage.css';
 import ClientReferralFields from './ClientReferralFields';
@@ -382,21 +384,17 @@ const ClientEditPage: React.FC = () => {
           </div>
         </aside>
         <div className="space-y-6">
-          <section>
-            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Basic Information</h4>
+          <Card>
+            <CardHeader title="Basic Information" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="col-span-full">
-              <label htmlFor="display_id" className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-              <input
+              <AppleInput
+                label="Client ID"
                 type="number"
-                id="display_id"
-                name="display_id"
                 value={formData.display_id ?? ''}
-                onChange={handleInputChange}
+                onChange={(value) => setFormData(prev => ({ ...prev, display_id: value as any }))}
                 placeholder="Client ID"
                 min="1"
-                step="1"
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -431,28 +429,22 @@ const ClientEditPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-              <input
+              <AppleInput
+                label="First Name"
                 type="text"
-                id="firstName"
-                name="firstName"
                 value={formData.firstName || ''}
-                onChange={handleInputChange}
+                onChange={(value) => setFormData(prev => ({ ...prev, firstName: value }))}
                 required
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-              <input
+              <AppleInput
+                label="Last Name"
                 type="text"
-                id="lastName"
-                name="lastName"
                 value={formData.lastName || ''}
-                onChange={handleInputChange}
+                onChange={(value) => setFormData(prev => ({ ...prev, lastName: value }))}
                 required
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -505,65 +497,45 @@ const ClientEditPage: React.FC = () => {
             </div>}
 
             <div className="col-span-full">
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
+              <AppleInput
+                label="Email"
                 type="email"
-                id="email"
-                name="email"
                 value={formData.email || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(value) => setFormData(prev => ({ ...prev, email: value }))}
               />
             </div>
 
             <div>
-              <label htmlFor="loginPin" className="block text-sm font-medium text-gray-700 mb-1">Client Portal PIN</label>
-              <input
+              <AppleInput
+                label="Client Portal PIN"
                 type="text"
-                id="loginPin"
-                name="loginPin"
                 value={formData.loginPin || ''}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                  setFormData(prev => ({
-                    ...prev,
-                    loginPin: value
-                  }));
-                }}
+                onChange={(value) => setFormData(prev => ({ ...prev, loginPin: value.replace(/\D/g, '').slice(0, 6) }))}
                 placeholder="6-digit secure PIN"
-                inputMode="numeric"
-                maxLength={6}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div className="col-span-full">
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-              <input
+              <AppleInput
+                label="Phone"
                 type="tel"
-                id="phone"
-                name="phone"
                 value={formData.phone || ''}
-                onChange={handlePhoneChange}
+                onChange={(value) => handlePhoneChange({ target: { value } } as React.ChangeEvent<HTMLInputElement>)}
                 placeholder="Full number with country code"
                 required
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                hint="Country and language auto-fill from the number's country code (e.g. +48 for Poland) and can still be edited manually."
               />
-              <p className="mt-1 text-xs text-gray-500">Country and language auto-fill from the number's country code (e.g. +48 for Poland) and can still be edited manually.</p>
             </div>
 
             <div>
-              <label htmlFor="yearOfBirth" className="block text-sm font-medium text-gray-700 mb-1">Year of Birth</label>
-              <input
+              <AppleInput
+                label="Year of Birth"
                 type="number"
-                id="yearOfBirth"
-                name="yearOfBirth"
                 value={formData.yearOfBirth || ''}
-                onChange={handleInputChange}
+                onChange={(value) => setFormData(prev => ({ ...prev, yearOfBirth: value as any }))}
                 placeholder="YYYY"
                 min="1900"
-                max={new Date().getFullYear()}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                max={String(new Date().getFullYear())}
               />
             </div>
 
@@ -593,64 +565,52 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
             </div>
-          </section>
+          </Card>
 
-          <section>
-            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Address Information</h4>
+          <Card>
+            <CardHeader title="Address Information" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="col-span-full">
-              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-              <input
+              <AppleInput
+                label="Address"
                 type="text"
-                id="address"
-                name="address"
                 value={formData.address || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(value) => setFormData(prev => ({ ...prev, address: value }))}
               />
             </div>
 
             <div>
-              <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">City</label>
-              <input
+              <AppleInput
+                label="City"
                 type="text"
-                id="city"
-                name="city"
                 value={formData.city || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(value) => setFormData(prev => ({ ...prev, city: value }))}
               />
             </div>
 
             <div>
-              <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">State/Province</label>
-              <input
+              <AppleInput
+                label="State/Province"
                 type="text"
-                id="state"
-                name="state"
                 value={formData.state || ''}
-                onChange={handleInputChange}
+                onChange={(value) => setFormData(prev => ({ ...prev, state: value }))}
                 placeholder={formData.country === 'US' ? 'Required for US' : 'Optional'}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">Zip/Postal Code</label>
-              <input
+              <AppleInput
+                label="Zip/Postal Code"
                 type="text"
-                id="zipCode"
-                name="zipCode"
                 value={formData.zipCode || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(value) => setFormData(prev => ({ ...prev, zipCode: value }))}
               />
             </div>
             </div>
-          </section>
+          </Card>
 
-          <section>
-            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Medical Information</h4>
+          <Card>
+            <CardHeader title="Medical Information" />
             <div className="space-y-4">
             <div>
               <label htmlFor="medicalConditions" className="block text-sm font-medium text-gray-700 mb-1">Medical Conditions</label>
@@ -700,39 +660,33 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
             </div>
-          </section>
+          </Card>
 
-          <section>
-            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Emergency Contact</h4>
+          <Card>
+            <CardHeader title="Emergency Contact" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="emergencyContact" className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name</label>
-              <input
+              <AppleInput
+                label="Emergency Contact Name"
                 type="text"
-                id="emergencyContact"
-                name="emergencyContact"
                 value={formData.emergencyContact || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(value) => setFormData(prev => ({ ...prev, emergencyContact: value }))}
               />
             </div>
 
             <div>
-              <label htmlFor="emergencyContactPhone" className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Phone</label>
-              <input
+              <AppleInput
+                label="Emergency Contact Phone"
                 type="tel"
-                id="emergencyContactPhone"
-                name="emergencyContactPhone"
                 value={formData.emergencyContactPhone || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(value) => setFormData(prev => ({ ...prev, emergencyContactPhone: value }))}
               />
             </div>
             </div>
-          </section>
+          </Card>
 
-          <section>
-            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Additional Information</h4>
+          <Card>
+            <CardHeader title="Additional Information" />
             <div className="space-y-4">
             <div>
               <label htmlFor="specialRequests" className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
@@ -758,7 +712,7 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
             </div>
-          </section>
+          </Card>
         </div>
 
         <div className="flex justify-end gap-3 mt-8 py-4 border-t border-gray-200">

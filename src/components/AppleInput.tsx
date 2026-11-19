@@ -15,6 +15,9 @@ interface AppleInputProps {
   icon?: React.ReactNode;
   min?: string;
   max?: string;
+  maxLength?: number;
+  /** Accessible name when there's no visible `label` and the placeholder is too long/descriptive to double as one (e.g. a search field). */
+  ariaLabel?: string;
 }
 
 const AppleInput: React.FC<AppleInputProps> = ({
@@ -31,7 +34,9 @@ const AppleInput: React.FC<AppleInputProps> = ({
   className = '',
   icon,
   min,
-  max
+  max,
+  maxLength,
+  ariaLabel
 }) => {
   const inputId = useId();
   const descriptionId = `${inputId}-description`;
@@ -40,7 +45,7 @@ const AppleInput: React.FC<AppleInputProps> = ({
       {label && (
         <label htmlFor={inputId} className="block text-sm font-medium text-apple-gray-700 mb-1.5">
           {label}
-          {required && <span className="text-apple-red ml-1">*</span>}
+          {required && <span aria-hidden="true" className="text-apple-red ml-1">*</span>}
         </label>
       )}
 
@@ -55,7 +60,7 @@ const AppleInput: React.FC<AppleInputProps> = ({
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error || hint ? descriptionId : undefined}
-          aria-label={!label ? placeholder : undefined}
+          aria-label={ariaLabel || label || placeholder}
           required={required}
           type={type}
           value={value}
@@ -64,6 +69,7 @@ const AppleInput: React.FC<AppleInputProps> = ({
           disabled={disabled}
           min={min}
           max={max}
+          maxLength={maxLength}
           className={`
             w-full
             ${icon ? 'pl-10' : 'pl-4'} pr-4 py-2

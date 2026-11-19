@@ -7,6 +7,7 @@ import { usersApi, User, CreateUserData, UpdateUserData } from '../services/user
 import { useAuth } from '../context/AuthContext';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
+import { Card, Badge, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './ui';
 
 // Icon wrapper to fix TypeScript issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -291,11 +292,7 @@ const UserManagement: React.FC = () => {
 
   const getRoleBadge = (role: string) => {
     const roleConfig = ROLES.find(r => r.key === role) || ROLES[0];
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleConfig.color}`}>
-        {roleConfig.name}
-      </span>
-    );
+    return <Badge colorClassName={roleConfig.color}>{roleConfig.name}</Badge>;
   };
 
   const filteredUsers = users.filter(user => {
@@ -342,24 +339,24 @@ const UserManagement: React.FC = () => {
 
       {/* Statistics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border p-4">
+        <Card>
           <div className="text-sm font-medium text-gray-500">Total Users</div>
           <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border p-4">
+        </Card>
+        <Card>
           <div className="text-sm font-medium text-gray-500">Active</div>
           <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-        </div>
+        </Card>
         {ROLES.map(role => (
-          <div key={role.key} className="bg-white rounded-lg shadow-sm border p-4">
+          <Card key={role.key}>
             <div className="text-sm font-medium text-gray-500">{role.name}</div>
             <div className="text-2xl font-bold text-gray-900">{stats.byRole[role.key]}</div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+      <Card className="mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <AppleInput
@@ -387,35 +384,24 @@ const UserManagement: React.FC = () => {
             Add User
           </AppleButton>
         </div>
-      </div>
+      </Card>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Login
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+      <Card padding="none" className="overflow-hidden">
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableHeaderCell>User</TableHeaderCell>
+              <TableHeaderCell>Role</TableHeaderCell>
+              <TableHeaderCell>Status</TableHeaderCell>
+              <TableHeaderCell>Last Login</TableHeaderCell>
+              <TableHeaderCell align="right">Actions</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
               {filteredUsers.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <TableRow key={user._id}>
+                  <TableCell className="whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center">
                         <span className="text-white text-sm font-medium">
@@ -434,26 +420,24 @@ const UserManagement: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {getRoleBadge(user.role)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <Badge tone={user.isActive ? 'success' : 'critical'}>
                       {user.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-gray-500">
                     <div className="flex items-center">
                       <Icon icon={Clock} className="w-3 h-3 mr-1" />
                       {user.lastLogin ?
                         new Date(user.lastLogin).toLocaleDateString() :
                         'Never'}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  </TableCell>
+                  <TableCell align="right" className="whitespace-nowrap font-medium">
                     <div className="flex flex-wrap justify-end gap-2">
                       <button
                         onClick={() => handleEditUser(user)}
@@ -494,13 +478,12 @@ const UserManagement: React.FC = () => {
                         </button>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
 
       {/* Add User Modal */}
       {showAddModal && (

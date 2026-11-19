@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import AppleButton from './AppleButton';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import { Card, Badge, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './ui';
 
 interface Permission {
   route: string;
@@ -218,7 +219,7 @@ const PermissionsMatrix: React.FC = () => {
       </div>
 
       {/* Role Legend */}
-      <div className="mb-6 bg-white rounded-lg shadow-sm border p-4">
+      <Card className="mb-6">
         <h2 className="text-lg font-semibold mb-3">Roles</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {ROLES.map(role => (
@@ -228,10 +229,10 @@ const PermissionsMatrix: React.FC = () => {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
 
       {/* Permissions Matrix */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <Card padding="none" className="overflow-hidden">
         {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
           <div key={category}>
             {/* Category Header */}
@@ -240,69 +241,59 @@ const PermissionsMatrix: React.FC = () => {
             </div>
 
             {/* Permissions Table */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">
-                      Feature
-                    </th>
-                    {ROLES.map(role => (
-                      <th key={role.key} className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {role.name}
-                      </th>
-                    ))}
-                    <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Access Count
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {categoryPermissions.map(permission => (
-                    <tr key={permission.route} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {permission.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {permission.description}
-                          </div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            Route: /{permission.route}
-                          </div>
-                        </div>
-                      </td>
-                      {ROLES.map(role => (
-                        <td key={role.key} className="px-3 py-4 text-center">
-                          <input
-                            type="checkbox"
-                            checked={hasPermission(permission.route, role.key)}
-                            onChange={() => togglePermission(permission.route, role.key)}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          />
-                        </td>
-                      ))}
-                      <td className="px-3 py-4 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          getRoleCount(permission.route) === 0 ? 'bg-red-100 text-red-800' :
-                          getRoleCount(permission.route) === ROLES.length ? 'bg-green-100 text-green-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {getRoleCount(permission.route)}/{ROLES.length}
-                        </span>
-                      </td>
-                    </tr>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell className="w-1/2">Feature</TableHeaderCell>
+                  {ROLES.map(role => (
+                    <TableHeaderCell key={role.key} align="center">{role.name}</TableHeaderCell>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                  <TableHeaderCell align="center">Access Count</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {categoryPermissions.map(permission => (
+                  <TableRow key={permission.route}>
+                    <TableCell>
+                      <div className="text-sm font-medium text-gray-900">
+                        {permission.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {permission.description}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Route: /{permission.route}
+                      </div>
+                    </TableCell>
+                    {ROLES.map(role => (
+                      <TableCell key={role.key} align="center">
+                        <input
+                          type="checkbox"
+                          checked={hasPermission(permission.route, role.key)}
+                          onChange={() => togglePermission(permission.route, role.key)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </TableCell>
+                    ))}
+                    <TableCell align="center">
+                      <Badge tone={
+                        getRoleCount(permission.route) === 0 ? 'critical' :
+                        getRoleCount(permission.route) === ROLES.length ? 'success' :
+                        'warning'
+                      }>
+                        {getRoleCount(permission.route)}/{ROLES.length}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ))}
-      </div>
+      </Card>
 
       {/* Route Preview */}
-      <div className="mt-6 bg-white rounded-lg shadow-sm border p-4">
+      <Card className="mt-6">
         <h2 className="text-lg font-semibold mb-3">Route Structure Preview</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
           {ROLES.map(role => (
@@ -323,7 +314,7 @@ const PermissionsMatrix: React.FC = () => {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

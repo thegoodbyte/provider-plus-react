@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { auditLogsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import AppleButton from './AppleButton';
+import { Card, Badge, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, EmptyState } from './ui';
 
 type AuditLog = {
   _id: string;
@@ -72,83 +74,84 @@ const AuditLogsPage: React.FC = () => {
       <div className="mb-5">
         <h1 className="text-2xl font-semibold text-gray-900">Audit Logs</h1>
         <p className="mt-1 text-sm text-gray-600">Search user activity across creates, updates, deletes, and detail views.</p>
-        <button type="button" className="mt-3 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" onClick={() => { setPage(1); setFilters((current) => ({ ...current, action: '', entityType: 'client_portal_access' })); }}>Show ibogaready.com logins</button>
+        <AppleButton className="mt-3" onClick={() => { setPage(1); setFilters((current) => ({ ...current, action: '', entityType: 'client_portal_access' })); }}>Show ibogaready.com logins</AppleButton>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-md border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Keyword" value={filters.keyword} onChange={(e) => updateFilter('keyword', e.target.value)} />
-        <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.action} onChange={(e) => updateFilter('action', e.target.value)}>
-          {actions.map((action) => <option key={action} value={action}>{action || 'All actions'}</option>)}
-        </select>
-        <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity type" value={filters.entityType} onChange={(e) => updateFilter('entityType', e.target.value)} />
-        <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity ID" value={filters.entityId} onChange={(e) => updateFilter('entityId', e.target.value)} />
-        <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Actor email" value={filters.actorEmail} onChange={(e) => updateFilter('actorEmail', e.target.value)} />
-        <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" type="date" value={filters.dateFrom} onChange={(e) => updateFilter('dateFrom', e.target.value)} />
-        <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" type="date" value={filters.dateTo} onChange={(e) => updateFilter('dateTo', e.target.value)} />
-        <button
-          type="button"
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          onClick={() => {
-            setPage(1);
-            setFilters({ keyword: '', action: '', entityType: '', entityId: '', actorEmail: '', dateFrom: '', dateTo: '' });
-          }}
-        >
-          Clear
-        </button>
-      </div>
+      <Card className="mb-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Keyword" value={filters.keyword} onChange={(e) => updateFilter('keyword', e.target.value)} />
+          <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.action} onChange={(e) => updateFilter('action', e.target.value)}>
+            {actions.map((action) => <option key={action} value={action}>{action || 'All actions'}</option>)}
+          </select>
+          <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity type" value={filters.entityType} onChange={(e) => updateFilter('entityType', e.target.value)} />
+          <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity ID" value={filters.entityId} onChange={(e) => updateFilter('entityId', e.target.value)} />
+          <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Actor email" value={filters.actorEmail} onChange={(e) => updateFilter('actorEmail', e.target.value)} />
+          <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" type="date" value={filters.dateFrom} onChange={(e) => updateFilter('dateFrom', e.target.value)} />
+          <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" type="date" value={filters.dateTo} onChange={(e) => updateFilter('dateTo', e.target.value)} />
+          <AppleButton
+            variant="secondary"
+            onClick={() => {
+              setPage(1);
+              setFilters({ keyword: '', action: '', entityType: '', entityId: '', actorEmail: '', dateFrom: '', dateTo: '' });
+            }}
+          >
+            Clear
+          </AppleButton>
+        </div>
+      </Card>
 
-      <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
+      <Card padding="none" className="overflow-hidden">
         {loading ? (
           <LoadingSpinner message="Loading audit logs..." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">Time</th>
-                  <th className="px-4 py-3">Actor</th>
-                  <th className="px-4 py-3">Action</th>
-                  <th className="px-4 py-3">Entity</th>
-                  <th className="px-4 py-3">Summary</th>
-                  <th className="px-4 py-3">IP</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {logs.length ? logs.map((log) => (
-                  <tr key={log._id} className="hover:bg-gray-50">
-                    <td className="whitespace-nowrap px-4 py-3 text-gray-600">{new Date(log.createdAt).toLocaleString()}</td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{log.actorEmail || 'Unknown'}</div>
-                      <div className="text-xs text-gray-500">{log.actorRole || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3"><span className="rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">{log.action}</span></td>
-                    <td className="px-4 py-3 text-gray-700">
-                      <div>{log.entityType}</div>
-                      <div className="text-xs text-gray-500">{log.entityDisplayId || log.entityId || '-'}</div>
-                    </td>
-                    <td className="max-w-xl px-4 py-3">
-                      <button type="button" className="text-left text-gray-800 hover:text-blue-700" onClick={() => setSelected(log)}>
-                        {log.summary}
-                      </button>
-                      <div className="text-xs text-gray-500">{log.method} {log.path} · {log.statusCode}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{log.ipAddress || '-'}</td>
-                  </tr>
-                )) : (
-                  <tr><td className="px-4 py-8 text-center text-gray-500" colSpan={6}>No audit logs found.</td></tr>
-                )}
-              </tbody>
-            </table>
+        ) : logs.length === 0 ? (
+          <div className="p-5">
+            <EmptyState title="No audit logs found." />
           </div>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>Time</TableHeaderCell>
+                <TableHeaderCell>Actor</TableHeaderCell>
+                <TableHeaderCell>Action</TableHeaderCell>
+                <TableHeaderCell>Entity</TableHeaderCell>
+                <TableHeaderCell>Summary</TableHeaderCell>
+                <TableHeaderCell>IP</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {logs.map((log) => (
+                <TableRow key={log._id}>
+                  <TableCell className="whitespace-nowrap text-gray-600">{new Date(log.createdAt).toLocaleString()}</TableCell>
+                  <TableCell>
+                    <div className="font-medium text-gray-900">{log.actorEmail || 'Unknown'}</div>
+                    <div className="text-xs text-gray-500">{log.actorRole || '-'}</div>
+                  </TableCell>
+                  <TableCell><Badge tone="info">{log.action}</Badge></TableCell>
+                  <TableCell className="text-gray-700">
+                    <div>{log.entityType}</div>
+                    <div className="text-xs text-gray-500">{log.entityDisplayId || log.entityId || '-'}</div>
+                  </TableCell>
+                  <TableCell className="max-w-xl">
+                    <button type="button" className="text-left text-gray-800 hover:text-blue-700" onClick={() => setSelected(log)}>
+                      {log.summary}
+                    </button>
+                    <div className="text-xs text-gray-500">{log.method} {log.path} · {log.statusCode}</div>
+                  </TableCell>
+                  <TableCell className="text-gray-600">{log.ipAddress || '-'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
 
       <div className="mt-4 flex items-center justify-between text-sm">
         <div className="text-gray-600">{total} result{total === 1 ? '' : 's'}</div>
         <div className="flex items-center gap-2">
-          <button className="rounded-md border border-gray-300 px-3 py-1.5 disabled:opacity-50" disabled={page <= 1} onClick={() => setPage((value) => Math.max(value - 1, 1))}>Previous</button>
+          <AppleButton variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((value) => Math.max(value - 1, 1))}>Previous</AppleButton>
           <span className="text-gray-600">Page {page} of {pages}</span>
-          <button className="rounded-md border border-gray-300 px-3 py-1.5 disabled:opacity-50" disabled={page >= pages} onClick={() => setPage((value) => value + 1)}>Next</button>
+          <AppleButton variant="secondary" size="sm" disabled={page >= pages} onClick={() => setPage((value) => value + 1)}>Next</AppleButton>
         </div>
       </div>
 
@@ -160,7 +163,7 @@ const AuditLogsPage: React.FC = () => {
                 <h2 className="text-lg font-semibold text-gray-900">Audit Log Detail</h2>
                 <p className="text-sm text-gray-600">{selected.summary}</p>
               </div>
-              <button className="rounded-md border border-gray-300 px-3 py-1.5 text-sm" onClick={() => setSelected(null)}>Close</button>
+              <AppleButton variant="secondary" size="sm" onClick={() => setSelected(null)}>Close</AppleButton>
             </div>
             <pre className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-xs text-gray-700">{JSON.stringify(selected, null, 2)}</pre>
           </div>

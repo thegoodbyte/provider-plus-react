@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { clientsApi } from "../services/api";
 import { normalizeClientTag } from "../utils/clientTags";
 import { apiErrorMessage } from "../utils/apiErrorMessage";
+import { Card, CardHeader } from "./ui";
 import AppleButton from "./AppleButton";
 
 export default function ClientTagsPanel({
@@ -47,8 +48,8 @@ export default function ClientTagsPanel({
     if (tag && !tags.includes(tag)) void save([...tags, tag]);
   };
   return (
-    <section aria-label="Client tags" className="mb-4 rounded-lg border p-4">
-      <h2 className="mb-3 text-lg font-semibold">Client Tags</h2>
+    <Card className="mb-4">
+      <CardHeader title="Client Tags" />
       <div className="mb-3 flex flex-wrap gap-2">
         {tags.map((tag) => (
           <span
@@ -98,6 +99,6 @@ export default function ClientTagsPanel({
           {error}
         </p>
       )}
-    </section>
+    </Card>
   );
 }

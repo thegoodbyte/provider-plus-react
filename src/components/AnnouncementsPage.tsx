@@ -13,6 +13,7 @@ import React, {
 import { Link } from "react-router-dom";
 import { announcementsApi, communicationsApi } from "../services/api";
 import { EmailTemplate } from "../types";
+import AppleButton from "./AppleButton";
 import "./AnnouncementsPage.css";
 
 type Rule = {
@@ -337,22 +338,21 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
               : "Build a reusable email timeline, then apply it from a retreat’s Announcements tab."}
           </p>
         </div>
-        <button
-          className="announcement-primary"
+        <AppleButton
           disabled={loading || busy || !data}
           onClick={() => edit()}
         >
           + Add announcement
-        </button>
+        </AppleButton>
       </header>
-      <nav className="announcement-tabs" aria-label="Announcement views"><button aria-pressed={!scheduledTab} onClick={() => setScheduledTab(false)}>Announcement rules</button><button aria-pressed={scheduledTab} onClick={() => setScheduledTab(true)}>Scheduled deliveries</button></nav>
+      <nav className="announcement-tabs" aria-label="Announcement views"><AppleButton size="sm" variant={!scheduledTab ? 'primary' : 'secondary'} aria-pressed={!scheduledTab} onClick={() => setScheduledTab(false)}>Announcement rules</AppleButton><AppleButton size="sm" variant={scheduledTab ? 'primary' : 'secondary'} aria-pressed={scheduledTab} onClick={() => setScheduledTab(true)}>Scheduled deliveries</AppleButton></nav>
       {scheduledTab && <AnnouncementSchedules retreatId={retreatId} />}
       <div hidden={scheduledTab}>
       <EmailSafetySettings compact />
       {testMessage && <p role="status" className="announcement-help">{testMessage}</p>}
       {error && (
         <div role="alert" className="announcement-error">
-          {error} {!editor && <button onClick={load}>Reload</button>}
+          {error} {!editor && <AppleButton variant="secondary" onClick={load}>Reload</AppleButton>}
         </div>
       )}
       {loading && <p role="status">Loading announcements…</p>}
@@ -379,7 +379,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                   {dateLabel(data.worker?.lastFinishedAt)}
                 </p>
               </div>
-              <button
+              <AppleButton variant="secondary"
                 disabled={
                   busy ||
                   loading ||
@@ -397,7 +397,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                 {data.settings.enabled
                   ? "Pause sending"
                   : "Enable automatic sending"}
-              </button>
+              </AppleButton>
             </div>
           )}
           <div className="announcement-help">
@@ -414,13 +414,15 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                 ["history", "History"],
                 ["attention", `Needs attention (${attention.length})`],
               ].map(([id, label]) => (
-                <button
+                <AppleButton
                   key={id}
+                  size="sm"
+                  variant={view === id ? 'primary' : 'secondary'}
                   aria-pressed={view === id}
                   onClick={() => setView(id)}
                 >
                   {label}
-                </button>
+                </AppleButton>
               ))}
             </nav>
           )}
@@ -428,28 +430,28 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
             <>
               {retreatId && (
                 <div className="announcement-toolbar">
-                  <button
+                  <AppleButton variant="secondary"
                     disabled={busy || loading}
                     onClick={() =>
                       mutate(() => announcementsApi.applyDefaults(retreatId))
                     }
                   >
                     Add missing defaults
-                  </button>
-                  <button
+                  </AppleButton>
+                  <AppleButton variant="secondary"
                     disabled={busy || loading}
                     onClick={restoreDefaults}
                   >
                     Restore defaults
-                  </button>
-                  <button
+                  </AppleButton>
+                  <AppleButton variant="secondary"
                     disabled={busy || loading}
                     onClick={() =>
                       mutate(() => announcementsApi.generate(retreatId))
                     }
                   >
                     Refresh recipient schedule
-                  </button>
+                  </AppleButton>
                   <Link to="/admin/announcements">
                     Edit default schedule ↗
                   </Link>
@@ -467,9 +469,9 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                     Add arrival instructions before the retreat, then a
                     thank-you email or group-call invitation afterwards.
                   </p>
-                  <button disabled={busy} onClick={() => edit()}>
+                  <AppleButton variant="secondary" disabled={busy} onClick={() => edit()}>
                     Create first announcement
-                  </button>
+                  </AppleButton>
                 </div>
               )}
               <ol className="announcement-timeline">
@@ -582,17 +584,17 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                         {retreatId && deliveries.some(row => row.status === 'skipped') && (
                           <p className="announcement-error">
                             {deliveries.filter(row => row.status === 'skipped').length} skipped recipients. Check History for the reason. To reschedule recipients who were never sent an email, edit this announcement to a future time and refresh the recipient schedule.{' '}
-                            <button onClick={() => setView('history')}>View skipped recipients</button>
+                            <AppleButton variant="secondary" onClick={() => setView('history')}>View skipped recipients</AppleButton>
                           </p>
                         )}
-                        <div className="announcement-actions">{retreatId && <button disabled={busy || !testBookingId} onClick={() => sendTest(rule)}>Send test to safety inbox</button>}
-                          <button
+                        <div className="announcement-actions">{retreatId && <AppleButton variant="secondary" disabled={busy || !testBookingId} onClick={() => sendTest(rule)}>Send test to safety inbox</AppleButton>}
+                          <AppleButton variant="secondary"
                             disabled={busy || loading}
                             onClick={() => edit(rule)}
                           >
                             Edit announcement
-                          </button>
-                          <button
+                          </AppleButton>
+                          <AppleButton variant="secondary"
                             disabled={busy || loading}
                             onClick={() =>
                               mutate(() =>
@@ -607,7 +609,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                             {rule.active
                               ? "Pause announcement"
                               : "Resume announcement"}
-                          </button>
+                          </AppleButton>
                         </div>
                       </article>
                     </li>
@@ -669,15 +671,15 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                     )}
                     <div className="announcement-actions">
                       {row.status === "scheduled" && (
-                        <button
+                        <AppleButton variant="secondary"
                           disabled={busy}
                           onClick={() => previewDelivery(row)}
                         >
                           Preview for recipient
-                        </button>
+                        </AppleButton>
                       )}
                       {row.status === "failed" && (
-                        <button
+                        <AppleButton variant="secondary"
                           disabled={busy}
                           onClick={() =>
                             mutate(() =>
@@ -686,12 +688,12 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                           }
                         >
                           Retry delivery
-                        </button>
+                        </AppleButton>
                       )}
                       {["scheduled", "failed", "uncertain", "test_sent"].includes(
                         row.status,
                       ) && (
-                        <button
+                        <AppleButton variant="secondary"
                           disabled={busy}
                           onClick={() =>
                             mutate(() =>
@@ -703,10 +705,10 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                           }
                         >
                           Cancel delivery
-                        </button>
+                        </AppleButton>
                       )}
                       {row.status === "uncertain" && (
-                        <button
+                        <AppleButton variant="secondary"
                           disabled={busy}
                           onClick={() => {
                             if (
@@ -723,13 +725,13 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                           }}
                         >
                           Confirm already sent
-                        </button>
+                        </AppleButton>
                       )}
                     </div>
                     {["sent", "uncertain"].includes(row.status) && (
-                      <button disabled={busy} onClick={() => viewEmailLog(row)}>
+                      <AppleButton variant="secondary" disabled={busy} onClick={() => viewEmailLog(row)}>
                         View email log
-                      </button>
+                      </AppleButton>
                     )}
                     <details>
                       <summary>
@@ -775,13 +777,15 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
               <h2 id="announcement-wizard-title">
                 {editor._id ? "Edit announcement" : "Add announcement"}
               </h2>
-              <button
+              <AppleButton
+                variant="ghost"
+                size="sm"
                 aria-label="Close wizard"
                 disabled={busy}
                 onClick={() => setEditor(null)}
               >
                 ×
-              </button>
+              </AppleButton>
             </div>
             <ol className="announcement-wizard-steps">
               {["When", "Email", "Review"].map((label, index) => (
@@ -1000,15 +1004,15 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
               </div>
             )}
             <footer>
-              <button
+              <AppleButton
+                variant="secondary"
                 disabled={busy}
                 onClick={() => (step ? setStep(step - 1) : setEditor(null))}
               >
                 {step ? "Back" : "Cancel"}
-              </button>
+              </AppleButton>
               {step < 2 ? (
-                <button
-                  className="announcement-primary"
+                <AppleButton
                   disabled={
                     step === 0
                       ? !Number.isInteger(editor.days) ||
@@ -1020,15 +1024,14 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                   onClick={() => setStep(step + 1)}
                 >
                   Continue
-                </button>
+                </AppleButton>
               ) : (
-                <button
-                  className="announcement-primary"
+                <AppleButton
                   disabled={busy}
                   onClick={save}
                 >
                   {busy ? "Saving…" : "Save announcement"}
-                </button>
+                </AppleButton>
               )}
             </footer>
           </>
@@ -1044,7 +1047,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
           <>
             <div className="announcement-card-heading">
               <h2>Recipient preview · {preview.language.toUpperCase()}</h2>
-              <button onClick={() => setPreview(null)}>Close preview</button>
+              <AppleButton variant="secondary" onClick={() => setPreview(null)}>Close preview</AppleButton>
             </div>
             <h3>{preview.subject}</h3>
             {preview.deliveryStatus && (

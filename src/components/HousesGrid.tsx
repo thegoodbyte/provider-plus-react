@@ -6,6 +6,7 @@ import { housesApi } from '../services/api';
 import { House } from '../types';
 import { resolveNumberOfRooms } from './HousesGrid.helpers';
 import AppleButton from './AppleButton';
+import { Card, Badge, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, EmptyState } from './ui';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -288,47 +289,31 @@ const HousesGrid: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  House Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Address
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  General Town
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Online Profile
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Capacity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rooms
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price/Week
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Source
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hero
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+      <Card padding="none" className="overflow-hidden">
+        {houses.length === 0 ? (
+          <div className="p-5">
+            <EmptyState icon={<Icon icon={Home} className="h-10 w-10" />} title="No houses found" />
+          </div>
+        ) : (
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeaderCell>House Name</TableHeaderCell>
+                <TableHeaderCell>Address</TableHeaderCell>
+                <TableHeaderCell>General Town</TableHeaderCell>
+                <TableHeaderCell>Online Profile</TableHeaderCell>
+                <TableHeaderCell>Capacity</TableHeaderCell>
+                <TableHeaderCell>Rooms</TableHeaderCell>
+                <TableHeaderCell>Price/Week</TableHeaderCell>
+                <TableHeaderCell>Source</TableHeaderCell>
+                <TableHeaderCell>Hero</TableHeaderCell>
+                <TableHeaderCell>Actions</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {houses.map((house) => (
-                <tr key={house._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <TableRow key={house._id}>
+                  <TableCell className="whitespace-nowrap">
                     <div className="flex items-center">
                       <Icon icon={Home} className="w-5 h-5 mr-3 text-gray-400" />
                       <div>
@@ -338,14 +323,14 @@ const HousesGrid: React.FC = () => {
                         <div className="text-sm text-gray-500">{house.city}</div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {house.address || 'No address'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {house.generalTown || house.city || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {house.onlineProfileLink ? (
                       <a
                         href={house.onlineProfileLink}
@@ -358,38 +343,34 @@ const HousesGrid: React.FC = () => {
                     ) : (
                       <span className="text-gray-400">None</span>
                     )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
                       <Icon icon={Users} className="w-4 h-4 mr-1 text-gray-400" />
                       {house.capacity || house.guestCapacity || 0} guests
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {house.numberOfRooms || (typeof house.bedrooms === 'number' ? house.bedrooms : house.bedrooms?.length || 0)} rooms
                     {house.numberOfBathrooms && ` / ${house.numberOfBathrooms} baths`}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
                       <Icon icon={DollarSign} className="w-4 h-4 mr-1 text-gray-400" />
                       {house.pricePerNight ? `$${house.pricePerNight}` : 'N/A'}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {house.bookingSource || 'N/A'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <Badge tone="info">{house.bookingSource || 'N/A'}</Badge>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {house.heroImageS3Key ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        Default
-                      </span>
+                      <Badge tone="success">Default</Badge>
                     ) : (
                       <span className="text-gray-400">None</span>
                     )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap font-medium">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEdit(house)}
@@ -406,18 +387,13 @@ const HousesGrid: React.FC = () => {
                         <Icon icon={Trash2} />
                       </button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-          {houses.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No houses found
-            </div>
-          )}
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        )}
+      </Card>
 
       <div className="mt-4 text-sm text-gray-700">
         Showing {houses.length} house{houses.length !== 1 ? 's' : ''}

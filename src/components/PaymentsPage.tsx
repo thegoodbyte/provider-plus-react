@@ -11,6 +11,7 @@ import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import AppleButton from './AppleButton';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -247,10 +248,10 @@ const PaymentsPage: React.FC = () => {
           <p className="text-sm text-gray-600">Manage client payments and invoice settlement records</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/admin/payments/scratchpad" className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">Scratchpad</Link>
-          <button onClick={() => navigate('/admin/payments/receipts')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">Receipts</button>
-          <button onClick={() => navigate('/admin/payments/joint/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-blue-600 bg-white px-4 py-2 text-blue-700 hover:bg-blue-50"><Icon icon={Plus} className="w-4 h-4" />Joint / Split Payment</button>
-          <button onClick={() => navigate('/admin/payments/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"><Icon icon={Plus} className="w-4 h-4" />Add Payment</button>
+          <Link to="/admin/payments/scratchpad" className="inline-flex items-center gap-2 rounded-apple border border-apple-gray-200 bg-apple-gray-50 px-4 py-2 text-sm font-medium text-apple-gray-600 hover:bg-white">Scratchpad</Link>
+          <AppleButton variant="secondary" onClick={() => navigate('/admin/payments/receipts')}>Receipts</AppleButton>
+          <AppleButton variant="secondary" onClick={() => navigate('/admin/payments/joint/new')}><Icon icon={Plus} className="w-4 h-4" />Joint / Split Payment</AppleButton>
+          <AppleButton onClick={() => navigate('/admin/payments/new')}><Icon icon={Plus} className="w-4 h-4" />Add Payment</AppleButton>
         </div>
       </div>
 

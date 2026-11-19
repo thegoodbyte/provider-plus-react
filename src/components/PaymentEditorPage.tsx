@@ -17,6 +17,8 @@ import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import SearchableBookingSelect from './SearchableBookingSelect';
 import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
+import AppleButton from './AppleButton';
+import { Card } from './ui';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -510,14 +512,13 @@ const PaymentEditorPage: React.FC = () => {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex w-full items-center gap-4 min-w-0 sm:w-auto">
-          <button
-            type="button"
+          <AppleButton
+            variant="secondary"
             onClick={() => navigate(returnTo || defaultReturnPath)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
             <Icon icon={ArrowLeft} className="w-4 h-4" />
             {returnTo ? 'Back to Booking' : 'Back'}
-          </button>
+          </AppleButton>
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold text-gray-900 whitespace-nowrap">
               {isView ? 'Payment View' : isEdit ? 'Edit Payment' : 'Add Payment'}
@@ -528,19 +529,17 @@ const PaymentEditorPage: React.FC = () => {
           </div>
         </div>
         {loadedPayment?.sourceScratchpadId && <Link className="rounded border px-4 py-2 text-blue-700" to={`/admin/payments/scratchpad/${resolveId(loadedPayment.sourceScratchpadId)}`}>Source scratchpad receipt {typeof loadedPayment.sourceScratchpadId === 'object' && loadedPayment.sourceScratchpadId.display_id ? `SP-${loadedPayment.sourceScratchpadId.display_id}` : resolveId(loadedPayment.sourceScratchpadId)}</Link>}
-        {isView && loadedPayment?.receiptId && <button type="button" className="rounded border px-4 py-2 text-blue-700" onClick={() => navigate(`/admin/payments/receipts?receiptId=${typeof loadedPayment.receiptId === 'string' ? loadedPayment.receiptId : loadedPayment.receiptId?._id}`)}>Payment receipt and delivery history</button>}
+        {isView && loadedPayment?.receiptId && <AppleButton variant="secondary" onClick={() => navigate(`/admin/payments/receipts?receiptId=${typeof loadedPayment.receiptId === 'string' ? loadedPayment.receiptId : loadedPayment.receiptId?._id}`)}>Payment receipt and delivery history</AppleButton>}
         {isView && id && (
-          <button
-            type="button"
+          <AppleButton
             onClick={() => navigate(`/admin/payments/${id}/edit`, { state: { returnTo: location.pathname } })}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
           >
             Edit Payment
-          </button>
+          </AppleButton>
         )}
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+      <Card>
         {isView && loadedPayment ? <><PaymentInvoiceActions key={loadedPayment._id} requestId={resolveId(loadedPayment.paymentRequestId)} clientId={resolveId(loadedPayment.clientId)} onRequestLoaded={setSelectedPaymentRequest} /><PaymentDetailSummary payment={loadedPayment} client={typeof loadedPayment.clientId === 'object' ? loadedPayment.clientId : clients.find(client => client._id === formData.clientId)} booking={typeof loadedPayment.bookingId === 'object' ? loadedPayment.bookingId : bookings.find(booking => booking._id === formData.bookingId)} retreat={typeof loadedPayment.retreatId === 'object' ? loadedPayment.retreatId : retreats.find(retreat => retreat._id === formData.retreatId)} request={selectedPaymentRequest} /><PaymentReceiptPanel key={loadedPayment._id} payment={loadedPayment}/></> : <form onSubmit={handleSubmit} className="space-y-6">
           {formError && (
             <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
@@ -556,26 +555,25 @@ const PaymentEditorPage: React.FC = () => {
                 {' '}Changing this allocation's amount or booking with Save is blocked because that would make the receipt totals incorrect.
               </p>
               {!isView && (
-                <button
-                  type="button"
+                <AppleButton
+                  className="mt-3"
                   onClick={handleUseEntireReceipt}
                   disabled={reassigningReceipt}
-                  className="mt-3 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-wait disabled:opacity-60"
                 >
                   {reassigningReceipt ? 'Assigning full receipt…' : 'Use entire joint payment for this person'}
-                </button>
+                </AppleButton>
               )}
             </div>
           )}
           {selectedPaymentRequest?.context === 'standalone_service' && <div className="mb-6 rounded-lg border border-teal-200 bg-teal-50 p-4"><strong>Standalone service · request #{selectedPaymentRequest.invoiceNumber}</strong><p>This payment settles this service request and has no retreat or booking allocation.</p>{isExisting && <p>This financial record is immutable. Use an audited refund to correct a recorded payment.</p>}</div>}
           {loadedPayment?.relationshipChangePending && <div role="alert" className="mb-4 rounded border border-amber-300 bg-amber-50 p-4">
             <p>This payment edit was saved, but its linked totals still need refreshing. Finish the saved edit before making more changes.</p>
-            <button type="button" className="mt-2 rounded bg-blue-700 px-3 py-2 text-white" disabled={saving} onClick={async () => {
+            <AppleButton className="mt-2" disabled={saving} onClick={async () => {
               if (!id) return; setSaving(true); setFormError('');
               try { await paymentsApi.resumeEdit(id); navigate(returnTo || defaultReturnPath); }
               catch (error) { setFormError(apiErrorMessage(error, 'Could not finish the saved payment edit. Please retry.')); }
               finally { setSaving(false); }
-            }}>Finish saved payment edit</button>
+            }}>Finish saved payment edit</AppleButton>
           </div>}
           <fieldset disabled={isView || isIssuedService || loadedPayment?.relationshipChangePending} className="grid grid-cols-1 md:grid-cols-2 gap-6 disabled:opacity-90">
             {(!loadedPayment?.bookingId && !loadedPayment?.paymentRequestId && selectedPaymentRequest?.context !== 'standalone_service') && <div className="md:col-span-2 rounded-md border border-blue-200 bg-blue-50 p-4">
@@ -590,7 +588,7 @@ const PaymentEditorPage: React.FC = () => {
                 Client payment (no booking yet)
               </label>
               <p className="mt-2 text-sm">Record a payment for this client with a clear purpose. No retreat or payment request is needed. You can link it to a booking later.</p>
-              {isEdit && clientOnly && <button type="button" className="mt-2 font-semibold text-blue-700 underline" onClick={() => setClientOnly(false)}>Link to a booking</button>}
+              {isEdit && clientOnly && <AppleButton variant="ghost" className="mt-2" onClick={() => setClientOnly(false)}>Link to a booking</AppleButton>}
             </div>}
 
             <div>
@@ -687,7 +685,7 @@ const PaymentEditorPage: React.FC = () => {
               /> : <p className="text-sm text-gray-600">Select a client to see their bookings.</p>}
               {!isView && formData.clientId && !isSplitReceipt && <div className="mt-3 flex flex-wrap items-center gap-3">
                 {!bookingOptions.length && <p className="text-sm text-gray-600">No bookings for this client yet.</p>}
-                <button type="button" onClick={openBookingCreation} className="rounded-md border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700">Create booking for this client</button>
+                <AppleButton variant="secondary" onClick={openBookingCreation}>Create booking for this client</AppleButton>
                 <p className="text-xs text-gray-500">Your payment draft stays open. Review the booking price separately from the received payment amount.</p>
               </div>}
               {bookingNotice && <p role="status" className="mt-3 rounded border border-green-200 bg-green-50 p-3 text-sm">{bookingNotice}</p>}
@@ -907,22 +905,20 @@ const PaymentEditorPage: React.FC = () => {
           </fieldset>
 
           <div className="flex justify-end gap-2 pt-4 border-t">
-            <button
-              type="button"
+            <AppleButton
+              variant="secondary"
               onClick={() => navigate(returnTo || defaultReturnPath)}
-              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
             >
               {isView ? 'Back' : 'Cancel'}
-            </button>
+            </AppleButton>
             {!isView && (
-              <button
+              <AppleButton
                 type="submit"
                 disabled={saving || isIssuedService || loadedPayment?.relationshipChangePending}
-                className="inline-flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
               >
                 <Icon icon={SaveIcon} className="w-4 h-4" />
                 {saving ? 'Saving…' : isEdit ? 'Update Payment' : 'Add Payment'}
-              </button>
+              </AppleButton>
             )}
           </div>
         </form>}
@@ -930,7 +926,7 @@ const PaymentEditorPage: React.FC = () => {
         <Modal title="Create booking for this client" open={Boolean(newBookingContext)} footer={null} width={900} destroyOnHidden maskClosable={false} onCancel={() => setNewBookingContext(null)}>
           {newBookingContext && <BookingEditorForm mode="create" initialBookingData={newBookingContext} lockedClientId={newBookingContext.clientId} deferPaymentLinking onCancel={() => setNewBookingContext(null)} onSaved={bookingCreated} submitLabel="Create and select booking" />}
         </Modal>
-      </div>
+      </Card>
     </div>
   );
 };

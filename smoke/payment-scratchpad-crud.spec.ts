@@ -22,6 +22,7 @@ for(const device of ['desktop','mobile']) test.describe(`Receipt CRUD ${device}`
    return route.fulfill({json:[]});
   });
  });
+ test.afterEach(async ({ page }) => { await page.unrouteAll({ behavior: 'wait' }); });
  const payload=(payer:string,extra:any={})=>({captureKey:crypto.randomUUID(),receivedDate:'2026-10-16',amount:'20.15',currency:'USD',provider:'revolut',account:'Synthetic USD wallet',payer,...extra});
  test('separate create/view/edit, reload, failed edit retry, unsaved guard and audited removal',async({page})=>{
   const name=`CRUD-${device}-${Date.now()}`;

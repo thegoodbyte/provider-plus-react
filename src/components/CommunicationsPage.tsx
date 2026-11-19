@@ -12,6 +12,8 @@ import { buildTemplateBookingActionPayload, normalizeTemplateBookingStepKeys } f
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import AppleButton from './AppleButton';
+import { Card, Badge, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './ui';
 
 type TabKey = 'settings' | 'templates' | 'compose' | 'sent' | 'inbound';
 type PortalGateSettings = {
@@ -772,14 +774,13 @@ const CommunicationsPage: React.FC = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           {(['settings', 'templates', 'compose', 'sent', 'inbound'] as TabKey[]).map((tab) => (
-            <button
+            <AppleButton
               key={tab}
-              type="button"
+              variant={activeTab === tab ? 'primary' : 'secondary'}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-2 rounded-md text-sm font-medium border ${activeTab === tab ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
             >
               {tab === 'settings' ? 'Settings' : tab === 'templates' ? 'Templates' : tab === 'compose' ? 'Compose' : tab === 'sent' ? 'Sent Mail' : 'Inbound'}
-            </button>
+            </AppleButton>
           ))}
         </div>
       </div>
@@ -794,10 +795,10 @@ const CommunicationsPage: React.FC = () => {
       {activeTab !== 'settings' && <EmailSafetySettings compact />}
       {activeTab === 'settings' && (
         <div>
-          <nav className="mb-5 flex flex-wrap gap-2" aria-label="Settings areas">{[['safety','Email safety'],['connection','Sender & Gmail'],['automation','Automation'],['medical','Medical notifications'],['portal','Client portal']].map(([key,label]) => <button key={key} type="button" aria-pressed={settingsArea === key} onClick={() => setSettingsArea(key)} className={`rounded border px-3 py-2 ${settingsArea === key ? 'bg-blue-700 text-white' : 'bg-white'}`}>{label}</button>)}</nav>
+          <nav className="mb-5 flex flex-wrap gap-2" aria-label="Settings areas">{[['safety','Email safety'],['connection','Sender & Gmail'],['automation','Automation'],['medical','Medical notifications'],['portal','Client portal']].map(([key,label]) => <AppleButton key={key} aria-pressed={settingsArea === key} variant={settingsArea === key ? 'primary' : 'secondary'} onClick={() => setSettingsArea(key)}>{label}</AppleButton>)}</nav>
           {settingsArea === 'safety' && <EmailSafetySettings />}
 
-          <section hidden={settingsArea !== 'connection'} className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
+          <section hidden={settingsArea !== 'connection'} className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Gmail Connection</h2>
               <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${settings?.connected ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
@@ -863,42 +864,37 @@ const CommunicationsPage: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
+              <AppleButton
                 onClick={handleSettingsSave}
-                className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 disabled={savingSettings}
               >
                 <Icon icon={SaveIcon} />
                 Save Settings
-              </button>
-              <button
-                type="button"
+              </AppleButton>
+              <AppleButton
+                variant="secondary"
                 onClick={handleConnectGmail}
-                className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-black"
               >
                 <Icon icon={MailIcon} />
                 Connect Gmail
-              </button>
-              <button
-                type="button"
+              </AppleButton>
+              <AppleButton
+                variant="secondary"
                 onClick={handleTestConnection}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 <Icon icon={RefreshCw} />
                 Test Connection
-              </button>
-              <button
-                type="button"
+              </AppleButton>
+              <AppleButton
+                variant="danger"
                 onClick={handleDisconnect}
-                className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
               >
                 <Icon icon={Trash2} />
                 Disconnect
-              </button>
+              </AppleButton>
             </div>
           </section>
-          <section hidden={settingsArea !== 'medical'} className="rounded-lg border border-gray-200 bg-white p-5 space-y-4 lg:col-span-2">
+          <section hidden={settingsArea !== 'medical'} className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5 space-y-4 lg:col-span-2">
             <div><h2 className="text-lg font-semibold text-gray-900">Client medical-review notifications</h2><p className="text-sm text-gray-500">Emails contain only a generic status and never include reviewer notes or medical findings.</p><Link to={location.pathname.replace(/\/communications$/, '/communications-settings')} className="text-sm text-blue-700 underline">Email master switch is in Settings → Communications</Link></div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
@@ -948,10 +944,10 @@ const CommunicationsPage: React.FC = () => {
               })}
             </div>
             <MedicalDecisionTemplateEditors settings={settings} onChange={setSettings} />
-            <button type="button" onClick={handleSettingsSave} disabled={savingSettings} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">Save notification settings</button>
+            <AppleButton onClick={handleSettingsSave} disabled={savingSettings}>Save notification settings</AppleButton>
           </section>
 
-          <section hidden={settingsArea !== 'connection'} className="rounded-lg border border-gray-200 bg-white p-5 space-y-3">
+          <section hidden={settingsArea !== 'connection'} className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5 space-y-3">
             <h2 className="text-lg font-semibold text-gray-900">Connection Status</h2>
             <div className="space-y-2 text-sm text-gray-700">
               <div>Google OAuth configured: <span className="font-medium">{settings?.oauthConfigured ? 'Yes' : 'No'}</span></div>
@@ -992,13 +988,13 @@ const CommunicationsPage: React.FC = () => {
               </p>
             </div>
 
-<button onClick={handleSettingsSave} disabled={savingSettings} className="rounded bg-blue-700 px-4 py-2 text-white">Save automation settings</button></section>}
+<AppleButton onClick={handleSettingsSave} disabled={savingSettings}>Save automation settings</AppleButton></section>}
           {settingsArea === 'portal' && <section>            <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4">
               <div className="flex items-start justify-between gap-4"><div><h3 className="font-semibold text-gray-900">IbogaReady contract gate</h3><p className="mt-1 text-sm text-gray-700">Require booked clients to sign the Client Agreement before accessing preparation forms and resources. Account, My Retreat, and Client Agreement remain available.</p></div><label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={contractGate.enabled} onChange={event=>setContractGate(current=>({...current,enabled:event.target.checked}))}/>{contractGate.enabled?'ON':'OFF'}</label></div>
               <p className="mt-3 text-xs text-indigo-800">This is enforced in both IbogaReady navigation and protected API endpoints. Pre-booking screening is not gated.</p>
             </div>
 
-            <div className="rounded-md border border-gray-200 bg-white p-4 lg:col-span-2">
+            <div className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4 lg:col-span-2">
               <div className="mb-4"><h3 className="font-semibold text-gray-900">IbogaReady access by client status</h3><p className="mt-1 text-sm text-gray-600">New registered forms appear here automatically. Available allows use; Read-only allows viewing; Locked shows a lock but blocks the page; Hidden removes it.</p></div>
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse text-sm">
@@ -1011,33 +1007,31 @@ const CommunicationsPage: React.FC = () => {
               </div>
             </div>
 
-<button onClick={handleSettingsSave} disabled={savingSettings} className="rounded bg-blue-700 px-4 py-2 text-white">Save portal settings</button></section>}
+<AppleButton onClick={handleSettingsSave} disabled={savingSettings}>Save portal settings</AppleButton></section>}
         </div>
       )}
 
       {activeTab === 'templates' && (
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
+          <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Templates</h2>
               <div className="flex gap-2">
-                <button
-                  type="button"
+                <AppleButton
+                  variant="secondary"
                   onClick={() => setShowSeedOptions((current) => !current)}
                   disabled={seedingTemplates}
-                  className="inline-flex items-center gap-2 rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                 >
                   <Icon icon={RefreshCw} />
                   {seedingTemplates ? 'Seeding...' : 'Reseed'}
-                </button>
-                <button
-                  type="button"
+                </AppleButton>
+                <AppleButton
+                  variant="secondary"
                   onClick={handleNewTemplate}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   <Icon icon={PlusIcon} />
                   New
-                </button>
+                </AppleButton>
               </div>
             </div>
             {showSeedOptions && (
@@ -1047,13 +1041,12 @@ const CommunicationsPage: React.FC = () => {
                     <div className="font-semibold text-blue-950">Reseed default templates</div>
                     <div className="text-xs text-blue-800">Questionnaire and medications templates include dynamic Jotform link placeholders <code>{'{{links.questionnaire}}'}</code> and <code>{'{{links.medicationsForm}}'}</code>.</div>
                   </div>
-                  <button
-                    type="button"
+                  <AppleButton
+                    size="sm"
                     onClick={selectQuestionnaireSeedOptions}
-                    className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                   >
                     Questionnaire + Meds EN/CZ/PL
-                  </button>
+                  </AppleButton>
                 </div>
                 <label className="mb-3 inline-flex items-center gap-2 text-xs font-medium text-blue-900">
                   <input
@@ -1089,15 +1082,15 @@ const CommunicationsPage: React.FC = () => {
                   ))}
                   {seedOptions.length === 0 && <div className="p-2 text-xs text-gray-500">No seed options loaded.</div>}
                 </div>
-                <button
-                  type="button"
+                <AppleButton
+                  fullWidth
+                  className="mt-3"
                   onClick={handleSeedDefaultTemplates}
                   disabled={seedingTemplates || selectedSeedKeys.length === 0}
-                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   <Icon icon={RefreshCw} />
                   {seedingTemplates ? 'Seeding selected...' : `Seed ${selectedSeedKeys.length} selected`}
-                </button>
+                </AppleButton>
               </div>
             )}
             <div className="grid grid-cols-3 rounded-lg border border-gray-200 bg-gray-100 p-1" role="tablist" aria-label="Template language">
@@ -1167,18 +1160,18 @@ const CommunicationsPage: React.FC = () => {
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>{filteredTemplates.length} of {templates.length} templates</span>
                 {hasTemplateFilters && (
-                  <button
-                    type="button"
+                  <AppleButton
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setTemplateSearch('');
                       setTemplateCategoryFilter('all');
                       setTemplateLanguageFilter('en');
                       setTemplateStatusFilter('all');
                     }}
-                    className="font-medium text-blue-600 hover:text-blue-800"
                   >
                     Clear filters
-                  </button>
+                  </AppleButton>
                 )}
               </div>
             </div>
@@ -1217,18 +1210,17 @@ const CommunicationsPage: React.FC = () => {
             </div>
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
+          <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">{selectedTemplateId ? `Edit Template #${templateForm.display_id || selectedTemplate?.display_id || ''}` : 'New Template'}</h2>
               {selectedTemplateId && (
-                <button
-                  type="button"
+                <AppleButton
+                  variant="danger"
                   onClick={handleDeleteTemplate}
-                  className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                 >
                   <Icon icon={Trash2} />
                   Delete
-                </button>
+                </AppleButton>
               )}
             </div>
             {selectedTemplateId && (
@@ -1334,7 +1326,7 @@ const CommunicationsPage: React.FC = () => {
                 <input aria-label="Asset key" value={assetDraft.key} onChange={(e) => setAssetDraft((current) => ({ ...current, key: e.target.value }))} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="preparation_guide" />
                 <select aria-label="Asset language" value={assetDraft.language} onChange={(e) => setAssetDraft((current) => ({ ...current, language: e.target.value }))} className="rounded-md border border-gray-300 px-2 py-2 text-sm"><option value="en">EN</option><option value="cz">CZ</option><option value="pl">PL</option></select>
                 <input aria-label="Asset file" type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/svg+xml" onChange={(e) => setAssetDraft((current) => ({ ...current, file: e.target.files?.[0] || null }))} className="rounded-md border border-gray-300 bg-white px-2 py-2 text-sm" />
-                <button type="button" disabled={uploadingAsset || !assetDraft.file} onClick={handleAssetUpload} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{uploadingAsset ? 'Uploading…' : 'Upload asset'}</button>
+                <AppleButton disabled={uploadingAsset || !assetDraft.file} onClick={handleAssetUpload}>{uploadingAsset ? 'Uploading…' : 'Upload asset'}</AppleButton>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {emailAssets.map((asset) => <label key={asset._id} className="flex items-center gap-2 rounded-md border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={Boolean(asset._id && (templateForm.attachmentAssetIds || []).includes(asset._id))} onChange={(e) => setTemplateForm((current) => ({ ...current, attachmentAssetIds: e.target.checked ? [...(current.attachmentAssetIds || []), asset._id! ] : (current.attachmentAssetIds || []).filter((id) => id !== asset._id) }))} /><span className="min-w-0 flex-1"><strong className="block truncate">{asset.name} · {asset.language.toUpperCase()}</strong><small className="block truncate text-gray-500">{asset.fileName}</small></span><button type="button" onClick={(event) => { event.preventDefault(); void handleAssetDelete(asset); }} className="text-red-600" aria-label={`Delete ${asset.fileName}`}><Icon icon={Trash2} /></button></label>)}
@@ -1401,24 +1393,21 @@ const CommunicationsPage: React.FC = () => {
                 Use placeholders like <code className="rounded bg-gray-100 px-1">{'{{ client.firstName }}'}</code> or <code className="rounded bg-gray-100 px-1">{'{{ retreat.name }}'}</code>.
               </div>
               <div className="flex items-center gap-2">
-                {selectedTemplateId && <button
-                  type="button"
+                {selectedTemplateId && <AppleButton
+                  variant="secondary"
                   onClick={handleExportTemplateSeed}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   title="Download a Git-safe seed record. Use templates:pull locally to merge the live template into the seed library."
                 >
                   <Icon icon={DownloadIcon} />
                   Export seed
-                </button>}
-                <button
-                  type="button"
+                </AppleButton>}
+                <AppleButton
                   onClick={handleSaveTemplate}
                   disabled={savingTemplate}
-                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 >
                   <Icon icon={SaveIcon} />
                   Save Template
-                </button>
+                </AppleButton>
               </div>
             </div>
           </section>
@@ -1426,7 +1415,7 @@ const CommunicationsPage: React.FC = () => {
       )}
 
       {activeTab === 'compose' && (
-        <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-5">
+        <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5 space-y-5">
           <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Compose Email</h2>
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-4">
@@ -1442,7 +1431,7 @@ const CommunicationsPage: React.FC = () => {
             {(['en', 'cz', 'pl'] as const).map((language) => <div key={language} className="rounded-md border border-blue-100 bg-white p-3"><div className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-900">{language === 'en' ? 'English' : language === 'cz' ? 'Czech' : 'Polish'}</div><input className="mb-2 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Subject" value={futureBroadcast.subjects[language]} onChange={(event) => setFutureBroadcast((current) => ({ ...current, subjects: { ...current.subjects, [language]: event.target.value } }))} /><textarea rows={5} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Message" value={futureBroadcast.bodies[language]} onChange={(event) => setFutureBroadcast((current) => ({ ...current, bodies: { ...current.bodies, [language]: event.target.value } }))} /></div>)}
             <p className="text-xs text-blue-900">Available date placeholders: <code>{'{{futureRetreatBroadcast.updatesAvailableDate}}'}</code> and <code>{'{{futureRetreatBroadcast.freerAfterDate}}'}</code>. The send is logged per booking and skips cancelled bookings, missing addresses, and duplicate addresses.</p>
             <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-blue-100 bg-white p-3">{futureRetreats.length ? futureRetreats.map((retreat) => <label key={retreat._id} className="flex items-center gap-3 rounded px-2 py-2 text-sm hover:bg-blue-50"><input type="checkbox" checked={futureRetreatIds.includes(retreat._id || '')} onChange={(event) => setFutureRetreatIds((current) => event.target.checked ? [...current, retreat._id!] : current.filter((id) => id !== retreat._id))} /><span className="font-medium">{retreat.name || retreat.code || retreat.retreatCode || 'Retreat'}</span><span className="text-gray-500">{retreat.startDate ? new Date(retreat.startDate).toLocaleDateString() : ''}</span></label>) : <span className="text-sm text-gray-500">No future retreats found.</span>}</div>
-            <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className="text-sm font-medium text-blue-700 underline" onClick={() => setFutureRetreatIds(futureRetreatIds.length === futureRetreats.length ? [] : futureRetreats.map((retreat) => retreat._id!))}>{futureRetreatIds.length === futureRetreats.length ? 'Clear selection' : 'Select all future retreats'}</button><button type="button" disabled={sendingFutureBroadcast || !futureRetreatIds.length} onClick={handleFutureBroadcastSend} className="inline-flex items-center gap-2 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Icon icon={SendIcon} />{sendingFutureBroadcast ? 'Sending…' : `Send to ${futureRetreatIds.length} retreat${futureRetreatIds.length === 1 ? '' : 's'}`}</button></div>
+            <div className="flex flex-wrap items-center justify-between gap-3"><AppleButton variant="ghost" onClick={() => setFutureRetreatIds(futureRetreatIds.length === futureRetreats.length ? [] : futureRetreats.map((retreat) => retreat._id!))}>{futureRetreatIds.length === futureRetreats.length ? 'Clear selection' : 'Select all future retreats'}</AppleButton><AppleButton disabled={sendingFutureBroadcast || !futureRetreatIds.length} onClick={handleFutureBroadcastSend}><Icon icon={SendIcon} />{sendingFutureBroadcast ? 'Sending…' : `Send to ${futureRetreatIds.length} retreat${futureRetreatIds.length === 1 ? '' : 's'}`}</AppleButton></div>
           </div>
             <div className="text-xs text-gray-500">Messages are sent through Gmail and logged as sent records.</div>
           </div>
@@ -1575,101 +1564,95 @@ const CommunicationsPage: React.FC = () => {
               {selectedClient ? `Selected client: ${selectedClient.firstName} ${selectedClient.lastName} (${selectedClient.email})` : 'No client selected'}
               {selectedRetreat ? ` • Retreat: ${selectedRetreat.name}` : ''}
             </div>
-            <button
-              type="button"
+            <AppleButton
               onClick={handleSendEmail}
               disabled={sendingEmail}
-              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               <Icon icon={SendIcon} />
               Send Email
-            </button>
+            </AppleButton>
           </div>
         </section>
       )}
 
       {activeTab === 'inbound' && (
         <div className="space-y-4">
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
+          <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Inbound Gmail</h2>
                 <p className="text-sm text-gray-500">Received Gmail messages, AI task classification, and manual overrides.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
+                <AppleButton
+                  variant="secondary"
                   onClick={handleSetupGmailWatch}
-                  className="inline-flex items-center gap-2 rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
                 >
                   <Icon icon={Inbox} />
                   Start Gmail Watch
-                </button>
-                <button
-                  type="button"
+                </AppleButton>
+                <AppleButton
+                  variant="secondary"
                   onClick={loadInboundEmails}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   <Icon icon={RefreshCw} />
                   Refresh
-                </button>
-                <button
-                  type="button"
+                </AppleButton>
+                <AppleButton
                   onClick={handleProcessInbound}
                   disabled={processingInbound}
-                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   <Icon icon={CheckCircle} />
                   {processingInbound ? 'Processing...' : 'Process Pending'}
-                </button>
+                </AppleButton>
               </div>
             </div>
           </section>
 
-          <section className="overflow-auto rounded-lg border border-gray-200 bg-white">
-            <table className="min-w-full text-sm">
-              <thead className="text-left text-xs uppercase text-gray-500">
-                <tr className="border-b bg-gray-50">
-                  <th className="px-4 py-3">Received</th>
-                  <th className="px-4 py-3">From</th>
-                  <th className="px-4 py-3">Subject</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">AI</th>
-                  <th className="px-4 py-3">Task</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+          <Card padding="none" className="overflow-hidden">
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Received</TableHeaderCell>
+                  <TableHeaderCell>From</TableHeaderCell>
+                  <TableHeaderCell>Subject</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>AI</TableHeaderCell>
+                  <TableHeaderCell>Task</TableHeaderCell>
+                  <TableHeaderCell>Actions</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
                 {inboundEmails.map((email) => {
                   const task = typeof email.createdTaskId === 'object' ? email.createdTaskId : null;
                   const client = typeof email.linkedClientId === 'object' ? email.linkedClientId : null;
                   const contact = typeof email.linkedContactId === 'object' ? email.linkedContactId : null;
                   return (
-                    <tr key={email._id || email.gmailMessageId} className="border-b align-top">
-                      <td className="px-4 py-3 text-gray-600">{email.receivedAt ? new Date(email.receivedAt).toLocaleString() : '-'}</td>
-                      <td className="px-4 py-3">
+                    <TableRow key={email._id || email.gmailMessageId} className="align-top">
+                      <TableCell className="text-gray-600">{email.receivedAt ? new Date(email.receivedAt).toLocaleString() : '-'}</TableCell>
+                      <TableCell>
                         <div className="font-medium text-gray-900">{email.fromName || email.fromEmail || 'Unknown'}</div>
                         <div className="text-xs text-gray-500">{email.fromEmail}</div>
                         {client && <div className="mt-1 text-xs text-blue-700">Client: {client.firstName} {client.lastName}</div>}
                         {contact && <div className="mt-1 text-xs text-blue-700">Contact: {contact.name}</div>}
-                      </td>
-                      <td className="max-w-md px-4 py-3">
+                      </TableCell>
+                      <TableCell className="max-w-md">
                         <div className="font-medium text-gray-900">{email.subject || '(no subject)'}</div>
                         <div className="mt-1 line-clamp-2 text-xs text-gray-500">{email.snippet || email.bodyText}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${
+                      </TableCell>
+                      <TableCell>
+                        <Badge colorClassName={
                           email.status === 'task_created' ? 'bg-green-50 text-green-700' :
                           email.status === 'needs_review' ? 'bg-amber-50 text-amber-700' :
                           email.status === 'error' ? 'bg-red-50 text-red-700' :
                           email.status === 'ignored' ? 'bg-gray-100 text-gray-600' :
                           'bg-blue-50 text-blue-700'
-                        }`}>
+                        }>
                           {email.status.replace(/_/g, ' ')}
-                        </span>
+                        </Badge>
                         {email.errorMessage && <div className="mt-1 text-xs text-red-600">{email.errorMessage}</div>}
-                      </td>
-                      <td className="max-w-sm px-4 py-3 text-xs text-gray-600">
+                      </TableCell>
+                      <TableCell className="max-w-sm text-xs text-gray-600">
                         {email.aiClassification ? (
                           <div className="space-y-1">
                             <div>Task needed: <span className="font-medium">{email.aiClassification.taskNeeded ? 'Yes' : 'No'}</span></div>
@@ -1677,93 +1660,91 @@ const CommunicationsPage: React.FC = () => {
                             <div className="line-clamp-3">{email.aiClassification.reason}</div>
                           </div>
                         ) : '-'}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
+                      </TableCell>
+                      <TableCell>
                         {task ? (
                           <div>
                             <div className="font-medium text-gray-900">{task.name}</div>
                             <div className="text-xs text-gray-500">{task.status} · {task.urgency}</div>
                           </div>
                         ) : '-'}
-                      </td>
-                      <td className="px-4 py-3">
+                      </TableCell>
+                      <TableCell>
                         <div className="flex flex-col gap-2">
-                          <button type="button" onClick={() => handleReprocessInbound(email)} className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50">Reprocess</button>
-                          <button type="button" onClick={() => handleCreateTaskFromInbound(email)} className="rounded-md border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50">Create task</button>
-                          <button type="button" onClick={() => handleIgnoreInbound(email)} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50">Ignore</button>
+                          <AppleButton variant="secondary" size="sm" onClick={() => handleReprocessInbound(email)}>Reprocess</AppleButton>
+                          <AppleButton size="sm" onClick={() => handleCreateTaskFromInbound(email)}>Create task</AppleButton>
+                          <AppleButton variant="ghost" size="sm" onClick={() => handleIgnoreInbound(email)}>Ignore</AppleButton>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
                 {inboundEmails.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">No inbound emails stored yet.</td>
-                  </tr>
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-8 text-center text-gray-500">No inbound emails stored yet.</TableCell>
+                  </TableRow>
                 )}
-              </tbody>
-            </table>
-          </section>
+              </TableBody>
+            </Table>
+          </Card>
         </div>
       )}
 
       {activeTab === 'sent' && (
         <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-          <section className="rounded-lg border border-gray-200 bg-white p-4">
+          <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-gray-900">Sent Mail</h2>
               <span className="text-xs text-gray-500">{sentEmails.length} messages</span>
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-left text-gray-500">
-                  <tr className="border-b">
-                    <th className="py-2 pr-3">#</th>
-                    <th className="py-2 pr-3">Client</th>
-                    <th className="py-2 pr-3">Subject</th>
-                    <th className="py-2 pr-3">To</th>
-                    <th className="py-2 pr-3">Status</th>
-                    <th className="py-2 pr-3">Sent</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sentEmails.map((email) => (
-                    <tr
-                      key={email._id}
-                      onClick={() => setSelectedSentEmailId(email._id || '')}
-                      className={`cursor-pointer border-b hover:bg-gray-50 ${selectedSentEmailId === email._id ? 'bg-blue-50' : ''}`}
-                    >
-                      <td className="py-2 pr-3 font-mono text-gray-700">#{email.display_id || 'n/a'}</td>
-                      <td className="py-2 pr-3">{renderClientLink(email, true)}</td>
-                      <td className="py-2 pr-3 font-medium text-gray-900">{email.subject}</td>
-                      <td className="py-2 pr-3 text-gray-600">{(email.to || []).join(', ')}</td>
-                      <td className="py-2 pr-3 text-gray-600">{email.status}</td>
-                      <td className="py-2 pr-3 text-gray-600">{email.sentAt ? new Date(email.sentAt).toLocaleString() : '-'}</td>
-                    </tr>
-                  ))}
-                  {sentEmails.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-gray-500">No messages sent yet.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>#</TableHeaderCell>
+                  <TableHeaderCell>Client</TableHeaderCell>
+                  <TableHeaderCell>Subject</TableHeaderCell>
+                  <TableHeaderCell>To</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>Sent</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sentEmails.map((email) => (
+                  <TableRow
+                    key={email._id}
+                    onClick={() => setSelectedSentEmailId(email._id || '')}
+                    className={selectedSentEmailId === email._id ? 'bg-blue-50' : ''}
+                  >
+                    <TableCell className="font-mono text-gray-700">#{email.display_id || 'n/a'}</TableCell>
+                    <TableCell>{renderClientLink(email, true)}</TableCell>
+                    <TableCell className="font-medium text-gray-900">{email.subject}</TableCell>
+                    <TableCell className="text-gray-600">{(email.to || []).join(', ')}</TableCell>
+                    <TableCell className="text-gray-600">{email.status}</TableCell>
+                    <TableCell className="text-gray-600">{email.sentAt ? new Date(email.sentAt).toLocaleString() : '-'}</TableCell>
+                  </TableRow>
+                ))}
+                {sentEmails.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-gray-500">No messages sent yet.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
+          <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-4 space-y-4">
             <h2 className="text-lg font-semibold text-gray-900">Message Detail</h2>
             {selectedSentEmail ? (
               <div className="space-y-3">
                 <div className="flex justify-end">
-                  <button
-                    type="button"
+                  <AppleButton
+                    variant="danger"
+                    size="sm"
                     onClick={() => handleDeleteSentEmail(selectedSentEmail._id)}
-                    className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
                   >
                     <Icon icon={Trash2} />
                     Delete Log
-                  </button>
+                  </AppleButton>
                 </div>
                 <div><span className="text-gray-500">Message #:</span> <span className="font-mono">#{selectedSentEmail.display_id || 'n/a'}</span></div>
                 <div><span className="text-gray-500">Client:</span> {renderClientLink(selectedSentEmail)}</div>

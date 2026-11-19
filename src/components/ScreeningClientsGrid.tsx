@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { clientsApi, notesApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
+import AppleInput from './AppleInput';
+import { Card, Badge, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, EmptyState } from './ui';
 import { formatCalendarDate, parseCalendarDate, toDateInputValue } from '../utils/dateFormat';
 import {
   clientWorkflowStatusLabels,
@@ -160,17 +162,15 @@ const ScreeningClientsGrid: React.FC = () => {
 
       {/* Filter and Search Controls */}
       <div className="mb-4 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Icon icon={SearchIcon} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <input
-            type="text"
-            aria-label="Search screening clients"
-            placeholder="Search screening clients, screening info, notes, drugs, medications…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        <AppleInput
+          type="text"
+          ariaLabel="Search screening clients"
+          placeholder="Search screening clients, screening info, notes, drugs, medications…"
+          value={searchTerm}
+          onChange={setSearchTerm}
+          icon={<Icon icon={SearchIcon} className="w-4 h-4" />}
+          className="flex-1"
+        />
         <select
           aria-label="Screening status"
           value={filterStatus}
@@ -192,25 +192,38 @@ const ScreeningClientsGrid: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[1050px] divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
+      <Card padding="none" className="overflow-hidden">
+        {filteredClients.length === 0 ? (
+          <div className="p-5">
+            <EmptyState
+              icon={<Icon icon={User} className="h-10 w-10" />}
+              title="No screening clients"
+              description={filterStatus === 'all' ?
+                'Get started by adding a new screening client.' :
+                `No clients found with status "${filterStatus}".`
+              }
+            />
+          </div>
+        ) : (
+          <Table className="min-w-[1050px]">
+            <TableHead>
+              <TableRow>
                 {([['name','Name'],['id','ID'],['screeningDate','Screening date'],['country','Country'],['phone','Phone'],['status','Status'],['completed','Completed'],['updated','Updated']] as const).map(([key,label]) => (
-                  <th key={key} aria-sort={sort.key === key ? (sort.order === 'asc' ? 'ascending' : 'descending') : 'none'} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap rounded px-1 py-1 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600" onClick={() => setSort(previous => ({ key, order: previous.key === key && previous.order === 'asc' ? 'desc' : 'asc' }))}>
-                      {label}{sort.key === key && <Icon icon={sort.order === 'desc' ? ArrowDown : ArrowUp} className="h-3 w-3" />}
-                    </button>
-                  </th>
+                  <TableHeaderCell
+                    key={key}
+                    onSort={() => setSort(previous => ({ key, order: previous.key === key && previous.order === 'asc' ? 'desc' : 'asc' }))}
+                    sortDirection={sort.key === key ? sort.order : undefined}
+                  >
+                    {label}
+                  </TableHeaderCell>
                 ))}
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+                <TableHeaderCell align="right">Actions</TableHeaderCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {filteredClients.map((client) => (
-                <tr key={client._id} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap">
+                <TableRow key={client._id}>
+                  <TableCell className="whitespace-nowrap">
                     <div>
                       <button
                         onClick={() => navigate(`/clients/${client._id}`)}
@@ -226,44 +239,43 @@ const ScreeningClientsGrid: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {client.display_id ? `#${client.display_id}` : 'No ID'}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {(() => {
                       const date = recordedScreeningDate(client);
                       return date ? <time dateTime={toDateInputValue(date)}>{formatDate(date)}</time> : <span className="text-gray-500">Not recorded</span>;
                     })()}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     {client.country || 'N/A'}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <span className="inline-flex max-w-[170px] items-center gap-1 truncate">
                       <Icon icon={PhoneIcon} className="h-4 w-4 shrink-0 text-gray-400" />
                       <span className="truncate">{client.phone || 'N/A'}</span>
                     </span>
-                  </td>
+                  </TableCell>
 
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <TableCell className="whitespace-nowrap">
                     {(() => {
                       const normalized = normalizeClientWorkflowStatus(client.workflowStatus);
                       return (
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${clientWorkflowStatusTone[normalized] || 'bg-gray-100 text-gray-800'}`}>
+                        <Badge colorClassName={clientWorkflowStatusTone[normalized] || 'bg-gray-100 text-gray-800'}>
                           {clientWorkflowStatusLabels[normalized] || normalized}
-                        </span>
+                        </Badge>
                       );
                     })()}
-                  </td>
+                  </TableCell>
 
-
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                  <TableCell className="whitespace-nowrap">
                     {formatDate(client.screeningCompletedDate)}
-                  </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatDate(client.screeningUpdatedAt)}</td>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{formatDate(client.screeningUpdatedAt)}</TableCell>
 
-                  <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                  <TableCell align="right" className="whitespace-nowrap">
                     <div className="flex justify-end gap-2">
                       <div title="View Details">
                         <button
@@ -300,96 +312,67 @@ const ScreeningClientsGrid: React.FC = () => {
                         </button>
                       </div>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredClients.length === 0 && !isLoading && (
-          <div className="text-center py-12">
-            <Icon icon={User} className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No screening clients</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {filterStatus === 'all' ?
-                'Get started by adding a new screening client.' :
-                `No clients found with status "${filterStatus}".`
-              }
-            </p>
-          </div>
+            </TableBody>
+          </Table>
         )}
-      </div>
+      </Card>
 
       {/* Summary Stats */}
       {screeningClients.length > 0 && (
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Icon icon={User} className="h-6 w-6 text-gray-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total</dt>
-                    <dd className="text-lg font-medium text-gray-900">{screeningClients.length}</dd>
-                  </dl>
-                </div>
+          <Card>
+            <div className="flex items-center">
+              <Icon icon={User} className="h-6 w-6 shrink-0 text-gray-400" />
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Total</dt>
+                  <dd className="text-lg font-medium text-gray-900">{screeningClients.length}</dd>
+                </dl>
               </div>
             </div>
-          </div>
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Icon icon={User} className="h-6 w-6 text-yellow-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">In Progress</dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'screening_scheduled').length}
-                    </dd>
-                  </dl>
-                </div>
+          </Card>
+          <Card>
+            <div className="flex items-center">
+              <Icon icon={User} className="h-6 w-6 shrink-0 text-yellow-400" />
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">In Progress</dt>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'screening_scheduled').length}
+                  </dd>
+                </dl>
               </div>
             </div>
-          </div>
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Icon icon={User} className="h-6 w-6 text-green-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Approved</dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'screened_accepted').length}
-                    </dd>
-                  </dl>
-                </div>
+          </Card>
+          <Card>
+            <div className="flex items-center">
+              <Icon icon={User} className="h-6 w-6 shrink-0 text-green-400" />
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Approved</dt>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'screened_accepted').length}
+                  </dd>
+                </dl>
               </div>
             </div>
-          </div>
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Icon icon={User} className="h-6 w-6 text-blue-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Converted</dt>
-                    <dd className="text-lg font-medium text-gray-900">
-                      {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'retreat_completed').length}
-                    </dd>
-                  </dl>
-                </div>
+          </Card>
+          <Card>
+            <div className="flex items-center">
+              <Icon icon={User} className="h-6 w-6 shrink-0 text-blue-400" />
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Converted</dt>
+                  <dd className="text-lg font-medium text-gray-900">
+                    {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'retreat_completed').length}
+                  </dd>
+                </dl>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

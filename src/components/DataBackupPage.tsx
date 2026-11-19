@@ -2,6 +2,8 @@ import { AlertTriangle, CheckCircle, Download as DownloadIcon, Loader, RefreshCw
 import React, { useEffect, useState } from 'react';
 import { backupsApi } from '../services/api';
 import DevelopmentRefreshPanel from './DevelopmentRefreshPanel';
+import AppleButton from './AppleButton';
+import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, EmptyState } from './ui';
 
 const RESTORE_CONFIRMATION = 'RESTORE_PROVIDER_PLUS';
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => (
@@ -297,7 +299,7 @@ const DataBackupPage: React.FC = () => {
         </div>
       )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5">
         <h2 className="text-lg font-semibold text-gray-900">S3 Settings</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <label className="block text-sm font-medium text-gray-700">
@@ -320,20 +322,20 @@ const DataBackupPage: React.FC = () => {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5">
           <h2 className="text-lg font-semibold text-gray-900">Create Backup</h2>
           <p className="mt-1 text-sm text-gray-600">Local download or upload directly to S3. S3 uses server-side AES256 encryption.</p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <button onClick={downloadLocalExport} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+            <AppleButton variant="secondary" onClick={downloadLocalExport} disabled={!!busy}>
               <Icon icon={DownloadIcon} /> Download JSON
-            </button>
-            <button onClick={exportToS3} disabled={!!busy} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60">
+            </AppleButton>
+            <AppleButton onClick={exportToS3} disabled={!!busy}>
               <Icon icon={UploadIcon} /> Upload Backup to S3
-            </button>
+            </AppleButton>
           </div>
         </section>
 
-        <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+        <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5">
           <h2 className="text-lg font-semibold text-gray-900">Restore Controls</h2>
           <p className="mt-1 text-sm text-gray-600">Dry run first. Restore replaces selected collections with backup contents.</p>
           <label className="mt-4 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={overrideEmails} onChange={(e) => setOverrideEmails(e.target.checked)} />Override email fields during import</label>
@@ -346,54 +348,63 @@ const DataBackupPage: React.FC = () => {
         </section>
       </div>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Available S3 Restore Files</h2>
             <p className="text-sm text-gray-600">Select a backup from the configured bucket, or point to another bucket/prefix.</p>
           </div>
-          <button onClick={loadS3Files} disabled={busy === 's3-list'} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+          <AppleButton variant="secondary" onClick={loadS3Files} disabled={busy === 's3-list'}>
             <Icon icon={RefreshCw} /> Refresh
-          </button>
+          </AppleButton>
         </div>
-        <div className="mt-4 overflow-auto rounded-md border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50"><tr><th className="px-3 py-2 text-left">File</th><th className="px-3 py-2 text-left">Modified</th><th className="px-3 py-2 text-left">Size</th></tr></thead>
-            <tbody className="divide-y divide-gray-100">
-              {s3Files.map((file) => (
-                <tr key={file.key} onClick={() => setSelectedS3Key(file.key)} className={`cursor-pointer ${selectedS3Key === file.key ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                  <td className="px-3 py-2 font-mono text-xs">{file.key}</td>
-                  <td className="px-3 py-2">{file.lastModified ? new Date(file.lastModified).toLocaleString() : '-'}</td>
-                  <td className="px-3 py-2">{file.size ? `${Math.round(file.size / 1024)} KB` : '-'}</td>
-                </tr>
-              ))}
-              {s3Files.length === 0 && <tr><td colSpan={3} className="px-3 py-6 text-center text-gray-500">No S3 backup files found.</td></tr>}
-            </tbody>
-          </table>
+        <div className="mt-4 overflow-hidden rounded-apple-lg border border-apple-gray-200">
+          {s3Files.length === 0 ? (
+            <div className="p-5"><EmptyState title="No S3 backup files found." /></div>
+          ) : (
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>File</TableHeaderCell>
+                  <TableHeaderCell>Modified</TableHeaderCell>
+                  <TableHeaderCell>Size</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {s3Files.map((file) => (
+                  <TableRow key={file.key} onClick={() => setSelectedS3Key(file.key)} className={selectedS3Key === file.key ? 'bg-blue-50' : ''}>
+                    <TableCell className="font-mono text-xs">{file.key}</TableCell>
+                    <TableCell>{file.lastModified ? new Date(file.lastModified).toLocaleString() : '-'}</TableCell>
+                    <TableCell>{file.size ? `${Math.round(file.size / 1024)} KB` : '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={downloadSelectedS3File} disabled={!selectedS3Key || !!busy} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">Download Selected</button>
-          <button onClick={() => runS3Import(true)} disabled={!selectedS3Key || !!busy} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">
+          <AppleButton variant="secondary" onClick={downloadSelectedS3File} disabled={!selectedS3Key || !!busy}>Download Selected</AppleButton>
+          <AppleButton variant="secondary" onClick={() => runS3Import(true)} disabled={!selectedS3Key || !!busy}>
             {busy === 's3-dry-run' && <Icon icon={Loader} className="animate-spin" />}
             {busy === 's3-dry-run' ? 'Running dry run…' : 'Dry Run S3 Restore'}
-          </button>
-          <button onClick={() => runS3Import(false)} disabled={!selectedS3Key || !!busy || restoreConfirm !== RESTORE_CONFIRMATION} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">Restore From S3</button>
+          </AppleButton>
+          <AppleButton variant="danger" onClick={() => runS3Import(false)} disabled={!selectedS3Key || !!busy || restoreConfirm !== RESTORE_CONFIRMATION}>Restore From S3</AppleButton>
         </div>
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5">
         <h2 className="text-lg font-semibold text-gray-900">Local File Restore</h2>
         <input type="file" accept="application/json,.json" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="mt-4 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={() => runLocalImport(true)} disabled={!selectedFile || !!busy} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">
+          <AppleButton variant="secondary" onClick={() => runLocalImport(true)} disabled={!selectedFile || !!busy}>
             {busy === 'local-dry-run' && <Icon icon={Loader} className="animate-spin" />}
             {busy === 'local-dry-run' ? 'Running dry run…' : 'Dry Run Local Restore'}
-          </button>
-          <button onClick={() => runLocalImport(false)} disabled={!selectedFile || !!busy || restoreConfirm !== RESTORE_CONFIRMATION} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">Restore Local File</button>
+          </AppleButton>
+          <AppleButton variant="danger" onClick={() => runLocalImport(false)} disabled={!selectedFile || !!busy || restoreConfirm !== RESTORE_CONFIRMATION}>Restore Local File</AppleButton>
         </div>
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5">
         <h2 className="text-lg font-semibold text-gray-900">Advanced</h2>
         <label className="mt-3 block text-sm font-medium text-gray-700">Collections
           <input value={collections} onChange={(e) => setCollections(e.target.value)} placeholder="Optional comma-separated list, for example clients,retreatclients" className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
@@ -402,28 +413,40 @@ const DataBackupPage: React.FC = () => {
 
       {result && <section className="rounded-lg border border-gray-200 bg-gray-950 p-5 text-sm text-gray-100 shadow-sm"><pre className="overflow-auto whitespace-pre-wrap">{JSON.stringify(result, null, 2)}</pre></section>}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Backup / Restore Log</h2>
-          <button onClick={loadLogs} className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700">Refresh</button>
+          <AppleButton variant="secondary" size="sm" onClick={loadLogs}>Refresh</AppleButton>
         </div>
-        <div className="mt-4 overflow-auto rounded-md border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50"><tr><th className="px-3 py-2 text-left">When</th><th className="px-3 py-2 text-left">Action</th><th className="px-3 py-2 text-left">Status</th><th className="px-3 py-2 text-left">Actor</th><th className="px-3 py-2 text-left">Location</th><th className="px-3 py-2 text-left">Message</th></tr></thead>
-            <tbody className="divide-y divide-gray-100">
-              {logs.map((log) => (
-                <tr key={log._id}>
-                  <td className="px-3 py-2 whitespace-nowrap">{log.createdAt ? new Date(log.createdAt).toLocaleString() : '-'}</td>
-                  <td className="px-3 py-2">{log.action}</td>
-                  <td className="px-3 py-2">{log.status}</td>
-                  <td className="px-3 py-2">{log.actorEmail || '-'}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{log.storage === 's3' ? `${log.bucket || ''}/${log.key || ''}` : log.fileName || 'local'}</td>
-                  <td className="px-3 py-2">{log.message || '-'}</td>
-                </tr>
-              ))}
-              {logs.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-gray-500">No backup log entries yet.</td></tr>}
-            </tbody>
-          </table>
+        <div className="mt-4 overflow-hidden rounded-apple-lg border border-apple-gray-200">
+          {logs.length === 0 ? (
+            <div className="p-5"><EmptyState title="No backup log entries yet." /></div>
+          ) : (
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>When</TableHeaderCell>
+                  <TableHeaderCell>Action</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>Actor</TableHeaderCell>
+                  <TableHeaderCell>Location</TableHeaderCell>
+                  <TableHeaderCell>Message</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {logs.map((log) => (
+                  <TableRow key={log._id}>
+                    <TableCell className="whitespace-nowrap">{log.createdAt ? new Date(log.createdAt).toLocaleString() : '-'}</TableCell>
+                    <TableCell>{log.action}</TableCell>
+                    <TableCell>{log.status}</TableCell>
+                    <TableCell>{log.actorEmail || '-'}</TableCell>
+                    <TableCell className="font-mono text-xs">{log.storage === 's3' ? `${log.bucket || ''}/${log.key || ''}` : log.fileName || 'local'}</TableCell>
+                    <TableCell>{log.message || '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </section>
     </div>
