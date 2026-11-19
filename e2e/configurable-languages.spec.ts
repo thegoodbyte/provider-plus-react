@@ -82,7 +82,7 @@ test.describe("PPVC-896 real language settings", () => {
       client.language = code;
       await page.goto("/admin/languages");
       const row = page
-        .locator("div.grid")
+        .locator("div")
         .filter({ has: page.getByLabel("Name for " + code, { exact: true }) })
         .last();
       await row.getByRole("checkbox").uncheck();
