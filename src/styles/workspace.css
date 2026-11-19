@@ -111,13 +111,13 @@
   .workspace-page h1 { font-size:25px; }
   .workspace-page .retreat-register-page { padding:0!important; }
   .workspace-page .retreat-register-header { padding:20px 16px 14px; gap:12px; }
-  .workspace-page .retreat-register-heading { flex-basis:100%; }
+  .workspace-page .retreat-register-heading { flex:0 0 auto; width:100%; }
   .workspace-page .retreat-register-heading h1 { font-size:25px; }
   .workspace-page .retreat-register-heading p { font-size:12px; }
-  .workspace-page .retreat-register-tabs { display:flex!important; flex-basis:100%; }
+  .workspace-page .retreat-register-tabs { display:flex!important; flex:0 0 auto; width:100%; }
   .workspace-page .retreat-register-tabs :is(button,a) { font-size:11px; padding:8px 10px; }
-  .workspace-page .retreat-register-search { width:100%; flex:1 1 160px; min-width:0; }
-  .workspace-page .retreat-register-status-select { display:block; flex:1 1 100px; min-width:0; }
+  .workspace-page .retreat-register-search { width:100%; flex:0 0 auto; min-width:0; height:40px; }
+  .workspace-page .retreat-register-status-select { display:block; flex:0 0 auto; min-width:0; height:40px; }
   .workspace-page .retreat-register-primary-actions { margin-left:0; }
   .workspace-page .retreat-register-card { display:grid; grid-template-columns:1fr auto; gap:12px; min-height:0; margin:12px 0; border:1px solid var(--workspace-line); padding:16px; border-radius:12px; }
   .workspace-page .retreat-register-card::before { border-radius:12px 0 0 12px; }
@@ -248,3 +248,16 @@
 
 /* Keep the labelled duplication action readable in desktop rows and mobile cards. */
 .workspace-page .workspace-request-table td:last-child button[aria-label="Duplicate payment request"] { width:auto; min-width:110px; min-height:44px; height:auto; }
+
+/* Fit the complete retreat toolbar beside the expanded desktop sidebar.
+   Smaller widths keep the existing wrapping layout. */
+@media (min-width:1400px) {
+  .workspace-page .retreat-register-header { flex-wrap:nowrap; gap:8px; padding:16px; }
+  .workspace-page .retreat-register-heading { flex:0 1 170px; min-width:130px; }
+  .workspace-page .retreat-register-heading p { font-size:11px; line-height:1.35; }
+  .workspace-page .retreat-register-tabs { flex:0 0 auto; flex-wrap:nowrap; gap:3px; }
+  .workspace-page .retreat-register-tabs :is(button,a) { padding:9px; font-size:11px; white-space:nowrap; }
+  .workspace-page .retreat-register-search { flex:1 1 130px; width:130px; min-width:90px; }
+  .workspace-page .retreat-register-status-select { flex:0 0 110px; width:110px; }
+  .workspace-page .retreat-register-primary-actions { flex:0 0 auto; gap:6px; margin-left:0; }
+}

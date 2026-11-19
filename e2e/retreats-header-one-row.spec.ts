@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 for (const width of [1440, 768, 390]) {
   test(`retreat header layout and controls at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 1000 });
+    await page.clock.install({ time: new Date('2026-11-19T12:00:00Z') });
     let reads = 0;
     await page.route('**/*', route => {
       const request = route.request();
@@ -30,12 +31,15 @@ for (const width of [1440, 768, 390]) {
     await expect(status).toBeVisible();
     if (width > 720) {
       const before = reads;
+      // Refresh uses the existing one-minute read cache. Expire its clock
+      // without firing unrelated timers, then verify the original handler.
+      await page.clock.setSystemTime(new Date('2026-11-19T12:02:00Z'));
       await header.getByRole('button', { name: 'Refresh', exact: true }).click();
       await expect.poll(() => reads).toBeGreaterThan(before);
     } else await expect(header.getByRole('button', { name: 'Refresh', exact: true })).toBeHidden();
     await search.fill('HDR-PL');
     await expect(page.locator('.retreat-register-card')).toHaveCount(1);
-    await expect(page.locator('.retreat-register-card')).toContainText('Header Poland');
+    await expect(page.locator('.retreat-register-card')).toContainText('HDR-PL');
     await search.fill('');
     await status.selectOption('active');
     await expect(page.locator('.retreat-register-card')).toHaveCount(0);
@@ -54,6 +58,9 @@ for (const width of [1440, 768, 390]) {
     await expect(page.getByRole('heading', { name: 'Add New Retreat', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: info.outputPath('retreat-header.png'), fullPage: false });
+    expect((await search.boundingBox())!.height).toBeLessThanOrEqual(48);
+    expect((await status.boundingBox())!.height).toBeLessThanOrEqual(48);
     if (width === 1440) {
       const boxes = await header.locator(':scope > *').evaluateAll(nodes => nodes.map(node => {
         const box = node.getBoundingClientRect(); return { y: box.y, h: box.height };
@@ -61,6 +68,5 @@ for (const width of [1440, 768, 390]) {
       const centers = boxes.map(b => b.y + b.h / 2);
       expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(5);
     }
-    await page.screenshot({ path: info.outputPath('retreat-header.png'), fullPage: false });
   });
 }
