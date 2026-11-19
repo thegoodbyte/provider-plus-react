@@ -5,7 +5,8 @@ const fixture = JSON.parse(readFileSync(process.env.SCRATCHPAD_FIXTURE_PATH || '
 test.use({ screenshot:'only-on-failure', trace:'retain-on-failure' });
 for (const device of ['desktop','mobile']) test.describe(`Scratchpad ${device}`, () => {
   test.use({ viewport: device === 'mobile' ? {width:390,height:844} : {width:1365,height:1000}, timezoneId:'America/Los_Angeles' });
-  test.beforeEach(async ({page,baseURL}) => {
+  test.beforeEach(async ({page,baseURL,request}) => {
+  await request.post(fixture.url+'/fixture/reset');
     page.on('pageerror', error=>console.log('PAGE ERROR',error.stack));
     page.on('console', msg=>{if(msg.type()==='error')console.log('BROWSER ERROR',msg.text());});
     await page.addInitScript(({token})=>{localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',email:'scratchpad@example.invalid',role:'admin',firstName:'Synthetic',lastName:'Admin'}));},{token:fixture.token});
@@ -46,40 +47,41 @@ for (const device of ['desktop','mobile']) test.describe(`Scratchpad ${device}`,
     await page.getByLabel('Notes (optional)').fill('Synthetic edited note');
     await page.getByRole('button',{name:'Save receipt',exact:true}).click();
     await expect(page.getByRole('button',{name:'Edit receipt',exact:true})).toBeVisible();
-    await page.getByLabel('Reason for exclusion / restore').fill('Check a possible duplicate');
+
     page.once('dialog', d=>d.accept());
     await page.getByRole('button',{name:'Exclude receipt',exact:true}).click();
     await expect(page.getByRole('table')).toBeVisible();
-    await page.getByLabel('Receipt status').selectOption('excluded');
+    await page.getByRole('group',{name:'Receipt status',exact:true}).getByRole('button',{name:'Excluded',exact:true}).click();
     await page.getByRole('link',{name:`View receipt ${marker}`,exact:true}).click();
     await expect(page.getByRole('button',{name:'Restore receipt',exact:true})).toBeVisible();
-    await page.getByLabel('Reason for exclusion / restore').fill('Original transaction verified');
+
     page.once('dialog', d=>d.accept());
     await page.getByRole('button',{name:'Restore receipt',exact:true}).click();
     await expect(page.getByRole('table')).toBeVisible();
-    await page.getByLabel('Receipt status').selectOption('unassigned');
+    await page.getByRole('group',{name:'Receipt status',exact:true}).getByRole('button',{name:'Unassigned',exact:true}).click();
     await page.getByRole('link',{name:`View receipt ${marker}`,exact:true}).click();
     await page.getByRole('button',{name:'Payment from SP',exact:true}).click();
-    await expect(page.getByRole('dialog',{name:'Payment from SP'})).toBeVisible();
+    await expect(page.getByRole('dialog',{name:'Match scratchpad payment'})).toBeVisible();await page.getByRole('button',{name:'Advanced matching',exact:true}).click();
+    await page.getByRole('button',{name:'← Use a new payment instead',exact:true}).click();
     await page.getByLabel('Payment request (optional)',{exact:true}).selectOption(fixture.requestId);
     await expect(page.getByLabel('Reconciliation client')).toHaveValue('#1501 Synthetic Payer');
     await expect(page.getByLabel('I reviewed the receipt and selected relationships.')).toHaveCount(0);
     await page.getByRole('button',{name:'Create payment',exact:true}).click();
-    await expect(page.getByRole('table')).toBeVisible();
-    await page.getByLabel('Receipt status').selectOption('converted');
+    await expect(page.getByText('Reconciled receipt. Financial fields are locked.')).toBeVisible();await page.getByRole('button',{name:'Close details',exact:true}).click();await expect(page.getByRole('table')).toBeVisible();
+    await page.getByRole('group',{name:'Receipt status',exact:true}).getByRole('button',{name:'Converted / linked',exact:true}).click();
     await page.getByRole('link',{name:`View receipt ${marker}`,exact:true}).click();
     await expect(page.getByText('Reconciled receipt. Financial fields are locked.')).toBeVisible();
-    await expect(page.getByRole('link',{name:'View booking',exact:true})).toHaveAttribute('href',`/admin/bookings/${fixture.bookingId}`);
+    await expect(page.getByRole('link',{name:'View booking #1400',exact:true})).toHaveAttribute('href',`/admin/bookings/${fixture.bookingId}`);
     await page.getByText(/Receipt history/).click();
     await expect(page.getByText('Saved Notes: Synthetic edited note')).toBeVisible();
     await page.screenshot({path:`test-results/ppvc830-${device}.png`,fullPage:true});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole('button',{name:'Close details'}).click();
-    await page.getByLabel('Receipt status').selectOption('converted');
+    await page.getByRole('group',{name:'Receipt status',exact:true}).getByRole('button',{name:'Converted / linked',exact:true}).click();
     await expect(page.getByText('1 matching receipts',{exact:false})).toBeVisible();
     await page.reload();
     await page.getByLabel('Search payer, phone, transaction or request number').fill(marker);
-    await page.getByLabel('Receipt status').selectOption('converted');
+    await page.getByRole('group',{name:'Receipt status',exact:true}).getByRole('button',{name:'Converted / linked',exact:true}).click();
     await page.getByRole('link',{name:`View receipt ${marker}`,exact:true}).click();
     await expect(page.getByText('Reconciled receipt. Financial fields are locked.')).toBeVisible();
   });

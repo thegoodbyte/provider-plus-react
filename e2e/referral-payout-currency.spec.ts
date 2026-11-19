@@ -23,5 +23,6 @@ for(const width of [1440,390])test(`settings PIN reveal and read-only account vi
   if(path.endsWith('/portal-account')){if(req.method()==='PUT')provisions++;return json({email:'partner@example.test',active:true});}if(path==='/environment/status')return json({environment:'local',production:false,enabledJobs:[]});return json([]);
  });
  await page.goto(`/admin/referrals/${id}/edit`);await page.getByRole('button',{name:'Show PIN',exact:true}).click();await expect(page.getByText('654321',{exact:true})).toBeVisible();await page.screenshot({path:`../ppvc-816-validation/access-${width}.png`,fullPage:true});await page.getByRole('button',{name:'Hide PIN',exact:true}).click();await expect(page.getByText('654321',{exact:true})).toHaveCount(0);expect(reveals).toBe(1);
+ await page.context().route('http://localhost:4416/synthetic-read-only', route=>route.fulfill({contentType:'text/html',body:'<h1>Synthetic read-only portal boundary</h1>'}));
  const popupEvent=page.waitForEvent('popup');await page.getByRole('button',{name:'View referral portal (read-only)',exact:true}).click();const popup=await popupEvent;await expect(popup).toHaveURL(/synthetic-read-only/);expect(provisions).toBe(0);expect(await page.evaluate(()=>Boolean(localStorage.getItem('token')))).toBe(true);await popup.close();
 });

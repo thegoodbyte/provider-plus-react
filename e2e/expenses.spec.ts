@@ -104,16 +104,16 @@ test.describe('Expenses', () => {
   test('filters populated retreat expenses by retreat code', async ({ page }) => {
     await page.goto('/admin/expenses');
 
-    await expect(page.getByRole('heading', { name: 'Expense Management' })).toBeVisible();
-    await expect(page.getByText('BEN retreat supplies')).toBeVisible();
-    await expect(page.getByText('JNO retreat supplies')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Expenses' })).toBeVisible();
+    await expect(page.getByRole('cell', {name:'BEN retreat supplies',exact:true})).toBeVisible();
+    await expect(page.getByRole('cell', {name:'JNO retreat supplies',exact:true})).toBeVisible();
 
-    await page.locator('select').nth(1).selectOption('retreat-ben');
+    await page.getByPlaceholder('Search expenses',{exact:true}).fill('BEN-06-17-26');
 
     const rows = page.locator('tbody tr');
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText('BEN retreat supplies');
     await expect(rows.first()).toContainText('BEN-06-17-26');
-    await expect(page.getByText('JNO retreat supplies')).not.toBeVisible();
+    await expect(page.getByRole('cell', {name:'JNO retreat supplies',exact:true})).not.toBeVisible();
   });
 });

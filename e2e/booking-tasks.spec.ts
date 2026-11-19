@@ -131,8 +131,8 @@ test.describe('Booking tasks', () => {
     await expect(contextBanner.getByText('Booking', { exact: true })).toBeVisible();
     await expect(contextBanner.getByText('#1247')).toBeVisible();
 
-    await page.getByLabel('Task Name *').fill('Confirm arrival time');
-    await page.getByLabel('Description *').fill('Call client before check-in.');
+    await page.getByLabel('Task Name *', {exact:true}).fill('Confirm arrival time');
+    await page.getByLabel('Description (optional)', {exact:true}).fill('Call client before check-in.');
     await page.getByRole('button', { name: 'Create Task' }).click();
 
     await expect.poll(() => createdTaskPayload).toMatchObject({

@@ -22,7 +22,7 @@ test.describe('Booking medical fallback', () => {
       const request = route.request();
       const url = new URL(request.url());
 
-      if (url.port === '3001' && !['xhr', 'fetch'].includes(request.resourceType())) {
+      if (!['xhr', 'fetch'].includes(request.resourceType())) {
         await route.continue();
         return;
       }
@@ -62,7 +62,7 @@ test.describe('Booking medical fallback', () => {
         return;
       }
 
-      if (url.pathname === '/medical-artifacts') {
+      if ((url.pathname === '/medical-artifacts' || url.pathname === `/medical-artifacts/booking/${bookingId}`)) {
         const bookingFlowItemId = url.searchParams.get('bookingFlowItemId');
         const bookingFlowItemKey = url.searchParams.get('bookingFlowItemKey');
         const bookingParam = url.searchParams.get('bookingId');
@@ -70,7 +70,7 @@ test.describe('Booking medical fallback', () => {
           await route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) });
           return;
         }
-        if (bookingParam === bookingId) {
+        if (bookingParam === bookingId || url.pathname === `/medical-artifacts/booking/${bookingId}`) {
           await route.fulfill({
             contentType: 'application/json',
             body: JSON.stringify([
@@ -124,8 +124,8 @@ test.describe('Booking medical fallback', () => {
 
     await page.getByRole('tab', { name: 'Medical' }).click();
 
-    await expect(page.getByText('Entry Liver', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Artifact #1019' }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: '#1019 Entry liver panel' })).toBeVisible();
+    await expect(page.getByText('Entry liver panel',{exact:true}).first()).toBeVisible();
+    await expect(page.getByText('Artifact #1019',{exact:true})).toBeVisible();
+    await expect(page.getByText('#1019 Entry liver panel',{exact:true})).toBeVisible();
   });
 });

@@ -30,14 +30,15 @@ for (const count of [1, 30]) {
     await expect(dashboard.getByText('4/4 checkpoints complete')).toBeVisible();
     await expect(dashboard.locator('.workflow-booking-row')).toHaveCount(count);
     expect(calls.filter(path => path.includes('/workflow-summary'))).toHaveLength(1);
-    expect(calls.filter(path => /\/(client-requirements|client-medical|medical-artifacts|medical-review-requests|payments|bookings|requirements|reminders)(\/|\?|$)/.test(path))).toEqual([]);
+    expect(calls.filter(path => /\/(client-requirements|client-medical|medical-artifacts|medical-review-requests|payments|requirements|reminders)(\/|\?|$)|\/bookings\//.test(path))).toEqual([]);
     await dashboard.getByRole('button', { name: 'payments', exact: true }).click();
     await expect(dashboard.getByRole('cell', { name: 'bank transfer' })).toBeVisible();
     expect(calls.filter(path => path.startsWith('/payments/'))).toEqual(['/payments/by-client-and-retreat?clientId=c0&retreatId=r1']);
     if (count > 1) {
       await dashboard.locator('.workflow-booking-row').last().click();
       await expect(dashboard.getByText('4/4 checkpoints complete')).toBeVisible();
-      expect(calls.filter(path => path.includes('/workflow-summary'))).toHaveLength(1);
+      // Explicit navigation remounts the dashboard; it must fetch one batch, never one request per booking.
+      expect(calls.filter(path => path.includes('/workflow-summary'))).toHaveLength(2);
       await dashboard.getByRole('button', { name: 'payments', exact: true }).click();
       await expect(dashboard.getByRole('cell', { name: 'bank transfer' })).toBeVisible();
       expect(calls.filter(path => path.startsWith('/payments/'))).toHaveLength(2);

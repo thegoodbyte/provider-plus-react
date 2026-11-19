@@ -35,7 +35,7 @@ async function mockBooking(page: Page, failInitially = false) {
 test('next action opens its control and readiness updates after completing it', async ({ page }) => {
   await mockBooking(page);
   await page.goto(`/admin/bookings/${bookingId}`);
-  const summary = page.getByRole('region', { name: 'Booking readiness and next action' });
+  const summary = page.getByRole('region', { name: 'Booking readiness' });
   await expect(summary.getByRole('status')).toHaveText('Blocked');
   await expect(summary).toContainText('Reception');
   await summary.getByRole('button', { name: 'Open booking step: Call client' }).click();
@@ -44,6 +44,7 @@ test('next action opens its control and readiness updates after completing it', 
   await page.getByRole('button', { name: 'Edit steps & deadlines', exact: true }).click();
   await step.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Save changes', exact: true }).first().click();
+  await page.getByRole('tab', {name: 'Overview', exact: true}).click();
   await expect(summary.getByRole('status')).toHaveText('Ready');
   await expect(summary).toContainText('1 of 1 steps complete');
 });
@@ -52,7 +53,7 @@ test('failed readiness is explicit and retry recovers on mobile', async ({ page 
   await page.setViewportSize({ width: 390, height: 844 });
   const mock = await mockBooking(page, true);
   await page.goto(`/admin/bookings/${bookingId}`);
-  const summary = page.getByRole('region', { name: 'Booking readiness and next action' });
+  const summary = page.getByRole('region', { name: 'Booking readiness' });
   await expect(summary.getByRole('status')).toHaveText('Readiness unknown');
   await expect(summary.getByRole('alert')).toContainText('Unable to load readiness');
   mock.recover();

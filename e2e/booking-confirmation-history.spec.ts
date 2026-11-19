@@ -93,6 +93,12 @@ test.describe('Booking confirmation history', () => {
         return;
       }
 
+      if (url.pathname === `/bookings/${bookingId}/activity`) {
+        return route.fulfill({json: [
+          {id:'history-1',type:'email',title:'Booking confirmation · Iteration 1',description:'Original booking confirmation · Email #1001 · BEN-09-22-26 · Payment request #1179',occurredAt:'2026-06-24T10:00:00Z'},
+          {id:'history-2',type:'email',title:'Booking confirmation · Iteration 2',description:'Date change · Email #1008 · BEN-10-01-26 · Payment request #1181',occurredAt:'2026-06-25T12:30:00Z'},
+        ]});
+      }
       if (url.pathname.startsWith('/booking-flow/') || url.pathname === '/booking-flow/items') {
         await route.fulfill({ contentType: 'application/json', body: JSON.stringify([]) });
         return;
@@ -117,17 +123,14 @@ test.describe('Booking confirmation history', () => {
     await page.goto(`/admin/bookings/${bookingId}`);
     await expect(page.getByRole('heading', { name: /Booking #1247/i })).toBeVisible();
 
-    const historySection = page.locator('.booking-confirm-history');
-    const latestHistoryEntry = historySection.locator('.booking-confirm-history-entry').filter({ hasText: 'Iteration 2' });
-    await expect(page.getByRole('heading', { name: 'Booking Confirmation History' })).toBeVisible();
-    await expect(page.getByText('2 iterations')).toBeVisible();
-    await expect(historySection.getByText('Original booking confirmation')).toBeVisible();
-    await expect(latestHistoryEntry.getByText('Date change')).toBeVisible();
-    await expect(latestHistoryEntry.getByText('Email #1008')).toBeVisible();
-    await expect(latestHistoryEntry.getByText('BEN-10-01-26')).toBeVisible();
-    await expect(latestHistoryEntry.getByText('Payment request #1181')).toBeVisible();
+    await page.getByRole('tab', {name:'Activity',exact:true}).click();
+    const historySection=page.getByRole('region',{name:'Booking activity timeline'});
+    await expect(historySection.getByText('Booking confirmation · Iteration 1',{exact:true})).toBeVisible();
+    await expect(historySection.getByText('Booking confirmation · Iteration 2',{exact:true})).toBeVisible();
+    await expect(historySection).toContainText('Original booking confirmation');
+    await expect(historySection).toContainText('Date change · Email #1008 · BEN-10-01-26 · Payment request #1181');
 
-    await page.getByLabel('More booking actions').click();
+    await page.locator('summary').filter({hasText:/^More$/}).click();
     await page.getByRole('button', { name: 'Send email with PDF attachment' }).click();
     const dialog = page.getByRole('dialog', { name: 'Send booking confirmation?' });
     await expect(dialog).toBeVisible();

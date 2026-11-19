@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-const client = { _id: 'c1', firstName: 'Synthetic', lastName: 'Guest', email: 'original@example.invalid', phone: '+420777123456', status: 'active', language: 'EN', country: 'CZ' };
+const client = { _id: '507f1f77bcf86cd799439901', firstName: 'Synthetic', lastName: 'Guest', email: 'original@example.invalid', phone: '+420777123456', status: 'active', language: 'EN', country: 'CZ' };
 const retreat = { _id: 'r1', name: 'Test retreat', startDate: '2026-11-01', endDate: '2026-11-08', capacity: 20, status: 'active' };
-const fixture = (kind: string) => `/e2e/fixtures/feedback.html?case=${kind}`;
+const fixture = (kind: string) => `${process.env.PLAYWRIGHT_FIXTURE_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000'}/e2e/fixtures/feedback.html?case=${kind}`;
 for (const width of [1440, 390]) {
  test(`client editors, user feedback and retained drafts at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 1000 });
@@ -10,9 +10,9 @@ for (const width of [1440, 390]) {
   await page.route('**/*', async route => {
    const request = route.request(); if (!['xhr', 'fetch'].includes(request.resourceType())) return route.continue();
    const url = new URL(request.url()), method = request.method();
-   const json = (value: any, status = 200) => route.fulfill({ status, json: value, headers: { 'Access-Control-Allow-Origin': 'http://localhost:4376', 'Access-Control-Allow-Credentials': 'true' } });
-   if (url.pathname === '/clients/c1' && method === 'PATCH') { patches++; return json({ message: 'Email taken@example.invalid is already registered.' }, 400); }
-   if (url.pathname === '/clients/c1') return json(client);
+   const json = (value: any, status = 200) => route.fulfill({ status, json: value });
+   if (url.pathname === '/clients/507f1f77bcf86cd799439901' && method === 'PATCH') { patches++; return json({ message: 'Email taken@example.invalid is already registered.' }, 400); }
+   if (url.pathname === '/clients/507f1f77bcf86cd799439901') return json(client);
    if (url.pathname === '/clients' || url.pathname === '/clients/booking-options') return json([client]);
    if (url.pathname === '/users' && method === 'POST') return json({ message: 'Email taken@example.invalid is already registered.' }, 400);
    if (url.pathname.endsWith('/reset-password')) return json({});
@@ -20,7 +20,7 @@ for (const width of [1440, 390]) {
    if (url.pathname === '/environment/status') return json({ environment: 'local', production: false, enabledJobs: [] });
    return json([]);
   });
-  await page.goto('/admin/clients/c1/edit');
+  await page.goto('/admin/clients/507f1f77bcf86cd799439901/edit');
   await page.getByLabel(/^Email/).fill('taken@example.invalid');
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Duplicate email' })).toHaveText('Duplicate email');
@@ -51,9 +51,10 @@ for (const width of [1440, 390]) {
   page.on('dialog', async dialog => dialog.accept());
   await page.route('**/*', async route => {
    const req = route.request(); if (!['xhr', 'fetch'].includes(req.resourceType())) return route.continue();
-   const url = new URL(req.url()), method = req.method(); const json = (value: any, status = 200) => route.fulfill({ status, json: value, headers: { 'Access-Control-Allow-Origin': 'http://localhost:4376', 'Access-Control-Allow-Credentials': 'true' } });
+   const url = new URL(req.url()), method = req.method(); const json = (value: any, status = 200) => route.fulfill({ status, json: value });
    if (url.pathname === '/test-loading') return json({ message: 'MongoServerError secret' }, 503);
    if (url.pathname === '/clients' || url.pathname === '/clients/booking-options') return json([client]);
+   if (url.pathname === '/room-inventory/options') return json([{key:'shared',active:true,labels:{en:'Shared'},occupancy:'shared',legacyRoomType:'shared'}]);
    if (url.pathname === '/retreats') return json([retreat]);
    if (url.pathname === '/bookings/booking-number-available') return json({ available: true });
    if (url.pathname === '/bookings/next-booking-number') return json(1202);

@@ -12,7 +12,7 @@ for (const width of [1440,390]) for (const language of ['en','cz','pl']) {
   await page.route('**/*', async route => {
    if (!['xhr','fetch'].includes(route.request().resourceType())) return route.continue();
    const url = new URL(route.request().url());
-   const reply = (data: any) => route.fulfill({ json: data, headers: { 'Access-Control-Allow-Origin': baseURL!, 'Access-Control-Allow-Credentials': 'true' } });
+   const reply = (data: any) => route.fulfill({ json: data });
    if (url.pathname === '/communications/templates') return reply(defaults.map((item: any) => ({ ...item, _id: item.language })));
    if (url.pathname === '/communications/settings') return reply({ senderName: 'Test team', senderEmail: 'team@example.test', autoCcEnabled: false });
    if (url.pathname === '/communications/preview') {
@@ -29,7 +29,7 @@ for (const width of [1440,390]) for (const language of ['en','cz','pl']) {
    }
    return reply([]);
   });
-  await page.goto(`/e2e/fixtures/forms-invitation.html?language=${language}`);
+  await page.goto(`${process.env.PLAYWRIGHT_FIXTURE_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000'}/e2e/fixtures/forms-invitation.html?language=${language}`);
   await page.getByRole('button', { name: 'Send forms invitation', exact: true }).click();
   const body = page.locator('textarea').first();
   await expect(body).toHaveValue(interpolate(defaults.find((item: any) => item.language === language).bodyText));

@@ -1,4 +1,5 @@
 import ClientContactCard from './ClientContactCard';
+import ClientTagsPanel from './ClientTagsPanel';
 import { Activity, AlertCircle, ArrowLeft, Bell, Calendar, Camera, CheckSquare, DollarSign, Edit2, ExternalLink, Eye, EyeOff, FileText, Heart as HeartIcon, Mail, MapPin, MessageSquare, Plus, Trash2, User } from 'lucide-react';
 import EkgRequirementStatus from './EkgRequirementStatus';
 import ScreeningPdfViewer from './ScreeningPdfViewer';
@@ -1078,6 +1079,7 @@ const ClientDetailsPage: React.FC = () => {
       {/* Tab Content */}
       <Card>
         {activeTab === 'integration' && canManageIntegration && <IntegrationCalls clientId={clientId} />}
+        {activeTab === 'overview' && <ClientTagsPanel client={client} onSaved={setClient} />}
         {activeTab === 'overview' && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Personal Information</h2>

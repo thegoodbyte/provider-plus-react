@@ -104,13 +104,14 @@ test.describe('Booking step tag configuration', () => {
     });
 
     await page.goto('/admin/retreat-flow-library');
-    await expect(page.getByRole('heading', { name: /Booking Step Setup/i })).toBeVisible();
-    await expect(page.getByLabel('Client tag on complete')).toHaveValue('medically-approved');
+    await expect(page.getByRole('heading', { name: /Booking Step Library/i })).toBeVisible();
+    await page.getByRole('tab', { name: 'Flags & colour', exact: true }).click();
+    await expect(page.getByLabel('Client tag on complete').filter({visible:true})).toHaveValue('medically-approved');
 
-    await page.getByLabel('Client tag on complete').fill('medical-approved');
+    await page.getByLabel('Client tag on complete').filter({visible:true}).fill('medical-approved');
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect.poll(() => patchPayload?.clientTagOnComplete).toBe('medical-approved');
-    await expect(page.getByLabel('Client tag on complete')).toHaveValue('medical-approved');
+    await expect(page.getByLabel('Client tag on complete').filter({visible:true})).toHaveValue('medical-approved');
   });
 });

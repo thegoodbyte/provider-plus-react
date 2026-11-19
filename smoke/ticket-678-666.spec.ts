@@ -47,7 +47,7 @@ test('morning digest is reachable in Settings, saves, and previews without sendi
   const sends: string[] = [];
   page.on('request', request => { if (request.method() === 'POST' && /send|process/.test(request.url())) sends.push(request.url()); });
   await page.goto(`/admin/clients/${clientId}`);
-  await page.getByRole('button', { name: 'Settings', exact: true }).first().click();
+  await page.getByTitle('Account and tools',{exact:true}).click();await page.getByRole('button',{name:'Currency converter',exact:true}).click();
   await page.getByRole('button', { name: 'Morning digest', exact: true }).click();
   await page.getByLabel('Enable daily digest').check();
   await page.getByLabel('Recipients', { exact: true }).fill('ops@example.invalid, second@example.invalid');

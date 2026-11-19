@@ -18,7 +18,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.route('**/*', async route => {
       const request = route.request(); const url = new URL(request.url());
       if (url.origin === new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin) return route.continue();
-      const json = (value: any, status = 200) => route.fulfill({ status, json: url.pathname === '/referrals/report/pages' ? { rows: value, nextCursor: null, asOf: '507f1f77bcf86cd799439999' } : value, headers: { 'Access-Control-Allow-Origin': 'http://localhost:3000', 'Access-Control-Allow-Credentials': 'true' } });
+      const json = (value: any, status = 200) => route.fulfill({ status, json: url.pathname === '/referrals/report/pages' ? { rows: value, nextCursor: null, asOf: '507f1f77bcf86cd799439999' } : value });
       if (url.pathname === '/environment/status') return json({ environment: 'development', production: false, enabledJobs: [] });
       if (url.pathname === '/referrals' && request.method() === 'GET') return json(partners);
       if (url.pathname === '/referrals/report/pages') return json(report);
@@ -56,7 +56,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.getByRole('link', { name: 'View commissions', exact: true }).click();
     await expect(page).toHaveURL(/\/referrals\/commissions\?referralId=r1$/);
     await expect(page.getByLabel('Filter by referral')).toHaveValue('r1');
-    await expect(page.getByText('Summer partnership', { exact: true })).toBeVisible();
+    await expect(page.getByText('Summer partnership', { exact: true }).filter({visible:true})).toBeVisible();
     await expect(page.getByRole('form')).toHaveCount(0);
     await page.reload();
     await expect(page.getByLabel('Filter by referral')).toHaveValue('r1');
@@ -70,7 +70,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
     await page.getByRole('link', { name: 'Edit Alchemia Dobrostanu' }).click();
     await expect(page).toHaveURL(/\/referrals\/r1\/edit$/);
     await expect(page.getByLabel('Partner name')).toHaveValue('Alchemia Dobrostanu');
-    await expect(page.getByRole('heading', { name: 'Referral portal access' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Referral portal access' })).toBeVisible();
     await expect(page.getByRole('table')).toHaveCount(0);
     await page.getByLabel('Contact phone').fill('+420 777 123 456');
     failSave = true;

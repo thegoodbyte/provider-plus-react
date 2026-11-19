@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 const fixture = JSON.parse(readFileSync(process.env.SCRATCHPAD_FIXTURE_PATH || '/tmp/ppvc858-fixture.json', 'utf8'));
 for (const viewport of [{width:1365,height:1000},{width:390,height:844}]) test(`optional scratchpad fields and request/client matching at ${viewport.width}px`, async ({page,baseURL,request}) => {
+  await request.post(fixture.url+'/fixture/reset');
   await page.setViewportSize(viewport);
   await page.addInitScript(({token}) => { localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'fixture',role:'admin',email:'scratchpad@example.invalid'})); },{token:fixture.token});
   await page.route('**/*',async route => {
@@ -29,20 +30,20 @@ for (const viewport of [{width:1365,height:1000},{width:390,height:844}]) test(`
   await page.getByRole('button',{name:'Save receipt',exact:true}).click();
   await expect(page.getByRole('region',{name:'Receipt details'})).toContainText('+1 212 555 0100');
   await page.getByRole('button',{name:'Payment from SP',exact:true}).click();
-  await page.getByLabel('Search payment request number or client').fill('001243');
-  await expect(page.getByRole('option',{name:/#1243 · Synthetic Payer/})).toHaveCount(1);
-  await page.getByLabel('Payment request (optional)').selectOption(fixture.requestId);
+  await page.getByRole('button',{name:'Advanced matching',exact:true}).click();await page.getByLabel('Search payment request number or client').fill('001243');
+  await expect(page.getByRole('option',{name:/#1243.*Synthetic Payer/})).toHaveCount(1);
+  await page.getByLabel('Payment request (optional)',{exact:true}).selectOption(fixture.requestId);
   await expect(page.getByPlaceholder('Search clients by name or number...')).toHaveValue(/Synthetic Payer/);
   await expect(page.getByRole('button',{name:'Create payment',exact:true})).toBeEnabled();
   const headers={Authorization:`Bearer ${fixture.token}`};
   const before=await (await request.get(`${fixture.url}/payment-scratchpad/${id}`,{headers})).json();expect(before.status).toBe('unassigned');
   await page.getByLabel('Search payment request number or client').fill('Synthetic Payer');
-  await expect(page.getByRole('option',{name:/#1243 · Synthetic Payer/})).toHaveCount(1);
+  await expect(page.getByRole('option',{name:/#1243.*Synthetic Payer/})).toHaveCount(1);
   await expect(page.getByLabel('I reviewed the receipt and selected relationships.')).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Create payment',exact:true})).toBeEnabled();
   await page.getByRole('dialog').screenshot({path:`test-results/ppvc858-${viewport.width}-matching.png`});
   await page.getByRole('button',{name:'Create payment',exact:true}).click();
-  await expect(page.getByRole('table')).toBeVisible();
+  await expect(page.getByText('Reconciled receipt. Financial fields are locked.')).toBeVisible();
   const after=await (await request.get(`${fixture.url}/payment-scratchpad/${id}`,{headers})).json();
   expect(after.status).toBe('converted');expect(after.phone).toBe('+1 212 555 0100');expect(after.account).toBe('');expect(after.externalId).toBe('');
   expect(after.payment.clientId).toBe(fixture.clientId);expect(after.payment.paymentRequestId).toBe(fixture.requestId);

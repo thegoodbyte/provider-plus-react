@@ -17,6 +17,6 @@ for(const width of [1440,390]){
  });
  for(const [language,title]of [['en','Invoice cancelled'],['cz','Faktura stornována'],['pl','Faktura anulowana']])test(`cancelled portal ${language}/${width} offers contact instead of payments`,async({page})=>{
   await page.setViewportSize({width,height:1000});await page.route('**/*',async route=>{if(!['xhr','fetch'].includes(route.request().resourceType()))return route.continue();expect(route.request().method()).toBe('GET');return route.fulfill({json:{booking:{currency:'EUR'},paymentRequests:[{...request,status:'cancelled',cancellationReason:'Client did not pay'}]}});});
-  await page.goto(`http://localhost:4400/e2e/fixtures/cancelled-payment.html?lang=${language}`);await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();await expect(page.locator('.portal-payment-methods')).toHaveCount(0);await expect(page.getByRole('link',{name:'info@ibogaspirit.cz',exact:true})).toBeVisible();await page.screenshot({path:`../storno-portal-${language}-${width}.png`,fullPage:true});
+  await page.goto(`${process.env.CLIENT_PORTAL_FIXTURE_BASE_URL || 'http://localhost:4400'}/e2e/fixtures/cancelled-payment.html?lang=${language}`);await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();await expect(page.locator('.portal-payment-methods')).toHaveCount(0);await expect(page.getByRole('link',{name:'info@ibogaspirit.cz',exact:true})).toBeVisible();await page.screenshot({path:`../storno-portal-${language}-${width}.png`,fullPage:true});
  });
 }

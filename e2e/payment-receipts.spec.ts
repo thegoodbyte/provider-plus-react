@@ -5,9 +5,10 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', error => console.log('PAGE ERROR:', error.message));
   page.on('console', message => { if (message.type() === 'error') console.log('CONSOLE ERROR:', message.text()); });
   await page.addInitScript(() => { localStorage.setItem('token', 'receipt-test-staff'); localStorage.setItem('user', JSON.stringify({ id: 'staff', email: 'staff@example.invalid', role: 'admin' })); });
-  await page.route('**/*', route => {
+  await page.route('**/*', async route => {
     const url = new URL(route.request().url());
-    if (url.port === '4390' || url.pathname.startsWith('/payments/receipts') || url.pathname === '/fixture') return route.continue();
+    if (!['xhr','fetch'].includes(route.request().resourceType())) return route.continue();
+    if (url.pathname.startsWith('/payments/receipts') || url.pathname === '/fixture') { const response=await route.fetch({url:'http://127.0.0.1:4391'+url.pathname+url.search});return route.fulfill({response,headers:{...response.headers(),'access-control-allow-origin':new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin,'access-control-allow-credentials':'true'}}); }
     // Unrelated shell data is synthetic. Receipt APIs are never intercepted.
     if (url.pathname === '/environment/status') return route.fulfill({ json: { environment: 'test', outboundMode: 'capture', enabledJobs: [] } });
     if (url.pathname === '/assistant/tasks-for-today') return route.fulfill({ json: { tasks: [], retreats: [] } });
