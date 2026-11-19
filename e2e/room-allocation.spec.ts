@@ -95,7 +95,14 @@ test('shows vacant slots, saves selected names and photos, and excludes allocate
  await page.getByRole('combobox',{name:'Room 2 Private room guest'}).click();await expect(page.getByRole('option',{name:/Bob Shared/})).toHaveCount(0);
  await page.keyboard.press('Escape');await page.getByRole('button',{name:'Cancel',exact:true}).click();
  await release(page,'Room 1 Shared bed 1','Bob Shared');await expect(slot.getByText('Vacant',{exact:true})).toBeVisible();
- await chooseGuest(page,'Room 2 Private room guest','Bob Shared');await save(page,'Room 2 Private room');await page.reload();await expect(page.getByLabel('Room 2 Private room slot').getByText('Bob Shared',{exact:true})).toBeVisible();
+ await chooseGuest(page,'Room 2 Private room guest','Bob Shared');await save(page,'Room 2 Private room');
+ // A document load does not mean the separately requested allocation board loaded.
+ // Await the actual read-back before asserting its saved guest, without retries.
+ await Promise.all([
+  page.waitForResponse(response => response.request().method() === 'GET' && new URL(response.url()).pathname === `/retreats/${retreatId}/room-allocation` && response.status() === 200),
+  page.reload(),
+ ]);
+ await expect(page.getByLabel('Room 2 Private room slot').getByText('Bob Shared',{exact:true})).toBeVisible();
 });
 test('Cancel discards a guest selection and removal without saving',async({page,baseURL})=>{
  const api=await mockApi(page,baseURL!);await page.goto(`/admin/retreats/${retreatId}/rooms`);
