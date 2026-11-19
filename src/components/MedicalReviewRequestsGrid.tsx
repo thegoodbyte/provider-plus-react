@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
+import { Badge } from './ui';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -946,7 +947,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const renderReviewRow = (request: EnrichedReviewRequest, packet?: MedicalReviewGroup) => <MedicalReviewListRow
     requestId={<button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="text-sm font-semibold text-blue-700 hover:underline">#{request.display_id || '—'}</button>}
     client={clientCell(request)} retreat={request.retreatName} type={<MedicalReviewTypeBadge requestType={request.requestType} />}
-    status={<span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}><Icon icon={statusIcon[request.status] || Clock} className="h-3.5 w-3.5" />{String(request.status || 'unknown').replace(/_/g, ' ')}</span>}
+    status={<Badge colorClassName={statusClass[request.status] || 'bg-gray-100 text-gray-700'}><Icon icon={statusIcon[request.status] || Clock} className="h-3.5 w-3.5" />{String(request.status || 'unknown').replace(/_/g, ' ')}</Badge>}
     details={<>
       <div><dt>Stage · attempt</dt><dd>{String(request.documentStage || '—').replace(/_/g, ' ')} · {request.attemptNumber || 1}</dd></div>
       <div><dt>Created</dt><dd>{formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</dd></div>
@@ -1529,8 +1530,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             <td data-label="Answered date" className="px-4 py-2">{request.whatsappRespondedAt ? formatMedicalReviewCreatedAt(request.whatsappRespondedAt) : '—'}</td>
                             <td data-label="Result" className="px-4 py-2">
                               {request.whatsappStatus === 'responded'
-                                ? <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass[normalizeReviewStatus(request.status)] || 'bg-gray-100 text-gray-700'}`}>{whatsappDecisionLabels[request.whatsappDecision || ''] || request.whatsappDecision || '—'}</span>
-                                : <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Awaiting answer</span>}
+                                ? <Badge colorClassName={statusClass[normalizeReviewStatus(request.status)] || 'bg-gray-100 text-gray-700'}>{whatsappDecisionLabels[request.whatsappDecision || ''] || request.whatsappDecision || '—'}</Badge>
+                                : <Badge colorClassName="bg-blue-100 text-blue-800">Awaiting answer</Badge>}
                             </td>
                             <td data-label="Note" className="max-w-[280px] truncate px-4 py-2 text-gray-600" title={displayWhatsappReviewNotes(request)}>{noteExcerpt(displayWhatsappReviewNotes(request))}</td>
                             {canManageRequests && <td data-label="Actions" className="px-4 py-2">{followUpAction(request)}

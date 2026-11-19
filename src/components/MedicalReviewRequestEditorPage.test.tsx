@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import MedicalReviewRequestEditorPage from './MedicalReviewRequestEditorPage';
 import { clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, medicalTrackingApi, retreatsApi } from '../services/api';
@@ -75,4 +75,19 @@ it('hides the Download for WhatsApp button for roles that cannot manage requests
   mountEdit();
   await screen.findByRole('heading', { name: 'Edit Medical Review Request' });
   expect(screen.queryByText('Download for WhatsApp')).not.toBeInTheDocument();
+});
+
+it('opens the Link Client Files dialog, and closes it via the Done button', async () => {
+  mountEdit();
+  await screen.findByRole('heading', { name: 'Edit Medical Review Request' });
+
+  const addMoreFiles = await screen.findByRole('button', { name: 'Add More Files' });
+  expect(addMoreFiles).toBeEnabled();
+  fireEvent.click(addMoreFiles);
+
+  const dialog = await screen.findByRole('dialog', { name: 'Link Client Files' });
+  expect(within(dialog).getByText('No medical artifacts found for this client.')).toBeInTheDocument();
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+  expect(screen.queryByRole('dialog', { name: 'Link Client Files' })).not.toBeInTheDocument();
 });

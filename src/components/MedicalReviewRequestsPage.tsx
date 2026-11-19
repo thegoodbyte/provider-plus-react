@@ -34,6 +34,7 @@ import {
   splitMedicalReviewRequestsByTimeline,
 } from './MedicalReviewRequestsPage.helpers';
 import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation, normalizeMedicalReviewStatus } from './medicalReviewStatus';
+import { Badge } from './ui';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
@@ -1467,9 +1468,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         <div className="font-semibold text-gray-900">
           #{item.display_id || '—'} • Attempt {item.attemptNumber || 1}
         </div>
-        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[item.status] || 'bg-gray-100 text-gray-700'}`}>
-          {item.status}
-        </span>
+        <Badge colorClassName={reviewStatusStyle[item.status] || 'bg-gray-100 text-gray-700'}>{item.status}</Badge>
       </div>
       <div className="mt-1 text-xs uppercase tracking-wide text-gray-500">{label}</div>
       <div className="mt-1 text-sm text-gray-600">
@@ -1796,7 +1795,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Medical Review</p>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
                   <h1 className="text-2xl font-extrabold leading-none text-blue-800 sm:text-3xl">{selected.display_id ? `MRR #${selected.display_id}` : 'MRR number not assigned'}</h1>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>{selected.status}</span>
+                  <Badge colorClassName={reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}>{selected.status}</Badge>
                 </div>
                 <section aria-label="Review identity" className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-base font-bold text-gray-900">
@@ -2004,9 +2003,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           {formatCompactDocumentMeta(request) || getRequestTypeLabel(request.requestType)} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
                         </div>
                       </div>
-                      <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                        {request.status}
-                      </span>
+                      <Badge colorClassName={reviewStatusStyle[request.status] || 'bg-gray-100 text-gray-700'}>{request.status}</Badge>
                     </div>
                   </button>
                 ))
@@ -2274,9 +2271,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         : 'No created date'}
                   </div>
                 </div>
-                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
-                  {selected.status}
-                </span>
+                <Badge colorClassName={reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}>{selected.status}</Badge>
               </div>
               )}
 

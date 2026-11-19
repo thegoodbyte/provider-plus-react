@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { api, clientsApi, medicalTrackingApi } from '../services/api';
 import { MedicalItem, Client } from '../types';
 import AppleButton from './AppleButton';
+import { Badge, Card } from './ui';
 import SearchableClientDropdown from './SearchableClientDropdown';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
@@ -471,37 +472,37 @@ const MedicalTrackingNew: React.FC = () => {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <Card padding="sm">
           <div className="text-2xl font-bold text-gray-900">{(filteredItems || []).length}</div>
           <div className="text-sm text-gray-600">Total Items</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        </Card>
+        <Card padding="sm">
           <div className="text-2xl font-bold text-blue-600">
             {(filteredItems || []).filter(item => item.type === 'EKG').length}
           </div>
           <div className="text-sm text-gray-600">EKG Items</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        </Card>
+        <Card padding="sm">
           <div className="text-2xl font-bold text-red-600">
             {(filteredItems || []).filter(item => item.type === 'Liver').length}
           </div>
           <div className="text-sm text-gray-600">Liver Items</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        </Card>
+        <Card padding="sm">
           <div className="text-2xl font-bold text-yellow-600">
             {(filteredItems || []).filter(item => !item.medadvisor_review_result).length}
           </div>
           <div className="text-sm text-gray-600">Pending Review</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
+        </Card>
+        <Card padding="sm">
           <div className="text-2xl font-bold text-green-600">
             {(filteredItems || []).filter(item => item.medadvisor_review_result === 'OK').length}
           </div>
           <div className="text-sm text-gray-600">Approved</div>
-        </div>
+        </Card>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <Card padding="none" className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -554,9 +555,7 @@ const MedicalTrackingNew: React.FC = () => {
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Icon icon={getTypeIcon(item.type)} className="w-4 h-4 mr-2 text-gray-400" />
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTypeColor(item.type)}`}>
-                        {item.type}
-                      </span>
+                      <Badge colorClassName={getTypeColor(item.type)}>{item.type}</Badge>
                     </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-blue-700">
@@ -616,9 +615,7 @@ const MedicalTrackingNew: React.FC = () => {
                   <td className="px-4 py-4 whitespace-nowrap">
                     {item.medadvisor_review_result ? (
                       <div>
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(item.medadvisor_review_result)}`}>
-                          {item.medadvisor_review_result}
-                        </span>
+                        <Badge colorClassName={getStatusColor(item.medadvisor_review_result)}>{item.medadvisor_review_result}</Badge>
                         {item.medadvisor_review_notes && (
                           <div className="text-xs text-gray-500 mt-1 max-w-xs truncate">
                             {item.medadvisor_review_notes}
@@ -662,7 +659,7 @@ const MedicalTrackingNew: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       <div className="mt-4 flex items-center justify-between">
         <div className="text-sm text-gray-700">

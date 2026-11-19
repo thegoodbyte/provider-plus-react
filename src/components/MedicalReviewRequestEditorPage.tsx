@@ -9,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { Client, MedicalArtifact, MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Retreat } from '../types';
 import { groupMatchesRetreat } from './MedicalReviewRequestEditorPage.helpers';
 import './MedicalReviewRequestEditorPage.css';
+import { Modal } from './ui';
+import AppleButton from './AppleButton';
 import MrrWhatsappDownloadButton from './MrrWhatsappDownloadButton';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
@@ -709,73 +711,65 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         </footer>
       </form>
 
-      {isArtifactModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Link Client Files</h2>
-                <p className="text-sm text-gray-500">Select the stored medical artifacts that should be reviewed with this request.</p>
-              </div>
-              <button type="button" onClick={() => setIsArtifactModalOpen(false)} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
-                Done
-              </button>
-            </div>
-            <div className="max-h-[65vh] overflow-auto p-5">
-              {!form.clientId ? (
-                <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">Select a client first.</div>
-              ) : clientArtifacts.length === 0 ? (
-                <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">No medical artifacts found for this client.</div>
-              ) : (
-                <div className="space-y-3">
-                  {clientArtifacts.map((artifact) => {
-                    const artifactRecordId = artifact._id || '';
-                    const checked = artifactRecordId ? form.artifactIds.includes(artifactRecordId) : false;
-                    return (
-                      <label key={artifactRecordId || artifact.display_id} className="flex cursor-pointer gap-3 rounded-md border border-gray-200 p-3 hover:bg-gray-50">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={!artifactRecordId}
-                          onChange={(event) => {
-                            const nextArtifactIds = event.target.checked
-                              ? Array.from(new Set([...form.artifactIds, artifactRecordId]))
-                              : form.artifactIds.filter((item) => item !== artifactRecordId);
-                            const primaryArtifact = event.target.checked
-                              ? artifact
-                              : clientArtifacts.find((candidate) => candidate._id && nextArtifactIds.includes(candidate._id));
-                            setForm((prev) => ({
-                              ...prev,
-                              artifactIds: nextArtifactIds,
-                              ...getArtifactDocumentMeta(primaryArtifact),
-                            }));
-                          }}
-                          className="mt-1 h-4 w-4"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifact.title || 'Medical artifact'}</div>
-                          <div className="mt-1 text-xs capitalize text-gray-500">{artifact.artifactType?.replace(/_/g, ' ')} · {formatDocumentMeta(artifact.documentStage, artifact.documentType, artifact.ceremonyNumber)} · {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}</div>
-                          {artifact.files?.length ? (
-                            <div className="mt-2 space-y-1">
-                              {artifact.files.map((file, index) => (
-                                <div key={`${file.fileName || file.s3Key || index}`} className="break-all rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
-                                  {file.fileName || file.s3Key || file.filePath || `File ${index + 1}`}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="mt-2 text-xs text-gray-500">No files attached.</div>
-                          )}
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+      <Modal
+        open={isArtifactModalOpen}
+        onClose={() => setIsArtifactModalOpen(false)}
+        title="Link Client Files"
+        size="lg"
+        footer={<AppleButton variant="secondary" onClick={() => setIsArtifactModalOpen(false)}>Done</AppleButton>}
+      >
+        <p className="mb-3 text-sm text-gray-500">Select the stored medical artifacts that should be reviewed with this request.</p>
+        {!form.clientId ? (
+          <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">Select a client first.</div>
+        ) : clientArtifacts.length === 0 ? (
+          <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">No medical artifacts found for this client.</div>
+        ) : (
+          <div className="space-y-3">
+            {clientArtifacts.map((artifact) => {
+              const artifactRecordId = artifact._id || '';
+              const checked = artifactRecordId ? form.artifactIds.includes(artifactRecordId) : false;
+              return (
+                <label key={artifactRecordId || artifact.display_id} className="flex cursor-pointer gap-3 rounded-md border border-gray-200 p-3 hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={!artifactRecordId}
+                    onChange={(event) => {
+                      const nextArtifactIds = event.target.checked
+                        ? Array.from(new Set([...form.artifactIds, artifactRecordId]))
+                        : form.artifactIds.filter((item) => item !== artifactRecordId);
+                      const primaryArtifact = event.target.checked
+                        ? artifact
+                        : clientArtifacts.find((candidate) => candidate._id && nextArtifactIds.includes(candidate._id));
+                      setForm((prev) => ({
+                        ...prev,
+                        artifactIds: nextArtifactIds,
+                        ...getArtifactDocumentMeta(primaryArtifact),
+                      }));
+                    }}
+                    className="mt-1 h-4 w-4"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifact.title || 'Medical artifact'}</div>
+                    <div className="mt-1 text-xs capitalize text-gray-500">{artifact.artifactType?.replace(/_/g, ' ')} · {formatDocumentMeta(artifact.documentStage, artifact.documentType, artifact.ceremonyNumber)} · {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}</div>
+                    {artifact.files?.length ? (
+                      <div className="mt-2 space-y-1">
+                        {artifact.files.map((file, index) => (
+                          <div key={`${file.fileName || file.s3Key || index}`} className="break-all rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                            {file.fileName || file.s3Key || file.filePath || `File ${index + 1}`}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-xs text-gray-500">No files attached.</div>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
       </div>
     </div>
   );
