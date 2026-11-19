@@ -259,12 +259,20 @@ const smoke = [
       ]);
     const cli = require.resolve("@playwright/test/cli");
     for (const [label, args, overrides] of [
-      ["broad", files.map((x) => "e2e/" + x + ".spec.ts"), {}],
+      [
+        "broad",
+        process.env.COVERAGE_FULL === "1"
+          ? []
+          : files.map((x) => "e2e/" + x + ".spec.ts"),
+        {},
+      ],
       [
         "smoke",
         [
           "--config=playwright.smoke.config.ts",
-          ...smoke.map((x) => "smoke/" + x + ".spec.ts"),
+          ...(process.env.COVERAGE_FULL === "1"
+            ? []
+            : smoke.map((x) => "smoke/" + x + ".spec.ts")),
         ],
         {},
       ],

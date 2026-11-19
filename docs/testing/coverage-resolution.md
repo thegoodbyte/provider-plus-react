@@ -38,7 +38,9 @@ The runner rejects remote URLs, starts each domain fixture on its own database,
 serializes shared fixture resets, saves source IDs/commands/UTC/exits/raw reports,
 and closes only its own fixture children. It runs broad, smoke and development
 HMR coverage separately and fails for **any failure, flaky result or skip**. A
-fixture startup failure also fails the run. This supplements the full repository
+fixture startup failure also fails the run. Set `COVERAGE_FULL=1` to collect the full broad and smoke suites; provide their
+additional existing fixture environment variables through the release orchestrator.
+The same zero-skip rule applies to full mode. This supplements the full repository
 unit/database/E2E/build gates; it does not replace them.
 
 ## Resolution map
