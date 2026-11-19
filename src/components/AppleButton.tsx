@@ -1,7 +1,7 @@
 /* apple button   */
 import React from 'react';
 
-interface AppleButtonProps {
+interface AppleButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
@@ -22,7 +22,8 @@ const AppleButton: React.FC<AppleButtonProps> = ({
   loading = false,
   onClick,
   type = 'button',
-  className = ''
+  className = '',
+  ...buttonProps
 }) => {
   const baseStyles = `
     inline-flex items-center justify-center
@@ -69,6 +70,7 @@ const AppleButton: React.FC<AppleButtonProps> = ({
 
   return (
     <button
+      {...buttonProps}
       aria-busy={loading}
       type={type}
       onClick={onClick}
