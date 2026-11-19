@@ -73,11 +73,17 @@ for (const width of [1440, 390])
       .getByRole("button", { name: "Save review outcome and advance" })
       .click();
     await counts("Completed by you", "1");
-    if (!(await page.getByLabel("Outcome", {exact:true}).isVisible())) await page.getByText("Operational review, skip or block this item").click();
+    if (!(await page.getByLabel("Outcome", { exact: true }).isVisible()))
+      await page
+        .getByText("Operational review, skip or block this item")
+        .click();
     await page.getByLabel("Outcome", { exact: true }).selectOption("skip");
     await page.getByRole("button", { name: "Save skip and advance" }).click();
     await counts("Skipped", "1");
-    if (!(await page.getByLabel("Outcome", {exact:true}).isVisible())) await page.getByText("Operational review, skip or block this item").click();
+    if (!(await page.getByLabel("Outcome", { exact: true }).isVisible()))
+      await page
+        .getByText("Operational review, skip or block this item")
+        .click();
     await page.getByLabel("Outcome", { exact: true }).selectOption("block");
     await page.getByRole("button", { name: "Save block and advance" }).click();
     await counts("Blocked", "1");
@@ -181,3 +187,8 @@ for (const width of [1440, 390])
     });
     expect(denied.status()).toBe(403);
   });
+
+// Drain real API proxy requests before Playwright disposes its HTTP context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});

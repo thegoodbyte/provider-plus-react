@@ -159,3 +159,8 @@ for (const width of [1440, 390])
     expect(writes.filter((v) => v === "POST /bookings")).toHaveLength(1);
     expect(writes.filter((v) => /^POST \/payments/.test(v))).toHaveLength(0);
   });
+
+// Drain real API proxy requests before Playwright disposes its HTTP context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});

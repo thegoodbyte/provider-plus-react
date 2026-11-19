@@ -201,3 +201,8 @@ for (const width of [1440, 390])
         .mainIntent,
     ).toBe("Legacy motivation");
   });
+
+// Drain real API proxy requests before Playwright disposes its HTTP context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});

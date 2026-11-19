@@ -1,3 +1,4 @@
+import { dismissFeedback } from "./fixtures/booking-room";
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 const source = process.env.REQUIRED_ROOM_FIXTURE,
@@ -87,13 +88,15 @@ for (const width of [1440, 390])
     });
     await expect(screenRoom).toHaveJSProperty("required", true);
     await expect(screenRoom).toHaveValue("");
+    await dismissFeedback(page);
     await page
       .getByRole("button", {
         name: "Save screening without leaving this page",
         exact: true,
       })
-      .last()
-      .click();
+      .filter({ visible: true })
+      .first()
+      .press("Enter");
     await expect(
       page.getByText("Choose a Shared or Private room type before saving.", {
         exact: true,
@@ -108,13 +111,15 @@ for (const width of [1440, 390])
         new URL(r.url()).pathname.endsWith("/screening") &&
         r.request().method() === "PUT",
     );
+    await dismissFeedback(page);
     await page
       .getByRole("button", {
         name: "Save screening without leaving this page",
         exact: true,
       })
-      .last()
-      .click();
+      .filter({ visible: true })
+      .first()
+      .press("Enter");
     expect((await saveScreen).status()).toBe(200);
     await page.reload();
     await expect(screenRoom).toHaveValue("shared");
@@ -136,9 +141,10 @@ for (const width of [1440, 390])
     expect(
       await bookingRoom.evaluate((el: HTMLSelectElement) => el.checkValidity()),
     ).toBe(false);
+    await dismissFeedback(page);
     await page
       .getByRole("button", { name: "Add Booking", exact: true })
-      .click();
+      .press("Enter");
     expect(
       (await (await request.get(f.url + "/fixture/state")).json()).bookings,
     ).toHaveLength(before.bookings.length);
@@ -148,9 +154,10 @@ for (const width of [1440, 390])
         new URL(r.url()).pathname === "/bookings" &&
         r.request().method() === "POST",
     );
+    await dismissFeedback(page);
     await page
       .getByRole("button", { name: "Add Booking", exact: true })
-      .click();
+      .press("Enter");
     const response = await created;
     expect(response.status()).toBe(201);
     const booking = await response.json();
@@ -162,9 +169,10 @@ for (const width of [1440, 390])
         new URL(r.url()).pathname === "/bookings/" + booking._id &&
         r.request().method() === "PATCH",
     );
+    await dismissFeedback(page);
     await page
       .getByRole("button", { name: "Update Booking", exact: true })
-      .click();
+      .press("Enter");
     expect((await edited).status()).toBe(200);
     await page.goto("/admin/bookings/" + booking._id + "/edit");
     await expect(bookingRoom).toHaveValue("shared");
@@ -254,3 +262,8 @@ for (const width of [1440, 390])
     expect(after.payments).toEqual(before.payments);
     expect(after.emails).toEqual([]);
   });
+
+// Drain real API proxy requests before Playwright disposes its HTTP context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});

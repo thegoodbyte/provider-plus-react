@@ -204,3 +204,8 @@ for (const width of [1440, 390])
     expect(await snapshot()).toEqual(before);
     expect(writes).toEqual(["PUT /payment-requests/" + f.ids.requests[0]]);
   });
+
+// Drain real API proxy requests before Playwright disposes its HTTP context.
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "wait" });
+});
