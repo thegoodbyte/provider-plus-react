@@ -17,10 +17,6 @@
 }
 
 .task-grid {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   overflow: hidden;
 }
 
@@ -120,89 +116,6 @@
   color: #adb5bd;
   font-style: italic;
   font-size: 12px;
-}
-
-.type-badge {
-  display: inline-block;
-  width: fit-content;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.type-badge.type-generic {
-  background: #f1f5f9;
-  color: #334155;
-}
-
-.type-badge.type-client {
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.type-badge.type-retreat {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.urgency-badge {
-  display: inline-block;
-  width: fit-content;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 600;
-  text-align: center;
-  color: #111827;
-}
-
-.urgency-badge.urgency-low {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.urgency-badge.urgency-medium {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.urgency-badge.urgency-high {
-  background: #ffedd5;
-  color: #9a3412;
-}
-
-.urgency-badge.urgency-urgent {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.status-badge {
-  display: inline-block;
-  width: fit-content;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 600;
-  text-align: center;
-  color: #111827;
-}
-
-/* Status badge colors */
-.status-badge.status-pending {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.status-badge.status-in-progress {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-badge.status-completed {
-  background: #dcfce7;
-  color: #166534;
 }
 
 .client-info .client-name,
@@ -411,9 +324,6 @@
   }
 }
 .task-title-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.task-origin-pill { display: inline-flex; align-items: center; width: max-content; padding: 2px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
-.task-origin-pill.custom { background: #dcfce7; color: #166534; }
-.task-origin-pill.system { background: #ede9fe; color: #5b21b6; }
 
 .task-title-link { background: none; border: 0; padding: 0; color: #155e75; text-decoration: underline; cursor: pointer; font: inherit; text-align: left; }
 .task-reference { display: block; font-weight: 600; color: #475569; font-size: .8rem; margin-bottom: .25rem; }

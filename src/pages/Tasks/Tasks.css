@@ -50,25 +50,6 @@
 .task-origin-bar summary { padding: 7px 10px; color: #64748b; cursor: pointer; font-size: 12px; }
 .task-origin-bar details > div { position: absolute; z-index: 20; right: 0; width: min(900px, 88vw); padding: 12px; border: 1px solid #dbe2ea; border-radius: 10px; background: #fff; box-shadow: 0 12px 35px rgba(15,23,42,.15); }
 
-.header-content .btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: 500;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.header-content .btn.btn-primary {
-  background-color: #374151;
-  color: white;
-}
-
-.header-content .btn.btn-primary:hover {
-  background-color: #111827;
-}
-
 .tasks-main-content {
   flex: 1;
   overflow-y: auto;
@@ -80,18 +61,11 @@
   gap: 15px;
   flex-wrap: wrap;
   justify-content: center;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
   padding: 15px 20px;
   margin-top: auto;
 }
 
 .task-stats-footer .stat-item {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 10px 15px;
   text-align: center;
   min-width: 100px;
 }

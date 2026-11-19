@@ -10,6 +10,8 @@ import { TaskForm } from '../../components/Tasks/TaskForm';
 import { TaskFiltersPanel } from '../../components/Tasks/TaskFiltersPanel';
 import TasksCalendarView from '../../components/Tasks/TasksCalendarView';
 import { SprintBoard } from '../../components/Tasks/SprintBoard';
+import AppleButton from '../../components/AppleButton';
+import { Card } from '../../components/ui';
 import './Tasks.css';
 
 const TaskWorkspaceTabs = ({support}:{support:boolean}) => {
@@ -198,12 +200,9 @@ export const Tasks: React.FC = () => {
               <button type="button" className={viewMode === 'board' ? 'active' : ''} onClick={() => setViewMode('board')}>Sprints</button>
               <button type="button" className={viewMode === 'calendar' ? 'active' : ''} onClick={() => setViewMode('calendar')}>Calendar</button>
             </div>
-            <button
-              className="btn btn-primary"
-              onClick={() => handleCreateTask()}
-            >
+            <AppleButton onClick={() => handleCreateTask()}>
               + {contexts.find(context => context.id === activeContext)?.singular || 'Custom'} task
-            </button>
+            </AppleButton>
           </div>
         </div>
       </div>
@@ -251,30 +250,30 @@ export const Tasks: React.FC = () => {
       </div>
 
       <div className="task-stats-footer">
-        <div className="stat-item">
+        <Card padding="sm" className="stat-item">
           <span className="stat-label">Total</span>
           <span className="stat-value">{stats.total}</span>
-        </div>
-        <div className="stat-item">
+        </Card>
+        <Card padding="sm" className="stat-item">
           <span className="stat-label">Pending</span>
           <span className="stat-value pending">{stats.pending}</span>
-        </div>
-        <div className="stat-item">
+        </Card>
+        <Card padding="sm" className="stat-item">
           <span className="stat-label">In Progress</span>
           <span className="stat-value in-progress">{stats.inProgress}</span>
-        </div>
-        <div className="stat-item">
+        </Card>
+        <Card padding="sm" className="stat-item">
           <span className="stat-label">Completed</span>
           <span className="stat-value completed">{stats.completed}</span>
-        </div>
-        <div className="stat-item">
+        </Card>
+        <Card padding="sm" className="stat-item">
           <span className="stat-label">Overdue</span>
           <span className="stat-value overdue">{stats.overdue}</span>
-        </div>
-        <div className="stat-item">
+        </Card>
+        <Card padding="sm" className="stat-item">
           <span className="stat-label">Urgent</span>
           <span className="stat-value urgent">{stats.urgent}</span>
-        </div>
+        </Card>
       </div>
 
       {showForm && (

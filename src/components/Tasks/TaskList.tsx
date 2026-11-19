@@ -3,6 +3,33 @@ import { Task, taskService } from '../../services/taskService';
 import './TaskList.css';
 import { Eye } from 'lucide-react';
 import { TaskDetails } from './TaskDetails';
+import { Badge, Card } from '../ui';
+import type { BadgeTone } from '../ui';
+
+const URGENCY_COLOR: Record<string, string> = {
+  low: 'bg-apple-gray-100 text-apple-gray-700',
+  medium: 'bg-amber-100 text-amber-800',
+  high: 'bg-orange-100 text-orange-800',
+  urgent: 'bg-red-100 text-red-800',
+};
+
+const STATUS_TONE: Record<string, BadgeTone> = {
+  pending: 'neutral',
+  in_progress: 'info',
+  completed: 'success',
+};
+
+const TYPE_TONE: Record<string, BadgeTone> = {
+  generic: 'neutral',
+  client: 'info',
+  retreat: 'success',
+};
+
+const ORIGIN_COLOR: Record<string, string> = {
+  custom: 'bg-emerald-100 text-emerald-800',
+  system: 'bg-violet-100 text-violet-800',
+  request: 'bg-indigo-100 text-indigo-800',
+};
 
 interface TaskListProps {
   workspacePath?: string;
@@ -115,21 +142,13 @@ export const TaskList: React.FC<TaskListProps> = ({
     return value ? `#${value}` : '-';
   };
 
-  const getUrgencyBadge = (urgency: string) => {
-    return (
-      <span className={`urgency-badge urgency-${urgency}`}>
-        {urgency.toUpperCase()}
-      </span>
-    );
-  };
+  const getUrgencyBadge = (urgency: string) => (
+    <Badge colorClassName={URGENCY_COLOR[urgency]}>{urgency.toUpperCase()}</Badge>
+  );
 
-  const getStatusBadge = (status: string) => {
-    return (
-      <span className={`status-badge status-${status.replace('_', '-')}`}>
-        {status.replace('_', ' ').toUpperCase()}
-      </span>
-    );
-  };
+  const getStatusBadge = (status: string) => (
+    <Badge tone={STATUS_TONE[status] || 'neutral'}>{status.replace('_', ' ').toUpperCase()}</Badge>
+  );
 
   const isSystemTask = (task: Task) => Boolean(task.sourceType && !['client_support', 'client_portal_request'].includes(task.sourceType) || task.sourceId || task.bookingFlowItemId);
 
@@ -143,7 +162,7 @@ export const TaskList: React.FC<TaskListProps> = ({
 
   return (
     <div className="task-list">
-      <div className="task-grid">
+      <Card padding="none" className="task-grid">
         <div className="task-grid-header">
           <div
             className="header-cell sortable"
@@ -212,15 +231,13 @@ export const TaskList: React.FC<TaskListProps> = ({
             <div className="task-cell task-name">
               <span className="task-cell-label">Task</span>
               <span className="task-reference">{task.taskNumber ? `Task #${task.taskNumber}` : 'Reference pending'}</span>
-              <div className="task-title-row"><div className="task-title">{task.supportReference ? <a href={workspacePath+'?support='+encodeURIComponent(task.supportReference)}>{task.supportReference} · {task.name}</a> : <button className="task-title-link" onClick={() => setViewingTask(task)}>{task.name}</button>}</div><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? 'Client request' : isSystemTask(task) ? 'System' : 'Custom'}</span></div>
+              <div className="task-title-row"><div className="task-title">{task.supportReference ? <a href={workspacePath+'?support='+encodeURIComponent(task.supportReference)}>{task.supportReference} · {task.name}</a> : <button className="task-title-link" onClick={() => setViewingTask(task)}>{task.name}</button>}</div><Badge colorClassName={task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? ORIGIN_COLOR.request : isSystemTask(task) ? ORIGIN_COLOR.system : ORIGIN_COLOR.custom}>{task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? 'Client request' : isSystemTask(task) ? 'System' : 'Custom'}</Badge></div>
             </div>
 
             <div className="task-cell">
               <span className="task-cell-label">Type</span>
-              <span className={`type-badge type-${task.type}`}>
-                {task.type.toUpperCase()}
-              </span>
-              <span className="type-badge task-category-badge">{(task.category || 'operations').toUpperCase()}</span>
+              <Badge tone={TYPE_TONE[task.type] || 'neutral'}>{task.type.toUpperCase()}</Badge>
+              <Badge tone="neutral">{(task.category || 'operations').toUpperCase()}</Badge>
             </div>
 
             <div className="task-cell">
@@ -327,7 +344,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             </div>
           </div>
         ))}
-      </div>
+      </Card>
       {viewingTask && <TaskDetails task={viewingTask} onClose={() => setViewingTask(null)} onEdit={onEditTask} />}
     </div>
   );
