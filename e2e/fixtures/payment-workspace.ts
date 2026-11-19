@@ -54,6 +54,7 @@ export const test = base.extend<{ paymentWorkspace: any }>({
     } finally {
       await page.unrouteAll({ behavior: "wait" });
       await page.close();
+      f.app.getHttpServer().closeIdleConnections?.();
       await f.close();
     }
   },
