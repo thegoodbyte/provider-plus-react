@@ -79,43 +79,7 @@ describe('PaymentRequestEditorPage', () => {
     (revolutPaymentLinksApi.list as jest.Mock).mockResolvedValue({ data: [] });
   });
 
-  it('creates the deposit, then the final balance request, then links them together', async () => {
-    const deposit = {
-      _id: 'deposit-1', invoiceNumber: '2001', clientId: 'client-1', retreatId: 'retreat-1',
-      bookingType: 'full_retreat', paymentDate: '2026-01-01', paymentType: 'Other',
-    };
-    const finalRequest = { _id: 'final-1' };
-    (paymentRequestsApi.create as jest.Mock)
-      .mockResolvedValueOnce({ data: deposit })
-      .mockResolvedValueOnce({ data: finalRequest });
-    (paymentRequestsApi.link as jest.Mock).mockResolvedValue({ data: {} });
-
-    renderNew();
-    await screen.findByLabelText('Client');
-
-    fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
-    fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-    fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
-    await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
-    fireEvent.click(screen.getByLabelText('Also create the final payment request'));
-    expect((await screen.findAllByText(/600/)).length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByText('Create Request'));
-
-    await waitFor(() => expect(paymentRequestsApi.create).toHaveBeenCalledTimes(2));
-    expect(paymentRequestsApi.create).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      requestType: 'balance',
-      requestedAmount: 600,
-      fullPrice: 1000,
-      dueDate: '2026-11-15',
-      clientId: 'client-1',
-      retreatId: 'retreat-1',
-    }));
-    await waitFor(() => expect(paymentRequestsApi.link).toHaveBeenCalledWith('deposit-1', 'final-1'));
-    await screen.findByText('Payment requests list');
-  });
-
-  it('creates only the deposit, and never links, when the checkbox is left unchecked', async () => {
+  it('creates only the deposit and never issues or links a second request during save', async () => {
     (paymentRequestsApi.create as jest.Mock).mockResolvedValue({ data: { _id: 'deposit-1' } });
 
     renderNew();

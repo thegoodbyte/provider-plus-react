@@ -93,6 +93,7 @@ const legacy = {
   "medical-work-mode": "MEDICAL_WORK_FIXTURE",
   "work-modes": "WORK_MODES_FIXTURE",
   languages: "LANGUAGES_FIXTURE_PATH",
+  "deferred-balance": "DEFERRED_BALANCE_FIXTURE",
   "integration-calls": "INTEGRATION_CALLS_FIXTURE",
   "canonical-ekg": "EKG_FIXTURE",
   "payment-booking-linking": "PPVC920_FIXTURE",

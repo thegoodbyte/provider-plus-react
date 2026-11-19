@@ -24,7 +24,7 @@ export interface FinalPaymentRequestPreview {
 
 interface PaymentRequestFormProps {
   paymentRequest?: Partial<PaymentRequest>;
-  onSave: (data: Omit<PaymentRequest, '_id'> & { finalPaymentRequestPreview?: FinalPaymentRequestPreview }) => Promise<void>;
+  onSave: (data: Omit<PaymentRequest, '_id'>) => Promise<void>;
   onCancel: () => void;
   isEdit?: boolean;
   isDuplicate?: boolean;
@@ -80,10 +80,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [revolutLinkMismatch, setRevolutLinkMismatch] = useState(false);
   const [bookingDefaultsLoading, setBookingDefaultsLoading] = useState(false);
   const [bookingDefaultsMessage, setBookingDefaultsMessage] = useState('');
-  const [planSettings, setPlanSettings] = useState({ depositPercentage: 40, balanceDueDaysBeforeRetreat: 30 });
+  const [planSettings, setPlanSettings] = useState({ depositPercentage: 40, balanceDueDaysBeforeRetreat: 30, automatic: true });
   const [depositOverridden, setDepositOverridden] = useState(isEdit || paymentRequest?.requestedAmount !== undefined);
   const [itemized, setItemized] = useState(Boolean(paymentRequest?.lineItems?.length));
-  const [createFinalPaymentRequest, setCreateFinalPaymentRequest] = useState(false);
   const [lineItems, setLineItems] = useState<PaymentRequestLineItem[]>(paymentRequest?.lineItems || []);
   const [usdPreview, setUsdPreview] = useState({
     amount: paymentRequest?.usd_amount?.toString() || paymentRequest?.fullPriceUsdAmount?.toString() || '',
@@ -123,7 +122,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     createdBy: paymentRequest?.createdBy || '',
   });
 
-  const createsBalance = !isEdit && Boolean(formData.bookingId) && (formData.requestType === 'balance' || (formData.requestType === 'deposit' && createFinalPaymentRequest));
+  const createsBalance = !isEdit && Boolean(formData.bookingId) && formData.requestType === 'balance';
   const findExistingBalance = (requests: PaymentRequest[]) => requests.find(request =>
     resolveId(request.bookingId) === formData.bookingId && request.requestType === 'balance' && ['pending', 'sent', 'overdue'].includes(request.status || ''),
   );
@@ -144,6 +143,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     paymentsApi.getPlanSettings().then(response => setPlanSettings({
       depositPercentage: response.data.depositPercentage ?? 40,
       balanceDueDaysBeforeRetreat: response.data.balanceDueDaysBeforeRetreat ?? 30,
+      automatic: response.data.enabled !== false && response.data.automaticallyCreateBalanceRequest !== false,
     })).catch(() => {});
   }, []);
 
@@ -350,11 +350,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
   const showFinalPaymentRequestOption = !isEdit && formData.requestType === 'deposit';
 
-  // Preview of the final-balance request the checkbox below will create
-  // alongside this deposit, using the payment-plan due-date setting, for
-  // whatever remains of the full price after this deposit.
+  // Planning preview only: no second request exists until the deposit is paid
+  // and bound to the exact booking. The server owns creation and its due date.
   const finalPaymentRequestPreview = (() => {
-    if (!showFinalPaymentRequestOption || !createFinalPaymentRequest) return null;
+    if (!showFinalPaymentRequestOption) return null;
     const selectedRetreat = retreats.find((retreat) => retreat._id === formData.retreatId);
     const startDate = parseCalendarDate(selectedRetreat?.startDate);
     const fullPrice = calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && ['deposit', 'payment', 'full_payment'].includes(formData.requestType) ? lineItems : []);
@@ -383,8 +382,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       setFormError('Please select the ceremony for this booster.');
       return;
     }
-    if (showFinalPaymentRequestOption && createFinalPaymentRequest && !finalPaymentRequestPreview) {
-      setFormError('Select a retreat with a start date to also create the final payment request.');
+    if (formData.requestType === 'balance' && !formData.bookingId) {
+      setFormError('Select a booking for the final balance request. It is created after the deposit is paid.');
       return;
     }
     if (revolutLinkMismatch) {
@@ -463,7 +462,6 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         paymentInstructions: formData.paymentInstructions || undefined,
         revolutPaymentLink: formData.revolutPaymentLink.trim() || undefined,
         createdBy: formData.createdBy || undefined,
-        finalPaymentRequestPreview: finalPaymentRequestPreview || undefined,
       });
     } catch (error) {
       console.error('Error saving payment request:', error);
@@ -724,7 +722,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 {formData.roomAdjustmentType !== 'none' && <div className="flex justify-between gap-4"><span>{roomLabel}</span><span>{formData.roomAdjustmentType === 'discount' ? '-' : '+'}{Number(formData.roomAdjustmentAmount || 0).toFixed(2)} {formData.currency}</span></div>}
                 <div className="flex justify-between gap-4 border-t border-slate-200 pt-2 font-semibold"><span>Total booking price</span><span>{bookingTotal.toFixed(2)} {formData.currency}</span></div>
                 {formData.requestType === 'deposit' && <div className="flex justify-between gap-4 text-blue-800"><span>Deposit due on this invoice ({bookingTotal ? (Number(formData.requestedAmount || 0) / bookingTotal * 100).toFixed(2) : '0'}%)</span><span>{Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</span></div>}
-                {formData.requestType === 'deposit' && <div className="flex justify-between gap-4 text-slate-700"><span>Remaining balance for linked final request</span><span>{remainingBalance.toFixed(2)} {formData.currency}</span></div>}
+                {formData.requestType === 'deposit' && <div className="flex justify-between gap-4 text-slate-700"><span>Planned remaining balance</span><span>{remainingBalance.toFixed(2)} {formData.currency}</span></div>}
               </div>
             </div>
 
@@ -793,30 +791,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             {showFinalPaymentRequestOption && (
-              <div className="md:col-span-2 rounded-lg border border-gray-200 p-4">
-                <label className="flex items-center gap-3 text-sm font-medium text-gray-800">
-                  <input
-                    type="checkbox"
-                    checked={createFinalPaymentRequest}
-                    onChange={(event) => setCreateFinalPaymentRequest(event.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  Also create the final payment request
-                </label>
-                <p className="mt-1 text-xs text-gray-500">
-                  Due {planSettings.balanceDueDaysBeforeRetreat} days before the retreat starts, for the remaining balance after this deposit. It will show as a linked request on this deposit.
-                </p>
-                {createFinalPaymentRequest && (
-                  finalPaymentRequestPreview ? (
-                    <div className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                      Will create a <span className="font-semibold">balance</span> request for{' '}
-                      <span className="font-semibold">{finalPaymentRequestPreview.requestedAmount.toLocaleString()} {finalPaymentRequestPreview.currency}</span>{' '}
-                      due <span className="font-semibold">{finalPaymentRequestPreview.dueDate}</span>.
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-amber-700">Select a retreat with a start date to preview the final request.</p>
-                  )
-                )}
+              <div className="md:col-span-2 rounded-lg border border-gray-200 p-4" aria-label="Final balance plan">
+                <strong>Final balance — after the deposit is paid</strong>
+                <p className="mt-1 text-sm text-gray-600">Only this deposit request is created now. After it is fully paid and linked to a booking, the final balance request is created automatically for that booking, due {planSettings.balanceDueDaysBeforeRetreat} days before the retreat. The booking payment plan must be enabled.</p>
+                {!planSettings.automatic && <p className="mt-2 text-sm text-amber-700">Automatic balance requests are disabled in payment settings. Enable them or create the balance from the booking after the deposit is paid.</p>}
+                {finalPaymentRequestPreview ? <p className="mt-2 text-sm">Planned balance: {finalPaymentRequestPreview.requestedAmount.toLocaleString()} {finalPaymentRequestPreview.currency} · due {finalPaymentRequestPreview.dueDate}. This is a preview, not an issued request.</p> : <p className="mt-2 text-sm">Choose a retreat with a start date to preview the planned balance.</p>}
               </div>
             )}
 

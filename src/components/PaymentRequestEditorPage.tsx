@@ -8,7 +8,7 @@ import RelatedRecords, { recordRelations } from './RelatedRecords';
 import InvoiceVisitHistory from './InvoiceVisitHistory';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import PaymentRequestForm, { FinalPaymentRequestPreview } from './PaymentRequestForm';
+import PaymentRequestForm from './PaymentRequestForm';
 import LoadingSpinner from './LoadingSpinner';
 import { paymentRequestsApi, paymentsApi, auditLogsApi } from '../services/api';
 import { PaymentReceipt, PaymentRequest } from '../types';
@@ -138,43 +138,9 @@ const PaymentRequestEditorPage: React.FC = () => {
     loadRequest();
   }, [id, location.search]);
 
-  const handleSave = async (data: Omit<PaymentRequest, '_id'> & { finalPaymentRequestPreview?: FinalPaymentRequestPreview }) => {
-    const { finalPaymentRequestPreview, ...depositData } = data;
-    if (id) {
-      await paymentRequestsApi.update(id, depositData);
-    } else {
-      const created = await paymentRequestsApi.create(depositData);
-      if (finalPaymentRequestPreview) {
-        const deposit: any = created.data;
-        const finalRequest = await paymentRequestsApi.create({
-          clientId: resolveId(deposit.clientId),
-          retreatId: resolveId(deposit.retreatId),
-          bookingId: deposit.bookingId ? resolveId(deposit.bookingId) : undefined,
-          bookingType: deposit.bookingType,
-          ceremonyId: deposit.ceremonyId,
-          ceremonyNumber: deposit.ceremonyNumber,
-          paymentDate: deposit.paymentDate,
-          paymentType: deposit.paymentType,
-          requestType: 'balance',
-          baseBookingPrice: deposit.baseBookingPrice,
-          lineItems: deposit.lineItems,
-          roomType: deposit.roomType,
-          roomAdjustmentType: deposit.roomAdjustmentType,
-          roomAdjustmentAmount: deposit.roomAdjustmentAmount,
-          requestedAmount: finalPaymentRequestPreview.requestedAmount,
-          fullPrice: finalPaymentRequestPreview.fullPrice,
-          fullPriceQuote: finalPaymentRequestPreview.fullPrice,
-          amountPaid: finalPaymentRequestPreview.requestedAmount,
-          currency: finalPaymentRequestPreview.currency as PaymentRequest['currency'],
-          note: `Final balance for invoice ${deposit.invoiceNumber}, due ${finalPaymentRequestPreview.dueDate}.`,
-          notes: `Final balance for invoice ${deposit.invoiceNumber}, due ${finalPaymentRequestPreview.dueDate}.`,
-          status: 'pending',
-          dueDate: finalPaymentRequestPreview.dueDate,
-          isUrgent: false,
-        } as Omit<PaymentRequest, '_id'>);
-        await paymentRequestsApi.link(resolveId(deposit._id), resolveId(finalRequest.data._id));
-      }
-    }
+  const handleSave = async (data: Omit<PaymentRequest, '_id'>) => {
+    if (id) await paymentRequestsApi.update(id, data);
+    else await paymentRequestsApi.create(data);
     navigate('/admin/payment-requests');
   };
 

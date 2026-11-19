@@ -366,14 +366,12 @@ describe('PaymentRequestForm', () => {
     fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
     fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '4000' } });
     await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(1000));
-    fireEvent.click(screen.getByLabelText('Also create the final payment request'));
     fireEvent.change(screen.getByLabelText('Requested Amount *'), { target: { value: '1500' } });
     expect(screen.getByLabelText('Requested Amount *')).toHaveValue(1500);
     expect(screen.getByText(/2026-12-01/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Create Request'));
     await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       requestedAmount: 1500, fullPrice: 4000, baseBookingPrice: 4000,
-      finalPaymentRequestPreview: { requestedAmount: 2500, fullPrice: 4000, currency: 'EUR', dueDate: '2026-12-01' },
     })));
   });
 
@@ -408,79 +406,32 @@ describe('PaymentRequestForm', () => {
     expect(screen.getByText('4000.00 EUR')).toBeInTheDocument();
   });
 
-  describe('final payment request checkbox', () => {
-    it('is not shown when editing an existing request', async () => {
-      view({ isEdit: true, paymentRequest: { _id: 'pr-1', display_id: 500, invoiceNumber: '500', requestType: 'deposit' } });
+  describe('deferred final balance plan', () => {
+    it('previews the remaining balance and due date without an immediate-create checkbox or second-request payload', async () => {
+      const { onSave } = view();
       await screen.findByLabelText('Client');
-      expect(screen.queryByText('Also create the final payment request')).not.toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
+      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
+      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
+      await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
+      expect(screen.getByLabelText('Final balance plan')).toHaveTextContent('600 EUR');
+      expect(screen.getByLabelText('Final balance plan')).toHaveTextContent('2026-11-15');
+      expect(screen.queryByLabelText('Also create the final payment request')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByText('Create Request'));
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave.mock.calls[0][0]).not.toHaveProperty('finalPaymentRequestPreview');
+      expect(onSave.mock.calls[0][0].requestType).toBe('deposit');
     });
-
-    it('is not shown for a non-deposit request type', async () => {
-      view();
-      await screen.findByLabelText('Client');
+    it('does not offer a final-plan preview for a different request type', async () => {
+      view(); await screen.findByLabelText('Client');
       fireEvent.change(screen.getByLabelText('Request Type'), { target: { value: 'balance' } });
-      expect(screen.queryByText('Also create the final payment request')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Final balance plan')).not.toBeInTheDocument();
     });
-
-    it('previews the balance request (30 days before retreat start, remaining balance) once checked', async () => {
-      view();
-      await screen.findByLabelText('Client');
-
-      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
-      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
-      await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
-
-      fireEvent.click(screen.getByLabelText('Also create the final payment request'));
-
-      expect((await screen.findAllByText(/600/)).length).toBeGreaterThan(0);
-      expect(screen.getByText(/2026-11-15/)).toBeInTheDocument();
-    });
-
-    it('warns instead of previewing when the retreat has no start date', async () => {
-      setUp({ retreats: [{ _id: 'retreat-1', name: 'JNO-01', ceremonyCount: 2 }] });
-      view();
-      await screen.findByLabelText('Client');
-
-      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
-      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
-      fireEvent.click(screen.getByLabelText('Also create the final payment request'));
-
-      expect(await screen.findByText('Select a retreat with a start date to preview the final request.')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByText('Create Request'));
-      expect(await screen.findByText('Select a retreat with a start date to also create the final payment request.')).toBeInTheDocument();
-    });
-
-    it('includes the final payment request preview in the onSave payload when checked', async () => {
-      const { onSave } = view();
-      await screen.findByLabelText('Client');
-
-      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
-      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
-      await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
-      fireEvent.click(screen.getByLabelText('Also create the final payment request'));
-      expect((await screen.findAllByText(/600/)).length).toBeGreaterThan(0);
-
-      fireEvent.click(screen.getByText('Create Request'));
-
-      await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-        finalPaymentRequestPreview: { dueDate: '2026-11-15', requestedAmount: 600, fullPrice: 1000, currency: 'EUR' },
-      })));
-    });
-
-    it('omits the preview from the onSave payload when the checkbox is left unchecked', async () => {
-      const { onSave } = view();
-      await screen.findByLabelText('Client');
-
-      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
-      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
-      fireEvent.change(screen.getByLabelText('Base Booking Price *'), { target: { value: '1000' } });
-      fireEvent.click(screen.getByText('Create Request'));
-
-      await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ finalPaymentRequestPreview: undefined })));
+    it('explains a missing retreat date without issuing a premature balance', async () => {
+      setUp({ retreats: [{ _id:'retreat-1', name:'JNO-01', ceremonyCount:2 }] });
+      view(); await screen.findByLabelText('Client');
+      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value:'retreat-1' } });
+      expect(screen.getByLabelText('Final balance plan')).toHaveTextContent('Choose a retreat with a start date');
     });
   });
   it('requires consent by default for deposits, lets staff opt out and submits the explicit boolean',async()=>{const {onSave}=view({isEdit:true,paymentRequest:{_id:'pr-consent',invoiceNumber:'1967',clientId:'client-1',retreatId:'retreat-1',requestType:'deposit',requestedAmount:400,fullPrice:1000,currency:'EUR',status:'pending'}});const checkbox=await screen.findByLabelText('Require consent before payment');expect(checkbox).toBeChecked();fireEvent.click(checkbox);expect(checkbox).not.toBeChecked();fireEvent.click(screen.getByRole('button',{name:'Update Request'}));await waitFor(()=>expect(onSave).toHaveBeenCalledWith(expect.objectContaining({consentRequired:false,requestType:'deposit'})));});
