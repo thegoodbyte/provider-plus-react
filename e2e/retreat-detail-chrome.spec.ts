@@ -50,10 +50,11 @@ for (const width of [1440, 390]) {
     await shot('reserve');
     await page.getByRole('tab', { name: 'Retreat Readiness', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Retreat Readiness', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Simple', exact: true }).click();
+    const readinessToolbar = page.getByRole('heading', { name: 'Retreat Readiness', exact: true }).locator('..').locator('..');
+    await readinessToolbar.getByRole('button', { name: 'Simple', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Simple', exact: true })).toHaveAttribute('aria-pressed', 'true');
     await page.getByRole('button', { name: 'Detail', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Unlock Editing', exact: true })).toBeVisible();
+    await expect(readinessToolbar.getByRole('button', { name: 'Unlock Editing', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Open full screen readiness view', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Exit full screen readiness view', exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
