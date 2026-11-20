@@ -3321,3 +3321,27 @@
 .payment-column-state-unpaid { background:#fee2e2; color:#991b1b; }
 .payment-column-state-unreconciled { background:#e5e7eb; color:#374151; }
 @media(max-width:640px) { .payment-column { flex:0 0 240px; width:240px; } }
+
+/* PPVC-1048: keep the shared retreat chrome labelled and reachable on small screens. */
+@media (max-width: 1050px) {
+  .retreat-detail-container .retreat-detail-actions {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+    overflow: visible;
+  }
+}
+@media (max-width: 768px) {
+  .retreat-detail-container .tab-navigation.retreat-detail-tabs .tab-btn {
+    width: auto;
+    flex: 0 0 auto;
+  }
+  .retreat-detail-container .tab-navigation.retreat-detail-tabs .tab-btn span {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: nowrap;
+  }
+}

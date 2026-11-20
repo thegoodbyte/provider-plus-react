@@ -20,9 +20,14 @@ for (const width of [1440, 390]) {
     ]);
     for (const name of ['Expenses', 'Payments', 'Tasks']) await expect(page.getByRole('tab', { name, exact: true })).toBeVisible();
     await expect(page.getByText('2/10 spots', { exact: true })).toBeVisible();
+    for (const tab of await tabs.all()) expect(await tab.evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    for (const action of await page.locator('.retreat-detail-actions button').all()) {
+      const box = await action.boundingBox(); expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0); expect(box!.x + box!.width).toBeLessThanOrEqual(width + 1);
+    }
     const shot = async (name: string) => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      await page.screenshot({ path: info.outputPath(`${name}-${width}.png`) });
+      await page.screenshot({ animations: 'disabled', path: info.outputPath(`${name}-${width}.png`) });
     };
     await page.getByRole('tab', { name: 'Room allocation', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Room allocation', exact: true })).toBeVisible();
