@@ -53,7 +53,6 @@ for (const width of [1440, 390]) test(`Quick MRR identifies the selected client 
     expect(errors).toEqual([]);
   } finally {
     await page.unrouteAll({ behavior: 'wait' });
-    await page.close();
     medical.app.getHttpServer().closeAllConnections?.();
     await medical.close();
   }
