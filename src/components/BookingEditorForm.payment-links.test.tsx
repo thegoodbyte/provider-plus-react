@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import React from 'react';
 import BookingEditorForm from './BookingEditorForm';
 import { bookingsApi, clientsApi, paymentRequestsApi, ceremoniesApi, retreatsApi } from '../services/api';
 import { roomInventoryApi } from '../services/roomInventoryApi';
@@ -29,6 +30,18 @@ it('requires a full agreed price for a new request-based booking instead of gues
 
 const roomOptions = ['shared', 'private', 'private_ensuite'].map(key => ({key,active:true,labels:{en:key},occupancy:key==='shared'?'shared':'private',legacyRoomType:key}));
 const openNewFromRequest = () => render(<BookingEditorForm mode="create" initialBookingData={{clientId:'client',retreatId:'retreat',paymentRequestId:'old-request',totalAmount:2500,paymentPlanEnabled:false}} initialRetreats={[{_id:'retreat',name:'Current Retreat',startDate:'2099-01-01',endDate:'2099-01-07'} as any]} onSaved={jest.fn()} onCancel={jest.fn()}/>);
+it('ignores an older initialization response after the linked request fills accommodation',async()=>{
+ let finishOld!:(value:any)=>void;
+ (bookingsApi.getNextBookingNumber as jest.Mock).mockImplementationOnce(()=>new Promise(resolve=>{finishOld=resolve;})).mockResolvedValue({data:9501});
+ (roomInventoryApi.options as jest.Mock).mockResolvedValue({data:roomOptions});
+ (paymentRequestsApi.getOne as jest.Mock).mockResolvedValue({data:{_id:'old-request',clientId:'client',roomType:'shared',accommodationKey:'shared'}});
+ render(<React.StrictMode><BookingEditorForm mode="create" initialBookingData={{clientId:'client',retreatId:'retreat',paymentRequestId:'old-request',totalAmount:2500}} initialRetreats={[{_id:'retreat',name:'Current Retreat'} as any]} onSaved={jest.fn()} onCancel={jest.fn()}/></React.StrictMode>);
+ const field=await screen.findByRole('combobox',{name:/^Accommodation/});
+ await waitFor(()=>expect(field).toHaveValue('shared'));
+ await act(async()=>finishOld({data:9500}));
+ expect(screen.getByRole('combobox',{name:/^Accommodation/})).toHaveValue('shared');
+ expect(screen.getByDisplayValue('9501')).toHaveValue(9501);
+});
 it('prefills the known ensuite agreement when opening a new booking from a request URL',async()=>{
  (roomInventoryApi.options as jest.Mock).mockResolvedValue({data:roomOptions});
  (paymentRequestsApi.getOne as jest.Mock).mockResolvedValue({data:{_id:'old-request',clientId:{_id:'client'},roomType:'private_ensuite',accommodationKey:'private_ensuite',fullPrice:2500}});

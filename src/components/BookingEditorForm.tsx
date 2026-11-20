@@ -199,7 +199,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [roomAvailability, setRoomAvailability] = useState<{ availableToSell: number; freeBeds: number } | null>(null);
 
   useEffect(() => {
-    loadData();
+    let active = true;
+    loadData(() => active);
+    return () => { active = false; };
   }, [bookingId, initialBooking, initialBookingData, initialRetreats, mode]);
 
   // PPVC-712: the booking editor previously had no visibility into which
@@ -223,7 +225,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
     return () => { live = false; };
   }, [formData.retreatId]);
 
-  const loadData = async () => {
+  const loadData = async (isActive: () => boolean) => {
     try {
       setLoading(true);
       const [clientsResponse, retreatsResponse, nextNumberResponse] = await Promise.all([
@@ -236,6 +238,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             })
           : Promise.resolve({ data: undefined }),
       ]);
+      // Route changes and StrictMode can overlap initialization requests. An
+      // older response must not reset the current agreement or staff edits.
+      if (!isActive()) return;
       setClients(clientsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
 
@@ -244,6 +249,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         const response = await bookingsApi.getOne(bookingId);
         currentBooking = response.data || null;
       }
+      if (!isActive()) return;
       setBooking(currentBooking);
       setCancellationReason(currentBooking?.cancellationReason || '');
       setDepositTreatment(currentBooking?.cancellationDepositTreatment || 'no_refund');
@@ -288,11 +294,12 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         });
       }
     } catch (error) {
+      if (!isActive()) return;
       console.error('Error loading booking editor data:', error);
       setClients([]);
       setRetreats([]);
     } finally {
-      setLoading(false);
+      if (isActive()) setLoading(false);
     }
   };
 
