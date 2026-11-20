@@ -27,6 +27,13 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  const dialog=page.getByRole('dialog');await dialog.getByRole('button',{name:'Advanced matching',exact:true}).click();await expect(dialog.getByText('Link to an existing payment',{exact:true})).toBeVisible();
  const confirm=dialog.getByRole('button',{name:'Confirm link to existing payment'});
  await expect(confirm).toBeDisabled();
+ // PPVC-1056: an exact payment number survives a stale optional amount filter,
+ // while the incompatible payment remains unselectable and no money is written.
+ await dialog.getByLabel('Payment amount',{exact:true}).fill('999');
+ await dialog.getByLabel('Client name, payment / PR / booking number or reference').fill('9412');
+ await expect(dialog.getByRole('checkbox',{name:'Select payment #9412',exact:true})).toBeVisible();
+ await expect(dialog.getByRole('checkbox',{name:'Select payment #9412',exact:true})).toBeDisabled();
+ expect(await(await request.get(f.url+'/fixture/search-snapshot')).json()).toEqual(before);
  await dialog.getByRole('button',{name:'Clear payment filters'}).click();
  await dialog.getByLabel('Payment amount',{exact:true}).fill('270');
  await expect(dialog.getByRole('checkbox',{name:'Select payment #9412',exact:true})).toBeDisabled();

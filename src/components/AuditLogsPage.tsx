@@ -99,7 +99,7 @@ const AuditLogsPage: React.FC = () => {
           </select>
           <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity type" value={filters.entityType} onChange={(e) => updateFilter('entityType', e.target.value)} />
           <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity ID" value={filters.entityId} onChange={(e) => updateFilter('entityId', e.target.value)} />
-          <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.actorUserId} onChange={(e) => updateFilter('actorUserId', e.target.value)}>
+          <select aria-label="Activity user" className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.actorUserId} onChange={(e) => updateFilter('actorUserId', e.target.value)}>
             <option value="">All users</option>
             {users.map((user) => (
               <option key={user._id} value={user._id}>{userDisplayName(user)}</option>

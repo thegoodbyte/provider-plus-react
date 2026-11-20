@@ -872,7 +872,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="analytics" element={<AnalyticsPage />} />
                       <Route path="users" element={<UserManagement />} />
                       <Route path="external-resources" element={<ProtectedRoute requiredRole={['admin']}><ExternalResourcesPage /></ProtectedRoute>} />
-                      <Route path="audit-logs" element={<AuditLogsPage />} />
+                      <Route path="audit-logs" element={<ProtectedRoute requiredRole={['admin']}><AuditLogsPage /></ProtectedRoute>} />
                       <Route path="backups" element={<DataBackupPage />} />
                       <Route path="tasks" element={<Tasks />} />
                     </Routes>
