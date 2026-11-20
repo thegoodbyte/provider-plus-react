@@ -1,6 +1,7 @@
 import { Tooltip } from 'antd';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import RequestBookingAction from './RequestBookingAction';
+import { requestBookingReferences } from './requestBookingState';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
 import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, Plus, Search as SearchIcon, Send as SendIcon, Settings, Slash, Trash2 } from 'lucide-react';
 import { NAVIGATION } from '../navigation/navigation';
@@ -202,9 +203,7 @@ const PaymentRequestsGrid: React.FC = () => {
       if (documentKind === 'booking' && request.context === 'standalone_service' || documentKind === 'itemized' && request.context !== 'standalone_service') return false;
       if (filterError || !matchesRequestFilters(request, details)) return false;
       const paid = request.status === 'paid';
-      const hasBooking = Boolean(typeof request.bookingId === 'string' ? request.bookingId.trim() : request.bookingId?._id || request.bookingId?.id)
-        || Boolean((request as any).participantBookings?.length)
-        || (request.lineItems || []).some((item: any) => Boolean(typeof item.bookingId === 'string' ? item.bookingId.trim() : item.bookingId?._id || item.bookingId?.id));
+      const hasBooking = requestBookingReferences(request).size > 0 || Boolean((request as any).participantBookings?.length);
       if (paymentFilter === 'paid' && !paid) return false;
       if (paymentFilter === 'unpaid' && !['pending', 'sent', 'overdue'].includes(request.status || 'pending')) return false;
       if (paymentFilter === 'paid-unbooked' && (!paid || hasBooking)) return false;

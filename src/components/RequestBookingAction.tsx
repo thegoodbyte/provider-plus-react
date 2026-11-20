@@ -3,6 +3,7 @@ import { paymentRequestsApi } from "../services/api";
 import { apiErrorMessage } from "../utils/apiErrorMessage";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { PaymentRequest } from "../types";
+import { requestBookingState, requestBookingReferences } from './requestBookingState';
 const id = (value: any): string => String(value?._id || value || "");
 
 export default function RequestBookingAction({
@@ -39,6 +40,7 @@ export default function RequestBookingAction({
         Open booking
       </Link>
     );
+  if (requestBookingReferences(request).size) return null;
   const clients = new Set(
     (request.lineItems || []).map((item) => id(item.clientId)).filter(Boolean),
   );
@@ -60,11 +62,13 @@ export default function RequestBookingAction({
     !request.currency
   )
     return null;
+  const state = requestBookingState(request);
+  if (state === 'review') return <p className="my-3 text-sm text-amber-950">Link this request to its existing booking using <Link className="text-blue-700 underline" to={`${prefix}/payment-requests/booking-review?requestId=${id(request._id)}`}>booking link review</Link>.</p>;
+  if (state !== 'needed') return compact ? null : <p className="my-3 text-sm text-slate-700">After the first request is fully paid, create or link its booking. The final balance request follows the booking payment plan.</p>;
   const query = new URLSearchParams({
     paymentRequestId: id(request._id),
     clientId: id(request.clientId),
     retreatId: id(request.retreatId),
-    paymentPlanEnabled: "false",
     ...(Number.isFinite(fullPrice) && fullPrice > 0
       ? { totalAmount: String(fullPrice) }
       : {}),
@@ -109,6 +113,9 @@ export default function RequestBookingAction({
         throw new Error(
           "Request changed. Refresh and review its client and retreat.",
         );
+      if (requestBookingState(fresh) !== 'needed') { setError('This request is no longer ready for a new booking. Refresh and review its payment and booking links.'); return; }
+      const settlement = (await paymentRequestsApi.getSettlement(id(request._id))).data;
+      if (!settlement.settled) { setError('The first request must be fully paid before creating its booking. Review the recorded payments.'); return; }
       const review = (
         await paymentRequestsApi.getBookingLinkReview(id(request._id))
       ).data;
@@ -169,14 +176,14 @@ export default function RequestBookingAction({
           paid on this request may only be a deposit.
         </p>
       )}
-      <Link
+      {!existing.length && <Link
         className="inline-flex rounded bg-blue-700 px-4 py-2 font-semibold text-white"
         to={`${prefix}/bookings/new?${query}`}
         onClick={check}
         aria-disabled={busy}
       >
         {busy ? "Checking bookings…" : "Create booking"}
-      </Link>
+      </Link>}
       {error && (
         <p role="alert" className="mt-2 text-red-800">
           {error}

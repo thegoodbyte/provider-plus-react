@@ -11,6 +11,7 @@ jest.mock("../services/api", () => ({
   paymentRequestsApi: {
     getOneFresh: jest.fn(),
     getBookingLinkReview: jest.fn(),
+    getSettlement: jest.fn(),
   },
 }));
 const request: any = {
@@ -43,7 +44,6 @@ it("opens a review form with the full agreed price and booster context, without 
     paymentRequestId: "req",
     clientId: "client",
     retreatId: "retreat",
-    paymentPlanEnabled: "false",
     totalAmount: "1000",
     currency: "PLN",
     bookingType: "booster",
@@ -88,6 +88,7 @@ beforeEach(() => {
   (paymentRequestsApi.getBookingLinkReview as jest.Mock).mockResolvedValue({
     data: [],
   });
+  (paymentRequestsApi.getSettlement as jest.Mock).mockResolvedValue({ data: { settled: true } });
 });
 it("checks fresh request and similar bookings before navigating to create", async () => {
   open();
@@ -142,7 +143,7 @@ it("allows a legacy missing full price to be reviewed without treating its paid 
   const url = new URL(mockNavigate.mock.calls[0][0], "https://local.invalid");
   expect(url.searchParams.has("totalAmount")).toBe(false);
   expect(url.searchParams.has("amountPaid")).toBe(false);
-  expect(url.searchParams.get("paymentPlanEnabled")).toBe("false");
+  expect(url.searchParams.has("paymentPlanEnabled")).toBe(false);
 });
 it("rejects stale group allocation and uses freshly corrected full price and booster details", async () => {
   (paymentRequestsApi.getOneFresh as jest.Mock).mockResolvedValueOnce({
@@ -168,3 +169,6 @@ it("rejects stale group allocation and uses freshly corrected full price and boo
   expect(url.searchParams.get("totalAmount")).toBe("2800");
   expect(url.searchParams.has("ceremonyId")).toBe(false);
 });
+
+it.each([{status: "pending"}, {requestType: "balance"}, {lineItems:[{bookingId:"existing"}]}])("does not create a booking for %j", patch=>{open(patch);expect(screen.queryByRole("link",{name:"Create booking"})).not.toBeInTheDocument();});
+it("refuses a stale paid flag without actual settlement",async()=>{(paymentRequestsApi.getSettlement as jest.Mock).mockResolvedValue({data:{settled:false}});open();fireEvent.click(screen.getByRole("link",{name:"Create booking"}));expect(await screen.findByRole("alert")).toHaveTextContent("fully paid");expect(mockNavigate).not.toHaveBeenCalled();});
