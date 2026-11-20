@@ -12,7 +12,11 @@ import TasksCalendarView from '../../components/Tasks/TasksCalendarView';
 import { SprintBoard } from '../../components/Tasks/SprintBoard';
 import './Tasks.css';
 
-const TaskWorkspaceTabs = ({support}:{support:boolean}) => <nav className="task-workspace-tabs" aria-label="Task workspaces"><Link aria-current={!support?'page':undefined} to="/admin/tasks">Operational tasks</Link><Link aria-current={support?'page':undefined} to="/admin/tasks?support=all">IbogaReady tasks</Link></nav>;
+const TaskWorkspaceTabs = ({support}:{support:boolean}) => {
+  const {user}=useAuth();const location=useLocation();
+  const prefix=['admin','user','staff','medical'].includes(location.pathname.split('/')[1])?'/'+location.pathname.split('/')[1]:'/admin';
+  return <nav className="task-workspace-tabs" aria-label="Task workspaces"><Link aria-current={!support?'page':undefined} to={prefix+'/tasks'}>Operational tasks</Link>{['admin','user'].includes(user?.role||'')&&<Link aria-current={support?'page':undefined} to={prefix+'/tasks?support=all'}>IbogaReady tasks</Link>}</nav>;
+};
 export const Tasks: React.FC = () => {
   const { user } = useAuth();
   const supportLocation = useLocation();
@@ -233,6 +237,7 @@ export const Tasks: React.FC = () => {
       <div className="tasks-main-content">
         {viewMode === 'list' ? (
           <TaskList
+            workspacePath={supportLocation.pathname}
             tasks={visibleTasks}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}

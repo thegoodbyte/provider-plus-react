@@ -1,6 +1,11 @@
 import { canShowNavigation, NAVIGATION, readNavigationPreferences } from './navigation';
 
 beforeEach(() => localStorage.clear());
+it('exposes general tasks to existing task staff roles while retaining guest and preference restrictions',()=>{
+ for(const role of ['admin','user','helper','facilitator','medical_staff','medical_advisor'])expect(canShowNavigation('tasks',role)).toBe(true);
+ expect(canShowNavigation('tasks','client')).toBe(false);
+ expect(canShowNavigation('tasks','user',{tasks:['admin']})).toBe(false);
+});
 it('places communications controls in Settings and preserves communication visibility restrictions', () => {
   expect(NAVIGATION['communications-settings'].setup).toBe(true);
   expect(canShowNavigation('communications-settings', 'admin')).toBe(true);

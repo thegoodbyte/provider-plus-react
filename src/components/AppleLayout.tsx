@@ -879,6 +879,8 @@ const AppleLayout: React.FC = () => {
                   </ProtectedRoute>
                 } />
 
+                {['/user/tasks', '/staff/tasks', '/medical/tasks'].map(path => <Route key={path} path={path} element={<ProtectedRoute requiredRole={['admin','user','facilitator','helper','medical_staff','medical_advisor']}><Tasks /></ProtectedRoute>} />)}
+
                 {/* Medical staff routes */}
                 <Route path="/medical/*" element={
                   <ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}>

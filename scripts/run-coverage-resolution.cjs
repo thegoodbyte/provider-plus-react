@@ -81,6 +81,7 @@ const factory = {
   "screening-workspace": ["screening-workspace", "SCREENING_WORKSPACE_FIXTURE"],
   "settled-scratchpad": ["settled-scratchpad", "SETTLED_SCRATCHPAD_FIXTURE"],
   "task-identity": ["task-identity", "TASK_IDENTITY_FIXTURE"],
+  "task-assignment": ["task-assignment", "TASK_ASSIGNMENT_FIXTURE"],
   "balance-reminder": ["balance-reminder", "BALANCE_REMINDER_FIXTURE"],
   "client-contact-card": ["client-contact-card", "CONTACT_CARD_FIXTURE"],
 };
@@ -134,6 +135,7 @@ const files = [
   "screening-workspace",
   "settled-scratchpad",
   "task-identity",
+  "task-assignment",
   "work-modes-persistence",
 ];
 const smoke = [

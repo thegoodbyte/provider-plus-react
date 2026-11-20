@@ -6,7 +6,7 @@ import { TaskForm } from './TaskForm';
 jest.mock('../../services/api', () => ({
   clientsApi: { getAll: jest.fn() }, retreatsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() },
 }));
-jest.mock('../../services/usersApi', () => ({ usersApi: { getAll: jest.fn() } }));
+jest.mock('../../services/usersApi', () => ({ usersApi: { getTaskAssignees: jest.fn() } }));
 jest.mock('./SearchableSelect', () => ({
   SearchableSelect: ({ id, value, options, onChange, loading, placeholder }: any) => <div>
     <span>{loading ? `Loading ${id}` : `Ready ${id}`}</span>
@@ -32,7 +32,7 @@ describe('TaskForm', () => {
     (clients.getAll as jest.Mock).mockResolvedValue({ data: [{ _id: 'client-1', display_id: 1201, firstName: 'Eva', lastName: 'Novak', email: 'eva@example.com', phone: '123', workflowStatus: 'active' }] });
     (retreats.getAll as jest.Mock).mockResolvedValue({ data: { data: [{ _id: 'retreat-1', display_id: 44, name: 'September', startDate: '2026-09-01', endDate: '2026-09-08', location: 'Prague', status: 'active' }] } });
     (bookings.getAll as jest.Mock).mockResolvedValue({ data: { items: [{ _id: 'booking-1', bookingNumber: 1267, clientId: { _id: 'client-1', firstName: 'Eva', lastName: 'Novak' }, retreatId: { _id: 'retreat-1', code: 'SEP-26' }, status: 'active' }] } });
-    (users.getAll as jest.Mock).mockResolvedValue({ data: [
+    (users.getTaskAssignees as jest.Mock).mockResolvedValue({ data: [
       { _id: 'user-1', email: 'kasia@example.com', firstName: 'Kasia', lastName: 'Nowak', role: 'user', isActive: true },
       { _id: 'user-2', email: 'owner@example.com', firstName: 'Martin', lastName: 'Owner', role: 'admin', isActive: true },
       { _id: 'user-3', email: 'inactive@example.com', firstName: 'Old', lastName: 'Staff', role: 'helper', isActive: false },
@@ -248,7 +248,7 @@ describe('TaskForm', () => {
     expect(select).toHaveValue('user-1');
     fireEvent.change(select, { target: { value: '' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Update Task' }).closest('form')!);
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ assignedToUserId: undefined }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ assignedToUserId: null }));
   });
 
   it('stops loading and logs API failures without crashing the form', async () => {

@@ -116,7 +116,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           clientsApi.getAll(),
           retreatsApi.getAll(),
           bookingsApi.getAll(),
-          usersApi.getAll().catch(() => ({ data: [] as User[] })),
+          usersApi.getTaskAssignees().catch(() => ({ data: [] as User[] })),
         ]);
 
         setClients(normalizeList(clientsResponse));
@@ -276,9 +276,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       clientId: formData.clientId || undefined,
       retreatId: formData.retreatId || undefined,
       bookingId: formData.bookingId || undefined,
-      // PPVC-1047: assignee is optional -- not every task needs one, so an
-      // empty selection omits the field rather than sending a null/empty id.
-      assignedToUserId: formData.assignedToUserId || undefined,
+      // Omit an unassigned create, but explicitly clear an edited assignment.
+      // JSON drops undefined, which would otherwise retain the old assignee.
+      assignedToUserId: formData.assignedToUserId || (task ? null : undefined),
       notes: formData.notes || undefined,
       sourceType: formData.sourceType || undefined,
     };

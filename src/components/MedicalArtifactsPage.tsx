@@ -806,11 +806,14 @@ const MedicalArtifactsPage: React.FC = () => {
           ))}
         </div>
         <button type="button" onClick={() => setMobileFiltersOpen((open) => !open)} className="mt-3 text-sm font-semibold uppercase tracking-wider text-cyan-700">☷ {mobileFiltersOpen ? 'Hide filters' : 'More filters'}</button>
-        {mobileFiltersOpen && <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
+        {mobileFiltersOpen && <div role="region" aria-label="Mobile medical artifact filters" className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
           <select value={retreatIdFilter} onChange={(event) => setRetreatIdFilter(event.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="">All retreats</option>{retreatOptions.map((retreat) => <option key={retreat.value} value={retreat.value}>{retreat.label}</option>)}</select>
           <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="all">All document types</option>{Object.entries(documentTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
           <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="all">All stages</option>{Object.entries(documentStageLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
           <label className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm"><input type="checkbox" checked={futureRetreatsOnly} onChange={(event) => setFutureRetreatsOnly(event.target.checked)} /> Future retreats only</label>
+          <label className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm"><input type="checkbox" checked={library.includeOther} onChange={event=>library.setIncludeOther(event.target.checked)} />Include records assigned to the other library</label>
+          {library.loading&&<span role="status">Loading library settings…</span>}
+          {library.error&&<div className="text-sm"><span role="alert">{library.error}</span><button type="button" onClick={()=>void library.reload()} className="ml-2 font-semibold text-cyan-700">Retry library settings</button></div>}
           <button type="button" onClick={() => { setSearchFilter(''); setRetreatIdFilter(''); setDocumentTypeFilter('all'); setStageFilter('all'); setOutcomeFilter('all'); setFutureRetreatsOnly(false); }} className="text-left text-sm font-semibold text-cyan-700">Clear filters</button>
         </div>}
       </div>
@@ -846,6 +849,8 @@ const MedicalArtifactsPage: React.FC = () => {
           <button
             type="button"
             aria-pressed={filtersPopoverOpen}
+            aria-expanded={filtersPopoverOpen}
+            aria-controls="medical-artifact-filters"
             onClick={() => setFiltersPopoverOpen((value) => !value)}
             className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold ${filtersPopoverOpen ? 'border-gray-400 bg-gray-100 text-gray-900' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
           >
@@ -879,7 +884,7 @@ const MedicalArtifactsPage: React.FC = () => {
         </div>
 
         {filtersPopoverOpen && (
-          <div className="absolute left-0 top-full z-30 mt-2 w-full max-w-xl rounded-md border border-gray-200 bg-white p-4 shadow-lg">
+          <div id="medical-artifact-filters" role="region" aria-label="More medical artifact filters" className="absolute left-0 top-full z-30 mt-2 w-full max-w-xl rounded-md border border-gray-200 bg-white p-4 shadow-lg">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="medical-artifacts-booking-id-filter" className="mb-1 block text-xs font-semibold text-gray-700">Booking ID</label>

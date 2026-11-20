@@ -42,6 +42,11 @@ export interface UpdateUserData {
 }
 
 export const usersApi = {
+  // Minimal active-user directory guarded by task permissions. Does not grant
+  // ordinary staff access to the full account administration endpoint.
+  async getTaskAssignees(): Promise<{ data: User[] }> {
+    return api.get('/tasks/assignees');
+  },
   // Get all users (admin only)
   async getAll(): Promise<{ data: User[] }> {
     const response = await api.get('/users', { suppressGlobalError: true } as any);

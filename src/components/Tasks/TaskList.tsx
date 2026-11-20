@@ -5,6 +5,7 @@ import { Eye } from 'lucide-react';
 import { TaskDetails } from './TaskDetails';
 
 interface TaskListProps {
+  workspacePath?: string;
   tasks: Task[];
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
@@ -12,6 +13,7 @@ interface TaskListProps {
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
+  workspacePath = '/admin/tasks',
   tasks,
   onEditTask,
   onDeleteTask,
@@ -210,7 +212,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             <div className="task-cell task-name">
               <span className="task-cell-label">Task</span>
               <span className="task-reference">{task.taskNumber ? `Task #${task.taskNumber}` : 'Reference pending'}</span>
-              <div className="task-title-row"><div className="task-title">{task.supportReference ? <a href={'/admin/tasks?support='+encodeURIComponent(task.supportReference)}>{task.supportReference} · {task.name}</a> : <button className="task-title-link" onClick={() => setViewingTask(task)}>{task.name}</button>}</div><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? 'Client request' : isSystemTask(task) ? 'System' : 'Custom'}</span></div>
+              <div className="task-title-row"><div className="task-title">{task.supportReference ? <a href={workspacePath+'?support='+encodeURIComponent(task.supportReference)}>{task.supportReference} · {task.name}</a> : <button className="task-title-link" onClick={() => setViewingTask(task)}>{task.name}</button>}</div><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? 'Client request' : isSystemTask(task) ? 'System' : 'Custom'}</span></div>
             </div>
 
             <div className="task-cell">
@@ -294,7 +296,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             <div className="task-cell actions">
               <span className="task-cell-label">Actions</span>
               <div className="action-buttons">
-                {task.supportReference ? <a className="task-action-btn" href={'/admin/tasks?support='+encodeURIComponent(task.supportReference)} aria-label="View support request" title="View support request"><Eye size={16} aria-hidden="true" /></a> : <button className="task-action-btn" onClick={() => setViewingTask(task)} aria-label="View task" title="View task"><Eye size={16} aria-hidden="true" /></button>}
+                {task.supportReference ? <a className="task-action-btn" href={workspacePath+'?support='+encodeURIComponent(task.supportReference)} aria-label="View support request" title="View support request"><Eye size={16} aria-hidden="true" /></a> : <button className="task-action-btn" onClick={() => setViewingTask(task)} aria-label="View task" title="View task"><Eye size={16} aria-hidden="true" /></button>}
                 {task.status !== 'completed' && (
                   <button
                     className="task-action-btn task-action-complete"

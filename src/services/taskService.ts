@@ -91,7 +91,7 @@ export interface CreateTaskDto {
   bookingId?: string;
   assignedTo?: string;
   // PPVC-1047: optional real user reference sent to POST/PATCH /tasks.
-  assignedToUserId?: string;
+  assignedToUserId?: string | null;
   tags?: string[];
   notes?: string;
   sourceType?: string;

@@ -321,7 +321,7 @@ for (const width of [1440, 390])
         .fill("+48 123 456 789");
       await page.getByLabel("Booking number, if known").fill("1320");
       await page
-        .getByLabel("How can we help you sign in?")
+        .getByLabel("How can we help you?")
         .fill("I cannot find my portal PIN.");
       await page
         .getByRole("button", { name: "Send verification code", exact: true })

@@ -36,13 +36,13 @@ export const NAVIGATION: Record<string, { label: string; description: string; se
   tasks: { label: 'General Tasks', description: 'Manage the general task queue.' },
 };
 
-const operational = ['launcher', 'clients', 'potential-clients', 'screening', 'bookings', 'retreats', 'retreat-staffing', 'ceremonies', 'reminders', 'communications', 'communications-settings', 'contact-book'];
+const operational = ['launcher', 'clients', 'potential-clients', 'screening', 'bookings', 'retreats', 'retreat-staffing', 'ceremonies', 'reminders', 'communications', 'communications-settings', 'contact-book', 'tasks'];
 const roleRoutes: Record<string, string[]> = {
   medical_staff: [...operational, 'workflow', 'flow-tasks', 'medical-dashboard', 'medical-preparation', 'medical-artifacts', 'medical-tracking', 'medical-review-requests', 'review-requests', 'medical', 'medical-retreats', 'client-forms', 'client-medications', 'retreat-flow', 'retreat-flow-library', 'booking-flow', 'booking-step-deadlines', 'scheduled-reminders', 'booking-documents', 'booking-document-types', 'file-uploads', 'assistant', 'needs-attention', 'ir-notifications'],
-  medical_advisor: ['medical-dashboard', 'review-requests', 'medical-review-requests'],
+  medical_advisor: ['medical-dashboard', 'review-requests', 'medical-review-requests', 'tasks'],
   facilitator: [...operational, 'houses', 'booster-offers', 'integration'],
-  user: ['launcher', 'clients', 'potential-clients', 'reminders', 'communications', 'communications-settings', 'contact-book'],
-  helper: ['current-retreat'],
+  user: ['launcher', 'clients', 'potential-clients', 'reminders', 'communications', 'communications-settings', 'contact-book', 'tasks'],
+  helper: ['current-retreat', 'tasks'],
 };
 export type NavigationPreferences = Record<string, string[]>;
 const aliasFor = (id: string) => id === 'communications-settings' ? 'communications' : id === 'review-requests' ? 'medical-review-requests' : id === 'potential-clients' ? 'clients' : id;

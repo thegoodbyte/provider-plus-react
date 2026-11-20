@@ -370,7 +370,13 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
       ...['medical-artifacts', 'medical-review-requests'].filter(id => canShowNavigation(id, navigationRole, preferences)).map(id => ({ id, label: NAVIGATION[id]?.label || id, Icon: FiFileText }))
     ] }];
     if (navigationRole === 'admin' && staffFocus !== 'all') return [{ id:'staff-focus',label:staffFocusModes[staffFocus].label,Icon:FiLayers,items:[{id:'focus',label:'Choose work mode',Icon:FiGrid},...staffFocusModes[staffFocus].items.filter(id=>canShowNavigation(id,navigationRole,preferences)).map(id=>({id,label:NAVIGATION[id]?.label || ({'work-modes':'Medical work sessions','payment-scratchpad':'Scratchpad','payment-receipts':'Receipts','bookings':'Bookings','retreats':'Retreats','booking-step-deadlines':'Step deadlines','scheduled-reminders':'Scheduled reminders','booking-documents':'Document library','needs-attention':'Needs attention'} as Record<string,string>)[id] || id,Icon:FiCheckSquare}))] }];
-    const roleSections = getMenuSectionsForRole();
+    let roleSections = getMenuSectionsForRole();
+    if (canShowNavigation('tasks', navigationRole, preferences) && !roleSections.some(section => section.items.some(item => item.id === 'tasks'))) {
+      const item = { id: 'tasks', label: NAVIGATION.tasks.label, Icon: FiCheckSquare };
+      roleSections = roleSections.some(section => section.id === 'operations')
+        ? roleSections.map(section => section.id === 'operations' ? {...section, items: [...section.items, item]} : section)
+        : [...roleSections, {id: 'operations', label: 'Operations', Icon: FiBriefcase, items: [item]}];
+    }
     if (appMode === 'shopping') {
       return [{
         id: 'shopping',
