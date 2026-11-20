@@ -124,6 +124,7 @@ for (const width of [1440, 390])
           "/clients/payment/request/" +
           f.ids.hashes[0] +
           "?lang=en&consentRequired=false&preview=true",
+        { waitUntil: 'domcontentloaded' },
       );
       await expect(page.locator("#consent1")).toBeVisible();
       await expect(page.locator("#consent1")).not.toBeChecked();
@@ -165,6 +166,7 @@ for (const width of [1440, 390])
       for (const index of [0, 2]) {
         await page.goto(
           url + "/clients/payment/request/" + f.ids.hashes[index] + "?lang=en",
+          { waitUntil: 'domcontentloaded' },
         );
         await expect(
           page.getByRole("heading", { name: "Revolut", exact: true }),

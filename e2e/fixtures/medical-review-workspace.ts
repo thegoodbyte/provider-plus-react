@@ -45,6 +45,9 @@ export const test = base.extend<{ reviewWorkspace: any }>({
       await page.unrouteAll({ behavior: "wait" });
       await page.close();
       f.app.getHttpServer().closeIdleConnections?.();
+      // Routing has drained and the browser is closed. Dispose remaining HTTP
+      // keep-alive sockets before Nest waits for this dedicated fixture server.
+      f.app.getHttpServer().closeAllConnections?.();
       await f.close();
     }
   },
