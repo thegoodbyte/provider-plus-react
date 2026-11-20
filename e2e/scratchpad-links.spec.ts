@@ -28,7 +28,7 @@ for(const width of [1440,390])test(`scratchpad/payment/booking ID navigation and
  await table.getByRole('link',{name:'#1904',exact:true}).click();
  await expect(page.getByRole('link',{name:'Source scratchpad receipt SP-'+row.display_id,exact:true})).toHaveAttribute('href','/admin/payments/scratchpad/'+row._id);
  await page.getByRole('link',{name:'Source scratchpad receipt SP-'+row.display_id,exact:true}).click();
- await expect(page.getByText('Scratchpad ID: SP-'+row.display_id,{exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'View booking #1400',exact:true})).toHaveAttribute('href','/admin/bookings/'+f.bookingId);
+  await expect(page.getByRole('region',{name:'Receipt details'}).getByText('SP-'+row.display_id,{exact:true})).toBeVisible();await expect(page.getByRole('link',{name:'View booking #1400',exact:true})).toHaveAttribute('href','/admin/bookings/'+f.bookingId);
  await page.screenshot({path:`../ppvc-919-validation/links-${width}.png`,fullPage:true});
  expect((await snapshot()).payments).toEqual(after.payments);
 });
