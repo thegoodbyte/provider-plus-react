@@ -181,3 +181,12 @@
 .task-workspace-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; }
 .task-workspace-tabs a { border:1px solid #cbded5; border-radius:8px; padding:10px 16px; color:#265a49; text-decoration:none; }
 .task-workspace-tabs a[aria-current="page"] { background:#17695f;color:white; }
+
+/* Stacked context/scope filters can exceed a phone's available viewport.
+   Keep task cards and their actions in the page flow instead of clipping the
+   list to zero height inside the desktop flex viewport. */
+@media (max-width: 768px) {
+  .tasks-page { height: auto; min-height: 100%; }
+  .tasks-page .tasks-main-content { flex: none; min-height: auto; overflow: visible; }
+  .tasks-page .task-list { flex: none; max-height: none; overflow: visible; }
+}

@@ -81,7 +81,7 @@ test("launcher defers secondary chunks; menu transitions load them on demand and
   ).toBeVisible();
   await page.goForward();
   await expect(
-    page.getByRole("heading", { name: "Medical artifacts", exact: true }),
+    page.getByRole("heading", { name: "Medical Artifacts", exact: true }),
   ).toBeVisible();
   expect(
     scripts.filter((url) => url.includes("/UserManagement-")),

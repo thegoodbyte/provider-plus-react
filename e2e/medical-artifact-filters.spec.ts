@@ -11,7 +11,7 @@ for(const width of [1440,768,390])test(`medical artifact filters and library sco
   if(p.startsWith('/medical-artifacts/retreat-submissions'))return route.fulfill({json:null});
   return route.fulfill({json:[]});
  });
- await page.goto('/admin/medical-artifacts');await expect(page.getByRole('heading',{name:'Medical artifacts',exact:true})).toBeVisible();
+ await page.goto('/admin/medical-artifacts');await expect(page.getByRole('heading',{name:'Medical Artifacts',exact:true})).toBeVisible();
  const more=page.getByRole('button',{name:/More filters/});await expect(more).toBeVisible();
  if(width>=768){
   const count=page.getByTestId('artifact-result-count');await expect(count).toHaveText('1 of 3');
@@ -25,13 +25,13 @@ for(const width of [1440,768,390])test(`medical artifact filters and library sco
   await page.screenshot({path:info.outputPath(`filters-${width}.png`),fullPage:true,animations:'disabled'});
   const input=panel.getByLabel('Client ID',{exact:true});await input.scrollIntoViewIfNeeded();const box=await input.boundingBox();expect(box).not.toBeNull();
   expect(await input.evaluate(el=>{const b=el.getBoundingClientRect();return document.elementFromPoint(b.left+b.width/2,b.top+b.height/2)===el})).toBe(true);
-  await page.getByRole('heading',{name:'Medical artifacts',exact:true}).click();await expect(panel).toHaveCount(0);
+  await page.getByRole('heading',{name:'Medical Artifacts',exact:true}).click();await expect(panel).toHaveCount(0);
   await page.getByRole('button',{name:'Future retreats',exact:true}).click();await expect(count).toHaveText('3 of 3');
   await page.getByRole('button',{name:'Clear',exact:true}).click();await expect(count).toHaveText('3 of 3');
  }else{
   await more.click();const panel=page.getByRole('region',{name:'Mobile medical artifact filters'});await expect(panel).toBeVisible();
   await panel.getByRole('checkbox',{name:'Include records assigned to the other library'}).check();await panel.getByRole('checkbox',{name:'Future retreats only'}).uncheck();
-  await expect(page.getByText('Synthetic other library',{exact:false}).first()).toBeVisible();
+  await expect(page.getByText('Synthetic other library',{exact:false}).filter({visible:true}).first()).toBeVisible();
   await page.screenshot({path:info.outputPath(`mobile-${width}.png`),fullPage:true,animations:'disabled'});
   await page.getByRole('button',{name:/Hide filters/}).click();await expect(panel).toHaveCount(0);
  }

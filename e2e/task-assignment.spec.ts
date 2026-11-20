@@ -29,7 +29,9 @@ for(const width of [1440,390])test(`staff task ownership, assignment, clearing a
  let state=await snapshot(),created=state.tasks.find((x:any)=>x.name==='New assigned '+width);expect(created.sourceType).toBe('manual');expect(created.assignedToUserId).toBe(f.ids.users[1]);expect(directoryReads).toBeGreaterThan(0);
  await page.reload();await page.getByRole('navigation',{name:'Task context'}).getByRole('button',{name:/Generic/}).click();
  const row=page.locator('.task-row').filter({has:page.getByText('New assigned '+width,{exact:true})});
- await row.getByRole('button',{name:'Edit task',exact:true}).click();await page.getByText('More options',{exact:true}).click();await page.getByLabel('Assigned to',{exact:true}).selectOption('');await page.getByRole('button',{name:'Update Task',exact:true}).click();
+ await row.getByRole('button',{name:'Edit task',exact:true}).click();
+ if(await page.locator('details.task-form-advanced').getAttribute('open')===null)await page.getByText('More options',{exact:true}).click();
+ await page.getByLabel('Assigned to',{exact:true}).selectOption('');await page.getByRole('button',{name:'Update Task',exact:true}).click();
  await expect(page.getByText('New assigned '+width,{exact:true})).toHaveCount(0);expect((await snapshot()).tasks.find((x:any)=>x._id===created._id).assignedToUserId).toBeNull();
  await page.getByRole('button',{name:'All tasks',exact:true}).click();await expect(page.getByText('Owner sibling',{exact:true})).toBeVisible();await expect(page.getByText('New assigned '+width,{exact:true})).toBeVisible();
  await page.reload();await page.getByRole('navigation',{name:'Task context'}).getByRole('button',{name:/Generic/}).click();await expect(page.getByText('New assigned '+width,{exact:true})).toHaveCount(0);
