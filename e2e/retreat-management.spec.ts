@@ -106,7 +106,7 @@ test("stay planner is reachable inside clients", async ({
   await expect(
     page.getByRole("button", { name: "Stay planner", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Client list", exact: true }).click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
   await expect(page.getByText("Ewa Coverage", { exact: true })).toBeVisible();
 });
 test("client actions remain usable at a narrow viewport", async ({

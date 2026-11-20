@@ -15,6 +15,7 @@ import { announcementsApi, communicationsApi } from "../services/api";
 import { EmailTemplate } from "../types";
 import AppleButton from "./AppleButton";
 import "./AnnouncementsPage.css";
+import Card, { CardHeader } from "./ui/Card";
 
 type Rule = {
   _id?: string;
@@ -328,7 +329,13 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
   return (
     <section className="announcements">
       <Toast toast={toast} onDismiss={dismiss} />
-      <header className="announcement-header">
+      {retreatId ? <Card><CardHeader className="!mb-0 flex-col xl:flex-row" title="Announcements"
+        subtitle="What each participant receives, before arrival and after the retreat."
+        action={<div className="flex min-w-0 flex-wrap items-center gap-2">
+          <nav className="flex flex-wrap gap-1" aria-label="Announcement views"><AppleButton size="sm" variant={!scheduledTab ? 'primary' : 'secondary'} aria-pressed={!scheduledTab} onClick={() => setScheduledTab(false)}>Announcement rules</AppleButton><AppleButton size="sm" variant={scheduledTab ? 'primary' : 'secondary'} aria-pressed={scheduledTab} onClick={() => setScheduledTab(true)}>Scheduled deliveries</AppleButton></nav>
+          <EmailSafetySettings compact />
+          <AppleButton disabled={loading || busy || !data} onClick={() => edit()}>+ Add announcement</AppleButton>
+        </div>} /></Card> : <header className="announcement-header">
         <div>
           <span className="announcement-eyebrow">RETREAT COMMUNICATIONS</span>
           <h1>{retreatId ? "Announcements" : "Announcement schedule"}</h1>
@@ -344,11 +351,11 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
         >
           + Add announcement
         </AppleButton>
-      </header>
-      <nav className="announcement-tabs" aria-label="Announcement views"><AppleButton size="sm" variant={!scheduledTab ? 'primary' : 'secondary'} aria-pressed={!scheduledTab} onClick={() => setScheduledTab(false)}>Announcement rules</AppleButton><AppleButton size="sm" variant={scheduledTab ? 'primary' : 'secondary'} aria-pressed={scheduledTab} onClick={() => setScheduledTab(true)}>Scheduled deliveries</AppleButton></nav>
+      </header>}
+      {!retreatId && <nav className="announcement-tabs" aria-label="Announcement views"><AppleButton size="sm" variant={!scheduledTab ? 'primary' : 'secondary'} aria-pressed={!scheduledTab} onClick={() => setScheduledTab(false)}>Announcement rules</AppleButton><AppleButton size="sm" variant={scheduledTab ? 'primary' : 'secondary'} aria-pressed={scheduledTab} onClick={() => setScheduledTab(true)}>Scheduled deliveries</AppleButton></nav>}
       {scheduledTab && <AnnouncementSchedules retreatId={retreatId} />}
       <div hidden={scheduledTab}>
-      <EmailSafetySettings compact />
+      {!retreatId && <EmailSafetySettings compact />}
       {testMessage && <p role="status" className="announcement-help">{testMessage}</p>}
       {error && (
         <div role="alert" className="announcement-error">
