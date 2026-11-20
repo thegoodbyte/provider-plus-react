@@ -156,6 +156,7 @@ for (const width of [1440, 390])
         .getByRole("button", { name: "Add Booking", exact: true })
         .click();
       await expect.poll(async () => (await snapshot()).bookings.length).toBe(1);
+    await expect(page).toHaveURL(/bookings\/[a-f\d]{24}$/);
       saved = await snapshot();
       let booking = saved.bookings[0];
       expect(booking.roomType).toBe(width === 390 ? "private" : "shared");

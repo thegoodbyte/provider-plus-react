@@ -89,6 +89,7 @@ for(const width of [1440,390]) test(`request marks waiting, paid needing booking
   await expect(page.getByRole("button",{name:"Add Booking",exact:true})).toBeVisible();
   await page.getByRole("button",{name:"Add Booking",exact:true}).click();
   await expect.poll(async()=>(await snapshot()).bookings.length).toBe(before.bookings.length+1);
+  await expect(page).toHaveURL(/bookings\/[a-f\d]{24}$/);
   await expect.poll(async()=>(await snapshot()).requests.filter((r:any)=>r.requestType==="balance").length).toBe(1);
   const saved=await snapshot(),booking=saved.bookings.find((b:any)=>b.clientId===ids.clients[0]),balance=saved.requests.find((r:any)=>r.requestType==="balance");
   expect(balance.bookingId).toBe(booking._id);expect(balance.requestedAmount).toBe(1500);expect(booking.amountPaid).toBe(1000);expect(saved.payments).toHaveLength(2);
