@@ -36,7 +36,10 @@ for (const device of ['desktop','mobile']) test.describe(`Scratchpad ${device}`,
     await page.getByLabel('Payment request number (optional)').fill('001243');
     await page.getByRole('button',{name:'Save receipt',exact:true}).click();
     await expect(page.getByRole('region',{name:'Receipt details'})).toBeVisible();
-    await expect(page.getByRole('region',{name:'Receipt details'}).getByText(/^Reference:.*Request hint: 001243/)).toBeVisible();
+    const details=page.getByRole('region',{name:'Receipt details'});
+    await expect(details.locator('dt').filter({hasText:/^Request hint$/}).locator('..').locator('dd')).toHaveText('001243');
+    await expect(details.locator('dt').filter({hasText:/^Reference$/}).locator('..').locator('dd')).toHaveText('Not provided');
+    await expect(details.locator('dt').filter({hasText:/^Transaction$/}).locator('..').locator('dd')).toHaveText(marker);
     await page.getByRole('button',{name:'Close details'}).click();
     await page.getByLabel('Search payer, phone, transaction or request number').fill(marker);
     await expect(page.getByText('1 matching receipts',{exact:false})).toBeVisible();

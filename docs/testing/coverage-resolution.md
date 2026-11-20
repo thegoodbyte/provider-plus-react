@@ -99,6 +99,9 @@ receipt and its outer command/environment record. The runner rejects any failed,
 flaky or skipped broad report, changed application/schema/dependency/broad-test
 files, non-ancestor sources, changed application URLs or Mongo/API environment.
 Only the explicitly listed smoke-service infrastructure paths are eligible.
+The scratchpad smoke definition-list locator migration is also eligible; it is
+not imported by the broad suite. Its payment persistence assertions still run in
+the fresh smoke gate. A permanent regression rejects broad-test changes.
 `node --test scripts/coverage-reuse.test.cjs` exercises this with real temporary
 Git histories and rejected application/environment/report changes. The original
 broad command, source IDs and UTC times are retained as reused evidence; smoke

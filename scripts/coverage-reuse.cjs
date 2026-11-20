@@ -2,7 +2,7 @@
 // application, dependency, broad-test or production-schema change requires a new
 // broad run. Original source IDs, commands and timestamps remain authoritative.
 const fs=require('node:fs'),path=require('node:path'),{execFileSync}=require('node:child_process');
-const frontendAllowed=new Set(['scripts/run-coverage-resolution.cjs','scripts/coverage-process.cjs','scripts/coverage-process.test.cjs','scripts/coverage-reuse.cjs','scripts/coverage-reuse.test.cjs','docs/testing/coverage-resolution.md','smoke/invoice-visits.spec.ts','smoke/screening-call.spec.ts','smoke/screening-pdf-viewer.spec.ts']);
+const frontendAllowed=new Set(['scripts/run-coverage-resolution.cjs','scripts/coverage-process.cjs','scripts/coverage-process.test.cjs','scripts/coverage-reuse.cjs','scripts/coverage-reuse.test.cjs','docs/testing/coverage-resolution.md','smoke/payment-scratchpad.spec.ts','smoke/invoice-visits.spec.ts','smoke/screening-call.spec.ts','smoke/screening-pdf-viewer.spec.ts']);
 const apiAllowed=new Set(['test/invoice-visits.integration.cjs','test/screening-call.integration.cjs','test/screening-pdf-viewer.fixture.cjs']);
 function git(cwd,...args){return execFileSync('git',args,{cwd,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim()}
 function verifyBroadReuse(file,gateFile,frontend,api,environment){
