@@ -108,12 +108,14 @@ for (const [index, width] of [1440, 390].entries())
       .filter({ has: page.locator('option[value="' + f.groupId + '"]') })
       .selectOption(f.groupId);
     await page.getByRole("button", { name: /Synthetic Advisor/ }).click();
-    await page
-      .getByRole("checkbox", { name: /Notify medical reviewer now/ })
-      .uncheck();
-    await page
-      .getByRole("checkbox", { name: /Notify client when submitted/ })
-      .uncheck();
+    for (const name of [/Notify medical reviewer now/, /Notify client when submitted/]) {
+      const checkbox = page.getByRole("checkbox", { name });
+      // Native nearest-edge scrolling can leave this control behind the sticky
+      // mobile action footer. Center it, then retain the real pointer action.
+      await checkbox.evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await checkbox.uncheck();
+      await expect(checkbox).not.toBeChecked();
+    }
     await page
       .getByRole("button", { name: "Create Request", exact: true })
       .click();
