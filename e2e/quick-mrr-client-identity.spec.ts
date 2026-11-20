@@ -26,7 +26,12 @@ for (const width of [1440, 390]) test(`Quick MRR identifies the selected client 
     for (const entry of ['list', 'detail']) {
       if (entry === 'list') {
         await page.goto('/admin/medical-artifacts');
-        await page.getByRole('button', { name: 'Future retreats', exact: true }).click();
+        if (width >= 768) await page.getByRole('button', { name: 'Future retreats', exact: true }).click();
+        else {
+          await page.getByRole('button', { name: /More filters/ }).click();
+          await page.getByRole('region', { name: 'Mobile medical artifact filters' }).getByRole('checkbox', { name: 'Future retreats only' }).uncheck();
+          await page.getByRole('button', { name: /Hide filters/ }).click();
+        }
       }
       for (let i = 0; i < 2; i++) {
         if (entry === 'list') await page.getByRole('button', { name: `Quick MRR for artifact #${1567 + i}`, exact: true }).click();
