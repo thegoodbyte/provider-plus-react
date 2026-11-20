@@ -419,7 +419,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     const tab = selected.getBoundingClientRect();
     if (tab.left < bounds.left) bar.scrollLeft += tab.left - bounds.left;
     else if (tab.right > bounds.right) bar.scrollLeft += tab.right - bounds.right;
-  }, [activeTab, retreat]);
+  }, [activeTab, retreat, isLoading]);
 
   const handleTabChange = useCallback((tab: RetreatDetailTab) => {
     if (document.querySelector('[data-closeout] [data-dirty="true"]')) { message.warning('Save your closeout steps before switching tabs.'); return; }
