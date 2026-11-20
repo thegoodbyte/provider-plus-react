@@ -25,7 +25,10 @@ for (const width of [1440, 390]) {
       const box = await action.boundingBox(); expect(box).not.toBeNull();
       expect(box!.x).toBeGreaterThanOrEqual(0); expect(box!.x + box!.width).toBeLessThanOrEqual(width + 1);
     }
+    const activeVisible = () => page.locator('.retreat-detail-tabs [aria-selected="true"]').evaluate(el => { const tab = el.getBoundingClientRect(), bar = el.parentElement!.getBoundingClientRect(); return tab.left >= bar.left - 1 && tab.right <= bar.right + 1; });
+    await expect.poll(activeVisible).toBe(true);
     const shot = async (name: string) => {
+      await expect.poll(activeVisible).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.screenshot({ animations: 'disabled', path: info.outputPath(`${name}-${width}.png`) });
     };
