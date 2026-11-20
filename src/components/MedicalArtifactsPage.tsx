@@ -1,10 +1,10 @@
 import type { BookingDocument } from '../types';
 import { libraryArtifacts } from './documentLibraryRecords';
-import { useDocumentLibrary, DocumentLibraryControls } from './useDocumentLibrary';
+import { useDocumentLibrary } from './useDocumentLibrary';
 import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ChevronDown, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, Eye, FileText, Info, Pencil, Plus, RefreshCw, Send, Settings, SlidersHorizontal, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
 import { bookingDocumentsApi, medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
@@ -320,6 +320,16 @@ const MedicalArtifactsPage: React.FC = () => {
   const [submissionsError, setSubmissionsError] = useState('');
   const [deletingArtifactId, setDeletingArtifactId] = useState('');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState<boolean>(savedView.mobileFiltersOpen ?? false);
+  const [filtersPopoverOpen, setFiltersPopoverOpen] = useState<boolean>(false);
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!filtersPopoverOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!filterBarRef.current?.contains(event.target as Node)) setFiltersPopoverOpen(false);
+    };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+  }, [filtersPopoverOpen]);
   const [quickMrrArtifact, setQuickMrrArtifact] = useState<MedicalArtifact | null>(null);
   const [quickMrrAdvisors, setQuickMrrAdvisors] = useState<User[]>([]);
   const [quickMrrGroups, setQuickMrrGroups] = useState<any[]>([]);
@@ -732,40 +742,56 @@ const MedicalArtifactsPage: React.FC = () => {
     <div className="min-h-full bg-slate-50 p-3 md:p-6">
       <MrrCreatedModal request={createdMrr} onDismiss={() => setCreatedMrr(null)} onBackToArtifacts={() => setCreatedMrr(null)} onViewMrr={() => { if (createdMrr) navigate(`/admin/medical-review-requests/${createdMrr._id}`); }} />
       <Toast toast={toast} onDismiss={dismissToast} />
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"><span className="rounded bg-rose-100 px-2 py-1 text-rose-700">Admin</span><span>Medical records</span></div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Medical Artifacts</h1>
-          <p className="mt-2 max-w-3xl text-sm text-slate-500">Records assigned to Medical Artifacts in Document Types & Libraries.</p>
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <span className="rounded bg-rose-100 px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">Admin</span>
+        <h1 className="text-xl font-bold tracking-tight text-slate-950">Medical Artifacts</h1>
+        <span
+          title="Records assigned to Medical Artifacts in Document Types & Libraries."
+          aria-label="About Medical Artifacts"
+          className="cursor-help text-slate-400 hover:text-slate-600"
+        >
+          <Info className="h-4 w-4" />
+        </span>
+
+        <div className="flex border-b border-slate-200 bg-white px-1 pt-1 md:rounded-t-md md:border md:border-b-0">
+          <button
+            type="button"
+            onClick={() => setActiveView('artifacts')}
+            className={`border-b-2 px-3 py-2 text-sm font-semibold ${activeView === 'artifacts' ? 'border-cyan-700 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+          >
+            Uploaded <span className="ml-1 text-slate-400">{artifacts.length}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('retreat_submissions')}
+            className={`border-b-2 px-3 py-2 text-sm font-semibold ${activeView === 'retreat_submissions' ? 'border-cyan-700 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+          >
+            Retreat submissions
+          </button>
         </div>
-        <div className="flex flex-row-reverse items-center justify-end gap-2 md:flex-row">
-          <button onClick={() => { void loadData(); void library.reload(); }} className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+
+        <div className="ml-auto flex items-center gap-2">
+          <Link
+            to="/admin/booking-document-types"
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Document types</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => { void loadData(); void library.reload(); }}
+            title="Refresh"
+            aria-label="Refresh"
+            className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white p-2.5 text-slate-700 hover:bg-slate-50"
+          >
             <RefreshCw className="h-4 w-4" />
-            Refresh
           </button>
           <button onClick={() => navigate('new')} className="inline-flex items-center gap-2 rounded-md bg-cyan-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-800">
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add New Artifact</span><span className="sm:hidden">Add</span>
+            <span className="hidden sm:inline">Add artifact</span><span className="sm:hidden">Add</span>
           </button>
         </div>
-      </div>
-
-      <DocumentLibraryControls library={library} />
-      <div className="mb-5 flex w-full border-b border-slate-200 bg-white px-2 pt-2 md:max-w-fit md:rounded-t-md md:border md:border-b-0">
-        <button
-          type="button"
-          onClick={() => setActiveView('artifacts')}
-          className={`border-b-2 px-3 py-3 text-sm font-semibold ${activeView === 'artifacts' ? 'border-cyan-700 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
-        >
-          Uploaded artifacts <span className="ml-1 text-slate-400">{artifacts.length}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveView('retreat_submissions')}
-          className={`border-b-2 px-3 py-3 text-sm font-semibold ${activeView === 'retreat_submissions' ? 'border-cyan-700 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
-        >
-          Retreat submissions
-        </button>
       </div>
 
       {activeView === 'artifacts' ? (
@@ -788,25 +814,13 @@ const MedicalArtifactsPage: React.FC = () => {
           <button type="button" onClick={() => { setSearchFilter(''); setRetreatIdFilter(''); setDocumentTypeFilter('all'); setStageFilter('all'); setOutcomeFilter('all'); setFutureRetreatsOnly(false); }} className="text-left text-sm font-semibold text-cyan-700">Clear filters</button>
         </div>}
       </div>
-      <div className="mb-4 hidden rounded-md border border-gray-200 bg-white p-3 md:block">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+      <div ref={filterBarRef} data-testid="desktop-filter-bar" className="relative mb-4 hidden md:block">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-white p-3">
           <input
             value={searchFilter}
             onChange={(event) => setSearchFilter(event.target.value)}
             placeholder="Search client, booking, retreat, artifact..."
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          <input
-            value={bookingIdFilter}
-            onChange={(event) => setBookingIdFilter(event.target.value)}
-            placeholder="Booking ID"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          <input
-            value={clientIdFilter}
-            onChange={(event) => setClientIdFilter(event.target.value)}
-            placeholder="Client ID"
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="w-64 min-w-[200px] flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm sm:flex-none"
           />
           <select
             value={retreatIdFilter}
@@ -820,56 +834,142 @@ const MedicalArtifactsPage: React.FC = () => {
               </option>
             ))}
           </select>
-          <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="all">All document stages</option>
-            {Object.entries(documentStageLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="all">All document types</option>
-            {Object.entries(documentTypeLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <select value={artifactTypeFilter} onChange={(event) => setArtifactTypeFilter(event.target.value as typeof artifactTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="all">All artifact types</option>
-            {Object.entries(artifactTypeLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value as typeof reviewFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="all">All MRR states</option>
-            <option value="has_review">Has MRR</option>
-            <option value="no_review">No MRR</option>
-          </select>
-          <label className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700">
-            <input type="checkbox" checked={futureRetreatsOnly} onChange={(event) => setFutureRetreatsOnly(event.target.checked)} />
-            Future retreats only
-          </label>
           <button
             type="button"
-            onClick={() => {
-              setSearchFilter('');
-              setBookingIdFilter('');
-              setClientIdFilter('');
-              setRetreatIdFilter('');
-              setStageFilter('all');
-              setDocumentTypeFilter('all');
-              setArtifactTypeFilter('all');
-              setStatusFilter('all');
-              setReviewFilter('all');
-              setOutcomeFilter('all');
-              setFutureRetreatsOnly(false);
-            }}
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            aria-pressed={futureRetreatsOnly}
+            onClick={() => setFutureRetreatsOnly((value) => !value)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold ${futureRetreatsOnly ? 'border-cyan-200 bg-cyan-50 text-cyan-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
           >
-            Clear filters
+            {futureRetreatsOnly && <Check className="h-4 w-4" />}
+            Future retreats
           </button>
-          <div className="flex items-center text-sm text-gray-500">
-            Showing {filteredArtifacts.length} of {artifacts.length}
+          <button
+            type="button"
+            aria-pressed={filtersPopoverOpen}
+            onClick={() => setFiltersPopoverOpen((value) => !value)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold ${filtersPopoverOpen ? 'border-gray-400 bg-gray-100 text-gray-900' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            More filters
+          </button>
+          <div className="ml-auto flex items-center gap-3 whitespace-nowrap text-sm">
+            <span className="text-gray-500" data-testid="artifact-result-count">
+              <span className="font-semibold text-gray-900">{filteredArtifacts.length}</span> of {artifacts.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchFilter('');
+                setBookingIdFilter('');
+                setClientIdFilter('');
+                setRetreatIdFilter('');
+                setStageFilter('all');
+                setDocumentTypeFilter('all');
+                setArtifactTypeFilter('all');
+                setStatusFilter('all');
+                setReviewFilter('all');
+                setOutcomeFilter('all');
+                setFutureRetreatsOnly(false);
+              }}
+              className="font-semibold text-cyan-700 hover:underline"
+            >
+              Clear
+            </button>
           </div>
         </div>
+
+        {filtersPopoverOpen && (
+          <div className="absolute left-0 top-full z-30 mt-2 w-full max-w-xl rounded-md border border-gray-200 bg-white p-4 shadow-lg">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="medical-artifacts-booking-id-filter" className="mb-1 block text-xs font-semibold text-gray-700">Booking ID</label>
+                <input
+                  id="medical-artifacts-booking-id-filter"
+                  value={bookingIdFilter}
+                  onChange={(event) => setBookingIdFilter(event.target.value)}
+                  placeholder="Booking ID"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="medical-artifacts-client-id-filter" className="mb-1 block text-xs font-semibold text-gray-700">Client ID</label>
+                <input
+                  id="medical-artifacts-client-id-filter"
+                  value={clientIdFilter}
+                  onChange={(event) => setClientIdFilter(event.target.value)}
+                  placeholder="Client ID"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="medical-artifacts-stage-filter" className="mb-1 block text-xs font-semibold text-gray-700">Document stage</label>
+                <select
+                  id="medical-artifacts-stage-filter"
+                  value={stageFilter}
+                  onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="all">All document stages</option>
+                  {Object.entries(documentStageLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="medical-artifacts-document-type-filter" className="mb-1 block text-xs font-semibold text-gray-700">Document type</label>
+                <select
+                  id="medical-artifacts-document-type-filter"
+                  value={documentTypeFilter}
+                  onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="all">All document types</option>
+                  {Object.entries(documentTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="medical-artifacts-artifact-type-filter" className="mb-1 block text-xs font-semibold text-gray-700">Artifact type</label>
+                <select
+                  id="medical-artifacts-artifact-type-filter"
+                  value={artifactTypeFilter}
+                  onChange={(event) => setArtifactTypeFilter(event.target.value as typeof artifactTypeFilter)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="all">All artifact types</option>
+                  {Object.entries(artifactTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="medical-artifacts-mrr-state-filter" className="mb-1 block text-xs font-semibold text-gray-700">MRR state</label>
+                <select
+                  id="medical-artifacts-mrr-state-filter"
+                  value={reviewFilter}
+                  onChange={(event) => setReviewFilter(event.target.value as typeof reviewFilter)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="all">All MRR states</option>
+                  <option value="has_review">Has MRR</option>
+                  <option value="no_review">No MRR</option>
+                </select>
+              </div>
+            </div>
+            <label className="mt-4 flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={library.includeOther} onChange={(event) => library.setIncludeOther(event.target.checked)} />
+              Include records assigned to the other library
+            </label>
+            {library.loading && <span role="status" className="mt-2 block text-xs text-gray-500">Loading library settings…</span>}
+            {library.error && (
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                <span role="alert" className="text-red-700">{library.error}</span>
+                <button type="button" onClick={() => void library.reload()} className="font-semibold text-cyan-700 hover:underline">Retry library settings</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {selectedArtifactIds.size > 0 && (

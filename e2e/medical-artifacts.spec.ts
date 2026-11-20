@@ -57,8 +57,8 @@ test("opens the detail view from the artifact list and saves admin notes", async
     });
     await page.goto("/admin/medical-artifacts");
     await page
-      .getByRole("checkbox", { name: "Future retreats only", exact: true })
-      .uncheck();
+      .getByRole("button", { name: "Future retreats", exact: true })
+      .click();
     await page
       .getByRole("row")
       .filter({ hasText: "#1042" })
