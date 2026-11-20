@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { auditLogsApi } from '../services/api';
+import { usersApi, User } from '../services/usersApi';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import { Card, Badge, Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell, EmptyState } from './ui';
@@ -23,22 +24,35 @@ type AuditLog = {
 
 const actions = ['', 'create', 'update', 'delete', 'view', 'login', 'client_portal_login_success', 'client_portal_login_failed'];
 
+// Shows a user's full name when available, falling back to their email (PPVC-1053).
+const userDisplayName = (user: Pick<User, 'firstName' | 'lastName' | 'email'>) => {
+  const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  return name || user.email;
+};
+
 const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<AuditLog | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [filters, setFilters] = useState({
     keyword: '',
     action: '',
     entityType: '',
     entityId: '',
-    actorEmail: '',
+    actorUserId: '',
     dateFrom: '',
     dateTo: '',
   });
   const limit = 50;
+
+  useEffect(() => {
+    usersApi.getAll()
+      .then((response) => setUsers(response.data || []))
+      .catch(() => setUsers([]));
+  }, []);
 
   const query = useMemo(() => ({
     ...filters,
@@ -85,14 +99,19 @@ const AuditLogsPage: React.FC = () => {
           </select>
           <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity type" value={filters.entityType} onChange={(e) => updateFilter('entityType', e.target.value)} />
           <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity ID" value={filters.entityId} onChange={(e) => updateFilter('entityId', e.target.value)} />
-          <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Actor email" value={filters.actorEmail} onChange={(e) => updateFilter('actorEmail', e.target.value)} />
+          <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.actorUserId} onChange={(e) => updateFilter('actorUserId', e.target.value)}>
+            <option value="">All users</option>
+            {users.map((user) => (
+              <option key={user._id} value={user._id}>{userDisplayName(user)}</option>
+            ))}
+          </select>
           <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" type="date" value={filters.dateFrom} onChange={(e) => updateFilter('dateFrom', e.target.value)} />
           <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" type="date" value={filters.dateTo} onChange={(e) => updateFilter('dateTo', e.target.value)} />
           <AppleButton
             variant="secondary"
             onClick={() => {
               setPage(1);
-              setFilters({ keyword: '', action: '', entityType: '', entityId: '', actorEmail: '', dateFrom: '', dateTo: '' });
+              setFilters({ keyword: '', action: '', entityType: '', entityId: '', actorUserId: '', dateFrom: '', dateTo: '' });
             }}
           >
             Clear

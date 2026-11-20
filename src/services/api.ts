@@ -1386,6 +1386,7 @@ export const auditLogsApi = {
     action?: string;
     entityType?: string;
     entityId?: string;
+    actorUserId?: string;
     actorEmail?: string;
     keyword?: string;
     dateFrom?: string;
