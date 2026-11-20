@@ -1,4 +1,5 @@
 import MedicalArtifactDocumentViewer from './MedicalArtifactDocumentViewer';
+import QuickMrrClientIdentity from './QuickMrrClientIdentity';
 import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -936,12 +937,13 @@ const MedicalArtifactDetailPage: React.FC = () => {
       </div>
       {quickMrrOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="quick-mrr-title">
-          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-lg bg-white p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 id="quick-mrr-title" className="text-lg font-semibold">Quick medical review request</h2>
               <button type="button" aria-label="Close" onClick={() => setQuickMrrOpen(false)} className="text-2xl leading-none text-gray-500 hover:text-gray-900">×</button>
             </div>
             <p className="mb-4 text-sm text-gray-500">Assign this artifact without opening the full request editor.</p>
+            <QuickMrrClientIdentity client={artifact.clientId} />
             <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-700">Request type
                 <select className="mt-1 w-full rounded border p-2" value={quickMrr.requestType} onChange={(e) => setQuickMrr({ ...quickMrr, requestType: e.target.value as NonNullable<MedicalReviewRequest['requestType']> })}>

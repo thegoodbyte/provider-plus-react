@@ -1,4 +1,5 @@
 import type { BookingDocument } from '../types';
+import QuickMrrClientIdentity from './QuickMrrClientIdentity';
 import { libraryArtifacts } from './documentLibraryRecords';
 import { useDocumentLibrary } from './useDocumentLibrary';
 import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
@@ -1430,8 +1431,9 @@ const MedicalArtifactsPage: React.FC = () => {
       )}
       {quickMrrArtifact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-label="Create quick medical review request">
-          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-bold text-slate-900">Quick MRR</h2><p className="mt-1 text-sm text-slate-500">Artifact #{quickMrrArtifact.display_id} · {getDocumentTypeLabel(quickMrrArtifact.documentType, quickMrrArtifact.artifactType)}</p></div><button type="button" onClick={() => setQuickMrrArtifact(null)} className="text-2xl leading-none text-slate-400 hover:text-slate-700" aria-label="Close">×</button></div>
+            <QuickMrrClientIdentity client={quickMrrArtifact.clientId} />
             <div className="mt-5 grid gap-4">
               <label className="text-sm font-medium text-slate-700">Review type<select className="mt-1 w-full rounded-md border border-slate-300 p-2" value={quickMrrForm.requestType} onChange={(event) => setQuickMrrForm({ ...quickMrrForm, requestType: event.target.value as NonNullable<MedicalReviewRequest['requestType']> })}>{(quickMrrTypes.length ? quickMrrTypes : [{ key: 'general_clearance', label: 'General clearance' }]).map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}</select></label>
               <label className="text-sm font-medium text-slate-700">Medical advisor<select className="mt-1 w-full rounded-md border border-slate-300 p-2" value={quickMrrForm.advisorId} onChange={(event) => setQuickMrrForm({ ...quickMrrForm, advisorId: event.target.value })}><option value="">Select advisor</option>{quickMrrAdvisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}</option>)}</select></label>
