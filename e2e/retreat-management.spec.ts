@@ -4,7 +4,7 @@ async function detail(page: any, f: any) {
   await page.getByRole("tab", { name: /^Clients \(2\)$/ }).click();
   await expect(
     page.getByRole("heading", {
-      name: "📋 Retreat Clients (2 active)",
+      name: "Clients · 2 active",
       exact: true,
     }),
   ).toBeVisible();
@@ -77,7 +77,7 @@ test("client list exposes current financial badges", async ({
   await detail(page, f);
   await expect(
     page.getByRole("heading", {
-      name: "📋 Retreat Clients (2 active)",
+      name: "Clients · 2 active",
       exact: true,
     }),
   ).toBeVisible();
