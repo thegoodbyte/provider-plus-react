@@ -136,7 +136,7 @@ test("announcement wizard, retreat timeline and failure history", async ({
   ).toHaveAttribute("aria-selected", "true");
   await expect(page.getByText(/Send date: 10 Oct 2026/)).toBeVisible();
   await expect(page.getByText(/Cron not enabled yet/)).toBeVisible();
-  await expect(page.getByText(/Email safety ON/)).toBeVisible();
+  await expect(page.getByText('Email safety on · info@ibogaspirit.cz', { exact: true })).toBeVisible();
   await page.getByLabel('Sample participant').selectOption('booking');
   await page.getByRole('button', { name: 'Send test to safety inbox' }).click();
   await expect(page.getByText(/Test email sent to info@ibogaspirit.cz/)).toBeVisible();
@@ -164,7 +164,7 @@ test("announcement wizard, retreat timeline and failure history", async ({
   await expect(page.getByText('MRR client notification test mode', { exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/admin/retreats/${retreatId}/announcements`);
-  await expect(page.getByText(/Email safety ON.*test@example.test/)).toBeVisible();
+  await expect(page.getByText('Email safety on · test@example.test', { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Needs attention (1)" }).click();
   await expect
     .poll(() =>

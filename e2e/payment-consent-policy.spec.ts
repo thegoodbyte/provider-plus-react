@@ -12,6 +12,9 @@ for (const width of [1440, 390])
     page,
     request,
   }) => {
+    // This persisted cross-app journey loads ten admin/CZ/PL pages plus an
+    // invoice iframe. Keep every assertion while allowing cold Vite rendering.
+    test.setTimeout(60_000);
     await request.post(f.url + "/fixture/consent-reset");
     await page.setViewportSize({ width, height: 1000 });
     const admin = new URL(process.env.PLAYWRIGHT_BASE_URL!).origin,
