@@ -2069,6 +2069,10 @@
           "assignedTo": {
             "type": "string"
           },
+          "assignedToUserId": {
+            "nullable": true,
+            "type": "string"
+          },
           "bookingFlowItemId": {
             "type": "string"
           },
@@ -27528,6 +27532,30 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Task"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/assignees": {
+      "get": {
+        "operationId": "TasksController_assignees",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
                 }
               }
             },

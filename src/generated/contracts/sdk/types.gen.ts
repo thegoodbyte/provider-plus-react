@@ -631,6 +631,7 @@ export type CreateRevolutPaymentLinkDto = {
 
 export type CreateTaskDto = {
     assignedTo?: string;
+    assignedToUserId?: string | null;
     bookingFlowItemId?: string;
     bookingId?: string;
     category?: 'medical' | 'documents' | 'financial' | 'communication' | 'operations';
@@ -14351,6 +14352,21 @@ export type TasksControllerCreateResponses = {
 };
 
 export type TasksControllerCreateResponse = TasksControllerCreateResponses[keyof TasksControllerCreateResponses];
+
+export type TasksControllerAssigneesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tasks/assignees';
+};
+
+export type TasksControllerAssigneesResponses = {
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type TasksControllerAssigneesResponse = TasksControllerAssigneesResponses[keyof TasksControllerAssigneesResponses];
 
 export type TasksControllerFindByClientData = {
     body?: never;
