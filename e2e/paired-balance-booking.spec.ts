@@ -114,8 +114,8 @@ for (const width of [1440, 390])
       .getByRole("link", { name: "Create booking", exact: true })
       .click();
     await expect(page).toHaveURL(/\/bookings\/new\?/);
-    expect(new URL(page.url()).searchParams.get("paymentPlanEnabled")).toBe(
-      "false",
+    expect(new URL(page.url()).searchParams.has("paymentPlanEnabled")).toBe(
+      false,
     );
     expect(new URL(page.url()).searchParams.get("totalAmount")).toBe("2500");
     expect(new URL(page.url()).searchParams.has("amountPaid")).toBe(false);
@@ -150,7 +150,7 @@ for (const width of [1440, 390])
     expect(booking.paymentRequestHistory).toContain(ids.requests[2]);
 
     expect(booking.amountPaid).toBe(1000);
-    expect(booking.paymentPlanEnabled).toBe(false);
+    expect(booking.paymentPlanEnabled).toBe(true);
     expect(saved.requests).toHaveLength(before.requests.length);
     expect(saved.payments).toHaveLength(before.payments.length + 1);
     expect(

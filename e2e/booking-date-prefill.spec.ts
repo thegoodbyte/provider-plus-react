@@ -123,8 +123,8 @@ for (const width of [1440, 390])
           .getByRole("link", { name: "Create booking", exact: true })
           .click();
       await expect(page).toHaveURL(/\/bookings\/new\?/);
-      expect(new URL(page.url()).searchParams.get("paymentPlanEnabled")).toBe(
-        "false",
+      expect(new URL(page.url()).searchParams.has("paymentPlanEnabled")).toBe(
+        false,
       );
       expect(new URL(page.url()).searchParams.get("totalAmount")).toBe("2500");
       expect(new URL(page.url()).searchParams.has("amountPaid")).toBe(false);
@@ -157,7 +157,7 @@ for (const width of [1440, 390])
         .click();
       await expect.poll(async () => (await snapshot()).bookings.length).toBe(1);
       saved = await snapshot();
-      const booking = saved.bookings[0];
+      let booking = saved.bookings[0];
       expect(booking.roomType).toBe(width === 390 ? "private" : "shared");
       expect(booking.totalAmount).toBe(2500);
       expect(booking.checkInDate).toBe(expectedDates.start);
@@ -168,8 +168,13 @@ for (const width of [1440, 390])
       expect(persisted.checkInDate).toBe(expectedDates.start);
       expect(persisted.checkOutDate).toBe(expectedDates.end);
       expect(booking.amountPaid).toBe(1000);
-      expect(booking.paymentPlanEnabled).toBe(false);
-      expect(saved.requests).toHaveLength(before.requests.length);
+      expect(booking.paymentPlanEnabled).toBe(true);
+      await expect.poll(async () => (await snapshot()).requests.length).toBe(before.requests.length + 1);
+      saved = await snapshot();
+      booking = saved.bookings.find((b: any) => b._id === booking._id);
+      const balance = saved.requests.find((r: any) => r.requestType === "balance");
+      expect(balance.bookingId).toBe(booking._id);
+      expect(balance.requestedAmount).toBe(1500);
       expect(saved.payments).toHaveLength(before.payments.length + 1);
       expect(
         saved.requests.find((r: any) => r._id === ids.requests[0]).bookingId,
