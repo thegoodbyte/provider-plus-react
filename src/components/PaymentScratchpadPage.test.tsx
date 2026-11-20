@@ -16,6 +16,27 @@ beforeEach(()=>{
   (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[]}); (bookingsApi.getAll as jest.Mock).mockResolvedValue({data:[]}); (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[]});
 });
 const mount=()=>render(<MemoryRouter initialEntries={["/admin/payments/scratchpad"]}><PaymentScratchpadPage /></MemoryRouter>);
+it('keeps pending receipt matching reachable without reopening locked financial edits',async()=>{
+ const pending={...row,reconciliationPending:true};api.list.mockResolvedValue({data:{...snapshot,items:[pending]}} as any);api.detail.mockResolvedValue({data:pending} as any);
+ mount();fireEvent.click(await screen.findByRole('link',{name:'View receipt Synthetic Payer'}));
+ await screen.findByRole('region',{name:'Receipt details'});
+ expect(screen.queryByRole('button',{name:'Edit receipt',exact:true})).not.toBeInTheDocument();
+ const progress=screen.getByRole('list',{name:'Scratchpad progress'});
+ fireEvent.click(screen.getByRole('button',{name:'Record payment from SP',exact:true}));
+ await waitFor(()=>expect(screen.getByRole('dialog')).toBeVisible());
+ expect(progress.querySelector('[aria-current="step"]')).toHaveTextContent('Match payment request & confirm');
+ expect(api.reconcile).not.toHaveBeenCalled();
+});
+it('identifies the booking step for a converted receipt while preserving the audit disclosure',async()=>{
+ const linked={...row,status:'converted',paymentId:'payment',payment:{_id:'payment',display_id:1001,amount:5100,currency:'PLN',status:'completed'}};
+ api.list.mockResolvedValue({data:{...snapshot,items:[linked]}} as any);api.detail.mockResolvedValue({data:linked} as any);
+ mount();fireEvent.click(await screen.findByRole('link',{name:'View receipt Synthetic Payer'}));await screen.findByRole('region',{name:'Receipt details'});
+ expect(screen.getByRole('list',{name:'Scratchpad progress'}).querySelector('[aria-current="step"]')).toHaveTextContent('Create or open booking');
+ expect(screen.queryByRole('button',{name:'Record payment from SP',exact:true})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByText('Receipt history',{exact:true}));
+ expect(screen.getByText('Receipt history',{exact:true}).closest('details')).toHaveAttribute('open');
+ expect(api.reconcile).not.toHaveBeenCalled();
+});
 it('retains the previous snapshot and refresh time after a failed refresh',async()=>{
   mount(); await screen.findByText('Synthetic Payer',{exact:false});
   api.list.mockRejectedValueOnce(new Error('Network down')); fireEvent.click(screen.getByRole('button',{name:'Refresh',exact:true}));

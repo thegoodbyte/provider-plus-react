@@ -29,7 +29,7 @@ for (const viewport of [{width:1365,height:1000},{width:390,height:844}]) test(`
   await page.getByLabel('Phone number (optional)').fill('+1 212 555 0100');
   await page.getByRole('button',{name:'Save receipt',exact:true}).click();
   await expect(page.getByRole('region',{name:'Receipt details'})).toContainText('+1 212 555 0100');
-  await page.getByRole('button',{name:'Payment from SP',exact:true}).click();
+  await page.getByRole('button',{name:'Record payment from SP',exact:true}).click();
   await page.getByRole('button',{name:'Advanced matching',exact:true}).click();await page.getByLabel('Search payment request number or client').fill('001243');
   await expect(page.getByRole('option',{name:/#1243.*Synthetic Payer/})).toHaveCount(1);
   await page.getByLabel('Payment request (optional)',{exact:true}).selectOption(fixture.requestId);

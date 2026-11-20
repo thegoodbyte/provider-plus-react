@@ -60,7 +60,7 @@ for (const device of ['desktop','mobile']) test.describe(`Scratchpad ${device}`,
     await expect(page.getByRole('table')).toBeVisible();
     await page.getByRole('group',{name:'Receipt status',exact:true}).getByRole('button',{name:'Unassigned',exact:true}).click();
     await page.getByRole('link',{name:`View receipt ${marker}`,exact:true}).click();
-    await page.getByRole('button',{name:'Payment from SP',exact:true}).click();
+    await page.getByRole('button',{name:'Record payment from SP',exact:true}).click();
     await expect(page.getByRole('dialog',{name:'Match scratchpad payment'})).toBeVisible();await page.getByRole('button',{name:'Advanced matching',exact:true}).click();
     await page.getByRole('button',{name:'← Use a new payment instead',exact:true}).click();
     await page.getByLabel('Payment request (optional)',{exact:true}).selectOption(fixture.requestId);
