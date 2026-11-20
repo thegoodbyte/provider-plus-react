@@ -30,6 +30,8 @@ for(const width of [1440,390])test(`find and link an existing payment at ${width
  // PPVC-1056: an exact payment number survives a stale optional amount filter,
  // while the incompatible payment remains unselectable and no money is written.
  await dialog.getByLabel('Payment amount',{exact:true}).fill('999');
+ await dialog.getByLabel('Payment date from').fill('');
+ await dialog.getByLabel('Payment date to').fill('');
  await dialog.getByLabel('Client name, payment / PR / booking number or reference').fill('9412');
  await expect(dialog.getByRole('checkbox',{name:'Select payment #9412',exact:true})).toBeVisible();
  await expect(dialog.getByRole('checkbox',{name:'Select payment #9412',exact:true})).toBeDisabled();
