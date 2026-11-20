@@ -11,6 +11,7 @@ for (const width of [1440, 390]) {
       return route.fulfill({ json: { retreatId: f.retreat._id, houseName: 'Synthetic house', houseChanged: false, revision: 0, rooms: [], guests: [] } });
     });
     await page.route('**/booking-flow/matrix/*', route => { expect(route.request().method()).toBe('GET'); return route.fulfill({ json: { bookings: f.bookings, templates: [], items: [], actionLogs: [] } }); });
+    await page.route('**/announcements/retreats/*', route => { expect(route.request().method()).toBe('GET'); return route.fulfill({ json: { rules: [], deliveries: [], settings: { enabled: false }, worker: { enabled: false }, testRecipients: [] } }); });
     await page.goto('/admin/retreats/' + f.retreat._id);
     const tabs = page.locator('.retreat-detail-tabs').getByRole('tab');
     await expect(tabs.first()).toBeVisible();
