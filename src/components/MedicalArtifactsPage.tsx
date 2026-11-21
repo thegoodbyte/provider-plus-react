@@ -5,7 +5,7 @@ import { useDocumentLibrary } from './useDocumentLibrary';
 import { getMedicalDocumentType } from './MedicalDocumentTypeIcon';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AlertTriangle, Check, CheckCircle2, ChevronDown, Eye, FileText, Info, Pencil, Plus, RefreshCw, Send, Settings, SlidersHorizontal, Trash2, UserCheck, XCircle, Zap } from 'lucide-react';
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, Eye, FileText, Info, Pencil, Plus, RefreshCw, Send, Settings, SlidersHorizontal, Trash2, UserCheck, X, XCircle, Zap } from 'lucide-react';
 import { bookingDocumentsApi, medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
@@ -886,6 +886,17 @@ const MedicalArtifactsPage: React.FC = () => {
 
         {filtersPopoverOpen && (
           <div id="medical-artifact-filters" role="region" aria-label="More medical artifact filters" className="absolute left-0 top-full z-30 mt-2 w-full max-w-xl rounded-md border border-gray-200 bg-white p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-900">More filters</span>
+              <button
+                type="button"
+                aria-label="Close filters"
+                onClick={() => setFiltersPopoverOpen(false)}
+                className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="medical-artifacts-booking-id-filter" className="mb-1 block text-xs font-semibold text-gray-700">Booking ID</label>

@@ -94,6 +94,15 @@ describe('MedicalArtifactsPage desktop filter bar + popover (PPVC-1050)', () => 
     expect(within(filterBar).queryByText('Booking ID')).not.toBeInTheDocument();
   });
 
+  it('closes the popover via its own visible close (X) button', async () => {
+    const filterBar = await renderPage();
+    fireEvent.click(within(filterBar).getByRole('button', { name: /More filters/ }));
+    expect(within(filterBar).getByText('Booking ID')).toBeInTheDocument();
+
+    fireEvent.click(within(filterBar).getByRole('button', { name: 'Close filters' }));
+    expect(within(filterBar).queryByText('Booking ID')).not.toBeInTheDocument();
+  });
+
   it('closes the popover on an outside click', async () => {
     const filterBar = await renderPage();
     fireEvent.click(within(filterBar).getByRole('button', { name: /More filters/ }));
