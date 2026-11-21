@@ -102,6 +102,9 @@ test("booking shortcut preloads the participant and price and returns to the sav
   page,
   request,
 }) => {
+  // This scenario loads the split editor, creates a booking and reloads the draft
+  // against real Mongo services; budget the complete multi-page journey.
+  test.setTimeout(90_000);
   await request.post(f.url + "/fixture/unbooked");
   await page.addInitScript((token) => {
     localStorage.setItem("token", token);
@@ -159,6 +162,7 @@ test("booking shortcut preloads the participant and price and returns to the sav
     name: "Participant 1",
     exact: true,
   });
+  await expect(client).toBeVisible({ timeout: 30_000 });
   await client.fill("1333");
   await page.getByRole("option", { name: /#1333/ }).click();
   await expect(page.getByLabel("Booking price 1")).toHaveValue("9500.00");
