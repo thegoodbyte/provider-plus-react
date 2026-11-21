@@ -113,6 +113,9 @@ for (const width of [1440, 390])
     await expect(
       page.getByText(/Synthetic Revolut confirmation #899/),
     ).toBeVisible();
+    // Let the payment list finish its real fixture reads before hard navigation
+    // cancels an intercepted booking-options response.
+    await page.waitForLoadState("networkidle");
     await page.goto("/admin/payments/" + payment._id + "/edit");
     await expect(page.getByLabel("Currency", { exact: true })).toHaveValue(
       "EUR",
