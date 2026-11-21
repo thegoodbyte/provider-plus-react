@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import { BillingPartyFields } from './BillingPartyFields';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -192,7 +193,7 @@ export default function ServiceBillingSettingsPage() {
                       }
                       className={selectClasses}
                     >
-                      {["EUR", "CZK", "PLN", "USD"].map((c) => (
+                      {MONEY_CURRENCIES.map((c) => (
                         <option key={c}>{c}</option>
                       ))}
                     </select>

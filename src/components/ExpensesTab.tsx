@@ -20,7 +20,7 @@ interface ExpenseFormData {
   expenseKind: 'planned' | 'actual';
   expenseTypeId: string;
   amount: number;
-  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
   description: string;
   vendor: string;
   paymentMethod: '' | 'card' | 'cash' | 'bank_transfer' | 'other';
@@ -348,12 +348,12 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 <label>Currency</label>
                 <select
                   value={formData.currency}
-                  onChange={(e) => setFormData({...formData, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN'})}
+                  onChange={(e) => setFormData({...formData, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP'})}
                 >
                   <option value="EUR">EUR (Euro)</option>
                   <option value="USD">USD (US Dollar)</option>
                   <option value="CZK">CZK (Czech Koruna)</option>
-                  <option value="PLN">PLN (Polish Złoty)</option>
+                  <option value="PLN">PLN (Polish Złoty)</option><option value="GBP">GBP</option>
                 </select>
               </div>
 

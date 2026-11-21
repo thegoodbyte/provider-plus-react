@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, X } from 'lucide-react';
@@ -173,7 +174,7 @@ const ExpenseEditorPage: React.FC = () => {
             <input ref={amountRef} type="number" inputMode="decimal" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="min-w-0 flex-1 border-0 bg-transparent text-5xl font-extrabold tracking-tight text-slate-950 outline-none placeholder:text-slate-300" placeholder="0.00" required />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            {(['CZK', 'EUR', 'PLN', 'USD'] as RetreatExpense['currency'][]).map((currency) => <button key={currency} type="button" onClick={() => setForm({ ...form, currency })} className={`rounded-lg border px-4 py-2.5 text-sm font-extrabold ${form.currency === currency ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}>{currency}</button>)}
+            {(MONEY_CURRENCIES as RetreatExpense['currency'][]).map((currency) => <button key={currency} type="button" onClick={() => setForm({ ...form, currency })} className={`rounded-lg border px-4 py-2.5 text-sm font-extrabold ${form.currency === currency ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}>{currency}</button>)}
           </div>
         </section>
 

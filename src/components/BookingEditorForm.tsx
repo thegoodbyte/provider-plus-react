@@ -28,7 +28,7 @@ type BookingFormData = {
   paymentRequestId: string;
   totalAmount: number;
   amountPaid: number;
-  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
   status: 'pending' | 'confirmed' | 'conditional' | 'checked-in' | 'checked-out' | 'cancelled';
   bookingNumber: string;
   bookingType: BookingType;
@@ -837,7 +837,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
               <option value="CZK">CZK</option>
-              <option value="PLN">PLN</option>
+              <option value="PLN">PLN</option><option value="GBP">GBP</option>
             </select>
           </div>
           <div>

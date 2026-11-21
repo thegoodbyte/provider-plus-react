@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import { Plus, Trash2 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { boosterOffersApi, bookingsApi, ceremoniesApi, retreatsApi } from '../services/api';
@@ -131,7 +132,7 @@ const BoosterOffersPage: React.FC = () => {
           <div><div className="font-serif text-lg font-semibold">Ceremony {offer.ceremonyNumber}</div>
             <form aria-label={`Price for ceremony ${offer.ceremonyNumber}`} onSubmit={event => { event.preventDefault(); const fields = new FormData(event.currentTarget); void update(offer, { price: Number(fields.get('price')), currency: fields.get('currency') as BoosterOffer['currency'] }); }} className="mt-2 space-y-1">
               <label className="block text-xs">Price<input aria-label={`Price for ceremony ${offer.ceremonyNumber}`} name="price" type="number" min="0" step="0.01" required defaultValue={offer.price ?? ''} key={`${offer._id}-${offer.price}`} placeholder="On request" className="w-full border p-1 text-sm" /></label>
-              <label className="block text-xs">Currency<select aria-label={`Currency for ceremony ${offer.ceremonyNumber}`} name="currency" defaultValue={offer.currency} key={`${offer._id}-${offer.currency}`} className="w-full border p-1 text-sm">{['EUR','CZK','PLN','USD'].map(currency => <option key={currency}>{currency}</option>)}</select></label>
+              <label className="block text-xs">Currency<select aria-label={`Currency for ceremony ${offer.ceremonyNumber}`} name="currency" defaultValue={offer.currency} key={`${offer._id}-${offer.currency}`} className="w-full border p-1 text-sm">{MONEY_CURRENCIES.map(currency => <option key={currency}>{currency}</option>)}</select></label>
               <button disabled={saving} type="submit" className="text-xs underline disabled:opacity-50">Save price</button>
             </form>
           </div>

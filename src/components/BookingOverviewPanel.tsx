@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import CurrencyDisplay from './CurrencyDisplay';
@@ -75,7 +76,7 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
     setSummaryLoading(true); setSummaryError(''); setSummary(null);
     paymentsApi.getFinancialSummary(bookingId).then(({ data }) => {
       if (!active) return;
-      if (!data || typeof data.paidInFull !== 'boolean' || !['verified_ledger', 'missing_conversion', 'unreconciled_history'].includes(data.sourceState) || !['CZK', 'EUR', 'USD', 'PLN'].includes(data.currency) || !['price', 'netPaid', 'balance', 'overpayment'].every(key => typeof data[key] === 'number' && Number.isFinite(data[key])) || ['price', 'balance', 'overpayment'].some(key => data[key] < 0)) {
+      if (!data || typeof data.paidInFull !== 'boolean' || !['verified_ledger', 'missing_conversion', 'unreconciled_history'].includes(data.sourceState) || !MONEY_CURRENCIES.includes(data.currency) || !['price', 'netPaid', 'balance', 'overpayment'].every(key => typeof data[key] === 'number' && Number.isFinite(data[key])) || ['price', 'balance', 'overpayment'].some(key => data[key] < 0)) {
         throw new Error('Unavailable financial summary');
       }
       setSummary(data);

@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check as FiCheck, Clipboard as FiClipboard, Edit2 as FiEdit2, ExternalLink as FiExternalLink, Plus as FiPlus, RefreshCw as FiRefreshCw, X as FiX } from 'lucide-react';
 import { revolutPaymentLinksApi, RevolutPaymentLink } from '../services/api';
@@ -55,7 +56,7 @@ const RevolutPaymentLinksPage: React.FC = () => {
       <div className="grid md:grid-cols-2 gap-4"><label className="text-sm font-medium">Name<input required className="mt-1 w-full border rounded-lg p-2.5" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="3400 PLN payment" /></label><label className="text-sm font-medium">Revolut checkout URL<input required type="url" className="mt-1 w-full border rounded-lg p-2.5" value={form.checkoutUrl} onChange={e => setForm({ ...form, checkoutUrl: e.target.value })} placeholder="https://checkout.revolut.com/pay/..." /></label></div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <label className="text-sm font-medium">Amount<input required type="number" min="0" step="0.01" className="mt-1 w-full border rounded-lg p-2.5" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></label>
-        <label className="text-sm font-medium">Currency<select className="mt-1 w-full border rounded-lg p-2.5" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>{['PLN','EUR','CZK','USD'].map(c => <option key={c}>{c}</option>)}</select></label>
+        <label className="text-sm font-medium">Currency<select className="mt-1 w-full border rounded-lg p-2.5" value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>{MONEY_CURRENCIES.map(c => <option key={c}>{c}</option>)}</select></label>
         <label className="text-sm font-medium">Payment limit<input type="number" min="1" className="mt-1 w-full border rounded-lg p-2.5" value={form.paymentLimit} onChange={e => setForm({ ...form, paymentLimit: e.target.value })} placeholder="No limit" /></label>
         <label className="text-sm font-medium">Observed in Revolut<input required type="number" min="0" className="mt-1 w-full border rounded-lg p-2.5" value={form.observedPaymentCount} onChange={e => setForm({ ...form, observedPaymentCount: e.target.value })} /></label>
         <label className="text-sm font-medium">Override count<input type="number" min="0" className="mt-1 w-full border rounded-lg p-2.5" value={form.paymentCountOverride} onChange={e => setForm({ ...form, paymentCountOverride: e.target.value })} placeholder="None" /></label>

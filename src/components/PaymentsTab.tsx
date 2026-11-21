@@ -23,7 +23,7 @@ interface PaymentFormData {
   clientId: string;
   bookingId?: string;
   amount: number;
-  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other';
   description?: string;
@@ -140,7 +140,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
       clientId: typeof payment.clientId === 'string' ? payment.clientId : payment.clientId._id || '',
       bookingId: typeof payment.bookingId === 'string' ? payment.bookingId : payment.bookingId?._id,
       amount: payment.amount,
-      currency: payment.currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+      currency: payment.currency as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP',
       status: payment.status,
       paymentMethod: payment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
       description: payment.description || '',
@@ -435,12 +435,12 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                 <label>Currency</label>
                 <select
                   value={formData.currency}
-                  onChange={(e) => setFormData({...formData, currency: e.target.value as 'CZK' | 'EUR' | 'PLN' | 'USD'})}
+                  onChange={(e) => setFormData({...formData, currency: e.target.value as 'CZK' | 'EUR' | 'PLN' | 'USD' | 'GBP'})}
                 >
                   <option value="EUR">EUR</option>
                   <option value="USD">USD</option>
                   <option value="CZK">CZK</option>
-                  <option value="PLN">PLN</option>
+                  <option value="PLN">PLN</option><option value="GBP">GBP</option>
                 </select>
               </div>
 

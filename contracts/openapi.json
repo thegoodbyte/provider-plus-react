@@ -1254,10 +1254,11 @@
           },
           "reviewFeeCurrency": {
             "enum": [
-              "EUR",
-              "USD",
               "CZK",
-              "PLN"
+              "EUR",
+              "PLN",
+              "USD",
+              "GBP"
             ],
             "type": "string"
           },
@@ -2022,7 +2023,8 @@
               "CZK",
               "EUR",
               "PLN",
-              "USD"
+              "USD",
+              "GBP"
             ],
             "type": "string"
           },
@@ -3386,7 +3388,8 @@
               "CZK",
               "EUR",
               "PLN",
-              "USD"
+              "USD",
+              "GBP"
             ],
             "type": "string"
           },

@@ -57,6 +57,29 @@ describe('currencyService', () => {
     expect(currencyService.formatCurrencyWithUSD(10, 'USD', 10)).toBe('$10.00');
     expect(currencyService.formatCurrencyWithUSD(10, 'CZK')).toBe('Kč10.00');
     expect(currencyService.formatCurrencyWithUSD(10, 'PLN', 2.5)).toBe('zł10.00 ($2.50)');
+    expect(currencyService.formatCurrencyWithUSD(1234.5, 'GBP')).toBe('£1,234.50');
+  });
+
+  it('converts pounds in both directions using the fetched GBP rate', async () => {
+    fetchMock.mockResolvedValue(ok({ EUR: 0.8, CZK: 20, PLN: 4, GBP: 0.8 }));
+    await currencyService.forceRefreshRates();
+    await expect(currencyService.convertToUSD(100, 'GBP')).resolves.toBe(125);
+    await expect(currencyService.convertFromUSD(125, 'GBP')).resolves.toBe(100);
+  });
+
+  it('refreshes a legacy four-currency cache before converting GBP', async () => {
+    localStorage.setItem('exchange_rates', JSON.stringify({ EUR: 1, USD: 1, CZK: 1, PLN: 1, lastUpdated: new Date().toISOString() }));
+    fetchMock.mockResolvedValue(ok({ EUR: 0.8, CZK: 20, PLN: 4, GBP: 0.8 }));
+    await expect(currencyService.convertToUSD(100, 'GBP')).resolves.toBe(125);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not invent a GBP rate when providers are unavailable or omit pounds', async () => {
+    fetchMock.mockResolvedValue(failed);
+    await expect(currencyService.convertToUSD(100, 'GBP')).rejects.toThrow();
+    localStorage.clear();
+    fetchMock.mockResolvedValue(ok({ EUR: 0.8, CZK: 20, PLN: 4 }));
+    await expect(currencyService.convertToUSD(100, 'GBP')).rejects.toThrow('Published GBP exchange rate is unavailable');
   });
 
   it('reports the rate update window', async () => {

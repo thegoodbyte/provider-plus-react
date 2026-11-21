@@ -83,6 +83,7 @@ const factory = {
   "task-identity": ["task-identity", "TASK_IDENTITY_FIXTURE"],
   "task-assignment": ["task-assignment", "TASK_ASSIGNMENT_FIXTURE"],
   "balance-reminder": ["balance-reminder", "BALANCE_REMINDER_FIXTURE"],
+  "gbp-currency": ["gbp-currency", "GBP_CURRENCY_FIXTURE"],
   "client-contact-card": ["client-contact-card", "CONTACT_CARD_FIXTURE"],
 };
 const legacy = {

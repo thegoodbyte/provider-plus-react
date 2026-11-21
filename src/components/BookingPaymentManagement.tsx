@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import BalanceReminderButton from './BalanceReminderButton';
 import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
@@ -64,7 +65,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [exchangeRateProviderLabel, setExchangeRateProviderLabel] = useState(DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL);
   const [newPayment, setNewPayment] = useState({
     amount: '',
-    currency: currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+    currency: currency as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP',
     paymentRequestId: '',
     paymentMethod: 'bank_transfer',
     paymentType: 'regular_payment',
@@ -108,14 +109,14 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [priceSaving, setPriceSaving] = useState(false);
   const [priceDraft, setPriceDraft] = useState(String(pricingSummary?.basePrice ?? totalAmount ?? ''));
   const [priceAdjustments, setPriceAdjustments] = useState<any[]>(pricingSummary?.adjustments || []);
-  const [priceCurrency, setPriceCurrency] = useState<'PLN' | 'EUR' | 'USD' | 'CZK'>(String(currency || 'EUR').toUpperCase() as 'PLN' | 'EUR' | 'USD' | 'CZK');
+  const [priceCurrency, setPriceCurrency] = useState<'PLN' | 'EUR' | 'USD' | 'CZK' | 'GBP'>(String(currency || 'EUR').toUpperCase() as 'PLN' | 'EUR' | 'USD' | 'CZK' | 'GBP');
   const [priceReason, setPriceReason] = useState('');
 
   useEffect(() => {
     if (!showPriceEditor) {
       setPriceDraft(String(pricingSummary?.basePrice ?? totalAmount ?? ''));
       setPriceAdjustments(pricingSummary?.adjustments || []);
-      setPriceCurrency(String(currency || 'EUR').toUpperCase() as 'PLN' | 'EUR' | 'USD' | 'CZK');
+      setPriceCurrency(String(currency || 'EUR').toUpperCase() as 'PLN' | 'EUR' | 'USD' | 'CZK' | 'GBP');
     }
   }, [totalAmount, currency, pricingSummary, showPriceEditor]);
 
@@ -208,7 +209,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   useEffect(() => {
     setNewPayment((current) => ({
       ...current,
-      currency: (current.currency || currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN',
+      currency: (current.currency || currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP',
     }));
   }, [currency]);
 
@@ -261,7 +262,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     };
   }, [newPayment.amount, newPayment.currency]);
 
-  const bookingCurrency = (currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN';
+  const bookingCurrency = (currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
   const existingFinalBalance = bookingPaymentRequests.find(request => request.requestType === 'balance' && request.status !== 'cancelled') || paymentPlan;
   const waitingForDeposit = bookingPaymentRequests.some(request => ['deposit','payment','full_payment'].includes(request.requestType || '') && !['paid', 'cancelled'].includes(request.status || 'pending'));
   const linkedRequest = bookingPaymentRequests.find(request => request._id === newPayment.paymentRequestId);
@@ -498,7 +499,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         bookingHash, // New field - prioritize this for linking
         paymentRequestId: newPayment.paymentRequestId || undefined,
         amount: parseFloat(newPayment.amount),
-        currency: newPayment.currency as 'EUR' | 'CZK' | 'PLN' | 'USD',
+        currency: newPayment.currency as 'EUR' | 'CZK' | 'PLN' | 'USD' | 'GBP',
         usd_amount: usdPreview ?? undefined,
         ...(mixedRequestCurrency ? { requestCurrencyAmount: newPayment.requestCurrencyExchangeMode === 'manual' ? Number(newPayment.requestCurrencyAmount) : undefined, requestCurrencyExchangeMode: newPayment.requestCurrencyExchangeMode, requestCurrencyExchangeSource: newPayment.requestCurrencyExchangeSource, requestCurrencyExchangeDate: newPayment.requestCurrencyExchangeDate || newPayment.paymentDate } : {}),
         bookingCurrency: isMixedBookingCurrencyPayment ? bookingCurrency : undefined,
@@ -526,7 +527,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       // Reset form
       setNewPayment({
         amount: '',
-        currency: currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+        currency: currency as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP',
         paymentRequestId: '',
         paymentMethod: 'bank_transfer',
         paymentType: 'regular_payment',
@@ -562,7 +563,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       paymentRequestId,
       ...emptyRequestConversion,
       amount: amount ? String(amount) : current.amount,
-      currency: (paymentRequest?.currency || current.currency || currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN',
+      currency: (paymentRequest?.currency || current.currency || currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP',
       description: paymentRequest
         ? `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || paymentRequestId}`.trim()
         : current.description,
@@ -758,7 +759,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       {showPriceEditor && <div className="booking-price-editor" role="dialog" aria-label="Manage booking price">
         <div><strong>Manage booking price</strong><p>Start with the basic price, then itemize every discount and add-on. Payments remain unchanged.</p></div>
         <label>Basic booking price<input type="number" min="0" step="0.01" value={priceDraft} onChange={event => setPriceDraft(event.target.value)} /></label>
-        <label>Currency<select value={priceCurrency} onChange={event => setPriceCurrency(event.target.value as 'PLN' | 'EUR' | 'USD' | 'CZK')}>{['PLN','EUR','USD','CZK'].map(code => <option key={code}>{code}</option>)}</select></label>
+        <label>Currency<select value={priceCurrency} onChange={event => setPriceCurrency(event.target.value as 'PLN' | 'EUR' | 'USD' | 'CZK' | 'GBP')}>{MONEY_CURRENCIES.map(code => <option key={code}>{code}</option>)}</select></label>
         <div className="booking-price-items">
           {priceAdjustments.map((item, index) => <div className="booking-price-item" key={item.id || index}>
             <select aria-label={`Price item ${index + 1} type`} value={item.type} onChange={event => setPriceAdjustments(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, type: event.target.value } : row))}><option value="discount">Discount</option><option value="addon">Add-on</option><option value="surcharge">Surcharge</option><option value="adjustment">Adjustment</option></select>
@@ -950,13 +951,13 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                   <label>Currency *</label>
                   <select
                     value={newPayment.currency}
-                    onChange={(e) => setNewPayment({...newPayment, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN', requestCurrencyAmount: '', requestCurrencyExchangeSource: ''})}
+                    onChange={(e) => setNewPayment({...newPayment, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP', requestCurrencyAmount: '', requestCurrencyExchangeSource: ''})}
                     required
                   >
                     <option value="EUR">EUR</option>
                     <option value="USD">USD</option>
                     <option value="CZK">CZK</option>
-                    <option value="PLN">PLN</option>
+                    <option value="PLN">PLN</option><option value="GBP">GBP</option>
                   </select>
                 </div>
                 <div className="form-group">

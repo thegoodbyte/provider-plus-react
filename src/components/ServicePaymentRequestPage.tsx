@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import { Modal } from "antd";
 import { useInvoiceDraft } from "./useInvoiceDraft";
@@ -769,7 +770,7 @@ export default function ServicePaymentRequestPage() {
                       }}
                       className={selectClasses}
                     >
-                      {["EUR", "CZK", "PLN", "USD"].map((c) => (
+                      {MONEY_CURRENCIES.map((c) => (
                         <option key={c}>{c}</option>
                       ))}
                     </select>

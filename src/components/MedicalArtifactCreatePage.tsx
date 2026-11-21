@@ -621,7 +621,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
               <option value="EUR">EUR</option>
               <option value="USD">USD</option>
               <option value="CZK">CZK</option>
-              <option value="PLN">PLN</option>
+              <option value="PLN">PLN</option><option value="GBP">GBP</option>
             </select>
             <label className="flex shrink-0 items-center gap-1 text-xs text-gray-700">
               <input

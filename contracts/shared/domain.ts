@@ -60,7 +60,7 @@ export interface RetreatStaffAssignment {
   endDate?: Date | string;
   endTime?: string;
   plannedSalary?: number;
-  salaryCurrency?: 'USD' | 'EUR' | 'CZK' | 'PLN' | string;
+  salaryCurrency?: 'USD' | 'EUR' | 'CZK' | 'PLN' | 'GBP' | string;
   notes?: string;
 }
 
@@ -104,7 +104,7 @@ export interface BoosterOffer {
   departureAt: string;
   capacity: number;
   price?: number;
-  currency: 'CZK' | 'EUR' | 'PLN' | 'USD';
+  currency: 'CZK' | 'EUR' | 'PLN' | 'USD' | 'GBP';
   publicNotes?: string;
   published: boolean;
   reserved?: number;
@@ -401,7 +401,7 @@ export interface RetreatClient {
   checkOutDate: Date | string;
   totalAmount: number;
   totalAmountUsd?: number;
-  currency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  currency?: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
   amountPaid?: number;
   amountPaidUsd?: number;
   status?: 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled';
@@ -572,7 +572,7 @@ export interface ClientRequirement {
 
   // Payment/Amount information
   amount?: number;
-  currency?: 'CZK' | 'EUR' | 'PLN';
+  currency?: 'CZK' | 'EUR' | 'PLN' | 'GBP';
   paymentMethod?: string;
 
   // Approval information
@@ -667,7 +667,7 @@ export interface RetreatExpense {
   expenseTypeId: string | ExpenseType;
   amount: number;
   usd_amount?: number;
-  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
   description?: string;
   vendor?: string;
   paymentMethod?: 'card' | 'cash' | 'bank_transfer' | 'other';
@@ -731,9 +731,9 @@ export interface Payment {
   bookingHash?: string; // New field - 20-character hash for linking to specific booking
   amount: number;
   usd_amount?: number;
-  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
-  bookingCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
-  requestCurrency?: 'EUR' | 'PLN' | 'CZK' | 'USD';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
+  bookingCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
+  requestCurrency?: 'EUR' | 'PLN' | 'CZK' | 'USD' | 'GBP';
   requestCurrencyAmount?: number;
   requestCurrencyExchangeMode?: 'automatic' | 'manual';
   requestCurrencyExchangeSource?: string;
@@ -780,7 +780,7 @@ export interface PaymentReceipt {
   display_id?: number;
   paymentRequestId?: string | PaymentRequest;
   totalAmount: number;
-  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
   usdAmount?: number;
   status: 'pending' | 'received' | 'failed' | 'refunded';
   paymentMethod: Payment['paymentMethod'];
@@ -1281,7 +1281,7 @@ export interface MedicalArtifact {
   status?: 'stored' | 'missing_file' | 'pending_review' | 'approved' | 'rejected' | 'needs_resubmission' | 'superseded' | 'voided';
 
   reviewFeeAmount?: number;
-  reviewFeeCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  reviewFeeCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP';
   reviewFeePaid?: boolean;
   tags?: string[];
   notes?: string;
@@ -1858,7 +1858,7 @@ export interface PaymentRequest {
   amountPaid: number;
   usd_amount?: number;
   fullPriceUsdAmount?: number;
-  currency: 'CZK' | 'EUR' | 'PLN' | 'USD';
+  currency: 'CZK' | 'EUR' | 'PLN' | 'USD' | 'GBP';
   note?: string;
   status: 'pending' | 'sent' | 'paid' | 'overdue' | 'cancelled';
   invoiceNumber?: string;

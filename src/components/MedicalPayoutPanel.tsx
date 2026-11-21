@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { medicalPayoutsApi } from '../services/api';
@@ -95,7 +96,7 @@ export default function MedicalPayoutPanel({ retreatId, canManage, onPaymentChan
         <h3>{payment.existingExpenseId ? 'Link an existing medical expense' : 'Record payment against approved fee'}</h3><p>Recipient: {obligation.recipient.name}. This records money already paid; it does not send a bank transfer.</p>
         {pending && <p className="medical-fee-warning">A submitted payment is awaiting confirmation. Retry uses the same details and payment identifier.</p>}
         <fieldset disabled={busy || !!pending}><label>Fee amount applied (USD)<input required type="number" min="0.01" step="0.01" max={data.remainingAmount} value={payment.feeAmountUsd} onChange={e => field('feeAmountUsd', e.target.value)}/></label>
-          <label>Payout currency<select disabled={!!payment.existingExpenseId} value={payment.currency} onChange={e => field('currency', e.target.value)}>{['USD','EUR','CZK','PLN'].map(code => <option key={code}>{code}</option>)}</select></label>
+          <label>Payout currency<select disabled={!!payment.existingExpenseId} value={payment.currency} onChange={e => field('currency', e.target.value)}>{MONEY_CURRENCIES.map(code => <option key={code}>{code}</option>)}</select></label>
           <label>Actual amount paid<input required readOnly={!!payment.existingExpenseId || payment.currency === 'USD'} type="number" min="0.01" step="0.01" value={payment.payoutAmount} onChange={e => field('payoutAmount', e.target.value)}/></label>
           {payment.currency !== 'USD' && <label>Recorded bank or exchange quote source<input required minLength={3} maxLength={2000} value={payment.exchangeRateSource} onChange={e => field('exchangeRateSource', e.target.value)}/></label>}
           <label>Payment date<input required readOnly={!!payment.existingExpenseId} type="date" value={payment.paymentDate} onChange={e => field('paymentDate', e.target.value)}/></label>

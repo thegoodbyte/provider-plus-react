@@ -478,7 +478,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         checkInDate: editFormData.checkInDate ? editFormData.checkInDate : undefined,
         checkOutDate: editFormData.checkOutDate ? editFormData.checkOutDate : undefined,
         status: editFormData.status as "pending" | "confirmed" | "checked-in" | "checked-out" | "cancelled",
-        currency: editFormData.currency as 'EUR' | 'USD' | 'CZK' | 'PLN' | undefined,
+        currency: editFormData.currency as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP' | undefined,
         totalAmount: Number(editFormData.totalAmount),
         amountPaid: Number(editFormData.amountPaid)
       };
@@ -653,7 +653,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         clientId: clientId!,
         retreatId: retreatId,
         totalAmount: values.totalAmount,
-        currency: values.currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+        currency: values.currency as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP',
         status: 'confirmed' as const,
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
@@ -1824,7 +1824,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                     <option value="EUR">EUR</option>
                     <option value="USD">USD</option>
                     <option value="CZK">CZK</option>
-                    <option value="PLN">PLN</option>
+                    <option value="PLN">PLN</option><option value="GBP">GBP</option>
                   </select>
                 </div>
 
@@ -2427,7 +2427,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             <option value="CZK">CZK</option>
                             <option value="EUR">EUR</option>
                             <option value="USD">USD</option>
-                            <option value="PLN">PLN</option>
+                            <option value="PLN">PLN</option><option value="GBP">GBP</option>
                           </select>
                         </label>
                         <button

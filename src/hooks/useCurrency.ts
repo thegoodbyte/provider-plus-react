@@ -8,9 +8,9 @@ interface CurrencyDisplay {
 }
 
 interface CurrencyHookReturn {
-  formatCurrency: (amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN') => string;
-  useCurrencyDisplay: (amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN') => CurrencyDisplay;
-  convertToUSD: (amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN') => Promise<number>;
+  formatCurrency: (amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP') => string;
+  useCurrencyDisplay: (amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP') => CurrencyDisplay;
+  convertToUSD: (amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP') => Promise<number>;
   isLoading: boolean;
   error: string | null;
   refreshRates: () => Promise<void>;
@@ -19,22 +19,24 @@ interface CurrencyHookReturn {
 export const useCurrency = (): CurrencyHookReturn => {
   const [usdAmountCache, setUsdAmountCache] = useState<Map<string, { amount: number; timestamp: number }>>(new Map());
   const [loadingConversions, setLoadingConversions] = useState<Set<string>>(new Set());
+  const [failedConversions, setFailedConversions] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const formatCurrency = useCallback((amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN'): string => {
+  const formatCurrency = useCallback((amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP'): string => {
     const symbols: { [key: string]: string } = {
       EUR: '€',
       USD: '$',
       CZK: 'Kč',
-      PLN: 'zł'
+      PLN: 'zł',
+      GBP: '£'
     };
 
     const symbol = symbols[currency];
     return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }, []);
 
-  const convertToUSD = useCallback(async (amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN'): Promise<number> => {
+  const convertToUSD = useCallback(async (amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP'): Promise<number> => {
     if (currency === 'USD') {
       return amount;
     }
@@ -75,16 +77,18 @@ export const useCurrency = (): CurrencyHookReturn => {
     } catch (err) {
       console.error('Failed to convert to USD:', err);
       setError('Failed to convert currency');
+      setFailedConversions(prev => new Set(prev).add(cacheKey));
       setLoadingConversions(prev => {
         const newSet = new Set(prev);
         newSet.delete(cacheKey);
         return newSet;
       });
-      return amount; // Fallback to original amount
+      // In particular, pounds must never be represented as a 1:1 USD amount.
+      throw err;
     }
   }, [usdAmountCache]);
 
-  const useCurrencyDisplay = useCallback((amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN'): CurrencyDisplay => {
+  const useCurrencyDisplay = useCallback((amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP'): CurrencyDisplay => {
     const formattedAmount = formatCurrency(amount, currency);
 
     if (currency === 'USD') {
@@ -110,7 +114,7 @@ export const useCurrency = (): CurrencyHookReturn => {
     }
 
     // If no cached value and not already loading, start conversion
-    if (!isLoadingThis) {
+    if (!isLoadingThis && !failedConversions.has(cacheKey)) {
       convertToUSD(amount, currency).catch(() => {
         // Error handling is done in convertToUSD
       });
@@ -121,7 +125,7 @@ export const useCurrency = (): CurrencyHookReturn => {
       usdAmount: undefined,
       isLoading: isLoadingThis
     };
-  }, [formatCurrency, usdAmountCache, loadingConversions, convertToUSD]);
+  }, [formatCurrency, usdAmountCache, loadingConversions, failedConversions, convertToUSD]);
 
   const refreshRates = useCallback(async (): Promise<void> => {
     try {
@@ -130,6 +134,7 @@ export const useCurrency = (): CurrencyHookReturn => {
       await currencyService.forceRefreshRates();
       setUsdAmountCache(new Map()); // Clear cache to force recalculation
       setLoadingConversions(new Set()); // Clear loading states
+      setFailedConversions(new Set());
     } catch (err) {
       setError('Failed to refresh exchange rates');
       throw err;

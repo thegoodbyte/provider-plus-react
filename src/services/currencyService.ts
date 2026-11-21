@@ -3,6 +3,7 @@ interface ExchangeRates {
   USD: number;
   CZK: number;
   PLN: number;
+  GBP?: number; // Older caches/fallbacks have no published pound rate.
   lastUpdated: string;
 }
 
@@ -29,7 +30,7 @@ class CurrencyService {
 
   // Using a free API - you can replace with your preferred service
   private readonly API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
-  private readonly BACKUP_API_URL = 'https://api.fxratesapi.com/latest?base=USD&symbols=EUR,CZK,PLN';
+  private readonly BACKUP_API_URL = 'https://api.fxratesapi.com/latest?base=USD&symbols=EUR,CZK,PLN,GBP';
 
   async getExchangeRates(): Promise<ExchangeRates> {
     try {
@@ -61,6 +62,7 @@ class CurrencyService {
           USD: 1.0,
           CZK: 1 / data.rates.CZK,
           PLN: 1 / data.rates.PLN,
+          ...(Number.isFinite(data.rates.GBP) && data.rates.GBP > 0 ? { GBP: 1 / data.rates.GBP } : {}),
           lastUpdated: new Date().toISOString()
         };
       }
@@ -78,6 +80,7 @@ class CurrencyService {
           USD: 1.0,
           CZK: 1 / data.rates.CZK,
           PLN: 1 / data.rates.PLN,
+          ...(Number.isFinite(data.rates.GBP) && data.rates.GBP > 0 ? { GBP: 1 / data.rates.GBP } : {}),
           lastUpdated: new Date().toISOString()
         };
       }
@@ -111,32 +114,37 @@ class CurrencyService {
     return (now - lastUpdated) < this.CACHE_DURATION;
   }
 
-  async convertToUSD(amount: number, fromCurrency: 'EUR' | 'USD' | 'CZK' | 'PLN'): Promise<number> {
+  async convertToUSD(amount: number, fromCurrency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP'): Promise<number> {
     if (fromCurrency === 'USD') {
       return amount;
     }
 
-    const rates = await this.getExchangeRates();
+    let rates = await this.getExchangeRates();
+    if (fromCurrency === 'GBP' && !rates.GBP) rates = await this.forceRefreshRates();
     const rate = rates[fromCurrency];
+    if (!Number.isFinite(rate) || !rate || rate <= 0) throw new Error(`Published ${fromCurrency} exchange rate is unavailable.`);
     return amount * rate;
   }
 
-  async convertFromUSD(amount: number, toCurrency: 'EUR' | 'USD' | 'CZK' | 'PLN'): Promise<number> {
+  async convertFromUSD(amount: number, toCurrency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP'): Promise<number> {
     if (toCurrency === 'USD') {
       return amount;
     }
 
-    const rates = await this.getExchangeRates();
+    let rates = await this.getExchangeRates();
+    if (toCurrency === 'GBP' && !rates.GBP) rates = await this.forceRefreshRates();
     const rate = rates[toCurrency];
+    if (!Number.isFinite(rate) || !rate || rate <= 0) throw new Error(`Published ${toCurrency} exchange rate is unavailable.`);
     return amount / rate;
   }
 
-  formatCurrencyWithUSD(amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN', usdAmount?: number): string {
+  formatCurrencyWithUSD(amount: number, currency: 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP', usdAmount?: number): string {
     const symbols: { [key: string]: string } = {
       EUR: '€',
       USD: '$',
       CZK: 'Kč',
-      PLN: 'zł'
+      PLN: 'zł',
+      GBP: '£'
     };
 
     const symbol = symbols[currency];

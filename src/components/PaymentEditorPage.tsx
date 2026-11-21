@@ -114,7 +114,7 @@ const PaymentEditorPage: React.FC = () => {
     retreatId: '',
     bookingId: '',
     amount: '',
-    currency: 'EUR' as 'EUR' | 'USD' | 'CZK' | 'PLN',
+    currency: 'EUR' as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP',
     status: 'pending' as 'pending' | 'completed' | 'failed' | 'refunded',
     paymentMethod: 'bank_transfer' as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
     description: '',
@@ -727,7 +727,7 @@ const PaymentEditorPage: React.FC = () => {
                 <option value="EUR">EUR</option>
                 <option value="USD">USD</option>
                 <option value="CZK">CZK</option>
-                <option value="PLN">PLN</option>
+                <option value="PLN">PLN</option><option value="GBP">GBP</option>
               </select>
             </div>
 

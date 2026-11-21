@@ -413,7 +413,7 @@ export type CreateMedicalArtifactDto = {
     replacesArtifactId?: string;
     retreatId?: string;
     reviewFeeAmount?: number;
-    reviewFeeCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
+    reviewFeeCurrency?: 'CZK' | 'EUR' | 'PLN' | 'USD' | 'GBP';
     reviewFeePaid?: boolean;
     source?: 'email' | 'manual' | 'client_upload' | 'admin_upload' | 'legacy';
     status?: 'rejected' | 'voided' | 'superseded' | 'stored' | 'missing_file' | 'pending_review' | 'approved' | 'needs_resubmission';
@@ -620,7 +620,7 @@ export type CreateRetreatExpenseDto = {
 export type CreateRevolutPaymentLinkDto = {
     amount: number;
     checkoutUrl: string;
-    currency: 'CZK' | 'EUR' | 'PLN' | 'USD';
+    currency: 'CZK' | 'EUR' | 'PLN' | 'USD' | 'GBP';
     name: string;
     notes?: string;
     observedPaymentCount?: number;
@@ -1120,7 +1120,7 @@ export type UpsertBoosterOfferDto = {
     capacity: number;
     ceremonyId: string;
     ceremonyNumber: number;
-    currency?: 'CZK' | 'EUR' | 'PLN' | 'USD';
+    currency?: 'CZK' | 'EUR' | 'PLN' | 'USD' | 'GBP';
     departureAt: string;
     price?: number;
     publicNotes?: string;

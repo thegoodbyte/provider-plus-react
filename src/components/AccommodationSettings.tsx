@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import React, { useEffect, useState } from "react";
 import {
   roomInventoryApi,
@@ -138,7 +139,7 @@ export default function AccommodationSettings() {
               </label>
             </div>
             <div className="grid gap-3 md:grid-cols-4">
-              {["EUR", "USD", "CZK", "PLN"].map((currency) => (
+              {MONEY_CURRENCIES.map((currency) => (
                 <label key={currency}>
                   Adjustment {currency}
                   <input

@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import InvoiceVisitSettings from './InvoiceVisitSettings';
 import MorningDigestSettings from './MorningDigestSettings';
 import MissingItemsReminderSettings from './MissingItemsReminderSettings';
@@ -18,10 +19,10 @@ interface CurrencySettingsProps {
   onClose: () => void;
 }
 
-type ConverterCurrency = 'USD' | 'EUR' | 'CZK' | 'PLN';
+type ConverterCurrency = 'USD' | 'EUR' | 'CZK' | 'PLN' | 'GBP';
 type PaymentTypeSetting = { key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string };
 type PaymentPlanSettings = { depositPercentage: number; enabled: boolean; automaticallyCreateBalanceRequest: boolean; balanceDueDaysBeforeRetreat: number; reminderAutomationEnabled: boolean; reminderOffsetsDays: number[]; showFuturePaymentRequestInPortal: boolean; publicPaymentRequestBaseUrl: string; receiptAttachPdf: boolean; receiptAttachBookingConfirmation: boolean; receiptPortalBaseUrl: string };
-const converterCurrencies: ConverterCurrency[] = ['PLN', 'USD', 'EUR', 'CZK'];
+const converterCurrencies: ConverterCurrency[] = MONEY_CURRENCIES;
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const { toast, showSuccess, showError, dismiss: dismissToast } = useToast();
@@ -166,7 +167,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
     }
   };
 
-  const testConversion = async (amount: number, currency: 'EUR' | 'CZK' | 'PLN') => {
+  const testConversion = async (amount: number, currency: 'EUR' | 'CZK' | 'PLN' | 'GBP') => {
     try {
       const usdAmount = await currencyService.convertToUSD(amount, currency);
       showSuccess(`${amount} ${currency} = $${usdAmount.toFixed(2)} USD`);
@@ -401,6 +402,12 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
                       Test 100 zł
                     </button>
                   </td>
+                </tr>
+                <tr>
+                  <td>🇬🇧 British Pound</td><td>GBP</td>
+                  <td>{rates.GBP ? rates.GBP.toFixed(4) : 'Unavailable'}</td>
+                  <td>{rates.GBP ? `£100 = $${(100 * rates.GBP).toFixed(2)}` : 'Published rate unavailable'}</td>
+                  <td><button disabled={!rates.GBP} onClick={() => testConversion(100, 'GBP')} className="test-btn">Test £100</button></td>
                 </tr>
               </tbody>
             </table>

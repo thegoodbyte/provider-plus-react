@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import { ReferralPortalAccountEditor } from './ReferralPortalAccountEditor';
 import { FormEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -53,7 +54,7 @@ export default function ReferralEditorPage({ referral, base, onSaved }: { referr
           <input aria-label="Contact email" type="email" placeholder="Email" className={field} value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} />
           <input aria-label="Contact phone" placeholder="Phone" className={field} value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} />
         </div>
-        <label className="my-4 block text-sm font-semibold">Preferred payout currency<select aria-label="Preferred payout currency" className={`${field} mt-1`} value={form.payoutCurrency} onChange={event => setForm({ ...form, payoutCurrency: event.target.value })}><option value="">Original commission currency</option>{['USD','EUR','PLN','CZK'].map(currency => <option key={currency} value={currency}>{currency}</option>)}</select><span className="mt-1 block text-xs font-normal text-slate-500">Original commissions stay unchanged. Conversion uses the published payment-date rate; saved payouts keep their recorded rate.</span></label>
+        <label className="my-4 block text-sm font-semibold">Preferred payout currency<select aria-label="Preferred payout currency" className={`${field} mt-1`} value={form.payoutCurrency} onChange={event => setForm({ ...form, payoutCurrency: event.target.value })}><option value="">Original commission currency</option>{MONEY_CURRENCIES.map(currency => <option key={currency} value={currency}>{currency}</option>)}</select><span className="mt-1 block text-xs font-normal text-slate-500">Original commissions stay unchanged. Conversion uses the published payment-date rate; saved payouts keep their recorded rate.</span></label>
         <div className="my-3 flex gap-2" role="tablist" aria-label="Commission agreement type">
           <button type="button" role="tab" aria-selected={mode === 'dated'} className={`min-h-11 rounded-lg border px-4 font-semibold ${mode === 'dated' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white'}`} onClick={() => { setMode('dated'); setDirty(true); setSavedMessage(''); }}>Dated percentages</button>
           <button type="button" role="tab" aria-selected={mode === 'custom'} className={`min-h-11 rounded-lg border px-4 font-semibold ${mode === 'custom' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white'}`} onClick={() => { setMode('custom'); setDirty(true); setSavedMessage(''); }}>Custom packages</button>

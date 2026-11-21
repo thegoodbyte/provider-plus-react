@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { roomInventoryApi } from "../services/roomInventoryApi";
@@ -430,7 +431,7 @@ export default function RetreatRoomsTab({ retreatId }: { retreatId: string }) {
           {data.options.map((option: any) => (
             <div key={option.key} className="flex flex-wrap gap-2">
               <strong>{option.labels.en}</strong>
-              {["EUR", "USD", "CZK", "PLN"].map((currency) => (
+              {MONEY_CURRENCIES.map((currency) => (
                 <label key={currency}>
                   {currency}
                   <input

@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import React, { FormEvent, useEffect, useState } from 'react';
 import { Check, Pencil, Power, Trash2, X } from 'lucide-react';
 import { expenseTypesApi } from '../services/api';
@@ -64,7 +65,7 @@ const ExpenseTypesSettings: React.FC = () => {
       <input required placeholder="Name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
       <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as ExpenseType['category'] })}>{categories.map((category) => <option key={category}>{category}</option>)}</select>
       <input type="number" min="0" step="0.01" placeholder="Default amount" value={form.defaultAmount} onChange={(event) => setForm({ ...form, defaultAmount: Number(event.target.value) })} />
-      <select value={form.defaultCurrency} onChange={(event) => setForm({ ...form, defaultCurrency: event.target.value })}>{['CZK', 'EUR', 'PLN', 'USD'].map((currency) => <option key={currency}>{currency}</option>)}</select>
+      <select value={form.defaultCurrency} onChange={(event) => setForm({ ...form, defaultCurrency: event.target.value })}>{MONEY_CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}</select>
       <input placeholder="Description" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} />
       <label><input type="checkbox" checked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} /> Active</label>
       <button disabled={saving || !form.name.trim()} type="submit">{saving ? 'Saving…' : editing ? 'Save changes' : 'Add type'}</button>

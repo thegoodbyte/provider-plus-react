@@ -45,7 +45,7 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
       ...(toFiniteNumber(params.get('ceremonyNumber')) !== undefined ? { ceremonyNumber: String(toFiniteNumber(params.get('ceremonyNumber'))) } : {}),
       totalAmount: toFiniteNumber(params.get('totalAmount')),
       amountPaid: toFiniteNumber(params.get('amountPaid')),
-      currency: (params.get('currency') as 'EUR' | 'USD' | 'CZK' | 'PLN' | null) || undefined,
+      currency: (params.get('currency') as 'EUR' | 'USD' | 'CZK' | 'PLN' | 'GBP' | null) || undefined,
       status: (params.get('status') as 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled' | null) || undefined,
     };
   }, [location.search]);

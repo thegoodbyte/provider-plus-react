@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal } from 'antd';
 import { ArrowDownUp, Info, RefreshCw, Search } from 'lucide-react';
@@ -8,7 +9,7 @@ type Filters = { from: string; to: string; provider: string; account: string; cu
 type Preset = 'All time' | 'Today' | '7 days' | '30 days';
 const presets: Preset[] = ['All time', 'Today', '7 days', '30 days'];
 const statuses = [['logged', 'Logged'], ['unassigned', 'Unassigned'], ['converted', 'Converted / linked'], ['excluded', 'Excluded']] as const;
-const currencies = ['CZK', 'EUR', 'PLN', 'USD'];
+const currencies = MONEY_CURRENCIES;
 const providers = { csob: 'ČSOB', revolut: 'Revolut', paypal: 'PayPal' };
 const localDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 export function scratchpadDateRange(preset: Preset, now = new Date()) {

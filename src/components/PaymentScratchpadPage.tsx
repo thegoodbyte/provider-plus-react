@@ -1,3 +1,4 @@
+import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import ScratchpadBookingNextStep from './ScratchpadBookingNextStep';
 import ScratchpadEditMatching from './ScratchpadEditMatching';
 import ScratchpadGuidedMatch from './ScratchpadGuidedMatch';
@@ -24,7 +25,7 @@ const buttonClass = 'rounded-lg border border-slate-300 bg-white px-4 py-2 text-
 const primaryClass = 'rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50';
 const scratchpadLabel = (row: ScratchpadReceipt) => row.display_id ? `SP-${row.display_id}` : row._id;
 const providers: Record<string, string> = { csob: 'ČSOB', revolut: 'Revolut', paypal: 'PayPal' };
-const currencies = ['CZK', 'EUR', 'PLN', 'USD'];
+const currencies = MONEY_CURRENCIES;
 const resolveId = (v: any): string => typeof v === 'object' ? v?._id || '' : v || '';
 const errorText = (e: any) => {
   const message = e?.response?.data?.message;
