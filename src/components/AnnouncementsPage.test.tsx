@@ -3,7 +3,7 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AnnouncementsPage, { announcementTiming } from "./AnnouncementsPage";
-import { announcementsApi, communicationsApi } from "../services/api";
+import { api, announcementsApi, communicationsApi } from "../services/api";
 jest.mock("../services/api", () => ({
   api: { post: jest.fn().mockResolvedValue({data:{retreat:null,message:'No upcoming retreat is available for an example.'}}) },
   announcementsApi: {
@@ -65,6 +65,9 @@ beforeAll(() => {
 });
 beforeEach(() => {
   jest.clearAllMocks();
+  // resetMocks clears factory implementations before every test. The real
+  // debounced preview always returns a promise, including on slow CI workers.
+  (api.post as jest.Mock).mockResolvedValue({ data: { retreat: null, message: "No upcoming retreat is available for an example." } });
   (announcementsApi.get as jest.Mock).mockResolvedValue({ data });
   (communicationsApi.getTemplates as jest.Mock).mockResolvedValue({
     data: [template],
@@ -79,6 +82,7 @@ it("walks through the post-retreat wizard and saves without sending or enabling 
     ).toBeEnabled(),
   );
   fireEvent.click(screen.getByRole("button", { name: "+ Add announcement" }));
+  await screen.findByText("No upcoming retreat is available for an example.");
   fireEvent.change(screen.getByLabelText("Before or after"), {
     target: { value: "after_end" },
   });
