@@ -1,5 +1,5 @@
 import './PaymentRequestsGrid.css';
-import { Dropdown, Tooltip } from 'antd';
+import { Dropdown, Select, Tooltip } from 'antd';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import RequestExistingPayment from './RequestExistingPayment';
 import { authService } from '../services/authService';
@@ -22,7 +22,7 @@ import { getIbogaReadyPaymentUrl, getPolishWebsitePaymentUrl, getPreferredPaymen
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
-import { emptyRequestFilters, matchesRequestFilters, requestFilterError } from './paymentRequestFilters';
+import { emptyRequestFilters, matchesRequestFilters, requestFilterError, requestRetreatOptions } from './paymentRequestFilters';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -72,6 +72,7 @@ const PaymentRequestsGrid: React.FC = () => {
   const [documentKind, setDocumentKind] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [details, setDetails] = useState(emptyRequestFilters);
+  const retreatOptions = useMemo(() => requestRetreatOptions(paymentRequests), [paymentRequests]);
   const filterError = requestFilterError(details);
   const hasFilters = documentKind !== 'all' || paymentFilter !== 'all' || Boolean(searchTerm) || Object.values(details).some(Boolean);
   const currencies = [...new Set(paymentRequests.map(request => paymentRequestFinancialSummary(request).currency).filter(Boolean))].sort();
@@ -340,6 +341,18 @@ const PaymentRequestsGrid: React.FC = () => {
             <option value="paid-unbooked">Paid without bookings</option>
           </select>
         </label>
+        <div className="flex w-full max-w-md min-w-0 items-end gap-2 sm:w-80">
+          <div className="min-w-0 flex-1">
+            <label htmlFor="request-retreat-filter" className="mb-1 block text-sm font-medium">Retreat</label>
+            <Select id="request-retreat-filter" aria-label="Retreat" className="w-full" size="large"
+              showSearch optionFilterProp="label" placeholder="All retreats"
+              value={details.retreatId || undefined}
+              options={[{ value: '', label: 'All retreats' }, ...retreatOptions]}
+              notFoundContent="No retreats found"
+              onChange={retreatId => setDetails(current => ({ ...current, retreatId }))} />
+          </div>
+          {details.retreatId && <button type="button" className="shrink-0 px-1 py-2 text-sm text-blue-700 underline" onClick={() => setDetails(current => ({ ...current, retreatId: '' }))}>Clear retreat</button>}
+        </div>
         <span className="text-sm text-gray-600" role="status">{filteredRequests.length} of {paymentRequests.length} requests</span>
         {paymentFilter === 'paid-unbooked' && <p className="text-sm text-gray-600">This filter checks saved request links. Use <Link className="text-blue-700 underline" to="/admin/payment-requests/booking-review">Booking link review</Link> to find existing bookings and repair missing links.</p>}
         {hasFilters && <button type="button" onClick={() => { setDocumentKind('all'); setPaymentFilter('all'); setSearchTerm(''); setDetails(emptyRequestFilters); }} className="text-sm text-blue-700 underline">Clear filters</button>}
