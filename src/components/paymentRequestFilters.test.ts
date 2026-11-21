@@ -38,3 +38,7 @@ it('builds stable distinct historical retreat choices from the complete dataset 
  expect(requestRetreatOptions(records)).toEqual([{value:'b',label:'JNO-NEW · Same name'}, {value:'a',label:'JNO-OLD · Same name · 2025-01-01'}, {value:'c',label:'Retreat c'}]);
  expect(JSON.stringify(records)).toBe(before);
 });
+
+it('disambiguates legacy same-name retreats even when code and date are missing', () => {
+ expect(requestRetreatOptions([{retreatId:{_id:'a',name:'Same'}},{retreatId:{_id:'b',name:'Same'}}])).toEqual([{value:'a',label:'Same · ID a'},{value:'b',label:'Same · ID b'}]);
+});

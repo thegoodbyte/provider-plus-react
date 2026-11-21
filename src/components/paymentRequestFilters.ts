@@ -50,5 +50,7 @@ export const requestRetreatOptions = (requests: any[]): Array<{ value: string; l
     const label = parts.length ? parts.join(' · ') : `Retreat ${value}`;
     if (!options.has(value) || score > options.get(value)!.score) options.set(value, { value, label, score });
   }
-  return [...options.values()].sort((a, b) => a.label.localeCompare(b.label) || a.value.localeCompare(b.value)).map(({ value, label }) => ({ value, label }));
+  const labels = new Map<string, number>();
+  for (const { label } of options.values()) labels.set(label, (labels.get(label) || 0) + 1);
+  return [...options.values()].sort((a, b) => a.label.localeCompare(b.label) || a.value.localeCompare(b.value)).map(({ value, label }) => ({ value, label: labels.get(label)! > 1 ? `${label} · ID ${value}` : label }));
 };
