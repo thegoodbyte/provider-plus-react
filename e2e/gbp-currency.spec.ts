@@ -25,7 +25,7 @@ for(const width of [1440,390]) test(`GBP receipt, payment, booking balance and p
  const capture=async(amount:string)=>{
   await page.goto('/admin/payments/scratchpad/new');
   await page.getByLabel('Amount received',{exact:true}).fill(amount);
-  await page.getByLabel('Currency',{exact:true}).selectOption('GBP');
+  await page.getByRole('combobox',{name:'Currency',exact:true}).selectOption('GBP');
   await page.getByLabel('Payer name (optional)').fill('Synthetic GBP payer');
   await page.getByLabel('Payment request number (optional)').fill('3100');
   await page.getByRole('button',{name:'Save receipt',exact:true}).click();
@@ -60,7 +60,7 @@ for(const width of [1440,390]) test(`GBP receipt, payment, booking balance and p
  await page.addInitScript(({token,clientId})=>{localStorage.setItem('client_auth_token',token);localStorage.setItem('auth-storage',JSON.stringify({state:{token,isAuthenticated:true,user:{id:clientId,language:'en'}},version:0}));},{token:f.tokens.user,clientId:ids.clients[0]});
  await page.goto(portal+'/payment/'+balance.publicHash);
  await expect(page.getByRole('link',{name:'Pay with PayPal',exact:true})).toHaveAttribute('href','https://www.paypal.com/paypalme/thegoodbyte/2250USD');
- await expect(page.getByText('£1,500.00',{exact:true})).toBeVisible();
+ await expect(page.getByRole('definition').filter({hasText:/^£1,500\.00$/})).toBeVisible();
  await expect(page.getByTitle('SEPA bank transfer QR code')).toHaveCount(0);
  await page.screenshot({path:info.outputPath(`gbp-portal-${width}.png`),fullPage:true});
  expect((await snapshot()).payments).toEqual(saved.payments);expect(errors).toEqual([]);
