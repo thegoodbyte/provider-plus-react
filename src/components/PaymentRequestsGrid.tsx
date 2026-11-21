@@ -348,6 +348,7 @@ const PaymentRequestsGrid: React.FC = () => {
               showSearch optionFilterProp="label" placeholder="All retreats"
               value={details.retreatId || undefined}
               options={[{ value: '', label: 'All retreats' }, ...retreatOptions]}
+              optionRender={option => <div className="whitespace-normal break-words">{option.label}</div>}
               notFoundContent="No retreats found"
               onChange={retreatId => setDetails(current => ({ ...current, retreatId }))} />
           </div>

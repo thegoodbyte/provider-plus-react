@@ -96,6 +96,7 @@ for (const width of [1440,390]) test(`searchable exact retreat filter composes a
  await retreat.fill('does-not-exist');await expect(page.getByText('No retreats found',{exact:true})).toBeVisible();
  await retreat.press('Escape');
  await retreat.fill('JNO-2025');await retreat.press('ArrowDown');await retreat.press('Enter');
+ await retreat.press('Escape');
  const box=await retreat.boundingBox();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width+1);
  await page.screenshot({path:info.outputPath(`retreat-filter-${width}.png`),fullPage:true});
  await page.reload();await expect(page.getByText('5 of 5 requests',{exact:true})).toBeVisible();
