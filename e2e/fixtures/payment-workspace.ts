@@ -52,6 +52,9 @@ export const test = base.extend<{ paymentWorkspace: any }>({
       });
       await use({ ...f, url });
     } finally {
+      // Rows can render while client/booking reads are still proxied. Finish that
+      // traffic before removing routes and closing the real API fixture.
+      await page.waitForLoadState("networkidle");
       await page.unrouteAll({ behavior: "wait" });
       await page.close();
       f.app.getHttpServer().closeIdleConnections?.();
