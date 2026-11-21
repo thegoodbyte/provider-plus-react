@@ -170,7 +170,7 @@ const ExpenseEditorPage: React.FC = () => {
         <section>
           <span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Amount</span>
           <div className="flex items-end border-b-2 border-slate-900 pb-2">
-            <span className="mb-2 mr-3 text-2xl font-bold text-slate-500">{form.currency === 'CZK' ? 'Kč' : form.currency === 'EUR' ? '€' : form.currency === 'PLN' ? 'zł' : '$'}</span>
+            <span className="mb-2 mr-3 text-2xl font-bold text-slate-500">{form.currency === 'CZK' ? 'Kč' : form.currency === 'EUR' ? '€' : form.currency === 'PLN' ? 'zł' : form.currency === 'GBP' ? '£' : '$'}</span>
             <input ref={amountRef} type="number" inputMode="decimal" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="min-w-0 flex-1 border-0 bg-transparent text-5xl font-extrabold tracking-tight text-slate-950 outline-none placeholder:text-slate-300" placeholder="0.00" required />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
