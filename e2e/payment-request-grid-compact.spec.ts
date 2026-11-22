@@ -27,7 +27,8 @@ for (const width of [1440,390]) test(`compact payment request identity, FX toolt
  const second=page.getByRole('row').filter({has:page.getByRole('button',{name:'SERVICE-997',exact:true})});await expect(second.locator('[data-label="Client"]')).toContainText('Integration calls');
  await second.getByText('100 EUR',{exact:true}).focus();await expect(page.getByRole('tooltip').filter({hasText:'USD equivalent not available'})).toBeVisible();
  await page.mouse.move(0,0);await second.getByText('100 EUR',{exact:true}).blur();
- const duplicate=row.getByRole('button',{name:'Duplicate payment request',exact:true});await expect(duplicate).toHaveText(/Duplicate/);await duplicate.scrollIntoViewIfNeeded();
+ await row.getByRole('button',{name:'More actions for request INV-997'}).click();
+ const duplicate=page.getByRole('button',{name:'Duplicate payment request',exact:true});await expect(duplicate).toHaveText(/Duplicate/);await duplicate.scrollIntoViewIfNeeded();
  if(process.env.GRID_ARTIFACT_DIR){await row.screenshot({path:process.env.GRID_ARTIFACT_DIR+`/row-${width}.png`});await page.screenshot({path:process.env.GRID_ARTIFACT_DIR+`/grid-${width}.png`,fullPage:true});}
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await duplicate.click();await expect(page).toHaveURL(new RegExp('/admin/payment-requests/new\\?duplicateFrom='+record._id));

@@ -49,7 +49,8 @@ for(const width of [1440,390]) test(`duplicate eight invoice rows, preserve draf
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  // The list action starts another independent saved draft, without issuing it.
  await page.goto('/admin/payment-requests');
- await page.getByRole('button',{name:'Duplicate payment request',exact:true}).first().click();
+ await page.getByRole('button',{name:/^More actions for request /}).first().click();
+ await page.getByRole('button',{name:'Duplicate payment request',exact:true}).click();
  await expect(page).toHaveURL(/services\/new\?draftId=/);expect(new URL(page.url()).searchParams.get('draftId')).not.toBe(copyId);
  await expect(page.getByLabel('Description',{exact:true})).toHaveCount(8);expect((await snapshot()).requests).toHaveLength(2);
  const secondCopyId=new URL(page.url()).searchParams.get('draftId');

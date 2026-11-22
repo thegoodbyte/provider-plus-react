@@ -1,9 +1,10 @@
-import { Tooltip } from 'antd';
+import './PaymentRequestsGrid.css';
+import { Dropdown, Tooltip } from 'antd';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import RequestBookingAction from './RequestBookingAction';
 import { requestBookingReferences } from './requestBookingState';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
-import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, Plus, Search as SearchIcon, Send as SendIcon, Settings, Slash, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, MoreVertical, Plus, Search as SearchIcon, Send as SendIcon, Settings, Slash, Trash2 } from 'lucide-react';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -75,6 +76,7 @@ const PaymentRequestsGrid: React.FC = () => {
   const [cancellingRequest, setCancellingRequest] = useState<any | null>(null);
   const [cancelReason, setCancelReason] = useState('Client did not pay');
   const [cancelling, setCancelling] = useState(false);
+  const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
 
   const fetchPaymentRequests = async () => {
     try {
@@ -277,13 +279,14 @@ const PaymentRequestsGrid: React.FC = () => {
     setSortDirection(key === 'date' || key === 'invoice' || key === 'requested' || key === 'usd' ? 'desc' : 'asc');
   };
 
-  const renderSortableHeader = (key: PaymentRequestSortKey, label: string) => (
+  const renderSortableHeader = (key: PaymentRequestSortKey, label: string, visibleLabel = label) => (
     <button
       type="button"
+      aria-label={label}
       onClick={() => handleSort(key)}
       className="inline-flex items-center gap-1 text-xs font-medium uppercase text-gray-500 hover:text-gray-900"
     >
-      {label}
+      {visibleLabel}
       <Icon
         icon={ChevronDown}
         className={`h-3 w-3 transition-transform ${sortKey === key && sortDirection === 'asc' ? 'rotate-180' : ''} ${sortKey === key ? 'opacity-100' : 'opacity-35'}`}
@@ -296,12 +299,12 @@ const PaymentRequestsGrid: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="payment-request-workspace p-6">
       <Toast toast={toast} onDismiss={dismissToast} />
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <div className="flex-1 min-w-0 basis-52">
           <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['payment-requests'].label}</h1>
-          <p className="text-sm text-gray-600">{NAVIGATION['payment-requests'].description}</p>
+          <p className="request-grid-summary">{filteredRequests.filter(request => ['pending', 'sent', 'overdue'].includes(request.status || 'pending')).length} awaiting payment · {filteredRequests.length} total{hasFilters ? ' · filtered results' : ''}</p>
         </div>
         <button
           onClick={() => navigate('/admin/payment-requests/types')}
@@ -313,10 +316,10 @@ const PaymentRequestsGrid: React.FC = () => {
         </button>
         <button
           onClick={() => navigate('/admin/payment-requests/new')}
-          className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+          aria-label="Add Payment Request" className="request-grid-new inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md text-white"
         >
           <Icon icon={Plus} className="w-4 h-4" />
-          Add Payment Request
+          New request
         </button>
       </div>
 
@@ -374,16 +377,16 @@ const PaymentRequestsGrid: React.FC = () => {
       <div className="workspace-mobile-sort"><label htmlFor="mobile-request-sort">Sort by</label><select id="mobile-request-sort" value={sortKey} onChange={event => setSortKey(event.target.value as PaymentRequestSortKey)}><option value="invoice">Invoice number</option><option value="client">Client</option><option value="retreat">Retreat</option><option value="date">Request date</option><option value="paidDate">Paid date</option><option value="requested">Amount</option><option value="usd">USD amount</option><option value="currency">Currency</option><option value="status">Status</option></select><button type="button" onClick={() => setSortDirection(value => value === 'asc' ? 'desc' : 'asc')} aria-label="Reverse request sort order">{sortDirection === 'asc' ? '↑' : '↓'}</button></div>
       {sortedRequests.length === 0 && <div role="status" className="workspace-empty-state">{hasFilters ? 'No payment requests match your filters. Adjust or clear the filters.' : 'No payment requests yet. Create a request to start tracking client payments.'}</div>}
       <div className={`bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden ${sortedRequests.length === 0 ? 'hidden' : ''}`}>
-        <div className="overflow-x-auto">
-          <table className="workspace-request-table min-w-full divide-y divide-gray-200">
+        <div className="request-grid-scroll overflow-x-auto" role="region" aria-label="Payment requests table" tabIndex={0}>
+          <table className="workspace-request-table compact-request-table min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('invoice', 'Invoice #')}</th>
                 <th className="w-44 px-3 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
                 <th className="px-4 py-3 text-left">Booking</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Request Date')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('paidDate', 'Paid Date')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('requested', 'Requested amount')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Request Date', 'Requested')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('paidDate', 'Paid Date', 'Paid')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('requested', 'Requested amount', 'Amount')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('status', 'Status')}</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
@@ -409,13 +412,13 @@ const PaymentRequestsGrid: React.FC = () => {
                       </button>
                       <div className="text-xs font-normal text-teal-700">{request.context === 'standalone_service' ? request.invoiceDocument ? `Itemized · ${request.invoiceDocument.number}` : 'Itemized payment request' : 'Booking payment request'}</div>
                     </td>
-                    <td data-label="Client" className="w-44 max-w-44 px-3 py-4">
+                    <td data-label="Client" className="request-grid-client px-3 py-4">
                       <div className="flex items-center gap-2">
                         <ClientAvatar client={client.record} name={client.name} />
                         <div className="min-w-0">
-                          <div className="truncate font-medium text-gray-900" title={client.name}>{client.name}</div>
+                          <div className="request-grid-client-name font-medium text-gray-900" title={client.name}>{client.name}</div>
                           {client.displayId && (
-                            <div className="mt-1 text-xs font-semibold">
+                            <div className="request-grid-client-meta text-xs font-semibold">
                               {client.id ? (
                                 <Link
                                   to={`/admin/clients/${client.id}`}
@@ -429,20 +432,20 @@ const PaymentRequestsGrid: React.FC = () => {
                               )}
                             </div>
                           )}
-                          <div className="mt-1 break-words text-xs text-gray-600">
+                          <div className="request-grid-retreat break-words text-xs text-gray-600">
                             {request.context !== 'standalone_service' && retreatId ? <Link to={`/admin/retreats/${encodeURIComponent(retreatId)}`} className="text-teal-700 hover:underline" title="Open retreat">{retreat}</Link> : retreat}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td data-label="Booking" className="px-4 py-4"><PaymentRequestBookingLinks request={request} />{request.status === 'paid' && !request.bookingId && <RequestBookingAction request={request} compact />}</td>
+                    <td data-label="Booking" className="request-grid-booking px-4 py-4"><PaymentRequestBookingLinks request={request} />{request.status === 'paid' && !request.bookingId && <RequestBookingAction request={request} compact />}</td>
                     <td data-label="Requested on" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {formatCalendarDate(request.paymentDate)}
                     </td>
                     <td data-label="Paid on" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.paidDate ? formatCalendarDate(request.paidDate) : '-'}
                     </td>
-                    <td data-label="Amount" className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td data-label="Amount" className="request-grid-amount px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {financials.currency === 'USD' ? <span>{financials.requested.toLocaleString()} USD</span> : <Tooltip trigger={['hover', 'focus', 'click']} title={usdTooltip}>
                         <span tabIndex={0} className="cursor-help rounded border-b border-dotted border-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-600">{financials.requested.toLocaleString()} {financials.currency}</span>
                       </Tooltip>}
@@ -459,9 +462,8 @@ const PaymentRequestsGrid: React.FC = () => {
                         {request.status}
                       </span>
                     </td>
-                    <td data-label="Actions" className="sticky right-0 whitespace-nowrap border-l border-gray-100 bg-white px-2 py-4">
+                    <td data-label="Actions" className="request-grid-actions whitespace-nowrap bg-white px-2 py-4">
                       <div className="flex flex-wrap items-center gap-1">
-                        <DuplicatePaymentRequestButton request={request}/>
                         <button
                           onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`, { state: { returnTo: '/admin/payment-requests' } })}
                           className="icon-action-btn icon-action-btn-success"
@@ -491,26 +493,13 @@ const PaymentRequestsGrid: React.FC = () => {
                         >
                           <Icon icon={Edit2} />
                         </button>
-                        {request.status !== 'cancelled' && request.status !== 'paid' && (
-                          <button
-                            onClick={() => {
-                              setCancellingRequest(request);
-                              setCancelReason('Client did not pay');
-                            }}
-                            className="icon-action-btn icon-action-btn-danger"
-                            title="Cancel invoice (Storno)"
-                          >
-                            <Icon icon={Slash} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(request._id)}
-                          className="icon-action-btn icon-action-btn-danger"
-                          title={request.context === 'standalone_service' ? 'Use cancellation from the service document' : 'Delete'}
-                          disabled={request.context === 'standalone_service'}
-                        >
-                          <Icon icon={Trash2} />
-                        </button>
+                        <Dropdown trigger={['click']} open={openActionMenu === request._id} onOpenChange={(open, info) => { if (info.source === 'trigger') setOpenActionMenu(open ? request._id : null); }} menu={{ items: [
+                          { key: 'duplicate', label: <DuplicatePaymentRequestButton request={request} className="request-grid-duplicate" /> },
+                          ...(request.status !== 'cancelled' && request.status !== 'paid' ? [{ key: 'cancel', label: 'Cancel invoice (Storno)', icon: <Slash size={16} />, danger: true, onClick: () => { setOpenActionMenu(null); setCancellingRequest(request); setCancelReason('Client did not pay'); } }] : []),
+                          { key: 'delete', label: request.context === 'standalone_service' ? 'Use cancellation from the service document' : 'Delete', icon: <Trash2 size={16} />, disabled: request.context === 'standalone_service', danger: true, onClick: () => { setOpenActionMenu(null); handleDelete(request._id); } },
+                        ] }}>
+                          <button type="button" className="icon-action-btn" title="More actions" aria-label={`More actions for request ${request.invoiceNumber || request.display_id || request._id}`}><MoreVertical aria-hidden="true" /></button>
+                        </Dropdown>
                       </div>
                     </td>
                   </tr>

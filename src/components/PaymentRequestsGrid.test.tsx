@@ -2,9 +2,9 @@ import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
-import { paymentRequestsApi } from '../services/api';
+import { paymentRequestsApi, serviceRequestsApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ paymentRequestsApi: { getAllFresh: jest.fn(), cancel: jest.fn() } }));
+jest.mock('../services/api', () => ({ paymentRequestsApi: { getAllFresh: jest.fn(), cancel: jest.fn() }, serviceRequestsApi: { get: jest.fn() } }));
 jest.mock('./ClientAvatar', () => () => null);
 jest.mock('./EmailComposeModal', () => () => null);
 
@@ -70,8 +70,8 @@ it('allows cancelling an invoice (storno) from the grid actions', async () => {
   (paymentRequestsApi.cancel as jest.Mock).mockResolvedValue({ data: { _id: 'req-1', status: 'cancelled' } });
   mount();
 
-  const cancelButton = await screen.findByTitle('Cancel invoice (Storno)');
-  fireEvent.click(cancelButton);
+  fireEvent.click(await screen.findByRole('button', { name: 'More actions for request INV-ACTIVE' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Cancel invoice (Storno)' }));
 
   expect(screen.getByRole('heading', { name: 'Cancel Invoice (Storno)' })).toBeInTheDocument();
   expect(screen.getByText(/Are you sure you want to cancel Invoice #INV-ACTIVE\?/)).toBeInTheDocument();
@@ -128,7 +128,9 @@ it('combines client/retreat identity, removes redundant columns and keeps a visi
  const clientCell=row.querySelector('[data-label="Client"]')!;
  expect(clientCell).toHaveTextContent('Ewa Franus');expect(clientCell).toHaveTextContent('#123');expect(within(clientCell as HTMLElement).getByRole('link',{name:'NOV-29'})).toHaveAttribute('href','/admin/retreats/r');
  for(const label of ['Retreat','USD','Currency'])expect(screen.queryByRole('columnheader',{name:label})).not.toBeInTheDocument();
- expect(within(row).getByRole('button',{name:'Duplicate payment request'})).toHaveTextContent('Duplicate');
+ fireEvent.click(within(row).getByRole('button',{name:'More actions for request COMPACT'}));
+ expect(await screen.findByRole('button',{name:'Duplicate payment request'})).toHaveTextContent('Duplicate');
+ fireEvent.click(within(row).getByRole('button',{name:'More actions for request COMPACT'}));
  const amount=within(row).getByText('2,500 PLN');expect(amount).toHaveAttribute('tabIndex','0');fireEvent.focus(amount);
  expect(await screen.findByRole('tooltip')).toHaveTextContent('Recorded USD equivalent: 630.25 USD');
 });
@@ -137,4 +139,36 @@ it('does not present missing FX as zero USD and keeps standalone service context
  mount();const row=(await screen.findByRole('button',{name:'SERVICE'})).closest('tr')!;
  expect(row.querySelector('[data-label="Client"]')).toHaveTextContent('Integration calls');expect(screen.queryByText('Unknown Retreat')).not.toBeInTheDocument();
  fireEvent.focus(within(row).getByText('20 EUR'));expect(await screen.findByRole('tooltip')).toHaveTextContent('USD equivalent not available');
+});
+
+it('shows filtered status counts without claiming requested sums are outstanding balances', async () => {
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[
+  {_id:'a',invoiceNumber:'A',status:'pending',requestedAmount:9500,currency:'PLN'},
+  {_id:'b',invoiceNumber:'B',status:'sent',requestedAmount:500,currency:'EUR'},
+  {_id:'c',invoiceNumber:'C',status:'paid',requestedAmount:100,currency:'PLN'},
+  {_id:'d',invoiceNumber:'D',status:'cancelled',requestedAmount:100,currency:'PLN'},
+ ]}); mount();
+ expect(await screen.findByText('2 awaiting payment · 4 total')).toBeInTheDocument();
+ expect(screen.queryByText(/outstanding/i)).not.toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText('Payment status'),{target:{value:'paid'}});
+ expect(screen.getByText('0 awaiting payment · 1 total · filtered results')).toBeInTheDocument();
+});
+it('opens accessible secondary actions without cancelling or deleting a request', async () => {
+ jest.clearAllMocks();
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[{_id:'a',invoiceNumber:'A',status:'pending'}]}); mount();
+ fireEvent.click(await screen.findByRole('button',{name:'More actions for request A'}));
+ expect(await screen.findByRole('button',{name:'Duplicate payment request'})).toBeInTheDocument();
+ expect(screen.getByRole('menuitem',{name:'Delete'})).toBeInTheDocument();
+ expect(screen.getByRole('menuitem',{name:'Cancel invoice (Storno)'})).toBeInTheDocument();
+ expect(paymentRequestsApi.cancel).not.toHaveBeenCalled();
+});
+
+it('keeps a failed service duplication visible in the open action menu', async () => {
+ (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[{_id:'s',invoiceNumber:'SERVICE',context:'standalone_service',status:'pending'}]});
+ (serviceRequestsApi.get as jest.Mock).mockRejectedValue(new Error('Service is temporarily unavailable')); mount();
+ fireEvent.click(await screen.findByRole('button',{name:'More actions for request SERVICE'}));
+ fireEvent.click(await screen.findByRole('button',{name:'Duplicate payment request'}));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Service is temporarily unavailable');
+ expect(screen.getByRole('button',{name:'Duplicate payment request'})).toBeEnabled();
+ expect(screen.getByRole('menuitem',{name:'Use cancellation from the service document'})).toHaveAttribute('aria-disabled','true');
 });
