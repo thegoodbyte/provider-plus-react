@@ -3,7 +3,7 @@ import path from 'node:path';
 for(const width of [1440,390])for(const screen of ['booking','retreat'])test(`refund persists original and linked refund from ${screen} at ${width}px`,async({page})=>{
  const f=await require(path.resolve(process.env.TEST_API_CHECKOUT||'../api','test/gbp-currency.fixture.cjs')).createFixture();
  try {
-  await f.app.listen(0,'127.0.0.1');const url=await f.app.getUrl();
+  const {ReceiptAllocationService}=require(path.resolve(process.env.TEST_API_CHECKOUT||'../api','dist/payments/receipt-allocation.service'));f.paymentService.receiptAllocations=new ReceiptAllocationService(f.models.Payment,f.models.PaymentReceipt,f.models.PaymentRequest,f.models.RetreatClient,f.paymentService.sequenceCounterService);await f.app.listen(0,'127.0.0.1');const url=await f.app.getUrl();
   const original=await f.paymentService.create({clientId:f.ids.clients[0],retreatId:f.ids.retreat,bookingId:f.ids.bookings[0],paymentRequestId:f.ids.requests[0],amount:100,currency:'GBP',status:'completed',paymentMethod:'bank_transfer',paymentType:'regular_payment',isRefundable:true,paymentDate:new Date('2026-11-20')},{role:'admin'});
   const writes:string[]=[];
   await page.setViewportSize({width,height:1000});
