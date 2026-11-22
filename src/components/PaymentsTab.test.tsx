@@ -9,7 +9,7 @@ jest.mock('../services/api', () => ({
     getByRetreat: jest.fn(),
     getRetreatSummary: jest.fn(),
     delete: jest.fn(),
-    processRefund: jest.fn(),
+    refund: jest.fn(),
   },
   bookingsApi: {
     getByRetreatWithDetails: jest.fn(),
@@ -112,4 +112,28 @@ it('keeps different booking currencies visible in one client column and recomput
   expect(within(column).getByText('100 EUR')).toBeInTheDocument();
   expect(within(column).getByText('850 PLN')).toBeInTheDocument();
   expect(within(column).getByText('partial')).toBeInTheDocument();
+});
+
+it('PPVC-1063: refunds a completed payment via the single, correct paymentsApi.refund method', async () => {
+  (paymentsApi.refund as jest.Mock).mockResolvedValue({ data: { ...payments[0], status: 'refunded' } });
+  const promptSpy = jest.spyOn(window, 'prompt').mockReturnValueOnce('250').mockReturnValueOnce('Client requested a partial refund.');
+  renderTab();
+  await screen.findByText('Transaction ID');
+
+  fireEvent.click(screen.getAllByTitle('Process Refund')[0]);
+
+  expect(paymentsApi.refund).toHaveBeenCalledWith('p1', { amount: 250, reason: 'Client requested a partial refund.' });
+  promptSpy.mockRestore();
+});
+
+it('PPVC-1063: omits the reason when the user leaves it blank', async () => {
+  (paymentsApi.refund as jest.Mock).mockResolvedValue({ data: { ...payments[0], status: 'refunded' } });
+  const promptSpy = jest.spyOn(window, 'prompt').mockReturnValueOnce('250').mockReturnValueOnce('');
+  renderTab();
+  await screen.findByText('Transaction ID');
+
+  fireEvent.click(screen.getAllByTitle('Process Refund')[0]);
+
+  expect(paymentsApi.refund).toHaveBeenCalledWith('p1', { amount: 250, reason: undefined });
+  promptSpy.mockRestore();
 });

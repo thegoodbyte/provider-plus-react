@@ -160,8 +160,9 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
 
     const refundAmount = prompt(`Enter refund amount (max: ${payment.amount} ${payment.currency}):`);
     if (refundAmount && !isNaN(Number(refundAmount))) {
+      const reason = prompt('Reason for this refund (optional):') || undefined;
       try {
-        await paymentsApi.processRefund(paymentId, Number(refundAmount));
+        await paymentsApi.refund(paymentId, { amount: Number(refundAmount), reason });
         await fetchData();
       } catch (error) {
         console.error('Error processing refund:', error);

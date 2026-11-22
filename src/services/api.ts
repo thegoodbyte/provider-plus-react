@@ -728,17 +728,11 @@ export const paymentsApi = {
     cacheService.clearPattern('bookings:');
     return api.delete(`/payments/${id}`);
   },
-  refund: (id: string, refundData: { amount: number; reason: string }) => {
+  refund: (id: string, refundData: { amount: number; reason?: string }) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('bookings:');
-    return api.patch<Payment>(`/payments/${id}/refund`, refundData);
-  },
-  processRefund: (id: string, refundAmount: number) => {
-    cacheService.clearPattern('payments:');
-    cacheService.clearPattern('payment-requests:');
-    cacheService.clearPattern('bookings:');
-    return api.put<Payment>(`/payments/${id}/refund`, { refundAmount });
+    return api.put<Payment>(`/payments/${id}/refund`, { refundAmount: refundData.amount, reason: refundData.reason });
   },
 };
 
