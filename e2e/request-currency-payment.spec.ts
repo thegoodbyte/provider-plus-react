@@ -142,5 +142,6 @@ for (const width of [1440, 390])
 
 // Drain real API proxy requests before Playwright disposes its HTTP context.
 test.afterEach(async ({ page }) => {
+  await page.waitForLoadState("networkidle");
   await page.unrouteAll({ behavior: "wait" });
 });
