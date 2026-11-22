@@ -90,7 +90,9 @@ for (const width of [1440, 390]) {
   await expect(page.getByRole('button', { name: 'Send Email', exact: true })).toBeDisabled();
   await expect(page.getByRole('alert')).not.toContainText('secret'); expect(emailWrites).toBe(1);
   await page.screenshot({ path: `../ppvc-796-validation/email-${width}.png` });
-  await page.goto(fixture('payments')); await page.getByTitle('Delete', { exact: true }).click();
+  await page.goto(fixture('payments'));
+  await page.getByRole('button', { name: /^More actions for request / }).click();
+  await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Check payment history'); expect(paymentWrites).toBe(1);
   await expect(page.getByRole('heading', { name: 'Request could not be completed' })).toHaveCount(0);
  });
