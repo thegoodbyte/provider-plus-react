@@ -101,7 +101,7 @@ files, non-ancestor sources, changed application URLs or Mongo/API environment.
 Only the explicitly listed smoke-service infrastructure paths are eligible.
 The scratchpad smoke definition-list locator migration is also eligible; it is
 not imported by the broad suite. Its payment persistence assertions still run in
-the fresh smoke gate. A permanent regression rejects broad-test changes.
+the fresh smoke gate. The isolated `smoke/canonical-ekg.spec.ts` network-drain repair is also eligible: it is not imported by broad tests and retains all medical-state assertions. Its full smoke scenarios must rerun with fresh fixtures. Permanent regressions reject broad financial and medical test changes.
 `node --test scripts/coverage-reuse.test.cjs` exercises this with real temporary
 Git histories and rejected application/environment/report changes. The original
 broad command, source IDs and UTC times are retained as reused evidence; smoke

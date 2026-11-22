@@ -11,6 +11,7 @@ test.skip(
 test.setTimeout(120000);
 // Drain fixture proxy requests before Playwright closes the page.
 test.afterEach(async ({ page }) => {
+  await page.waitForLoadState("networkidle");
   await page.unrouteAll({ behavior: "wait" });
 });
 test.use({ actionTimeout: 10000 });
@@ -178,5 +179,7 @@ test("unavailable never becomes missing or complete and explicit waiver/not-appl
       "data-ekg-state",
       stage,
     );
+    // Complete the current projection reads before changing state and hard navigating.
+    await page.waitForLoadState("networkidle");
   }
 });
