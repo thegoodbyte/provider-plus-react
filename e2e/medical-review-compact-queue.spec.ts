@@ -1,0 +1,43 @@
+import {test,expect} from '@playwright/test';
+for(const width of [1800,1024,390,320]) test(`compact medical queue retains identity, state and accessible actions at ${width}px`,async({page},info)=>{
+ await page.setViewportSize({width,height:1100});
+ await page.addInitScript(()=>{localStorage.setItem('token','synthetic-compact-queue');localStorage.setItem('user',JSON.stringify({role:'admin',email:'synthetic@example.invalid'}));});
+ const advisor={_id:'advisor',firstName:'Synthetic',lastName:'Advisor',email:'advisor@example.invalid',role:'medical_advisor',isActive:true};
+ const statuses=['pending','pending','needs_resubmission','approved'];
+ const rows=statuses.map((status,i)=>({_id:'review-'+i,display_id:1520-i,clientId:'client-'+i,retreatId:i===1?undefined:'retreat',requestType:'medications_review',status,documentStage:'entry',attemptNumber:i===2?2:1,createdAt:'2026-11-21T02:08:00Z',assignedToUserId:advisor,advisorDeliveryStatus:i===3?'sent':'not_sent',clientNotificationCount:i===2?2:1,followUpRequired:i===2,reviewChannel:i===1||i===3?'whatsapp':'internal',whatsappStatus:i===3?'responded':i===1?'awaiting_response':undefined,whatsappAdvisorUserId:'advisor',source:'medical-artifacts',artifactIds:[{receivedAt:'2026-11-19T19:10:00Z',data:{uploadSource:'client_upload'}}]}));
+ const writes:string[]=[];const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',async route=>{
+  const r=route.request(),p=new URL(r.url()).pathname;if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();
+  if(r.method()!=='GET'){writes.push(r.method()+' '+p);throw Error('Unexpected write while inspecting compact queue: '+p)}
+  if(p==='/medical-review-requests')return route.fulfill({json:rows});
+  if(p==='/clients')return route.fulfill({json:rows.map((r,i)=>({_id:r.clientId,display_id:1349+i,firstName:'Synthetic',lastName:'Client '+(i+1)}))});
+  if(p==='/users')return route.fulfill({json:[advisor]});
+  if(p==='/retreats')return route.fulfill({json:[{_id:'retreat',retreatCode:'BEN-05-05-27'}]});
+  if(p==='/environment/status')return route.fulfill({json:{environment:'local',production:false,enabledJobs:[]}});
+  return route.fulfill({json:p.includes('config-summary')?{}:[]});
+ });
+ await page.goto('/admin/medical-review-requests');
+ await expect(page.getByRole('heading',{name:'Medical review queue',exact:true})).toBeVisible();
+ await expect(page.getByText('2 pending · 2 handled via WhatsApp · 4 total',{exact:true})).toBeVisible();
+ const table=page.getByRole('table',{name:'Medical review queue',exact:true});await expect(table.getByRole('columnheader')).toHaveCount(7);
+ const row=page.locator('.mrr-list-row').filter({has:page.getByRole('button',{name:'#1520',exact:true})});
+ await expect(row.getByRole('cell')).toHaveCount(7);
+ await expect(row.getByRole('button',{name:'#1349 Synthetic Client 1'})).toBeVisible();
+ await expect(row).toContainText('#1349 · BEN-05-05-27');
+ await expect(row.getByLabel('Notified 1',{exact:true})).toHaveText('1');
+ await expect(row.locator('time').first()).toHaveAttribute('datetime','2026-11-21T02:08:00.000Z');
+ await expect(row.locator('time').nth(1)).toHaveAttribute('datetime','2026-11-19T19:10:00.000Z');
+ const unknown=page.locator('.mrr-list-row').filter({has:page.getByRole('button',{name:'#1519',exact:true})});await expect(unknown).toContainText('Unknown Retreat');
+ const whatsapp=unknown.getByRole('button',{name:'WhatsApp: awaiting answer',exact:true});await whatsapp.scrollIntoViewIfNeeded();await expect(whatsapp).toHaveClass(/mrr-whatsapp-active/);await expect(unknown).toContainText('pending');
+ await whatsapp.click();await expect(page.getByRole('dialog')).toBeVisible();await page.getByRole('dialog').getByRole('button',{name:'Cancel',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
+ const more=row.getByRole('button',{name:'More actions for MRR #1520'});await more.scrollIntoViewIfNeeded();await more.click();
+ await expect(page.getByRole('menuitem',{name:'Edit',exact:true})).toBeVisible();await expect(page.getByRole('menuitem',{name:'Delete',exact:true})).toBeVisible();await expect(page.getByText('Source: medical-artifacts',{exact:true})).toBeVisible();await page.keyboard.press('Escape');
+ await expect(page.getByRole('menu')).toHaveCount(0);
+ const region=page.getByRole('region',{name:'Medical review queue table',exact:true});const box=await region.boundingBox();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(width+1);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ if(width>640)expect((await row.boundingBox())!.height).toBeLessThan(130);
+ await region.evaluate(el=>{el.scrollLeft=0});await page.getByRole('heading',{name:'Medical review queue',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('compact-queue.png'),fullPage:true});
+ await row.screenshot({path:info.outputPath('compact-row.png')});
+ expect(writes).toEqual([]);expect(errors).toEqual([]);
+ await page.unrouteAll({behavior:'wait'});
+});

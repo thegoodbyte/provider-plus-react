@@ -57,7 +57,7 @@ for (const width of [1440, 390])
     await page
       .locator(".mrr-list-row")
       .filter({ has: page.getByRole("button", { name: "#1423", exact: true }) })
-      .getByTitle("Open the WhatsApp handling form")
+      .getByRole("button", { name: /^(Handle via WhatsApp|WhatsApp: awaiting answer|Handled via WhatsApp)$/ })
       .click();
     const dialog = page.getByRole("dialog");
     await dialog
@@ -87,7 +87,7 @@ for (const width of [1440, 390])
     await page
       .locator(".mrr-list-row")
       .filter({ has: page.getByRole("button", { name: "#1423", exact: true }) })
-      .getByTitle("Open the WhatsApp handling form")
+      .getByRole("button", { name: /^(Handle via WhatsApp|WhatsApp: awaiting answer|Handled via WhatsApp)$/ })
       .click();
     await expect(
       page.getByRole("dialog").getByLabel("What did the advisor say?"),

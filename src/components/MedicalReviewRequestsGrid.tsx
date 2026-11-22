@@ -1,9 +1,10 @@
+import { Dropdown } from 'antd';
+import MedicalReviewQueueTable, { QueueDate, WhatsAppMark } from './MedicalReviewQueueTable';
 import { displayWhatsappReviewNotes } from './MedicalReviewRequestsPage.helpers';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Clock, Copy as CopyIcon, Download as DownloadIcon, Edit2, Eye, Folder, Link as LinkIcon, Lock as LockIcon, Menu, Plus as PlusIcon, RefreshCw, Search as SearchIcon, Send as SendIcon, ThumbsDown, ThumbsUp, Trash2, Unlock as UnlockIcon, X, Zap } from 'lucide-react';
+import { Bell, CircleHelp, Flag, MoreHorizontal, AlertTriangle, Check, ChevronDown, ChevronRight, Clock, Copy as CopyIcon, Download as DownloadIcon, Edit2, Eye, Folder, Link as LinkIcon, Lock as LockIcon, Menu, Plus as PlusIcon, RefreshCw, Search as SearchIcon, Send as SendIcon, ThumbsDown, ThumbsUp, Trash2, Unlock as UnlockIcon, X, Zap } from 'lucide-react';
 import MedicalReviewListRow from './MedicalReviewListRow';
 import MedicalReviewFollowUpButton from './MedicalReviewFollowUpButton';
 import MedicalReviewWhatsAppForm from './MedicalReviewWhatsAppForm';
-import { NAVIGATION } from '../navigation/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
@@ -216,17 +217,18 @@ const MedicalReviewRequestsGrid: React.FC = () => {
 
   // PPVC-692: the client's name + display ID, clickable through to their
   // medical-context profile when we can resolve a client id.
-  const clientCell = (request: EnrichedReviewRequest) => {
+  const clientCell = (request: EnrichedReviewRequest, compact = false) => {
     const href = getClientProfileHref(request, isMedicalRoute);
     const label = getClientGridLabel(request);
-    if (!href) return <>{label}</>;
+    if (!href) return <>{compact ? request.clientName || 'Unknown client' : label}</>;
     return (
       <button
         type="button"
         onClick={(event) => { event.stopPropagation(); navigate(href); }}
+        aria-label={label}
         className="text-left text-blue-700 hover:underline"
       >
-        {label}
+        {compact ? request.clientName || 'Unknown client' : label}
       </button>
     );
   };
@@ -246,26 +248,22 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   };
   const downloadAction = (request: EnrichedReviewRequest) => canManageRequests && (
     <button type="button" onClick={() => void downloadSingleRequest(request)} disabled={Boolean(downloadingRequestId)}
-      aria-label={`Download MRR #${request.display_id} for WhatsApp`}
-      className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50">
-      <Icon icon={DownloadIcon} className="h-3.5 w-3.5" />
-      {downloadingRequestId === request._id ? 'Preparing…' : 'Download for WhatsApp'}
+      aria-label={`Download MRR #${request.display_id} for WhatsApp`} aria-busy={downloadingRequestId === request._id}
+      title={downloadingRequestId === request._id ? 'Preparing download…' : 'Download for WhatsApp'}
+      className="mrr-icon-button text-blue-800">
+      <Icon icon={downloadingRequestId === request._id ? RefreshCw : DownloadIcon} className={`h-3.5 w-3.5 ${downloadingRequestId === request._id ? 'animate-spin' : ''}`} />
+      <span className="sr-only">{downloadingRequestId === request._id ? 'Preparing…' : 'Download for WhatsApp'}</span>
     </button>
   );
 
-  const followUpAction = (request: EnrichedReviewRequest) => <MedicalReviewFollowUpButton request={request}
+  const followUpAction = (request: EnrichedReviewRequest) => <MedicalReviewFollowUpButton compact request={request}
     onSaved={(changes) => setRequests(current => current.map(item => item._id === request._id ? { ...item, ...changes } : item))} />;
 
-  const whatsappAction = (request: EnrichedReviewRequest) => canManageRequests && (
-    <button
-      type="button"
-      onClick={() => setWhatsappRequest(request)}
-      title="Open the WhatsApp handling form"
-      className="rounded-md border border-purple-200 bg-purple-50 px-2 py-2 text-xs font-semibold text-purple-800"
-    >
-      {request.reviewChannel === 'whatsapp' ? (request.whatsappStatus === 'responded' ? 'Handled via WhatsApp' : 'WhatsApp: awaiting answer') : 'Handle via WhatsApp'}
-    </button>
-  );
+  const whatsappAction = (request: EnrichedReviewRequest) => {
+    const label = request.reviewChannel === 'whatsapp' ? (request.whatsappStatus === 'responded' ? 'Handled via WhatsApp' : 'WhatsApp: awaiting answer') : 'Handle via WhatsApp';
+    return canManageRequests && <button type="button" onClick={() => setWhatsappRequest(request)} title={label} aria-label={label}
+      className={`mrr-icon-button ${request.reviewChannel === 'whatsapp' ? 'mrr-whatsapp-active' : ''}`}><WhatsAppMark /></button>;
+  };
 
   // PPVC-700: resend the localized "submitted for review" email on demand,
   // without going through the full editor page.
@@ -325,28 +323,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     );
   };
 
-  const notifyAction = (request: EnrichedReviewRequest) => canManageRequests && (
-    <span className="inline-flex flex-wrap items-center gap-1">
-      {notifiedCountBadge(request)}
-      <button
-        type="button"
-        onClick={() => void notifyClientSubmission(request._id || '')}
-        disabled={notifyingSubmissionId === request._id}
-        className="rounded-md border border-blue-200 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-800 disabled:opacity-50"
-        title="Email the client that their document was submitted for review"
-      >
-        {notifyingSubmissionId === request._id ? 'Notifying…' : 'Notify client'}
-      </button>
-      <button
-        type="button"
-        onClick={() => openNeedsInfoModal(request)}
-        className="rounded-md border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-semibold text-amber-800"
-        title="Email the client that the medical advisor needs more information"
-      >
-        Needs info
-      </button>
-    </span>
-  );
+  const notifyAction = (request: EnrichedReviewRequest) => canManageRequests && <>
+    <button type="button" onClick={() => void notifyClientSubmission(request._id || '')} disabled={notifyingSubmissionId === request._id}
+      className="mrr-icon-button mrr-notify-button" aria-busy={notifyingSubmissionId === request._id} aria-label={notifyingSubmissionId === request._id ? 'Notifying…' : 'Notify client'}
+      title={`Notify client · ${request.clientNotificationCount || 0} notification${request.clientNotificationCount === 1 ? '' : 's'} sent`}>
+      {notifyingSubmissionId === request._id ? <RefreshCw size={18} className="animate-spin" aria-hidden="true" /> : <Bell size={18} aria-hidden="true" />}
+      <span className={`mrr-notify-count ${(request.clientNotificationCount || 0) > 0 ? '' : 'is-empty'}`} aria-label={`Notified ${request.clientNotificationCount || 0}`} title={`Client notified ${request.clientNotificationCount || 0} times`}>{request.clientNotificationCount || 0}</span>
+    </button>
+    <button type="button" onClick={() => openNeedsInfoModal(request)} className="mrr-icon-button text-amber-700" aria-label="Needs info"
+      title="Email the client that the medical advisor needs more information"><CircleHelp size={18} aria-hidden="true" /></button>
+  </>;
 
   const loadData = useCallback(async () => {
     try {
@@ -944,36 +930,41 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     return <LoadingSpinner message="Loading medical review requests..." />;
   }
 
-  const renderReviewRow = (request: EnrichedReviewRequest, packet?: MedicalReviewGroup) => <MedicalReviewListRow
-    requestId={<button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="text-sm font-semibold text-blue-700 hover:underline">#{request.display_id || '—'}</button>}
-    client={clientCell(request)} retreat={request.retreatName} type={<MedicalReviewTypeBadge requestType={request.requestType} />}
-    status={<Badge colorClassName={statusClass[request.status] || 'bg-gray-100 text-gray-700'}><Icon icon={statusIcon[request.status] || Clock} className="h-3.5 w-3.5" />{String(request.status || 'unknown').replace(/_/g, ' ')}</Badge>}
-    details={<>
-      <div><dt>Stage · attempt</dt><dd>{String(request.documentStage || '—').replace(/_/g, ' ')} · {request.attemptNumber || 1}</dd></div>
-      <div><dt>Created</dt><dd>{formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</dd></div>
-      <div><dt>Artifact received</dt><dd>{request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'} · {request.artifactReceivedVia || 'Unknown'}</dd></div>
-      <div><dt>Medical advisor</dt><dd>{getAssignee(request).name}</dd>{getAssignee(request).email && <dd>{getAssignee(request).email}</dd>}</div>
-      <div><dt>Advisor delivery</dt><dd className={request.advisorDeliveryStatus === 'sent' ? 'text-emerald-700' : 'text-amber-700'}>{request.advisorDeliveryStatus === 'sent' ? 'Sent to advisor' : 'Not sent'}</dd></div>
-      <div><dt>Source</dt><dd>{request.source || 'Provider Plus CRM'}</dd></div>
-    </>}
-    actions={<>
-      <button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700">Open review</button>
-      {followUpAction(request)}{downloadAction(request)}{whatsappAction(request)}{notifyAction(request)}
-      {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Mark sent</button>}
-      {packet ? canManageRequests && <button type="button" onClick={() => removeRequestFromPacket(packet, request._id || '')} className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700" aria-label="Remove from packet">Remove from packet</button> : activeView === 'all' && <>
-        {canManageRequests && <button type="button" onClick={() => navigate(`${basePath}/${request._id}/edit`)} className="rounded-md border border-gray-200 px-3 py-2 text-xs" title="Edit">Edit</button>}
-        {canDeleteRequests && <button type="button" onClick={() => handleDelete(request._id!)} className="rounded-md border border-red-200 px-3 py-2 text-xs text-red-700" title="Delete">Delete</button>}
+  const renderReviewRow = (request: EnrichedReviewRequest, packet?: MedicalReviewGroup) => {
+    const advisor = getAssignee(request);
+    const moreItems = [
+      { key: 'source', label: `Source: ${request.source || 'Provider Plus CRM'}`, disabled: true },
+      ...(packet ? canManageRequests ? [{ key: 'remove', label: 'Remove from packet', danger: true, onClick: () => removeRequestFromPacket(packet, request._id || '') }] : [] : activeView === 'all' ? [
+        ...(canManageRequests ? [{ key: 'edit', label: 'Edit', onClick: () => navigate(`${basePath}/${request._id}/edit`) }] : []),
+        ...(canDeleteRequests ? [{ key: 'delete', label: 'Delete', danger: true, onClick: () => handleDelete(request._id!) }] : []),
+      ] : []),
+    ];
+    return <MedicalReviewListRow
+      requestId={<><button type="button" onClick={() => navigate(`${basePath}/${request._id}`)} className="text-sm font-semibold text-blue-700 hover:underline">#{request.display_id || '—'}</button>{request.followUpRequired && <Flag size={13} fill="currentColor" className="text-red-600" role="img" aria-label="Follow-up flagged" />}</>}
+      client={clientCell(request, true)} clientNumber={request.clientDisplayId ? `#${request.clientDisplayId}` : undefined} retreat={request.retreatName}
+      type={<MedicalReviewTypeBadge requestType={request.requestType} />}
+      status={<Badge colorClassName={statusClass[request.status] || 'bg-gray-100 text-gray-700'}><Icon icon={statusIcon[request.status] || Clock} className="h-3.5 w-3.5" />{String(request.status || 'unknown').replace(/_/g, ' ')}</Badge>}
+      stage={<>{String(request.documentStage || '—').replace(/_/g, ' ')} · attempt {request.attemptNumber || 1}</>}
+      created={<QueueDate value={getRequestCreatedAt(request)} />}
+      received={<><QueueDate value={request.artifactReceivedAt} compact /><div className="mrr-row-secondary">{request.artifactReceivedVia || 'Unknown'}</div></>}
+      advisor={<><div className="mrr-advisor-line"><span>{advisor.name}</span><span className={`mrr-delivery ${request.advisorDeliveryStatus === 'sent' ? 'is-sent' : ''}`}><i aria-hidden="true" />{request.advisorDeliveryStatus === 'sent' ? 'Sent' : 'Not sent'}</span></div>{advisor.email && <div className="mrr-row-secondary">{advisor.email}</div>}</>}
+      actions={<>
+        <button type="button" aria-label="Open review" onClick={() => navigate(`${basePath}/${request._id}`)} className="mrr-review-button">Review</button>
+        {followUpAction(request)}{downloadAction(request)}{whatsappAction(request)}{notifyAction(request)}
+        {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="mrr-icon-button text-emerald-700" aria-label="Mark sent" title="Mark sent to advisor"><SendIcon size={18} aria-hidden="true" /></button>}
+        <Dropdown trigger={['click']} placement="bottomRight" menu={{ items: moreItems }}><button type="button" className="mrr-icon-button" aria-haspopup="menu" aria-label={`More actions for MRR #${request.display_id}`} title={`More actions · Source: ${request.source || 'Provider Plus CRM'}`}><MoreHorizontal size={18} /></button></Dropdown>
       </>}
-    </>}
-  />;
+    />;
+  };
 
   return (
     <div className="mrr-queue h-full p-3 sm:p-6">
       <Toast toast={toast} onDismiss={dismissToast} />
-      <div className="mb-6 flex flex-wrap items-start gap-4">
+      <div className="mrr-queue-header mb-6 flex flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['medical-review-requests'].label}</h1>
-          <p className="text-sm text-gray-600">Queue and audit trail for EKG and liver panel review rounds.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Medical review queue</h1>
+          <p className="mrr-queue-summary" aria-live="polite">{filteredRequests.filter(isPendingReview).length} pending · {filteredRequests.filter(request => request.reviewChannel === 'whatsapp').length} handled via WhatsApp · {filteredRequests.length}{filteredRequests.length === requests.length ? ' total' : ` shown of ${requests.length} total`}</p>
+          <div className="mrr-channel-legend"><span><span className="mrr-legend-icon"><WhatsAppMark /></span>Not via WhatsApp</span><span title="Handling channel only; the review decision is shown separately"><span className="mrr-legend-icon mrr-whatsapp-active"><WhatsAppMark /></span>Handled via WhatsApp</span></div>
           <div className="mrr-view-tabs mt-3 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
             <button
               type="button"
@@ -1390,7 +1381,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         </label>
                         {normalizedPacketSearch && <div className="mt-1 text-xs text-gray-500">Showing {packetRequests.length} of {group.requests?.length || 0} requests</div>}
                       </div>
-                      {packetRequests.length ? packetRequests.map((request) => (
+                      {packetRequests.length ? <MedicalReviewQueueTable label={`Reviews in ${group.title}`}>{packetRequests.map((request) => (
                       <div
                         key={request._id}
                         draggable={packetAssignmentUnlocked && !packetMoveSaving}
@@ -1407,7 +1398,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         {packetAssignmentUnlocked && <div className="mrr-row-drag" title="Drag MRR to a packet"><Icon icon={Menu} className="h-5 w-5" /></div>}
                         {renderReviewRow(request, group)}
                       </div>
-                      )) : group.requests?.length ? (
+                      ))}</MedicalReviewQueueTable> : group.requests?.length ? (
                         <div className="px-4 py-6 text-center text-sm text-gray-500">No requests in this packet match “{packetSearch}”.</div>
                       ) : (
                         <div className="flex items-center justify-between gap-3 px-4 py-4 text-sm text-gray-500">
@@ -1453,7 +1444,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 </button>
                 {expandedGroupIds.includes('ungrouped') && (
                   <div className="divide-y divide-gray-100">
-                    {sortMedicalReviewsPendingFirst(ungroupedRequests).map((request) => (
+                    <MedicalReviewQueueTable label="Potentials and unmatched reviews">{sortMedicalReviewsPendingFirst(ungroupedRequests).map((request) => (
                       <div
                         key={`ungrouped-${request._id}`}
                         draggable={packetAssignmentUnlocked && !packetMoveSaving}
@@ -1470,7 +1461,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         {packetAssignmentUnlocked && <div className="mrr-row-drag" title="Drag MRR to a packet"><Icon icon={Menu} className="h-5 w-5" /></div>}
                         {renderReviewRow(request)}
                       </div>
-                    ))}
+                    ))}</MedicalReviewQueueTable>
                   </div>
                 )}
               </div>
@@ -1547,9 +1538,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           })}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          {filteredRequests.map(request => <div key={request._id} className={statusRowClass[request.status] || 'bg-white'}>{renderReviewRow(request)}</div>)}
-        </div>
+        <MedicalReviewQueueTable>
+          {filteredRequests.map(request => <div key={request._id}>{renderReviewRow(request)}</div>)}
+        </MedicalReviewQueueTable>
       )}
 
       {whatsappRequest && (

@@ -31,9 +31,17 @@ for (const width of [1440,1024,390,320]) {
    await expect(page.getByRole('button', { name: '#7972', exact: true })).toBeVisible();
    const rows = view === 'WhatsApp handled' ? page.locator('.mrr-whatsapp-table tbody tr') : page.locator('.mrr-list-row');
    for (const row of await rows.all()) {
-    const bounds = await row.boundingBox();expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width+1);
+    if (view !== 'WhatsApp handled') {
+     const viewport=row.locator('xpath=ancestor::div[contains(@class,"mrr-table-scroll")]').first();
+     const bounds=await viewport.boundingBox();expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(width+1);
+     // The reference deliberately scrolls a compact table horizontally on tablet.
+     // Every actual action must be reachable inside that contained viewport.
+    } else {
+     const bounds=await row.boundingBox();expect(bounds!.x).toBeGreaterThanOrEqual(0);expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(width+1);
+    }
     for (const action of await row.getByRole('button').all()) {
-     const box = await action.boundingBox();if (!box) continue;
+     await action.scrollIntoViewIfNeeded();
+     const box=await action.boundingBox();if(!box)continue;
      expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(width+1);
     }
    }

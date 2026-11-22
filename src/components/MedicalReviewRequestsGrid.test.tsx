@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
 import { usersApi } from '../services/usersApi';
 
-jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: { role: 'admin' } }) }));
+let mockQueueRole = 'admin';
+jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: { role: mockQueueRole } }) }));
 jest.mock('../services/api', () => ({
   medicalReviewRequestsApi: { getAll: jest.fn(), getGroups: jest.fn(), downloadForWhatsapp: jest.fn(), update: jest.fn() },
   medicalTrackingApi: { getAll: jest.fn() }, clientsApi: { getAll: jest.fn() }, retreatsApi: { getAll: jest.fn() },
@@ -12,6 +13,7 @@ jest.mock('../services/api', () => ({
 jest.mock('../services/usersApi', () => ({ usersApi: { getAll: jest.fn() } }));
 
 beforeEach(() => {
+  mockQueueRole = 'admin';
   (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({ data: [
     { _id: 'waiting', display_id: 7901, status: 'awaiting_whatsapp', followUpRequired: true, reviewChannel: 'whatsapp', whatsappStatus: 'awaiting_response', whatsappAdvisorUserId: 'advisor', assignedToUserId: 'other', retreatId: 'retreat', requestType: 'ekg_review' },
     { _id: 'approved', display_id: 7902, status: 'approved', reviewChannel: 'whatsapp', whatsappStatus: 'responded', whatsappDecision: 'OK', retreatId: 'retreat', requestType: 'liver_panel_review' },
@@ -181,4 +183,44 @@ it.each(['Cancel', 'Close modal', 'Escape'])('closes an unsaved WhatsApp form us
   expect(medicalReviewRequestsApi.update).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button',{name:'Handle via WhatsApp'}));
   expect(screen.getByLabelText('Medical advisor')).toHaveValue('advisor');
+});
+
+
+it('renders compact aligned queue columns, actual counts and secondary actions without writing on open', async () => {
+ (clientsApi.getAll as jest.Mock).mockResolvedValue({data:[{_id:'client',display_id:1349,firstName:'Synthetic',lastName:'Client'}]});
+ (medicalReviewRequestsApi.getAll as jest.Mock).mockResolvedValue({data:[
+  {_id:'compact',display_id:1520,clientId:'client',retreatId:'retreat',status:'pending',requestType:'medications_review',documentStage:'entry',attemptNumber:1,clientNotificationCount:2,followUpRequired:true,createdAt:'2026-11-21T02:08:00Z',source:'medical-artifacts',assignedToUserId:{_id:'advisor',firstName:'Test',lastName:'Advisor',email:'advisor@example.invalid'},artifactIds:[{receivedAt:'2026-11-19T19:10:00Z',data:{uploadSource:'client_upload'}}]},
+  {_id:'answered',display_id:1521,status:'approved',reviewChannel:'whatsapp',whatsappStatus:'responded',requestType:'ekg_review'},
+ ]});
+ render(<MemoryRouter><MedicalReviewRequestsGrid /></MemoryRouter>);
+ const table=await screen.findByRole('table',{name:'Medical review queue',exact:true});
+ expect(within(table).getAllByRole('columnheader').map(cell=>cell.textContent)).toEqual(['Case','Client · retreat','Created','Artifact received','Medical advisor','Status','Actions']);
+ expect(screen.getByText('1 pending · 1 handled via WhatsApp · 2 total')).toBeInTheDocument();
+ const row=screen.getByRole('button',{name:'#1520',exact:true}).closest('[role=row]')!;
+ expect(within(row as HTMLElement).getAllByRole('cell')).toHaveLength(7);
+ expect(within(row as HTMLElement).getByRole('button',{name:'#1349 Synthetic Client'})).toHaveTextContent('Synthetic Client');
+ expect(row).toHaveTextContent('#1349 · TEST-790');
+ expect(within(row as HTMLElement).getByLabelText('Notified 2')).toHaveTextContent('2');
+ expect(row.querySelectorAll('time')[0]).toHaveAttribute('datetime','2026-11-21T02:08:00.000Z');
+ expect(row.querySelectorAll('time')[1]).toHaveAttribute('datetime','2026-11-19T19:10:00.000Z');
+ expect(row).toHaveTextContent('Client via IbogaReady');
+ expect(within(row as HTMLElement).getByRole('button',{name:'Open review'})).toHaveTextContent('Review');
+ fireEvent.click(within(row as HTMLElement).getByRole('button',{name:'More actions for MRR #1520'}));
+ expect(await screen.findByText('Source: medical-artifacts')).toBeInTheDocument();
+ expect(screen.getByRole('menuitem',{name:'Edit'})).toBeInTheDocument();
+ expect(screen.getByRole('menuitem',{name:'Delete'})).toBeInTheDocument();
+ expect(medicalReviewRequestsApi.update).not.toHaveBeenCalled();
+});
+
+it('keeps management actions out of the compact advisor queue and its secondary menu', async () => {
+ mockQueueRole='medical_advisor';
+ render(<MemoryRouter><MedicalReviewRequestsGrid /></MemoryRouter>);
+ await screen.findByRole('table',{name:'Medical review queue',exact:true});
+ expect(screen.queryByRole('button',{name:'Notify client',exact:true})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:/Flag for follow-up/})).not.toBeInTheDocument();
+ expect(screen.queryByRole('button',{name:'Mark sent',exact:true})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'More actions for MRR #7901'}));
+ await screen.findByRole('menu');
+ expect(screen.queryByRole('menuitem',{name:'Edit'})).not.toBeInTheDocument();
+ expect(screen.queryByRole('menuitem',{name:'Delete'})).not.toBeInTheDocument();
 });
