@@ -23,6 +23,8 @@ for(const width of [1440,768,390])test(`medical artifact filters and library sco
   await panel.getByLabel('Booking ID',{exact:true}).fill('missing');await expect(count).toHaveText('0 of 3');await panel.getByLabel('Booking ID',{exact:true}).fill('');
   await panel.getByRole('checkbox',{name:'Include records assigned to the other library'}).check();await expect(count).toHaveText('2 of 3');
   await page.screenshot({path:info.outputPath(`filters-${width}.png`),fullPage:true,animations:'disabled'});
+  const close=panel.getByRole('button',{name:'Close filters',exact:true});await expect(close).toBeVisible();await close.click();await expect(panel).toHaveCount(0);
+  await more.click();await expect(panel).toBeVisible();await expect(panel.getByRole('checkbox',{name:'Include records assigned to the other library'})).toBeChecked();await expect(count).toHaveText('2 of 3');
   const input=panel.getByLabel('Client ID',{exact:true});await input.scrollIntoViewIfNeeded();const box=await input.boundingBox();expect(box).not.toBeNull();
   expect(await input.evaluate(el=>{const b=el.getBoundingClientRect();return document.elementFromPoint(b.left+b.width/2,b.top+b.height/2)===el})).toBe(true);
   await page.getByRole('heading',{name:'Medical Artifacts',exact:true}).click();await expect(panel).toHaveCount(0);
