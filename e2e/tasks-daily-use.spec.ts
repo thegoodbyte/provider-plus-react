@@ -1,3 +1,4 @@
+import {dismissFeedback} from './fixtures/booking-room';
 import {test,expect,Page} from '@playwright/test';
 import fs from 'node:fs';
 const file=process.env.CLIENT_SUPPORT_FIXTURE;
@@ -39,6 +40,8 @@ for(const width of [1440,390])test(`daily task create/edit/status/sprint/reload 
  await page.reload();await page.getByRole('button',{name:'Sprints',exact:true}).click();await expect(page.getByLabel('Status for Call supplier')).toHaveValue('in_progress');
  failNext=true;await page.getByLabel('Status for Call supplier').selectOption('completed');await expect(page.locator('.sprint-error')).toContainText('Temporary save failure');expect((await read()).find((r:any)=>r.id===created.id).status).toBe('in_progress');
  await page.getByLabel('Status for Call supplier').selectOption('completed');await expect.poll(async()=>(await read()).find((r:any)=>r.id===created.id).status).toBe('completed');
+ // Acknowledge the global feedback from the deliberately injected failed save.
+ await dismissFeedback(page);
  await page.getByRole('button',{name:'Edit Call supplier'}).click();await page.getByLabel('Task Name *',{exact:true}).fill('Call supplier tomorrow');await page.getByRole('button',{name:'Update Task',exact:true}).click();await expect(page.getByText('Call supplier tomorrow',{exact:true})).toBeVisible();
  page.once('dialog',dialog=>dialog.accept('Daily focus'));await page.getByRole('button',{name:'+ New sprint',exact:true}).click();await expect(page.getByRole('tab',{name:/Daily focus/})).toBeVisible();
  await page.getByRole('tab',{name:/Backlog/}).click();await page.getByLabel('Move Call supplier tomorrow to sprint').selectOption('Daily focus');await page.getByRole('tab',{name:/Daily focus/}).click();await expect(page.getByText('Call supplier tomorrow',{exact:true})).toBeVisible();

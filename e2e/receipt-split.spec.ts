@@ -77,7 +77,7 @@ for (const width of [1440, 390])
         .click();
     }
     expect(await snapshot()).toEqual(before);
-    await expect(page.getByText("Difference: 0.00 PLN")).toBeVisible();
+    await expect(page.getByText("Unused after allocation: 0.00 PLN")).toBeVisible();
     await page.getByRole("checkbox").check();
     await page.screenshot({
       path: `../ppvc-918-validation/review-${width}.png`,
