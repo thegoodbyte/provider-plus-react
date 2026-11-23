@@ -77,7 +77,9 @@ export default function PaymentScratchpadPage() {
   const [editing, setEditing] = useState(false);
   const [reason, setReason] = useState('');
   const [dateDraft, setDateDraft] = useState('');
-  const [dateReason, setDateReason] = useState('');
+  const [amountDraft, setAmountDraft] = useState('');
+  const [currencyDraft, setCurrencyDraft] = useState('');
+  const [amountCurrencyReason, setAmountCurrencyReason] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
@@ -208,13 +210,23 @@ export default function PaymentScratchpadPage() {
       setSelected(data); setMatching(false); setNotice(target.action === 'link' ? 'Receipt linked to the existing payment. The original received-money total is unchanged.' : 'Payment created from this receipt. The original received-money total is unchanged.'); void toast.success(target.action === 'link' ? 'Receipt linked.' : 'Payment created.'); navigate(`${base}/${data._id}${location.search}`);
     });
   };
-  const saveDate = (event: React.FormEvent) => {
+  const saveCorrection = (event: React.FormEvent) => {
     event.preventDefault(); if (!selected) return;
     void mutate(async () => {
-      const { data } = await scratchpadApi.correctDate(selected._id, { revision: selected.revision, receivedDate: dateDraft, reason: dateReason });
-      const message = 'Received date corrected on the scratchpad, payment and receipt. Amounts and allocations are unchanged.';
+      let data = selected;
+      const moneyChanged = Boolean(data.amountCurrencyCorrection) || Number(amountDraft) !== Number(data.amount) || currencyDraft !== data.currency;
+      const dateChanged = Boolean(data.dateCorrection) || dateDraft !== data.receivedDate;
+      if (moneyChanged) {
+        data = (await scratchpadApi.correctAmountCurrency(data._id, { revision: data.revision, amount: Number(amountDraft), currency: currencyDraft, reason: amountCurrencyReason })).data;
+        setSelected(data);
+      }
+      if (dateChanged) {
+        data = (await scratchpadApi.correctDate(data._id, { revision: data.revision, receivedDate: dateDraft, reason: amountCurrencyReason })).data;
+        setSelected(data);
+      }
+      const message = moneyChanged && dateChanged ? 'Receipt corrections saved on the scratchpad and linked payment.' : moneyChanged ? 'Amount/currency corrected on the scratchpad, payment and receipt. Date, account and allocation are unchanged.' : 'Received date corrected on the scratchpad, payment and receipt. Amounts and allocations are unchanged.';
       setDirty(false); setSelected(data); setNotice(message);
-      navigate(`${base}/${selected._id}${location.search}`, { state: { scratchpadNotice: message } });
+      navigate(`${base}/${data._id}${location.search}`, { state: { scratchpadNotice: message } });
     });
   };
   const changeState = (status: string) => selected && void mutate(async () => {
@@ -238,7 +250,9 @@ export default function PaymentScratchpadPage() {
     if (selected && !isIndex && !isNew) {
       setEditing(isEdit);
       setDateDraft(selected.dateCorrection?.receivedDate || selected.receivedDate);
-      setDateReason(selected.dateCorrection?.reason || '');
+      setAmountDraft(selected.amountCurrencyCorrection?.amountMinor != null ? (selected.amountCurrencyCorrection.amountMinor / 100).toFixed(2) : selected.amount);
+      setCurrencyDraft(selected.amountCurrencyCorrection?.currency || selected.currency);
+      if (!dirty || selected.amountCurrencyCorrection || selected.dateCorrection) setAmountCurrencyReason(selected.amountCurrencyCorrection?.reason || selected.dateCorrection?.reason || '');
       setForm(isEdit && selected.status === 'unassigned' && !selected.reconciliationPending ? {...blankForm(), ...selected, matchingDetails:{clientId:selected.matchedClientId||'',paymentRequestId:selected.matchedPaymentRequestId||''}} : null);
     }
   }, [selected, isEdit, isIndex, isNew]);
@@ -308,7 +322,20 @@ export default function PaymentScratchpadPage() {
 
     {!isIndex && !isEdit && selected?.status === 'converted' && <ScratchpadBookingNextStep key={selected._id} receipt={selected} />}
 
-    {isEdit && selected?.status === 'converted' && !selected.paymentMissing && <section className="rounded-xl border border-slate-200 bg-white p-5" aria-label="Received date correction"><h2 className="mb-3 text-lg font-semibold">Correct received date</h2><p className="mb-4 text-sm text-slate-600">This corrects the date on the linked payment and receipt. Amount, currency, account and allocation stay unchanged. A reason is saved in the audit history.</p>{selected.dateCorrectionError && <p role="alert">{selected.dateCorrectionError}</p>}<form onSubmit={saveDate} onChange={()=>setDirty(true)} className="space-y-4"><label className="block">Correct received date<input className={fieldClass} type="date" required min="1900-01-01" max="2100-12-31" value={dateDraft} disabled={busy || Boolean(selected.dateCorrection)} onChange={event=>setDateDraft(event.target.value)} /></label><label className="block">Reason for date correction<input className={fieldClass} required maxLength={500} value={dateReason} disabled={busy || Boolean(selected.dateCorrection)} onChange={event=>setDateReason(event.target.value)} /></label><button className={primaryClass} type="submit" disabled={busy || !dateDraft || !dateReason.trim()}>{busy ? 'Saving…' : selected.dateCorrection ? 'Retry date correction' : 'Save date correction'}</button></form></section>}
+    {isEdit && selected?.status === 'converted' && !selected.paymentMissing && <section className="space-y-4" aria-label="Correct this receipt">
+      <h2 className="text-lg font-semibold">Correct this receipt</h2>
+      <p className="text-sm text-slate-600">Correct the date, amount or currency with one reason. Money is saved first, then the date. If either step fails, completed changes remain saved; retry finishes the remaining correction. Account and allocation stay unchanged.</p>
+      {selected.dateCorrectionError && <p role="alert">{selected.dateCorrectionError}</p>}
+      {selected.amountCurrencyCorrectionError && <p role="alert">{selected.amountCurrencyCorrectionError}</p>}
+      <form onSubmit={saveCorrection} onChange={()=>setDirty(true)} className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+        <h3 className="font-semibold">Correct received date</h3>
+        <label className="block">Correct received date<input className={fieldClass} type="date" required min="1900-01-01" max="2100-12-31" value={dateDraft} disabled={busy || Boolean(selected.dateCorrection)} onChange={event=>setDateDraft(event.target.value)} /></label>
+        <label className="block">Correct amount<input className={fieldClass} inputMode="decimal" pattern="[0-9]+(\.[0-9]{1,2})?" required value={amountDraft} disabled={busy || Boolean(selected.amountCurrencyCorrection)} onChange={event=>setAmountDraft(event.target.value)} /></label>
+        <label className="block">Correct currency<select className={fieldClass} required value={currencyDraft} disabled={busy || Boolean(selected.amountCurrencyCorrection)} onChange={event=>setCurrencyDraft(event.target.value)}>{currencies.map(c => <option key={c}>{c}</option>)}</select></label>
+        <label className="block">Reason for correction<input className={fieldClass} required maxLength={500} value={amountCurrencyReason} disabled={busy || Boolean(selected.amountCurrencyCorrection || selected.dateCorrection)} onChange={event=>setAmountCurrencyReason(event.target.value)} /></label>
+        <button className={primaryClass} type="submit" disabled={busy || !dateDraft || !amountDraft || !currencyDraft || !amountCurrencyReason.trim()}>{busy ? 'Saving…' : selected.amountCurrencyCorrection || selected.dateCorrection ? 'Retry receipt correction' : 'Save receipt correction'}</button>
+      </form>
+    </section>}
 
     {form && <section className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="mb-4 text-lg font-semibold">{editing ? 'Edit unassigned receipt' : 'Record a receipt'}</h2><form onSubmit={saveCapture} onChange={()=>setDirty(true)}><fieldset disabled={busy} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <label>Received date<input className={fieldClass} type="date" required min="1900-01-01" max="2100-12-31" value={form.receivedDate} onChange={e => setForm({ ...form, receivedDate: e.target.value })} /></label>
@@ -348,7 +375,7 @@ export default function PaymentScratchpadPage() {
       {selected.notes && <p className="whitespace-pre-wrap break-words border-b border-apple-gray-100 py-4 text-sm text-apple-gray-700">Notes: {selected.notes}</p>}
       {selected.reconciliationPending && <p role="status" className="my-4 rounded-lg bg-amber-50 p-3">Reconciliation is pending. Retry to resume the original confirmed target. Receipt editing is locked.</p>}
       {selected.reconciliationError && <p role="alert" className="my-4 text-red-800">{selected.reconciliationError}</p>}
-      {selected.status === 'converted' ? <div className="py-4"><p>Reconciled receipt. Financial fields are locked.</p>{!selected.paymentMissing && !isEdit && <AppleButton variant="secondary" size="sm" className="mt-2" disabled={busy} onClick={()=>navigateTo(`${base}/${selected._id}/edit`)}>Edit received date</AppleButton>}{selected.dateCorrectionError && <p role="alert">{selected.dateCorrectionError}</p>}{selected.payment ? <><span className="inline-flex items-center gap-1.5"><Link className="text-blue-700 underline" to={`/admin/payments/${selected.paymentId}`}>View payment #{selected.payment.display_id || selected.paymentId}</Link><ScratchpadReceiptEmailStatus summary={selected.payment.receiptEmail} /></span><p>Current payment: {selected.payment.amount} {selected.payment.currency} · {selected.payment.status}</p>{selected.payment.bookingId && <Link className="mr-4 text-blue-700 underline" to={`/admin/bookings/${resolveId(selected.payment.bookingId)}`}>View booking #{selected.payment.booking?.bookingNumber || resolveId(selected.payment.bookingId)}</Link>}{selected.payment.paymentRequestId && <Link className="text-blue-700 underline" to={`/admin/payment-requests/${resolveId(selected.payment.paymentRequestId)}`}>View payment request</Link>}</> : <div className="space-y-3"><p role="alert">The linked payment was removed. Reopen this receipt to match it again -- reopening does not delete or restore any payment.</p><div className="flex flex-wrap items-end gap-3"><label className="min-w-0 flex-1">Reason for reopening<input className={fieldClass} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} /></label><AppleButton variant="secondary" disabled={busy || !reason.trim()} onClick={reopenReceipt}>Reopen receipt</AppleButton></div></div>}</div> : selected.status === 'unassigned' && <div className="flex flex-wrap items-center justify-between gap-3 py-4"><p className="text-sm text-apple-gray-500">Payment already recorded? Link it instead of recording it again.</p><div className="flex flex-wrap gap-2"><AppleButton variant="secondary" onClick={()=>{setManualMatching(false);setLinkMode(false);setMatching(true);}}>Save client / PR</AppleButton><AppleButton onClick={()=>setMatching(true)}>Record payment from SP<ArrowRight className="ml-1.5 h-4 w-4" /></AppleButton></div></div>}
+      {selected.status === 'converted' ? <div className="py-4"><p>Reconciled receipt. Financial fields are locked.</p>{!selected.paymentMissing && !isEdit && <AppleButton variant="secondary" size="sm" className="mt-2" disabled={busy} onClick={()=>navigateTo(`${base}/${selected._id}/edit`)}>Correct this receipt</AppleButton>}{selected.dateCorrectionError && <p role="alert">{selected.dateCorrectionError}</p>}{selected.amountCurrencyCorrectionError && <p role="alert">{selected.amountCurrencyCorrectionError}</p>}{selected.payment ? <><span className="inline-flex items-center gap-1.5"><Link className="text-blue-700 underline" to={`/admin/payments/${selected.paymentId}`}>View payment #{selected.payment.display_id || selected.paymentId}</Link><ScratchpadReceiptEmailStatus summary={selected.payment.receiptEmail} /></span><p>Current payment: {selected.payment.amount} {selected.payment.currency} · {selected.payment.status}</p>{selected.payment.bookingId && <Link className="mr-4 text-blue-700 underline" to={`/admin/bookings/${resolveId(selected.payment.bookingId)}`}>View booking #{selected.payment.booking?.bookingNumber || resolveId(selected.payment.bookingId)}</Link>}{selected.payment.paymentRequestId && <Link className="text-blue-700 underline" to={`/admin/payment-requests/${resolveId(selected.payment.paymentRequestId)}`}>View payment request</Link>}</> : <div className="space-y-3"><p role="alert">The linked payment was removed. Reopen this receipt to match it again -- reopening does not delete or restore any payment.</p><div className="flex flex-wrap items-end gap-3"><label className="min-w-0 flex-1">Reason for reopening<input className={fieldClass} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} /></label><AppleButton variant="secondary" disabled={busy || !reason.trim()} onClick={reopenReceipt}>Reopen receipt</AppleButton></div></div>}</div> : selected.status === 'unassigned' && <div className="flex flex-wrap items-center justify-between gap-3 py-4"><p className="text-sm text-apple-gray-500">Payment already recorded? Link it instead of recording it again.</p><div className="flex flex-wrap gap-2"><AppleButton variant="secondary" onClick={()=>{setManualMatching(false);setLinkMode(false);setMatching(true);}}>Save client / PR</AppleButton><AppleButton onClick={()=>setMatching(true)}>Record payment from SP<ArrowRight className="ml-1.5 h-4 w-4" /></AppleButton></div></div>}
       {(selected.matchedClientId || selected.matchedPaymentRequestId) && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm" aria-label="Saved scratchpad matching details"><strong>Saved client / PR</strong>{selected.matchedClientId && <p>Client: <Link className="underline" to={`/admin/clients/${selected.matchedClientId}`}>{clients.find(client=>client._id===selected.matchedClientId) ? `${clients.find(client=>client._id===selected.matchedClientId)?.firstName} ${clients.find(client=>client._id===selected.matchedClientId)?.lastName}` : selected.matchedClientId}</Link></p>}{selected.matchedPaymentRequestId && <p>PR: <Link className="underline" to={`/admin/payment-requests/${selected.matchedPaymentRequestId}`}>#{requests.find(request=>request._id===selected.matchedPaymentRequestId)?.display_id || selected.matchedPaymentRequestId}</Link></p>}<p className="mt-1 text-xs">Association only. Paid status changes only after an actual payment is recorded or linked.</p></div>}
       <details className="border-t border-apple-gray-100 pt-3"><summary className="flex cursor-pointer items-center gap-2 font-medium text-apple-gray-700"><History className="h-4 w-4" /><span>Receipt history</span><Badge tone="neutral">{selected.history?.length || 0}</Badge></summary><ol className="mt-3 space-y-3 text-sm">{selected.history?.map((h,i) => <li className="border-l-2 border-slate-200 pl-3" key={i}><p>{h.action.replace(/_/g, ' ')} · {h.actor} · {new Date(h.at).toLocaleString()}</p>{['before','after'].map(side => <div className="break-words text-xs text-slate-500" key={side}>{Object.entries((h as any)[side] || {}).filter(([key]) => historyFields[key]).map(([key,value]) => <p key={key}>{side === 'before' ? 'Previous' : 'Saved'} {key === 'amountMinor' ? 'amount' : historyFields[key]}: {key === 'amountMinor' ? (Number(value)/100).toFixed(2) : String(value || '—')}</p>)}</div>)}</li>)}</ol></details>
     </Card></section>}

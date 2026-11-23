@@ -11357,6 +11357,23 @@ export type ScratchpadControllerEditResponses = {
 
 export type ScratchpadControllerEditResponse = ScratchpadControllerEditResponses[keyof ScratchpadControllerEditResponses];
 
+export type ScratchpadControllerCorrectAmountCurrencyData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/payment-scratchpad/{id}/amount-currency';
+};
+
+export type ScratchpadControllerCorrectAmountCurrencyResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ScratchpadControllerCorrectAmountCurrencyResponse = ScratchpadControllerCorrectAmountCurrencyResponses[keyof ScratchpadControllerCorrectAmountCurrencyResponses];
+
 export type ScratchpadControllerAssociateData = {
     body?: never;
     path: {

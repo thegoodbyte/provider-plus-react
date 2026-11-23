@@ -604,6 +604,7 @@ export interface ScratchpadReceipt {
   paymentId?: string; payment?: any; paymentMissing?: boolean; duplicatePayments?: Array<{ _id: string; display_id?: number }>; reconciliationPending?: boolean;
   bookingReview?: { kind: string; label: string; message: string; client?: any; request?: any; bookings: any[] };
   dateCorrection?: any; dateCorrectionError?: string;
+  amountCurrencyCorrection?: any; amountCurrencyCorrectionError?: string;
   reconciliationError?: string; reconciliation?: any; history?: Array<{ action: string; actor: string; at: string; before?: any; after?: any }>;
 }
 export interface ScratchpadSnapshot {
@@ -619,6 +620,11 @@ export const scratchpadApi = {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('payment-requests:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');
     return api.patch<ScratchpadReceipt>(`/payment-scratchpad/${id}/date`, data);
+  },
+  correctAmountCurrency: (id: string, data: { revision: number; amount: number; currency: string; reason: string }) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('payment-requests:'); cacheService.clearPattern('bookings:'); cacheService.clearPattern('payment-requests:');
+    return api.patch<ScratchpadReceipt>(`/payment-scratchpad/${id}/amount-currency`, data);
   },
   state: (id: string, data: any) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/state`, data),
   reopen: (id: string, data: { revision: number; reason: string }) => api.post<ScratchpadReceipt>(`/payment-scratchpad/${id}/reopen`, data),

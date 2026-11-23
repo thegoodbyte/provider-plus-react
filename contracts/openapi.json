@@ -22108,6 +22108,36 @@
         ]
       }
     },
+    "/payment-scratchpad/{id}/amount-currency": {
+      "patch": {
+        "operationId": "ScratchpadController_correctAmountCurrency",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "Scratchpad"
+        ]
+      }
+    },
     "/payment-scratchpad/{id}/association": {
       "patch": {
         "operationId": "ScratchpadController_associate",

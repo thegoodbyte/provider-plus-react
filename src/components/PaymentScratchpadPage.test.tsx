@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PaymentScratchpadPage from './PaymentScratchpadPage';
 import { scratchpadApi, paymentsApi, clientsApi, bookingsApi, paymentRequestsApi } from '../services/api';
-jest.mock('../services/api', () => ({ scratchpadApi: { matches: jest.fn(), list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, paymentsApi: { linkRequest: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn(), getSettlement: jest.fn() } }));
+jest.mock('../services/api', () => ({ scratchpadApi: { matches: jest.fn(), list: jest.fn(), create: jest.fn(), detail: jest.fn(), candidates: jest.fn(), edit: jest.fn(), correctDate: jest.fn(), correctAmountCurrency: jest.fn(), state: jest.fn(), reconcile: jest.fn() }, paymentsApi: { linkRequest: jest.fn() }, clientsApi: { getAll: jest.fn() }, bookingsApi: { getAll: jest.fn() }, paymentRequestsApi: { getAllFresh: jest.fn(), getSettlement: jest.fn() } }));
 jest.mock('./SearchableClientSelect', () => ({ __esModule: true, default: (p: any) => <select aria-label={p.ariaLabel} value={p.value} onChange={e=>p.onChange(e.target.value)}><option value="">Choose</option><option value="client">Synthetic client</option></select> }));
 jest.mock('./Tasks/SearchableSelect', () => ({ SearchableSelect: (p: any) => <select id={p.id} value={p.value} onChange={e=>p.onChange(e.target.value)}>{p.options.map((o:any)=><option key={o.id} value={o.id}>{o.label}</option>)}</select> }));
 const api = scratchpadApi as jest.Mocked<typeof scratchpadApi>;
@@ -212,9 +212,63 @@ it('corrects only the date on a converted receipt and records the reason',async(
  api.correctDate.mockResolvedValue({data:{...linked,receivedDate:'2026-10-17',revision:4}} as any);
  mount();fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
  const input=await screen.findByLabelText('Correct received date');expect(screen.queryByLabelText('Amount received')).not.toBeInTheDocument();
- fireEvent.change(input,{target:{value:'2026-10-17'}});fireEvent.change(screen.getByLabelText('Reason for date correction'),{target:{value:'Bank statement date'}});fireEvent.click(screen.getByRole('button',{name:'Save date correction'}));
+ fireEvent.change(input,{target:{value:'2026-10-17'}});fireEvent.change(screen.getByLabelText('Reason for correction'),{target:{value:'Bank statement date'}});fireEvent.click(screen.getByRole('button',{name:'Save receipt correction'}));
  await waitFor(()=>expect(api.correctDate).toHaveBeenCalledWith('receipt',{revision:2,receivedDate:'2026-10-17',reason:'Bank statement date'}));expect(api.edit).not.toHaveBeenCalled();expect(api.reconcile).not.toHaveBeenCalled();
  expect(await screen.findByText(/Received date corrected on the scratchpad/)).toBeInTheDocument();
+});
+
+it('renders the amount/currency correction form with the receipt\'s current values on a converted receipt',async()=>{
+ const linked={...row,status:'converted',revision:2,paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}};
+ api.list.mockResolvedValue({data:{...snapshot,items:[linked]}} as any);api.detail.mockResolvedValue({data:linked} as any);
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
+ await screen.findByLabelText('Correct amount');
+ await waitFor(()=>expect(screen.getByLabelText('Correct amount')).toHaveValue('5100.00'));
+ expect(screen.getByLabelText('Correct currency')).toHaveValue('PLN');
+ expect(screen.getByLabelText('Reason for correction')).toHaveValue('');
+ expect(screen.getByRole('button',{name:'Save receipt correction'})).toBeDisabled();
+});
+
+it('corrects amount and currency on a converted receipt and records the reason',async()=>{
+ const linked={...row,status:'converted',revision:2,paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}};
+ api.list.mockResolvedValue({data:{...snapshot,items:[linked]}} as any);api.detail.mockResolvedValue({data:linked} as any);
+ api.correctAmountCurrency.mockResolvedValue({data:{...linked,amount:'5200.00',currency:'EUR',revision:4}} as any);
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
+ fireEvent.change(await screen.findByLabelText('Correct amount'),{target:{value:'5200.00'}});
+ fireEvent.change(screen.getByLabelText('Correct currency'),{target:{value:'EUR'}});
+ fireEvent.change(screen.getByLabelText('Reason for correction'),{target:{value:'Wrong currency recorded'}});
+ fireEvent.click(screen.getByRole('button',{name:'Save receipt correction'}));
+ await waitFor(()=>expect(api.correctAmountCurrency).toHaveBeenCalledWith('receipt',{revision:2,amount:5200,currency:'EUR',reason:'Wrong currency recorded'}));
+ expect(api.correctDate).not.toHaveBeenCalled();expect(api.reconcile).not.toHaveBeenCalled();
+ expect(await screen.findByText(/Amount\/currency corrected on the scratchpad/)).toBeInTheDocument();
+});
+
+it('shows a blocking amount/currency correction error without crashing and keeps the entered values',async()=>{
+ const linked={...row,status:'converted',revision:2,paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}};
+ api.list.mockResolvedValue({data:{...snapshot,items:[linked]}} as any);api.detail.mockResolvedValue({data:linked} as any);
+ api.correctAmountCurrency.mockRejectedValue({response:{data:{message:'Currency differs from the linked payment request. Use the payment’s own edit page for cross-currency corrections, or unlink the request first.'}}});
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
+ fireEvent.change(await screen.findByLabelText('Correct amount'),{target:{value:'5100.00'}});
+ fireEvent.change(screen.getByLabelText('Correct currency'),{target:{value:'EUR'}});
+ fireEvent.change(screen.getByLabelText('Reason for correction'),{target:{value:'Fix currency'}});
+ fireEvent.click(screen.getByRole('button',{name:'Save receipt correction'}));
+ await screen.findByRole('alert');
+ expect(screen.getByText(/Currency differs from the linked payment request/)).toBeInTheDocument();
+ expect(screen.getByLabelText('Correct amount')).toHaveValue('5100.00');
+ expect(screen.getByLabelText('Correct currency')).toHaveValue('EUR');
+});
+
+it('disables the amount/currency inputs and offers a retry while a correction is pending',async()=>{
+ const pendingCorrection={...row,status:'converted',revision:2,paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'},amountCurrencyCorrection:{amountMinor:520000,currency:'EUR',reason:'Fix currency'},amountCurrencyCorrectionError:'Could not complete the amount/currency correction. Retry to resume.'};
+ api.list.mockResolvedValue({data:{...snapshot,items:[pendingCorrection]}} as any);api.detail.mockResolvedValue({data:pendingCorrection} as any);
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
+ await screen.findByLabelText('Correct amount');
+ await waitFor(()=>expect(screen.getByLabelText('Correct amount')).toHaveValue('5200.00'));
+ expect(screen.getByLabelText('Correct amount')).toBeDisabled();
+ expect(screen.getByLabelText('Correct currency')).toBeDisabled();
+ expect(screen.getByLabelText('Reason for correction')).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Retry receipt correction'})).toBeInTheDocument();
+ expect(screen.getAllByText('Could not complete the amount/currency correction. Retry to resume.').length).toBeGreaterThanOrEqual(1);
+ expect(screen.getByLabelText('Correct received date')).toBeEnabled();
 });
 
 it('distinguishes same-client requests by requested amount/currency, not the full booking quote',async()=>{
@@ -350,4 +404,19 @@ it('keeps receipt fields and client/PR together on failed edit and sends one ato
  const picker=await screen.findByLabelText('Payment request (optional)',{exact:true});fireEvent.change(picker,{target:{value:'request'}});fireEvent.change(screen.getByLabelText('Notes (optional)'),{target:{value:'Keep matching'}});fireEvent.click(screen.getByRole('button',{name:'Save receipt',exact:true}));
  await screen.findByRole('alert');expect(picker).toHaveValue('request');expect(screen.getByLabelText('Receipt client (optional)')).toHaveValue('client');expect(screen.getByLabelText('Notes (optional)')).toHaveValue('Keep matching');
  expect(api.edit).toHaveBeenCalledTimes(1);expect(api.edit).toHaveBeenCalledWith('receipt',expect.objectContaining({revision:0,notes:'Keep matching',matchingDetails:{clientId:'client',paymentRequestId:'request'}}));expect(api.reconcile).not.toHaveBeenCalled();
+});
+
+it('saves money before the date using the returned revision and the same reason',async()=>{
+ const linked={...row,status:'converted',revision:2,paymentId:'payment',payment:{display_id:1001,amount:5100,currency:'PLN',status:'completed'}};
+ api.list.mockResolvedValue({data:{...snapshot,items:[linked]}} as any);api.detail.mockResolvedValue({data:linked} as any);
+ api.correctAmountCurrency.mockResolvedValue({data:{...linked,amount:'5200.00',revision:5}} as any);
+ api.correctDate.mockResolvedValue({data:{...linked,amount:'5200.00',receivedDate:'2026-10-18',revision:7}} as any);
+ mount();fireEvent.click(await screen.findByRole('button',{name:'Edit receipt Synthetic Payer'}));
+ fireEvent.change(await screen.findByLabelText('Correct amount'),{target:{value:'5200.00'}});
+ fireEvent.change(screen.getByLabelText('Correct received date'),{target:{value:'2026-10-18'}});
+ fireEvent.change(screen.getByLabelText('Reason for correction'),{target:{value:'Bank statement correction'}});
+ fireEvent.click(screen.getByRole('button',{name:'Save receipt correction'}));
+ await waitFor(()=>expect(api.correctDate).toHaveBeenCalledWith('receipt',{revision:5,receivedDate:'2026-10-18',reason:'Bank statement correction'}));
+ expect(api.correctAmountCurrency).toHaveBeenCalledWith('receipt',{revision:2,amount:5200,currency:'PLN',reason:'Bank statement correction'});
+ expect(await screen.findByText('Receipt corrections saved on the scratchpad and linked payment.')).toBeInTheDocument();
 });
