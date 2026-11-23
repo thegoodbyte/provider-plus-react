@@ -1,3 +1,4 @@
+import NonCashSettlementDetails from './NonCashSettlementDetails';
 import { Edit2, RefreshCw, Trash2, List as FiList, Grid2X2 as FiGrid } from 'lucide-react';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -351,6 +352,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
             <div className="summary-card">
               <div className="summary-number">{formatCurrency(summary.completedPaymentsUSD || 0, 'USD')}</div>
               <div className="summary-label">Completed Payments</div>
+              {summary.nonCashCompletedByCurrency&&<div className="mt-2 text-xs text-violet-800">Non-cash value (separate): {Object.entries(summary.nonCashCompletedByCurrency).map(([currency,amount])=>`${Number(amount).toLocaleString()} ${currency}`).join(' · ')}</div>}
             </div>
             <div className="summary-card">
               <div className="summary-number">{formatCurrency(summary.pendingPaymentsUSD || 0, 'USD')}</div>
@@ -637,7 +639,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                       {getPaymentType(payment)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {getPaymentMethodDisplay(payment.paymentMethod)}
+                      {getPaymentMethodDisplay(payment.paymentMethod)}<NonCashSettlementDetails value={payment.nonCashSettlement} currency={payment.currency} compact/>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payment.status)}`}>
@@ -655,13 +657,13 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
-                        <button
+                        {payment.nonCashSettlement ? <Link to={`/admin/payments/${payment._id}/edit`} className="rounded border px-3 py-2">Edit non-cash settlement</Link> : <button
                           onClick={() => handleEditPayment(payment)}
                           className="icon-action-btn icon-action-btn-edit"
                           title="Edit Payment"
                         >
                           <Icon icon={Edit2} />
-                        </button>
+                        </button>}
                         <button
                           onClick={() => handleDeletePayment(payment._id)}
                           className="icon-action-btn icon-action-btn-danger"
@@ -669,7 +671,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                         >
                           <Icon icon={Trash2} />
                         </button>
-                        {payment.status === 'completed' && (
+                        {payment.status === 'completed' && !payment.nonCashSettlement && (
                           <button
                             onClick={() => handleRefund(payment._id)}
                             className="icon-action-btn icon-action-btn-edit"
@@ -741,7 +743,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                             </span>
                           </div>
                           <div className="payment-column-row-meta">{getPaymentType(payment)}</div>
-                          <div className="payment-column-row-meta">{getPaymentMethodDisplay(payment.paymentMethod)}</div>
+                          <div className="payment-column-row-meta">{getPaymentMethodDisplay(payment.paymentMethod)}<NonCashSettlementDetails value={payment.nonCashSettlement} currency={payment.currency} compact/></div>
                           {payment.description && (
                             <div className="payment-column-row-description">{payment.description}</div>
                           )}

@@ -265,6 +265,7 @@ const smoke = [
         ["support-requests", "IBOGAREADY_REQUEST_FIXTURE", "client-support"],
         ["medical-preparation-calendar", "PPVC922_FIXTURE"],
         ["guided-scratchpad", "GUIDED_SCRATCHPAD_FIXTURE"],
+        ["non-cash-settlement", "NON_CASH_FIXTURE", null, "factory"],
         ["booking-payment-reconciliation", "BOOKING_RECONCILIATION_FIXTURE"],
         ["preparation-workspace", "PREPARATION_FIXTURE"],
         ["screening-print", "SCREENING_PRINT_FIXTURE"],

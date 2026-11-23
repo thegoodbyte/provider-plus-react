@@ -717,8 +717,13 @@ export interface ExpenseSummary {
   count: number;
 }
 
+export interface NonCashSettlement {
+  description: string; quantity: number; unitValue: number; valuationNotes?: string;
+}
+
 export interface Payment {
   receiptUnallocated?: boolean;
+  nonCashSettlement?: NonCashSettlement;
   sourceScratchpadId?: string | { _id: string; display_id?: number };
 
   _id?: string;
@@ -770,6 +775,7 @@ export interface Payment {
 }
 
 export interface PaymentReceipt {
+  nonCashSettlement?: NonCashSettlement;
   allocationRevision?: number;
   splitProgress?: { availableAmount?: number; remainingAmount?: number; state: 'pending' | 'completed'; operationKey: string; sourcePaymentId: string; expectedRevision: number; allocations: { bookingId: string; amount: number }[] };
 
@@ -803,6 +809,8 @@ export interface PaymentReceipt {
 }
 
 export interface PaymentSummary {
+  nonCashCompletedByCurrency?: Record<string, number>;
+  nonCashCompletedUSD?: number;
   totalPayments: number;
   totalPaymentsEUR: number;
   totalPaymentsUSD?: number;

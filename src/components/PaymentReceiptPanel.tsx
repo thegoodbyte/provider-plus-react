@@ -1,4 +1,5 @@
 import ReceiptAllocationSummary from './ReceiptAllocationSummary';
+import NonCashSettlementDetails from './NonCashSettlementDetails';
 import React, { useEffect, useRef, useState } from 'react';
 import { paymentsApi } from '../services/api';
 import { Payment, PaymentReceipt } from '../types';
@@ -26,7 +27,7 @@ export default function PaymentReceiptPanel({ payment }: { payment: Payment }) {
   const client: any = typeof allocation?.clientId === 'object' ? allocation.clientId : null;
   const history = (receipt?.deliveryHistory || []).filter(entry => idOf(entry.allocationId) === allocationId);
   const sentEmails = history.filter(entry => entry.channel === 'email' && ['sent', 'delivered'].includes(entry.status));
-  const canUse = Boolean(receipt && allocation && receipt.status === 'received' && !['refund', 'currency_adjustment'].includes(receipt.paymentType || '') && payment.status === 'completed' && !['refund', 'currency_adjustment'].includes(payment.paymentType || ''));
+  const canUse = Boolean(!payment.nonCashSettlement && !receipt?.nonCashSettlement && receipt && allocation && receipt.status === 'received' && !['refund', 'currency_adjustment'].includes(receipt.paymentType || '') && payment.status === 'completed' && !['refund', 'currency_adjustment'].includes(payment.paymentType || ''));
   const refresh = async () => { const { data } = await paymentsApi.getReceipt(receiptId); if (active.current) setReceipt(data); };
   const loadPreview = async () => {
     const { data } = await paymentsApi.downloadReceiptPdf(receiptId, allocationId);
@@ -52,6 +53,7 @@ export default function PaymentReceiptPanel({ payment }: { payment: Payment }) {
     } catch (err) { if (active.current) setError(apiErrorMessage(err, 'Receipt email failed. You can retry.')); }
     finally { if (active.current) setBusy(''); }
   };
+  if (payment.nonCashSettlement || receipt?.nonCashSettlement) return <section aria-label="Non-cash settlement record" className="mt-6 rounded-xl border p-4"><h2 className="text-xl font-bold">Non-cash settlement record</h2><NonCashSettlementDetails value={payment.nonCashSettlement || receipt?.nonCashSettlement} currency={payment.currency}/><p>This record documents the accepted goods/services and their agreed value. Standard cash receipt PDFs, receipt emails and cash refunds are not applicable. Use the payment editor for a correction or return with a reason.</p></section>;
   return <section aria-label="Payment receipt" className="mt-6 min-w-0 rounded-xl border border-blue-200 bg-white p-4 sm:p-6">
     <h2 className="text-xl font-bold text-gray-950">Receipt and client delivery</h2>
     {!receiptId ? <p className="mt-3 text-gray-600">This historical payment has no linked receipt. No receipt email or delivery history is available for it.</p> : loading ? <p className="mt-3">Loading receipt…</p> : <>

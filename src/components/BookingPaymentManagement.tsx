@@ -1,3 +1,4 @@
+import NonCashSettlementDetails from './NonCashSettlementDetails';
 import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import { useFinancePermission } from '../finance/FinanceAccessContext';
 import BalanceReminderButton from './BalanceReminderButton';
@@ -814,6 +815,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       <section className="payments-list" aria-label="Payments — recorded transactions">
         <div className="payment-history-header">
           <div className="payment-history-title"><h4>Payment transactions</h4><p>Actual transactions, including pending payments and refunds.</p></div>
+          {payments.some(payment=>payment.nonCashSettlement)&&<p className="text-sm text-violet-800">Booking credit includes non-cash goods/services. Their agreed value settles the balance; it is not cash received.</p>}
           <span className="payment-history-total">{payments.length} record{payments.length === 1 ? '' : 's'} · {financialSummary ? <><CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /> net paid</> : 'Total unavailable'}</span>
             <button
               type="button"
@@ -1141,7 +1143,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                         </span>
                       </td>
                       <td title={formatPaymentMethod(payment.paymentMethod)}>
-                        {formatPaymentMethodShort(payment.paymentMethod)}
+                        {formatPaymentMethodShort(payment.paymentMethod)}<NonCashSettlementDetails value={payment.nonCashSettlement} currency={payment.currency} compact/>
                       </td>
                       <td>
                         <span className={`status-badge status-${payment.status}`}>
@@ -1157,7 +1159,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                             </button>
                           )}
                           <details className="payment-record-more"><summary aria-label={`More actions for payment ${payment.display_id || payment._id}`}>•••</summary><div>
-                          {canFinance('finance.refund') && payment.isRefundable && payment.status === 'completed' && !payment.refundedAmount && (
+                          {canFinance('finance.refund') && !payment.nonCashSettlement && payment.isRefundable && payment.status === 'completed' && !payment.refundedAmount && (
                             <button
                               onClick={() => handleRefundPayment(payment._id!, payment.amount)}
                               className="refund-btn"

@@ -1,3 +1,5 @@
+import NonCashSettlementFields from './NonCashSettlementFields';
+import { nonCashValue, nonCashSubmissionKey, clearNonCashSubmissionKey } from './nonCashSettlement';
 import PaymentInvoiceActions from './PaymentInvoiceActions';
 import FinanceBookingCreate from '../finance/FinanceBookingCreate';
 import { isFinanceWorkspace } from '../finance/financeScope';
@@ -9,7 +11,7 @@ import BookingEditorForm from './BookingEditorForm';
 import RequestCurrencyConversion, { emptyRequestConversion } from './RequestCurrencyConversion';
 import { ArrowLeft, Save as SaveIcon } from 'lucide-react';
 import RelatedRecords, { recordRelations } from './RelatedRecords';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { bookingsApi, clientsApi, configSummaryApi, serviceRequestsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
@@ -111,7 +113,10 @@ const PaymentEditorPage: React.FC = () => {
   const [newBookingContext, setNewBookingContext] = useState<any>(null);
   const [bookingNotice, setBookingNotice] = useState('');
   const [clientOnly, setClientOnly] = useState(Boolean(clientIdFromQuery && !bookingIdFromQuery && !paymentRequestIdFromQuery));
+  const nonCashKey = useRef('');
+  const [existingNonCashPayment, setExistingNonCashPayment] = useState('');
   const [formData, setFormData] = useState({
+    nonCash: false, nonCashDescription: '', nonCashQuantity: '1', nonCashUnitValue: '', nonCashValuationNotes: '',
     display_id: '',
     paymentRequestId: '',
     clientId: '',
@@ -133,6 +138,13 @@ const PaymentEditorPage: React.FC = () => {
     bookingCurrencyAmount: '',
     bookingCurrencyExchangeDate: '',
   });
+
+  useEffect(() => {
+    if (!formData.nonCash) return;
+    const value = nonCashValue(formData.nonCashQuantity, formData.nonCashUnitValue);
+    const next = value === undefined ? '' : value.toFixed(2);
+    setFormData(current => current.amount === next ? current : { ...current, amount: next, requestCurrencyAmount: '', requestCurrencyExchangeSource: '' });
+  }, [formData.nonCash, formData.nonCashQuantity, formData.nonCashUnitValue]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -163,6 +175,11 @@ const PaymentEditorPage: React.FC = () => {
           const populatedPaymentRequest = typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId as PaymentRequest : null;
           if (populatedPaymentRequest) setSelectedPaymentRequest(populatedPaymentRequest);
           setFormData({
+            nonCash: Boolean(payment.nonCashSettlement),
+            nonCashDescription: payment.nonCashSettlement?.description || '',
+            nonCashQuantity: String(payment.nonCashSettlement?.quantity || 1),
+            nonCashUnitValue: payment.nonCashSettlement?.unitValue?.toString() || '',
+            nonCashValuationNotes: payment.nonCashSettlement?.valuationNotes || '',
             display_id: payment.display_id?.toString?.() || '',
             paymentRequestId: resolveId(payment.paymentRequestId),
             clientId: resolveId(payment.clientId),
@@ -357,9 +374,10 @@ const PaymentEditorPage: React.FC = () => {
       clientId,
       retreatId,
       bookingId: service ? '' : requestBookingId || booking?._id || prev.bookingId,
-      amount: amount !== '' && amount !== undefined ? String(amount) : prev.amount,
+      nonCash: paymentRequest.context === 'standalone_service' ? false : prev.nonCash,
+      amount: prev.nonCash && paymentRequest.context !== 'standalone_service' ? prev.amount : amount !== '' && amount !== undefined ? String(amount) : prev.amount,
       currency,
-      paymentMethod: paymentMethodFromRequest(paymentRequest.paymentType),
+      paymentMethod: prev.nonCash && paymentRequest.context !== 'standalone_service' ? 'other' : paymentMethodFromRequest(paymentRequest.paymentType),
       paymentType: requestPaymentType,
       isDeposit: requestPaymentType === 'deposit_non_refundable' || requestPaymentType === 'deposit_refundable',
       isFinalPayment: !service && (requestPaymentType === 'balance_payment' || paymentRequest.requestType === 'full_payment'),
@@ -431,7 +449,10 @@ const PaymentEditorPage: React.FC = () => {
       return;
     }
 
+    if (formData.nonCash && (!formData.nonCashDescription.trim() || nonCashValue(formData.nonCashQuantity, formData.nonCashUnitValue) === undefined)) { setFormError('Describe the goods/services and enter a positive valid quantity and value.'); return; }
+    if (formData.nonCash && !isExisting && !nonCashKey.current) nonCashKey.current = nonCashSubmissionKey();
     const submitData = {
+      ...(formData.nonCash ? { nonCashSettlement: { description: formData.nonCashDescription.trim(), quantity: Number(formData.nonCashQuantity), unitValue: Number(formData.nonCashUnitValue), valuationNotes: formData.nonCashValuationNotes.trim() || undefined }, ...(!isExisting ? { nonCashIdempotencyKey: nonCashKey.current } : {}) } : {}),
       display_id: displayId,
       ...(isExisting ? { expectedRelationships: { clientId: resolveId(loadedPayment?.clientId), bookingId: resolveId(loadedPayment?.bookingId) || null, paymentRequestId: resolveId(loadedPayment?.paymentRequestId) || null } } : {}),
       paymentRequestId: formData.paymentRequestId || (isExisting ? null : undefined),
@@ -463,7 +484,7 @@ const PaymentEditorPage: React.FC = () => {
     try {
     const existingPayments = await paymentsApi.getAll();
     const duplicate = (existingPayments.data || []).find((payment: Payment) => {
-      return payment._id !== id && Number(payment.display_id) === displayId;
+      return payment._id !== id && Number(payment.display_id) === displayId && !(formData.nonCash && (payment as any).serviceTransactionKey === 'noncash:' + nonCashKey.current);
     });
     if (duplicate) {
       setFormError(`Payment number ${displayId} already exists. Save cancelled.`);
@@ -475,10 +496,12 @@ const PaymentEditorPage: React.FC = () => {
       } else {
         await paymentsApi.create(submitData as any);
       }
+      if (formData.nonCash && !isExisting) { clearNonCashSubmissionKey(); nonCashKey.current = ''; }
       navigate(returnTo || defaultReturnPath);
     } catch (error) {
       console.error('Error saving payment:', (error as any)?.response?.data || error);
       setFormError(apiErrorMessage(error, 'The payment could not be saved.'));
+      if (formData.nonCash && (error as any)?.response?.data?.existingPaymentId) setExistingNonCashPayment((error as any).response.data.existingPaymentId);
       if (isExisting && id) try { const latest = await paymentsApi.getOne(id); if ((latest.data as any)?.relationshipChangePending) setLoadedPayment(latest.data); } catch { /* Retain the visible form for retry. */ }
     } finally { setSaving(false); }
   };
@@ -545,6 +568,7 @@ const PaymentEditorPage: React.FC = () => {
 
       <Card>
         {isView && loadedPayment ? <><PaymentInvoiceActions key={loadedPayment._id} requestId={resolveId(loadedPayment.paymentRequestId)} clientId={resolveId(loadedPayment.clientId)} onRequestLoaded={setSelectedPaymentRequest} /><PaymentDetailSummary payment={loadedPayment} client={typeof loadedPayment.clientId === 'object' ? loadedPayment.clientId : clients.find(client => client._id === formData.clientId)} booking={typeof loadedPayment.bookingId === 'object' ? loadedPayment.bookingId : bookings.find(booking => booking._id === formData.bookingId)} retreat={typeof loadedPayment.retreatId === 'object' ? loadedPayment.retreatId : retreats.find(retreat => retreat._id === formData.retreatId)} request={selectedPaymentRequest} /><PaymentReceiptPanel key={loadedPayment._id} payment={loadedPayment}/></> : <form onSubmit={handleSubmit} className="space-y-6">
+          {existingNonCashPayment && <div className="my-3 flex flex-wrap gap-3"><Link to={`/admin/payments/${encodeURIComponent(existingNonCashPayment)}`} className="text-blue-700 underline">Review already recorded settlement</Link><button type="button" onClick={async()=>{try{const next=await paymentsApi.getNextDisplayId();clearNonCashSubmissionKey();nonCashKey.current='';setExistingNonCashPayment('');setFormError('');setFormData(current=>({...current,display_id:String(next.data)}));}catch(error){setFormError(apiErrorMessage(error,'Could not prepare a separate delivery. Your current details are retained.'));}}} className="rounded border px-3 py-2">Record a separate new delivery</button></div>}
           {formError && (
             <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
               {formError}
@@ -704,7 +728,7 @@ const PaymentEditorPage: React.FC = () => {
             </div>}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{formData.paymentType === 'refund' ? 'Refund Amount *' : 'Amount *'}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{formData.nonCash ? 'Agreed settlement value *' : formData.paymentType === 'refund' ? 'Refund Amount *' : 'Amount *'}</label>
               <input
                 type="number"
                 min={formData.paymentType === 'refund' ? '0.01' : undefined}
@@ -712,6 +736,7 @@ const PaymentEditorPage: React.FC = () => {
                 aria-label="Amount"
                 value={formData.amount}
                 onChange={(e) => handleChange('amount', e.target.value)}
+                readOnly={formData.nonCash}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={formData.paymentType === 'refund' ? 'Enter 91.00 — it will be recorded as −91.00' : '0.00'}
                 required
@@ -789,7 +814,8 @@ const PaymentEditorPage: React.FC = () => {
               <select
                 aria-label="Payment method"
                 value={formData.paymentMethod}
-                onChange={(e) => handleChange('paymentMethod', e.target.value)}
+                disabled={Boolean(loadedPayment?.nonCashSettlement)}
+                onChange={(e) => setFormData(current => ({ ...current, paymentMethod: e.target.value as typeof current.paymentMethod, nonCash: e.target.value === 'other' && current.nonCash }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
@@ -805,6 +831,7 @@ const PaymentEditorPage: React.FC = () => {
               </select>
             </div>
 
+            {formData.paymentMethod === 'other' && <NonCashSettlementFields value={formData} isExisting={isExisting} readOnly={isView} disabled={selectedPaymentRequest?.context === 'standalone_service'} onChange={patch => setFormData(current => ({ ...current, ...patch, ...(patch.nonCash ? {paymentMethod:'other', paymentType:'regular_payment',isRefundable:false} as const : {}) }))} />}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
               <select
@@ -814,10 +841,10 @@ const PaymentEditorPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="pending">Pending</option>
-                <option value="completed">Completed</option>
-                <option value="failed">Failed</option>
-                <option value="refunded">Refunded</option>
+                <option value="pending">{formData.nonCash ? "Promised / pending" : "Pending"}</option>
+                <option value="completed">{formData.nonCash ? "Accepted / completed" : "Completed"}</option>
+                <option value="failed">{formData.nonCash ? "Not accepted / returned" : "Failed"}</option>
+                {!formData.nonCash && <option value="refunded">Refunded</option>}
               </select>
             </div>
 
@@ -846,9 +873,9 @@ const PaymentEditorPage: React.FC = () => {
                 <option value="deposit_non_refundable">Deposit (Non-refundable)</option>
                 <option value="deposit_refundable">Deposit (Refundable)</option>
                 <option value="balance_payment">Balance Payment</option>
-                <option value="refund">Refund</option>
+                {!formData.nonCash && <option value="refund">Refund</option>}
                 <option value="adjustment">Adjustment</option>
-                <option value="currency_adjustment">Foreign currency balance adjustment</option>
+                {!formData.nonCash && <option value="currency_adjustment">Foreign currency balance adjustment</option>}
               </select>
             </div>
 

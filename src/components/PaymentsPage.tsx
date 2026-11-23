@@ -1,4 +1,5 @@
 import { useFinancePermission } from '../finance/FinanceAccessContext';
+import NonCashSettlementDetails from './NonCashSettlementDetails';
 import {emptyPaymentFilters,readPaymentFilters,paymentFilterError,paymentMatchesFilters,paymentRecordId,paymentConfirmationPath} from './paymentListFilters';
 import { ChevronDown, DollarSign, Edit2, Plus, Search as SearchIcon, Trash2, X } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
@@ -157,7 +158,7 @@ const PaymentsPage: React.FC = () => {
     return payments.filter((payment) => {
       if (!paymentMatchesFilters(payment,filters)) return false;
       const receipt = typeof payment.receiptId === 'object' ? payment.receiptId : null;
-      const haystack = [payment.display_id, payment._id, typeof payment.receiptId === 'string' ? payment.receiptId : receipt?._id, receipt?.payerName, receipt?.transactionReference, payment.clientDisplayId, payment.clientId, payment.clientName, payment.clientEmail, payment.clientPhone, payment.bookingNumber, payment.bookingId, payment.bookingHash, payment.retreatId, payment.retreatName, payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?._id : payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.display_id : undefined, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.invoiceNumber : undefined, payment.transactionId, payment.transactionReference, payment.allocationGroupId, payment.payerName, payment.description, payment.notes, payment.status, payment.paymentMethod, payment.paymentType, payment.currency, payment.amount, payment.usd_amount, payment.paymentDate, payment.processedDate, payment.processedBy]
+      const haystack = [payment.display_id, payment._id, typeof payment.receiptId === 'string' ? payment.receiptId : receipt?._id, receipt?.payerName, receipt?.transactionReference, payment.clientDisplayId, payment.clientId, payment.clientName, payment.clientEmail, payment.clientPhone, payment.bookingNumber, payment.bookingId, payment.bookingHash, payment.retreatId, payment.retreatName, payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?._id : payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.display_id : undefined, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.invoiceNumber : undefined, payment.transactionId, payment.transactionReference, payment.allocationGroupId, payment.payerName, payment.description, payment.notes, payment.nonCashSettlement?.description, payment.nonCashSettlement?.valuationNotes, payment.status, payment.paymentMethod, payment.paymentType, payment.currency, payment.amount, payment.usd_amount, payment.paymentDate, payment.processedDate, payment.processedBy]
         .filter((value) => value !== undefined && value !== null).join(' ').toLowerCase();
       return terms.every((term) => haystack.includes(term.replace(/^#/, '')));
     });
@@ -381,7 +382,7 @@ const PaymentsPage: React.FC = () => {
                     {payment.usd_amount !== undefined ? <CurrencyDisplay amount={payment.usd_amount} currency="USD" /> : '-'}
                   </td>
                   <td data-label="Method" className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.paymentMethod.replace(/_/g, ' ')}
+                    {payment.paymentMethod.replace(/_/g, ' ')}<NonCashSettlementDetails value={payment.nonCashSettlement} currency={payment.currency} compact />
                   </td>
                   <td data-label="Status" className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payment.status)}`}>
@@ -401,7 +402,7 @@ const PaymentsPage: React.FC = () => {
                       >
                         <Icon icon={Edit2} className="w-4 h-4" />
                       </button>
-                      {canFinance('finance.refund') && payment.status === 'completed' && !payment.isRefundable && (
+                      {canFinance('finance.refund') && !payment.nonCashSettlement && payment.status === 'completed' && !payment.isRefundable && (
                         <button
                           onClick={() => console.log('Refund payment:', payment._id)}
                           className="text-yellow-600 hover:text-yellow-900"
