@@ -492,7 +492,7 @@ const PaymentRequestsGrid: React.FC = () => {
                         >
                           <Icon icon={DollarSign} />
                         </button>
-                        {authService.getUser()?.role === 'admin' && request.status !== 'cancelled' && !request.participantBookings?.length && <button type="button" className="rounded border border-blue-300 px-3 py-2 text-sm text-blue-700" onClick={()=>setLinkingRequest(request)}>Link existing payment</button>}
+                        {(authService.getUser()?.role === 'admin' || (authService.getUser()?.role === 'staff' && canFinance('finance.reconcile'))) && request.status !== 'cancelled' && !request.participantBookings?.length && <button type="button" className="rounded border border-blue-300 px-3 py-2 text-sm text-blue-700" onClick={()=>setLinkingRequest(request)}>Link existing payment</button>}
                         <button
                           onClick={() => handleSendPaymentRequest(request)}
                           className="icon-action-btn icon-action-btn-view disabled:opacity-50"
