@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 export type PaymentSearch = {
+  term?: string;
   amount: string;
   dateFrom: string;
   dateTo: string;
@@ -8,6 +9,7 @@ export type PaymentSearch = {
   page: number;
 };
 export const emptyPaymentSearch: PaymentSearch = {
+  term: "",
   amount: "",
   dateFrom: "",
   dateTo: "",
@@ -40,6 +42,7 @@ export default function ExistingPaymentPicker({
   return (
     <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 text-sm">Client name, payment / PR / booking number or reference<input className="rounded border p-2" value={filters.term || ""} onChange={e => onFilters({term:e.target.value})} /></label>
         <label className="grid gap-1 text-sm">
           Payment amount
           <input

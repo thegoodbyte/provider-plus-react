@@ -256,7 +256,10 @@ const smoke = [
         ["invoice-preview", "INVOICE_PREVIEW_FIXTURE"],
         ["scratchpad-email", "SCRATCHPAD_EMAIL_FIXTURE"],
         ["previous-food-form", "PREVIOUS_FOOD_FORM_FIXTURE"],
-        ["scratchpad-payment-search", "SCRATCHPAD_SEARCH_FIXTURE"],
+        ["scratchpad-payment-search", "SCRATCHPAD_SEARCH_FIXTURE", null, "factory"],
+        ["request-existing-payment", "REQUEST_EXISTING_PAYMENT_FIXTURE", "scratchpad-payment-search", "factory"],
+        ["staff-finance", "STAFF_FINANCE_FIXTURE", null, "factory"],
+        ["partial-receipt", "PARTIAL_RECEIPT_FIXTURE", null, "factory"],
         ["payment-relationship-edit", "PAYMENT_EDIT_FIXTURE"],
         ["client-support", "CLIENT_SUPPORT_FIXTURE"],
         ["support-requests", "IBOGAREADY_REQUEST_FIXTURE", "client-support"],
@@ -283,7 +286,7 @@ const smoke = [
         let cwd = api, args = ["test/" + (alias || name) + ".fixture.cjs"];
         if (kind === "legacy-serve") args = ["test/" + name + ".integration.cjs", "--serve"];
         if (name === "preparation-workspace") e.PREPARATION_FIXTURE_OUTPUT = file;
-        if (kind === "factory") args = ["test/coverage-fixture-host.cjs", name + ".fixture.cjs"];
+        if (kind === "factory") args = ["test/coverage-fixture-host.cjs", (alias || name) + ".fixture.cjs"];
         if (kind === "scratchpad") {
           args = ["test/payment-scratchpad.integration.cjs", "--serve"];
           e.SCRATCHPAD_MONGO_PORT = mongo.port || "27017";

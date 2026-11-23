@@ -517,7 +517,7 @@ const PaymentRequestsGrid: React.FC = () => {
                         <Dropdown trigger={['click']} open={openActionMenu === request._id} onOpenChange={(open, info) => { if (info.source === 'trigger') setOpenActionMenu(open ? request._id : null); }} menu={{ items: [
                           { key: 'duplicate', label: <DuplicatePaymentRequestButton request={request} className="request-grid-duplicate" /> },
                           ...(canFinance('finance.requests') && request.status !== 'cancelled' && request.status !== 'paid' ? [{ key: 'cancel', label: 'Cancel invoice (Storno)', icon: <Slash size={16} />, danger: true, onClick: () => { setOpenActionMenu(null); setCancellingRequest(request); setCancelReason('Client did not pay'); } }] : []),
-                          { key: 'delete', label: request.context === 'standalone_service' ? 'Use cancellation from the service document' : 'Delete', icon: <Trash2 size={16} />, disabled: request.context === 'standalone_service', danger: true, onClick: () => { setOpenActionMenu(null); handleDelete(request._id); } },
+                          { key: 'delete', label: request.context === 'standalone_service' ? 'Use cancellation from the service document' : 'Delete', icon: <Trash2 size={16} />, disabled: !canFinance('finance.delete') || request.context === 'standalone_service', danger: true, onClick: () => { setOpenActionMenu(null); handleDelete(request._id); } },
                         ] }}>
                           <button type="button" className="icon-action-btn" title="More actions" aria-label={`More actions for request ${request.invoiceNumber || request.display_id || request._id}`}><MoreVertical aria-hidden="true" /></button>
                         </Dropdown>
