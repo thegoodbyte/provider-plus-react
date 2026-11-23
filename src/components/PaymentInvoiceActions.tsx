@@ -1,3 +1,4 @@
+import PaymentRequestShare from './PaymentRequestShare';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { paymentRequestsApi, serviceRequestsApi } from "../services/api";
@@ -113,6 +114,7 @@ export default function PaymentInvoiceActions({
           )}
           {available && (
             <>
+              <PaymentRequestShare key={requestId} request={request} />
               <p className="mt-2 text-sm text-gray-700">
                 Copy this private client link or review an email before sending
                 it.

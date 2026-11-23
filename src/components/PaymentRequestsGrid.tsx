@@ -1,3 +1,5 @@
+import Modal from './ui/Modal';
+import PaymentRequestShare from './PaymentRequestShare';
 import './PaymentRequestsGrid.css';
 import { Dropdown, Select, Tooltip } from 'antd';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
@@ -82,6 +84,7 @@ const PaymentRequestsGrid: React.FC = () => {
   const [cancellingRequest, setCancellingRequest] = useState<any | null>(null);
   const [cancelReason, setCancelReason] = useState('Client did not pay');
   const [cancelling, setCancelling] = useState(false);
+  const [shareRequest, setShareRequest] = useState<any | null>(null);
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);
   const filterBarRef = useRef<HTMLDivElement>(null);
@@ -563,6 +566,7 @@ const PaymentRequestsGrid: React.FC = () => {
                           <Icon icon={Edit2} />
                         </button>
                         <Dropdown trigger={['click']} open={openActionMenu === request._id} onOpenChange={(open, info) => { if (info.source === 'trigger') setOpenActionMenu(open ? request._id : null); }} menu={{ items: [
+                          { key: 'share', label: 'Copy payment message or link', onClick: () => { setOpenActionMenu(null); setShareRequest(request); } },
                           { key: 'duplicate', label: <DuplicatePaymentRequestButton request={request} className="request-grid-duplicate" /> },
                           ...(canFinance('finance.requests') && request.status !== 'cancelled' && request.status !== 'paid' ? [{ key: 'cancel', label: 'Cancel invoice (Storno)', icon: <Slash size={16} />, danger: true, onClick: () => { setOpenActionMenu(null); setCancellingRequest(request); setCancelReason('Client did not pay'); } }] : []),
                           { key: 'delete', label: request.context === 'standalone_service' ? 'Use cancellation from the service document' : 'Delete', icon: <Trash2 size={16} />, disabled: !canFinance('finance.delete') || request.context === 'standalone_service', danger: true, onClick: () => { setOpenActionMenu(null); handleDelete(request._id); } },
@@ -586,6 +590,7 @@ const PaymentRequestsGrid: React.FC = () => {
         </div>
       </div>
 
+      <Modal open={Boolean(shareRequest)} onClose={()=>setShareRequest(null)} title="Share payment request" size="lg">{shareRequest && <PaymentRequestShare key={shareRequest._id} request={shareRequest} initiallyOpen />}</Modal>
       {selectedSendRequest && (
         <EmailComposeModal
           title="Send Payment Request"

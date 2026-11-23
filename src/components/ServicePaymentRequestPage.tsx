@@ -1,3 +1,4 @@
+import PaymentRequestShare from './PaymentRequestShare';
 import { MONEY_CURRENCIES } from '../config/moneyCurrencies';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import { Modal } from "antd";
@@ -519,6 +520,7 @@ export default function ServicePaymentRequestPage() {
                 : "Issued terms are preserved. To correct items, cancel this request and issue a replacement."}
             </p>
           </Card>
+          <PaymentRequestShare key={request._id} request={request} />
           <Card className="mb-5">
             <h2 className="mb-4 text-xl font-bold">Invoice</h2>
             {request.invoiceDocument ? (

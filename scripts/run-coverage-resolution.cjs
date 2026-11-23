@@ -67,6 +67,7 @@ async function ready(p, file, port) {
   throw Error("Fixture readiness timeout: " + file);
 }
 const factory = {
+  "payment-request-sharing": ["payment-request-sharing", "PAYMENT_SHARE_FIXTURE"],
   "paid-request-booking": ["paired-balance-booking", "PAID_BOOKING_FIXTURE"],
   "booking-reschedule-stay": [
     "booking-reschedule-stay",

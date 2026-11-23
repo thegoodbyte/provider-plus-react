@@ -1,3 +1,4 @@
+import PaymentRequestShare from './PaymentRequestShare';
 import DuplicatePaymentRequestButton from './DuplicatePaymentRequestButton';
 import { duplicateRetreatRequest } from './paymentRequestDuplication';
 import PaymentRequestInvoicePreview from './PaymentRequestInvoicePreview';
@@ -372,6 +373,7 @@ const PaymentRequestEditorPage: React.FC = () => {
           </div>
 
           {paymentRequest.context !== 'standalone_service' && <div className="mt-6"><PaymentRequestInvoicePreview key={id} requestId={id} /></div>}
+          <PaymentRequestShare key={paymentRequest._id} request={paymentRequest} />
           {paymentRequest.publicHash && <div className="mt-6 border-t border-gray-200 pt-6">
             <h2 className="text-lg font-semibold text-gray-900">Public payment-request pages</h2>
             <p className="mt-1 text-sm text-gray-600">Both pages use the same secure request hash and show the same payment data.</p>
