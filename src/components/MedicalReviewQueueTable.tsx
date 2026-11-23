@@ -15,7 +15,7 @@ export function QueueDate({ value, compact = false }: { value?: string | Date | 
 export default function MedicalReviewQueueTable({ children, label = 'Medical review queue' }: { children: React.ReactNode; label?: string }) {
   return <div className="mrr-table-scroll" role="region" aria-label={`${label} table`} tabIndex={0}>
     <div role="table" aria-label={label} className="mrr-compact-table">
-      <div role="rowgroup"><div role="row" className="mrr-table-head">{['Case','Client · retreat','Created','Artifact received','Medical advisor','Status','Actions'].map(title => <div role="columnheader" key={title}>{title}</div>)}</div></div>
+      <div role="rowgroup"><div role="row" className="mrr-table-head">{['Case','Client · retreat','Info','Medical advisor','Status','Actions'].map(title => <div role="columnheader" key={title}>{title}</div>)}</div></div>
       <div role="rowgroup">{children}</div>
     </div>
   </div>;
