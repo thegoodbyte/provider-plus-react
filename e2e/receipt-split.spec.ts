@@ -84,7 +84,8 @@ for (const width of [1440, 390])
       fullPage: true,
     });
     await submit.click();
-    await expect(page).toHaveURL(/\/admin\/payments$/);
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/admin/payments/receipts');
+    expect(new URL(page.url()).searchParams.get('receiptId')).toBe(f.ids.receipt);
     const after = await snapshot();
     expect(after.receipts).toHaveLength(1);
     expect(after.receipts[0].totalAmount).toBe(7600);
