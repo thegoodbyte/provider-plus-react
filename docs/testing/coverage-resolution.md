@@ -107,3 +107,5 @@ Git histories and rejected application/environment/report changes. The original
 broad command, source IDs and UTC times are retained as reused evidence; smoke
 and development HMR must still execute and pass. This is never a skip or an
 exception for a failed check.
+
+The isolated `smoke/partial-receipt-allocation.spec.ts` cleanup also qualifies: await all in-flight route callbacks in `finally` before the shared HTTP context is disposed. Financial balance, ownership, allocation count and reload assertions remain unchanged. Fresh full smoke/HMR are required; any broad receipt-test or application change still invalidates reuse.

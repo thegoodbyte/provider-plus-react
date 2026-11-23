@@ -8,6 +8,7 @@ for (const width of [1440, 390]) test(`partial receipt, payment tracking and lat
   const writes: string[]=[];
   await page.setViewportSize({width,height:1000});
   await page.addInitScript(({token})=>{localStorage.clear();sessionStorage.clear();localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify({id:'synthetic-admin',role:'admin'}));},{token:fixture.tokens.admin});
+  try {
   await page.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
     if(url.origin===new URL(baseURL!).origin&&!url.pathname.startsWith('/api/'))return route.continue();
@@ -41,4 +42,7 @@ for (const width of [1440, 390]) test(`partial receipt, payment tracking and lat
   await expect(page).toHaveURL(/receipts\?receiptId=/);summary=page.getByRole('region',{name:'Shared payment allocation'});await expect(summary).toContainText('Allocated 7,600.00 PLN');await expect(summary).toContainText('Unused 0.00 PLN');await expect(summary.getByRole('link',{name:'Allocate unused funds'})).toHaveCount(0);
   await page.reload();await expect(summary).toContainText('Unused 0.00 PLN');await summary.scrollIntoViewIfNeeded();await page.screenshot({path:testInfo.outputPath('fully-allocated.png'),fullPage:true});
   data=await (await request.get(fixture.url+'/fixture/snapshot')).json();expect(data.PaymentReceipt).toHaveLength(1);expect(data.Payment.filter((p:any)=>p.receiptId===fixture.ids.receipt).reduce((sum:number,p:any)=>sum+p.amount,0)).toBe(7600);for(const id of [fixture.ids.ba,fixture.ids.bb])expect(data.RetreatClient.find((b:any)=>b._id===id).amountPaid).toBe(3800);expect(writes).toHaveLength(2);expect(writes.every(path=>path.endsWith('/allocations'))).toBe(true);
+  } finally {
+    await page.unrouteAll({behavior:'wait'});
+  }
 });
