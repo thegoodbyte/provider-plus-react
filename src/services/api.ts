@@ -1586,6 +1586,18 @@ export const medicalReviewRequestsApi = {
     {},
     { suppressAuthRedirect: true, suppressGlobalError: true } as any
   ),
+  // PPVC-1069: strictly single-record "mrr-<displayId>" quick-access links -
+  // unauthenticated, never issues a session. The timezone header lets the
+  // server's audit trail record the reviewer's own local time alongside IP.
+  getQuickAccess: (displayId: string | number, token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(
+    `/medical-review-quick-access/mrr-${encodeURIComponent(String(displayId))}/${encodeURIComponent(token)}`,
+    { headers: { 'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone }, suppressAuthRedirect: true, suppressGlobalError: true } as any,
+  ),
+  submitQuickAccessDecision: (displayId: string | number, token: string, data: { reviewDecision: string; medicalStaffNotes?: string; overallNotes?: string; reviewNotes?: string }) => api.post<MedicalReviewRequest>(
+    `/medical-review-quick-access/mrr-${encodeURIComponent(String(displayId))}/${encodeURIComponent(token)}/decision`,
+    data,
+    { headers: { 'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone }, suppressAuthRedirect: true, suppressGlobalError: true } as any,
+  ),
   getAccessLinks: (id: string) => api.get<any[]>(`/medical-review-requests/${id}/access-links`),
   createAccessLink: (id: string) => api.post<any>(`/medical-review-requests/${id}/access-links`, {}),
   revokeAccessLink: (accessLinkId: string) => api.patch<any>(`/medical-review-requests/access-links/${accessLinkId}/revoke`, {}),

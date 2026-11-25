@@ -2407,13 +2407,23 @@ const MedicalReviewRequestsPage: React.FC = () => {
                       <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2">
                         <div className="mb-1 text-xs font-semibold text-blue-900">New access link</div>
                         <div className="break-all text-xs text-blue-900">{generatedAccessUrl}</div>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyAccessLink(generatedAccessUrl)}
-                          className="mt-2 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
-                        >
-                          Copy for WhatsApp
-                        </button>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyAccessLink(generatedAccessUrl)}
+                            className="rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                          >
+                            Copy for WhatsApp
+                          </button>
+                          <a
+                            href={`https://wa.me/?text=${encodeURIComponent(`Medical review link: ${generatedAccessUrl}`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-md border border-green-300 bg-white px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50"
+                          >
+                            Share via WhatsApp
+                          </a>
+                        </div>
                       </div>
                     )}
                     <div className="mt-3 space-y-2">
@@ -2440,13 +2450,23 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           {link.url ? (
                             <div className="mt-2 rounded-md border border-blue-100 bg-white p-2">
                               <div className="break-all text-[11px] font-medium text-blue-900">{link.url}</div>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyAccessLink(link.url!)}
-                                className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
-                              >
-                                Copy link
-                              </button>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyAccessLink(link.url!)}
+                                  className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                                >
+                                  Copy link
+                                </button>
+                                <a
+                                  href={`https://wa.me/?text=${encodeURIComponent(`Medical review link: ${link.url}`)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-100"
+                                >
+                                  Share via WhatsApp
+                                </a>
+                              </div>
                             </div>
                           ) : (
                             <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800">

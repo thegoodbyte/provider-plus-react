@@ -24,6 +24,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 const MedicalReviewAccessPage = lazy(() => import('./components/MedicalReviewAccessPage'));
 const MedicalReviewPublicPage = lazy(() => import('./components/MedicalReviewPublicPage'));
+const MedicalReviewQuickAccessPage = lazy(() => import('./components/MedicalReviewQuickAccessPage'));
 
 installNativeDialogReplacement();
 
@@ -33,6 +34,7 @@ function AppContent() {
   const location = useLocation();
   const isPublicMedicalReviewRoute = location.pathname.startsWith('/medical-review-access/')
     || location.pathname.startsWith('/medical/review-link/')
+    || location.pathname.startsWith('/medical-reviews/mrr-')
     || location.pathname.startsWith('/clients/contracts/jotform/link/');
   const isPublicPasswordRoute = location.pathname === '/users/forgot-password'
     || location.pathname === '/users/forgot-pasword'
@@ -70,6 +72,7 @@ function AppContent() {
         <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
         <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
         <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
+        <Route path="/medical-reviews/mrr-:displayId/:token" element={<MedicalReviewQuickAccessPage />} />
         <Route path="/clients/contracts/jotform/link/:bookingId" element={<ContractRedirectPage />} />
         <Route path="/users/forgot-password" element={<ForgotPassword />} />
         <Route path="/users/forgot-pasword" element={<ForgotPassword />} />
