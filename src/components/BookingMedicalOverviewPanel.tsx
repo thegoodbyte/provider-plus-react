@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { bookingFlowApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest } from '../types';
@@ -70,7 +70,9 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
   const [reviews, setReviews] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [plan, setPlan] = useState<any[]>([]);
   const [flowItems, setFlowItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadedBooking, setLoadedBooking] = useState<string>();
+  const loadAttempt = useRef(0);
   const [error, setError] = useState('');
   const [uploadRequest, setUploadRequest] = useState<{ stage: NonNullable<MedicalArtifact['documentStage']>; documentType?: 'EKG' | 'Liver'; key: number } | null>(null);
   const [stageOpen, setStageOpen] = useState<Record<string, boolean>>({ entry: true });
@@ -78,22 +80,28 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
   const [reminderSaving, setReminderSaving] = useState('');
 
   const load = useCallback(async () => {
+    const attempt = ++loadAttempt.current;
     setLoading(true);
     setError('');
     try {
       const result = await loadBookingMedicalOverview(bookingId, clientId, retreatId);
+      if (attempt !== loadAttempt.current) return;
       setArtifacts(result.artifacts);
       setReviews(result.reviewsByArtifact);
       setPlan(result.medicationPlan);
       setFlowItems(result.flowItems);
+      setLoadedBooking(bookingId);
     } catch (cause) {
-      setError(medicalOverviewError(cause));
+      if (attempt === loadAttempt.current) setError(medicalOverviewError(cause));
     } finally {
-      setLoading(false);
+      if (attempt === loadAttempt.current) setLoading(false);
     }
   }, [bookingId, clientId, retreatId]);
 
-  useEffect(() => { load(); }, [load, refreshKey]);
+  useEffect(() => {
+    void load();
+    return () => { loadAttempt.current += 1; };
+  }, [load, refreshKey]);
 
   const stages = groupMedicalArtifacts(artifacts);
   const required = requiredEntryRows(artifacts, reviews);
@@ -144,14 +152,20 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
     }
   };
 
-  const requiredCards: Array<MedicalItemCardProps & { key: string }> = required.map(({ documentType, artifact, review }) => {
+  const requiredCards: Array<MedicalItemCardProps & { key: string }> = required.map(({ documentType, artifact, review, previous }) => {
     const state = deriveMedicalItemState(artifact, review);
+    const previousReview = previous?.review;
     return {
       key: documentType,
       state,
       title: `Entry ${documentType === 'Liver' ? 'liver panel' : documentType}`,
       artifactRef: artifact ? `Artifact #${artifact.display_id || artifact._id}` : undefined,
       mrr: review ? reviewReferenceText(review) : undefined,
+      previousReview: previous && previousReview?._id ? {
+        reference: reviewReferenceText(previousReview),
+        artifactRef: `Artifact #${previous.artifact.display_id || previous.artifact._id}`,
+        onOpen: () => openReview(previousReview),
+      } : undefined,
       note: review ? reviewNotes(review) || undefined : undefined,
       channel: review?.reviewChannel === 'whatsapp' ? 'WhatsApp' : 'Internal',
       receivedAt: artifact ? shortMedicalDate(artifact.receivedAt || artifact.createdAt) : undefined,
@@ -173,6 +187,15 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
   const overallState: MedicalItemState = declinedCount ? 'declined' : missingCount ? 'missing' : decidedCount < required.length ? 'pending' : cautionCount ? 'caution' : 'ok';
   const overallCount = overallState === 'declined' ? declinedCount : missingCount;
   const overallTone = MEDICAL_ITEM_TONES[overallState];
+
+  if (loadedBooking !== bookingId) {
+    return <div className="booking-medical-panel booking-medical-redesign">
+      {loading ? <p role="status">Loading medical records…</p> : <>
+        <div className="alert alert-danger" role="alert">{error}</div>
+        <button type="button" onClick={load}>Refresh</button>
+      </>}
+    </div>;
+  }
 
   return <div className="booking-medical-panel booking-medical-redesign">
     <PreparationContextLink bookingId={bookingId}/>

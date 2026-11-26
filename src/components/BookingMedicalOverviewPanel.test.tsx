@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import BookingMedicalOverviewPanel, { artifactTitle, medicalOverviewError, medicalRoutePrefix, reviewDecisionClass, reviewDecisionText, reviewReferenceText, shortMedicalDate } from './BookingMedicalOverviewPanel';
 import { loadBookingMedicalOverview } from './bookingMedicalOverviewData';
@@ -25,11 +25,50 @@ describe('BookingMedicalOverviewPanel', () => {
   it('loads and renders missing required-item cards, then refreshes', async () => {
     view();
     await waitFor(() => expect(load).toHaveBeenCalledWith('b', undefined, undefined));
-    expect(screen.getAllByText('Not received')).toHaveLength(4); // chip + decision-step label, x2 cards
+    expect(await screen.findAllByText('Not received')).toHaveLength(4); // chip + decision-step label, x2 cards
     expect(screen.getByText(/entry items missing/)).toBeInTheDocument();
     expect(screen.getByText(/Medical upload needs/)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Refresh'));
     await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows loading without declaring entry documents missing before the read completes', async () => {
+    let finish: (value: ReturnType<typeof result>) => void = () => undefined;
+    load.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    view();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading medical records');
+    expect(screen.queryByText('Not received')).not.toBeInTheDocument();
+    finish(result());
+    expect(await screen.findByText(/2 entry items missing/)).toBeInTheDocument();
+  });
+
+  it('shows earlier MRR links without applying their approvals to newer uploads', async () => {
+    load.mockResolvedValue(result({
+      artifacts: [
+        { _id: 'ekg-new', display_id: 1599, artifactType: 'ekg', files: [{}] },
+        { _id: 'liver-new', display_id: 1603, artifactType: 'liver_panel', files: [{}] },
+        { _id: 'ekg-later-stage', artifactType: 'ekg', documentStage: 'pre_ceremony', files: [{}] },
+        { _id: 'ekg-old', display_id: 1401, artifactType: 'ekg', files: [{}] },
+        { _id: 'liver-old', display_id: 1402, artifactType: 'liver_panel', files: [{}] },
+      ],
+      reviewsByArtifact: {
+        'ekg-old': [{ _id: 'ekg-review', display_id: 1356, reviewDecision: 'OK' }],
+        'liver-old': [{ _id: 'liver-review', display_id: 1362, reviewDecision: 'OK' }],
+        'ekg-later-stage': [{ _id: 'other-review', display_id: 123, reviewDecision: 'OK' }],
+      },
+    }));
+    view();
+    expect(await screen.findByText('2 of 2 entry items received · 0 of 2 decided')).toBeInTheDocument();
+    const [ekg, liver] = screen.getAllByRole('article');
+    expect(ekg).toHaveAttribute('data-state', 'received');
+    expect(liver).toHaveAttribute('data-state', 'received');
+    expect(within(ekg).getByText('Earlier review · Artifact #1401')).toBeInTheDocument();
+    expect(within(liver).getByText('Earlier review · Artifact #1402')).toBeInTheDocument();
+    expect(within(ekg).queryByRole('button', { name: 'MRR #123' })).not.toBeInTheDocument();
+    fireEvent.click(within(ekg).getByRole('button', { name: 'MRR #1356' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/medical-review-requests/ekg-review');
+    fireEvent.click(within(liver).getByRole('button', { name: 'MRR #1362' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/admin/medical-review-requests/liver-review');
   });
 
   it('shows API errors and retries', async () => {

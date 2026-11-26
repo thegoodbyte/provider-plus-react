@@ -24,7 +24,17 @@ export const indexMedicalReviews = (reviews: MedicalReviewRequest[]) => {
   return result;
 };
 export const groupMedicalArtifacts = (artifacts: MedicalArtifact[]) => medicalStageOrder.reduce((result, stage) => ({ ...result, [stage || 'other']: artifacts.filter(artifact => (artifact.documentStage || 'entry') === stage) }), {} as Record<string, MedicalArtifact[]>);
-export const requiredEntryRows = (artifacts: MedicalArtifact[], reviews: Record<string, MedicalReviewRequest[]>) => ['EKG', 'Liver'].map(documentType => { const expected = documentType === 'EKG' ? 'ekg' : 'liver_panel'; const artifact = artifacts.find(item => (item.documentStage || 'entry') === 'entry' && (item.artifactType === expected || String(item.documentType || '').toLowerCase() === documentType.toLowerCase())); return { documentType, artifact, review: artifact ? latestArtifactReview(artifact, reviews) : undefined }; });
+export const requiredEntryRows = (artifacts: MedicalArtifact[], reviews: Record<string, MedicalReviewRequest[]>) => ['EKG', 'Liver'].map(documentType => {
+  const expected = documentType === 'EKG' ? 'ekg' : 'liver_panel';
+  const [artifact, ...earlierArtifacts] = artifacts.filter(item =>
+    (item.documentStage || 'entry') === 'entry' &&
+    (item.artifactType === expected || String(item.documentType || '').toLowerCase() === documentType.toLowerCase()),
+  );
+  const previous = earlierArtifacts
+    .map(item => ({ artifact: item, review: latestArtifactReview(item, reviews) }))
+    .find(item => item.review);
+  return { documentType, artifact, review: artifact ? latestArtifactReview(artifact, reviews) : undefined, previous };
+});
 
 export const recordsSummary = (artifacts: MedicalArtifact[], reviews: Record<string, MedicalReviewRequest[]>) => {
   const states = artifacts.map(artifact => deriveMedicalItemState(artifact, latestArtifactReview(artifact, reviews)));

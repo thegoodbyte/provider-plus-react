@@ -12,6 +12,7 @@ export interface MedicalItemCardProps {
   receivedAt?: string;
   sentAt?: string;
   reviewedAt?: string;
+  previousReview?: { reference: string; artifactRef: string; onOpen: () => void };
   onOpenFile?: () => void;
   onOpenMrr?: () => void;
   onCreateMrr?: () => void;
@@ -62,7 +63,7 @@ const DECIDED_STATES: MedicalItemState[] = ['ok', 'caution', 'declined'];
 
 const MedicalItemCard: React.FC<MedicalItemCardProps> = ({
   state, title, artifactRef, mrr, note, channel = 'Internal', receivedAt, sentAt, reviewedAt,
-  onOpenFile, onOpenMrr, onCreateMrr, onUploadFile, onRequestFromClient,
+  previousReview, onOpenFile, onOpenMrr, onCreateMrr, onUploadFile, onRequestFromClient,
 }) => {
   const tone = MEDICAL_ITEM_TONES[state];
   const decided = DECIDED_STATES.includes(state);
@@ -103,6 +104,13 @@ const MedicalItemCard: React.FC<MedicalItemCardProps> = ({
         </div>
       )}
       {!decided && HINT_TEXT[state] && <p className="medical-item-card-hint">{HINT_TEXT[state]}</p>}
+
+      {previousReview && (
+        <div className="medical-item-card-actions">
+          <span className="medical-item-card-meta">Earlier review · {previousReview.artifactRef}</span>
+          <button type="button" onClick={previousReview.onOpen}>{previousReview.reference}</button>
+        </div>
+      )}
 
       <div className="medical-item-card-footer">
         <span className="medical-item-card-meta">{meta}</span>
