@@ -1,6 +1,21 @@
 import { ChevronDown, Search, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Retreat } from '../types';
+import { formatRetreatCalendarDate } from './RetreatsGrid.helpers';
+
+// PPVC-1074: a retreat code alone (e.g. "JNO-01-23-26" vs "JNO-01-26-27") is
+// easy to misread - same digits, shifted. Always show the actual date range
+// so two similarly-coded retreats are never distinguishable by code text alone.
+const retreatDateRangeLabel = (retreat: Retreat): string => {
+  if (!retreat.startDate || !retreat.endDate) return '';
+  return `${formatRetreatCalendarDate(retreat.startDate)} – ${formatRetreatCalendarDate(retreat.endDate)}`;
+};
+
+const isAlreadyPast = (retreat: Retreat): boolean => {
+  if (!retreat.endDate) return false;
+  const end = new Date(retreat.endDate);
+  return !Number.isNaN(end.getTime()) && end.getTime() < Date.now();
+};
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -119,6 +134,12 @@ const SearchableRetreatSelect: React.FC<SearchableRetreatSelectProps> = ({
                 <div className="text-sm text-gray-500">
                   {retreat.location_town || retreat.locationTown || retreat.location || 'No location town'}
                 </div>
+                {retreatDateRangeLabel(retreat) && (
+                  <div className={`text-sm ${isAlreadyPast(retreat) ? 'text-amber-700 font-semibold' : 'text-gray-500'}`}>
+                    {retreatDateRangeLabel(retreat)}
+                    {isAlreadyPast(retreat) && ' · Already happened'}
+                  </div>
+                )}
               </div>
             ))
           ) : (
