@@ -1,4 +1,5 @@
 import { test as base, expect } from "@playwright/test";
+import type { PaymentSummary } from "../../src/types";
 const oid = (n: number) => n.toString(16).padStart(24, "0");
 export const test = base.extend<{ retreatRead: any }>({
   retreatRead: async ({ page }, use) => {
@@ -76,6 +77,19 @@ export const test = base.extend<{ retreatRead: any }>({
             byType: [],
           },
         });
+      // Match the production PaymentSummary contract; [] is not an empty summary.
+      if (p === "/payments/retreat-summary/" + retreat._id) {
+        const summary: PaymentSummary = {
+          totalPayments: 0, totalPaymentsEUR: 0, totalPaymentsUSD: 0,
+          completedPayments: 0, completedPaymentsEUR: 0, completedPaymentsUSD: 0,
+          pendingPayments: 0, pendingPaymentsEUR: 0, pendingPaymentsUSD: 0,
+          refundedPayments: 0, refundedPaymentsEUR: 0, refundedPaymentsUSD: 0,
+          depositsPaid: 0, depositsEUR: 0, depositsUSD: 0,
+          finalPaymentsPaid: 0, finalPaymentsEUR: 0, finalPaymentsUSD: 0,
+          paymentsByMethod: {}, paymentsByStatus: {},
+        };
+        return route.fulfill({ json: summary });
+      }
       if (p.includes("financial-summary"))
         return route.fulfill({
           json: {

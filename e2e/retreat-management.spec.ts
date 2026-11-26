@@ -92,7 +92,9 @@ test("retreat section selection survives reload", async ({
   await expect(
     page.getByRole("tab", { name: "Payments", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: /By Payment Method/ })).toBeVisible();
   await page.reload();
+  await expect(page.getByRole("heading", { name: /By Payment Method/ })).toBeVisible();
   await expect(
     page.getByRole("tab", { name: "Payments", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
