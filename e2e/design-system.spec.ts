@@ -10,6 +10,16 @@ for (const width of [1440, 390])
   }, info) => {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto(dev + "/e2e/fixtures/design-system.html");
+    await expect(page.locator(".ant-picker")).toHaveCSS("height", "44px");
+    await expect(page.locator(".ant-picker input")).toHaveCSS(
+      "border-top-width",
+      "0px",
+    );
+    await expect(page.locator(".ant-input-number")).toHaveCSS("height", "44px");
+    await expect(page.locator(".ant-input-affix-wrapper")).toHaveCSS(
+      "height",
+      "44px",
+    );
     const primary = page.getByRole("button", {
       name: "Review booking",
       exact: true,

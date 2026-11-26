@@ -36,4 +36,16 @@
   --re-shadow-raised: 0 8px 24px rgb(36 35 33 / 0.08);
   --re-shadow-dialog: 0 20px 60px rgb(36 35 33 / 0.16);
   --re-controlHeight: 44px;
+  --re-typography-sans: -apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --re-fontSize-xs: 11px;
+  --re-fontSize-sm: 13px;
+  --re-fontSize-base: 15px;
+  --re-fontSize-lg: 17px;
+  --re-fontSize-xl: 20px;
+  --re-fontSize-2xl: 24px;
+  --re-fontSize-3xl: 28px;
+  --re-fontSize-4xl: 34px;
+  --re-fontSize-5xl: 48px;
+  --re-fontSize-6xl: 64px;
+  --re-fontSize-widget: 14px;
 }

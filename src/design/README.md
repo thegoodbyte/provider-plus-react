@@ -1,6 +1,6 @@
 # Retreat Engine design system — PPVC-1071
 
-`tokens.json` is the source of truth. `tokens.css` is generated (`npm run design:generate`);
+`tokens.json` is the source of truth for palette, typography, control geometry and surfaces. `tokens.css` is generated (`npm run design:generate`);
 Tailwind's standard neutral families and existing `apple.*` aliases and the Ant Design ConfigProvider consume the same tokens.
 The existing PPVC-1002 `components/ui` kit is canonical; do not add another kit or copy a demo.
 
@@ -14,7 +14,8 @@ Use Badge.colorClassName for genuine extra workflow states; it intentionally pre
 The administrative shell, plain form fields, legacy primary utility buttons and existing tables
 have scoped compatibility adapters. No canvas/calendar/clinical evidence colors are globally
 reclassified. Complex widgets use Ant Design tokens; popup portals inherit the same theme.
-Native checkboxes/radios/range/file/color/hidden controls and Ant internal inputs are excluded
+Native checkboxes/radios/range/file/color/hidden controls and Ant internal inputs (including
+classless inputs inside compound date/number/prefix controls) are excluded
 from the generic text-field adapter. A specialized native field can opt out with data-re-unstyled.
 Printing retains white backgrounds. Disabled/loading/read-only, reduced motion and keyboard
 focus are preserved. Mobile action targets are at least44px for the shared button.

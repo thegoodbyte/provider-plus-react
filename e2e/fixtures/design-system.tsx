@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ConfigProvider, Select } from "antd";
+import { ConfigProvider, Select, DatePicker, InputNumber, Input } from "antd";
 import "../../src/index.css";
 import "../../src/styles/workspace.css";
 import "../../src/design/tokens.css";
@@ -57,6 +57,18 @@ function Reference() {
               onChange={() => {}}
               disabled
             />
+            <label className="mt-3 block">
+              Arrival date
+              <DatePicker aria-label="Arrival date" className="mt-2 w-full" />
+            </label>
+            <label className="mt-3 block">
+              Guests
+              <InputNumber aria-label="Guests" className="mt-2 w-full" />
+            </label>
+            <label className="mt-3 block">
+              Reference
+              <Input aria-label="Reference" prefix="@" className="mt-2" />
+            </label>
             <label className="mt-3 block">
               Retreat
               <Select

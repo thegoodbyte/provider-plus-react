@@ -1,6 +1,6 @@
 /* PPVC-1071. Canonical primitives and carefully scoped legacy adapters.
    Domain status colors, document canvases and calendar events are never remapped. */
-body { background:var(--re-colors-canvas); }
+body { background:var(--re-colors-canvas); font-family:var(--re-typography-sans); }
 :where(.admin-workspace, .re-shell) :where(button, a, input, select, textarea, summary):focus-visible {
   outline:2px solid var(--re-colors-primary); outline-offset:3px;
 }
@@ -22,7 +22,7 @@ button[data-re-button]:disabled { opacity:.5; cursor:not-allowed; transform:none
 }
 :where(.admin-workspace,.re-shell) button:not([data-re-button]):is(.bg-blue-600,.bg-blue-500,.bg-green-600,.bg-green-500,.bg-emerald-600,.bg-emerald-700,.bg-teal-600,.bg-teal-700,.bg-gray-900,.bg-slate-900):hover:not(:disabled) { background:var(--re-colors-primaryHover); }
 :where(.admin-workspace,.re-shell) :where(form label,form legend) { text-transform:none; letter-spacing:normal; font-weight:600; font-size:14px; color:var(--re-colors-muted); }
-:is(.admin-workspace,.re-shell) :where(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not([type=hidden]),select,textarea):not(:where([class*="ant-"],[data-re-unstyled],[class~="border-0"],[class~="border-none"])) {
+:is(.admin-workspace,.re-shell) :where(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not([type=hidden]),select,textarea):not(:where([class*="ant-"],.ant-picker *,.ant-select *,.ant-input-number *,.ant-input-affix-wrapper *,[data-re-unstyled],[class~="border-0"],[class~="border-none"])) {
  min-height:var(--re-controlHeight); border-radius:var(--re-radius-control); border:1px solid var(--re-colors-line); background:var(--re-colors-surface); color:var(--re-colors-ink);
 }
 input[data-re-input] { min-height:var(--re-controlHeight); border-radius:var(--re-radius-control); }

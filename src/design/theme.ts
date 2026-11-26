@@ -15,8 +15,8 @@ export const appTheme: ThemeConfig = {
     colorBgLayout: tokens.colors.canvas,
     borderRadius: parseInt(tokens.radius.control),
     controlHeight: tokens.controlHeight,
-    fontSize: 14,
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontSize: parseInt(tokens.fontSize.widget),
+    fontFamily: tokens.typography.sans.join(", "),
   },
   components: {
     Button: {
@@ -25,7 +25,7 @@ export const appTheme: ThemeConfig = {
       defaultShadow: "none",
     },
     Table: { headerBg: tokens.colors.subtle, rowHoverBg: tokens.colors.canvas },
-    Modal: { borderRadiusLG: parseInt(tokens.radius.card) },
+    Modal: { borderRadiusLG: parseInt(tokens.radius.dialog) },
     Card: { borderRadiusLG: parseInt(tokens.radius.card) },
   },
 };
