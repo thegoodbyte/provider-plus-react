@@ -25,7 +25,7 @@ for(const width of [430,820])test(`single-record medical quick review persists w
   const [popup]=await Promise.all([page.waitForEvent('popup'),document.click()]);await popup.waitForLoadState();await expect(popup.locator('svg')).toBeVisible();await popup.close();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:info.outputPath('quick-review.png'),fullPage:true});
-  await page.getByRole('button',{name:'OK',exact:true}).click();await page.getByLabel('Notes',{exact:true}).fill('Synthetic medical review accepted');
+  await page.getByRole('button',{name:'Approved — clear to proceed',exact:true}).click();await page.getByLabel('Notes',{exact:true}).fill('Synthetic medical review accepted');
   await page.getByRole('button',{name:'Submit review',exact:true}).click();await expect(page.getByRole('heading',{name:/Thank you/i})).toBeVisible();
   let state=await(await request.get(fixture.url+'/fixture/quick-state')).json();const saved=state.reviews.find((x:any)=>x._id===seed.alpha._id);expect(saved.reviewDecision).toBe('OK');expect(saved.decisionHistory.at(-1).timezone).toBe('Europe/Warsaw');expect(saved.decisionHistory.at(-1).accessType).toBe('medical_review_quick_link');expect(state.reviews.find((x:any)=>x._id===seed.beta._id).status).toBe('pending');
   expect(await page.evaluate(()=>localStorage.getItem('token'))).toBeNull();
