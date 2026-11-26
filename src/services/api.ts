@@ -1515,7 +1515,11 @@ export const medicalReviewRequestsApi = {
   },
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
   downloadPendingArtifacts: (groupId: string, unsentOnly = true, language?: 'en' | 'original') => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-review-requests/groups/${encodeURIComponent(groupId)}/pending-artifacts/download`, { params: { unsentOnly: unsentOnly ? 'true' : 'false', ...(language ? { language } : {}) } }),
-  markAdvisorSent: (requestIds: string[]) => api.post<{ updated: number }>('/medical-review-requests/groups/mark-advisor-sent', { requestIds }),
+  markAdvisorSent: async (requestIds: string[]) => {
+    const response = await api.post<{ updated: number }>('/medical-review-requests/mark-advisor-sent', { requestIds });
+    cacheService.clearPattern('medical-review-requests:');
+    return response;
+  },
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
   getClientMessages: (id: string) => api.get<{ messages: SentEmail[]; skippedNotifications: Array<{ decision?: string; reason?: 'master_switch_disabled' | 'decision_type_disabled' | 'no_client_email'; processedAt?: string }> }>(`/medical-review-requests/${id}/client-messages`),
   getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
