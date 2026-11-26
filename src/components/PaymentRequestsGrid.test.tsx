@@ -16,6 +16,7 @@ const requests = [
 ];
 beforeEach(() => { (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: requests }); });
 const mount = () => render(<MemoryRouter><PaymentRequestsGrid /></MemoryRouter>);
+const openMoreFilters = () => fireEvent.click(screen.getByRole('button', { name: /More filters/ }));
 it('shows the requested installment, preserves zero and supports legacy amounts instead of the full quote', async () => {
   mount();
   await screen.findByRole('button', { name: 'Requested amount' });
@@ -101,24 +102,27 @@ it('combines detailed filters with search/status and resets every filter', async
   {...requests[2],clientId:{firstName:'Samuel'},status:'sent'},
  ]});
  mount(); await screen.findByText('INV-DEPOSIT');
+ openMoreFilters();
  fireEvent.change(screen.getByLabelText('Client name'),{target:{value:'franus'}});
  fireEvent.change(screen.getByLabelText('Requested amount from'),{target:{value:'2500'}});
  fireEvent.change(screen.getByLabelText('Requested amount to'),{target:{value:'2500'}});
  fireEvent.change(screen.getByLabelText('Currency'),{target:{value:'PLN'}});
  fireEvent.change(screen.getByLabelText('Request date from'),{target:{value:'2026-09-18'}});
  fireEvent.change(screen.getByLabelText('Request date to'),{target:{value:'2026-09-18'}});
+ fireEvent.change(screen.getByLabelText('Document kind'),{target:{value:'booking'}});
  fireEvent.change(screen.getByLabelText('Payment status'),{target:{value:'unpaid'}});
  expect(screen.getByText('INV-DEPOSIT')).toBeInTheDocument(); expect(screen.queryByText('INV-BALANCE')).not.toBeInTheDocument();
  fireEvent.change(screen.getByLabelText('Search payment requests'),{target:{value:'BALANCE'}});
  expect(screen.getByText(/No payment requests match your filters/)).toBeInTheDocument();
  fireEvent.click(screen.getByText('Clear filters'));
- expect(screen.getByText('INV-BALANCE')).toBeInTheDocument();expect(screen.getByLabelText('Client name')).toHaveValue('');expect(screen.getByLabelText('Currency')).toHaveValue('');
+ expect(screen.getByText('INV-BALANCE')).toBeInTheDocument();expect(screen.getByLabelText('Client name')).toHaveValue('');expect(screen.getByLabelText('Currency')).toHaveValue('');expect(screen.getByLabelText('Document kind')).toHaveValue('all');expect(screen.getByLabelText('Payment status')).toHaveValue('all');
  fireEvent.change(screen.getByLabelText('Requested amount from'),{target:{value:'10'}});fireEvent.change(screen.getByLabelText('Requested amount to'),{target:{value:'1'}});
  expect(screen.getByRole('alert')).toHaveTextContent('must not exceed');expect(screen.queryByText('INV-DEPOSIT')).not.toBeInTheDocument();
 });
 it('distinguishes booking and itemized documents and shows the billing recipient and issued invoice', async () => {
   (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({data:[requests[0],{_id:'service',context:'standalone_service',invoiceNumber:'SERVICE-969',requestedAmount:50,currency:'EUR',serviceDocument:{title:'Integration',client:{name:'Ewa Billing Company',email:'billing@example.invalid'}},invoiceDocument:{number:'INV-1969'}}]});
-  mount();const kind=await screen.findByRole('combobox',{name:'Document kind'});fireEvent.change(kind,{target:{value:'itemized'}});
+  mount();await screen.findByText('INV-DEPOSIT');openMoreFilters();
+  const kind=screen.getByRole('combobox',{name:'Document kind'});fireEvent.change(kind,{target:{value:'itemized'}});
   expect(screen.getByText('Ewa Billing Company')).toBeInTheDocument();expect(screen.getByText('Itemized · INV-1969')).toBeInTheDocument();expect(screen.queryByText('INV-DEPOSIT')).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button',{name:'Clear filters'}));expect(screen.getByText('INV-DEPOSIT')).toBeInTheDocument();
 });
@@ -171,4 +175,99 @@ it('keeps a failed service duplication visible in the open action menu', async (
  expect(await screen.findByRole('alert')).toHaveTextContent('Service is temporarily unavailable');
  expect(screen.getByRole('button',{name:'Duplicate payment request'})).toBeEnabled();
  expect(screen.getByRole('menuitem',{name:'Use cancellation from the service document'})).toHaveAttribute('aria-disabled','true');
+});
+
+describe('PPVC-1072 compact filter bar + More filters popover', () => {
+  it('opens "More filters" on click, closes on a second click, and closes on an outside click', async () => {
+    (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [requests[0]] });
+    mount(); await screen.findByText('INV-DEPOSIT');
+    expect(screen.queryByText('Document kind')).not.toBeInTheDocument();
+
+    openMoreFilters();
+    expect(await screen.findByRole('region', { name: 'More payment request filters' })).toBeInTheDocument();
+    expect(screen.getByText('Document kind')).toBeInTheDocument();
+    expect(screen.getByLabelText('Client name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Requested amount from')).toBeInTheDocument();
+    expect(screen.getByLabelText('Requested amount to')).toBeInTheDocument();
+    expect(screen.getByLabelText('Request date from')).toBeInTheDocument();
+    expect(screen.getByLabelText('Request date to')).toBeInTheDocument();
+    expect(screen.getByLabelText('Currency')).toBeInTheDocument();
+
+    openMoreFilters();
+    expect(screen.queryByText('Document kind')).not.toBeInTheDocument();
+
+    openMoreFilters();
+    expect(screen.getByText('Document kind')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByText('Document kind')).not.toBeInTheDocument();
+  });
+
+  it('keeps the result count and Clear filters visible in the compact bar regardless of popover state', async () => {
+    (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: requests });
+    mount(); await screen.findByText('INV-DEPOSIT');
+    fireEvent.change(screen.getByLabelText('Search payment requests'), { target: { value: 'BALANCE' } });
+    expect(screen.getByRole('status')).toHaveTextContent('1 of 4 requests');
+    expect(screen.getByRole('button', { name: 'Clear filters' })).toBeInTheDocument();
+    openMoreFilters();
+    expect(screen.getByRole('status')).toHaveTextContent('1 of 4 requests');
+    expect(screen.getByRole('button', { name: 'Clear filters' })).toBeInTheDocument();
+  });
+
+  it('filters by the inline Retreat select and clears it with "Clear retreat"', async () => {
+    (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [
+      { _id: 'r1', invoiceNumber: 'RETREAT-ONE', status: 'pending', retreatId: { _id: 'ret-1', code: 'JNO-11-29' } },
+      { _id: 'r2', invoiceNumber: 'RETREAT-TWO', status: 'pending', retreatId: { _id: 'ret-2', code: 'BEN-04-14' } },
+    ] });
+    mount(); await screen.findByText('RETREAT-ONE');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Retreat' }), { target: { value: 'JNO-11' } });
+    fireEvent.click(await screen.findByRole('option', { name: 'JNO-11-29' }));
+    expect(screen.getByText('RETREAT-ONE')).toBeInTheDocument();
+    expect(screen.queryByText('RETREAT-TWO')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear retreat' }));
+    expect(screen.getByText('RETREAT-TWO')).toBeInTheDocument();
+  });
+
+  it('relocates the secondary action links behind a "More payment request actions" menu, still pointing at the correct routes', async () => {
+    (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [requests[0]] });
+    mount(); await screen.findByText('INV-DEPOSIT');
+    expect(screen.queryByRole('link', { name: 'Booking link review' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'More payment request actions' }));
+    expect(await screen.findByRole('link', { name: 'Booking link review' })).toHaveAttribute('href', '/admin/payment-requests/booking-review');
+    expect(screen.getByRole('link', { name: /New standalone service request/ })).toHaveAttribute('href', '/admin/payment-requests/services/new');
+    expect(screen.getByText('Itemized · no booking required')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Service & policy settings' })).toHaveAttribute('href', '/admin/payment-requests/services/settings');
+  });
+
+  it('renders capitalized status labels, including "Void" for cancelled, without changing the underlying status value or cancel/delete gating', async () => {
+    (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [
+      { _id: 'p1', invoiceNumber: 'IS-PENDING', status: 'pending' },
+      { _id: 'p2', invoiceNumber: 'IS-SENT', status: 'sent' },
+      { _id: 'p3', invoiceNumber: 'IS-OVERDUE', status: 'overdue' },
+      { _id: 'p4', invoiceNumber: 'IS-PAID', status: 'paid' },
+      { _id: 'p5', invoiceNumber: 'IS-CANCELLED', status: 'cancelled', cancellationReason: 'Client did not pay' },
+    ] });
+    mount(); await screen.findByText('IS-PENDING');
+
+    const statusCell = (invoice: string) => screen.getByRole('button', { name: invoice }).closest('tr')!.querySelector('[data-label="Status"]') as HTMLElement;
+    expect(statusCell('IS-PENDING')).toHaveTextContent('Pending');
+    expect(statusCell('IS-SENT')).toHaveTextContent('Sent');
+    expect(statusCell('IS-OVERDUE')).toHaveTextContent('Overdue');
+    expect(statusCell('IS-PAID')).toHaveTextContent('Paid');
+    expect(statusCell('IS-CANCELLED')).toHaveTextContent('Void');
+    expect(statusCell('IS-CANCELLED')).not.toHaveTextContent('cancelled');
+
+    // Underlying gating still compares against the real status value, unaffected by the label map.
+    // Opening the next row's menu closes the previous one automatically (shared open-menu state),
+    // so there's no need to explicitly close each before opening the next.
+    for (const invoice of ['IS-PENDING', 'IS-SENT', 'IS-OVERDUE']) {
+      fireEvent.click(within(screen.getByRole('button', { name: invoice }).closest('tr')!).getByRole('button', { name: `More actions for request ${invoice}` }));
+      expect(await screen.findByRole('menuitem', { name: 'Cancel invoice (Storno)' })).toBeInTheDocument();
+    }
+    for (const invoice of ['IS-PAID', 'IS-CANCELLED']) {
+      fireEvent.click(within(screen.getByRole('button', { name: invoice }).closest('tr')!).getByRole('button', { name: `More actions for request ${invoice}` }));
+      expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+      expect(screen.queryByRole('menuitem', { name: 'Cancel invoice (Storno)' })).not.toBeInTheDocument();
+    }
+  }, 15000); // 5 sequential action-menu opens; antd's open/close transition makes each real-timer round trip ~700ms-1s.
 });

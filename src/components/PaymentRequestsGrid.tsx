@@ -7,9 +7,9 @@ import { useFinancePermission } from '../finance/FinanceAccessContext';
 import RequestBookingAction from './RequestBookingAction';
 import { requestBookingReferences } from './requestBookingState';
 import PaymentRequestBookingLinks from './PaymentRequestBookingLinks';
-import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, MoreVertical, Plus, Search as SearchIcon, Send as SendIcon, Settings, Slash, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ChevronDown, Clock, Copy as CopyIcon, DollarSign, Edit2, ExternalLink, Eye, MoreVertical, Plus, Search as SearchIcon, Send as SendIcon, Settings, SlidersHorizontal, Slash, Trash2, X } from 'lucide-react';
 import { NAVIGATION } from '../navigation/navigation';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { paymentRequestsApi, serviceRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
@@ -83,6 +83,16 @@ const PaymentRequestsGrid: React.FC = () => {
   const [cancelReason, setCancelReason] = useState('Client did not pay');
   const [cancelling, setCancelling] = useState(false);
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
+  const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!filtersPopoverOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!filterBarRef.current?.contains(event.target as Node)) setFiltersPopoverOpen(false);
+    };
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+  }, [filtersPopoverOpen]);
 
   const fetchPaymentRequests = async (failLoud = false) => {
     try {
@@ -189,6 +199,11 @@ const PaymentRequestsGrid: React.FC = () => {
       },
     };
   };
+
+  // Presentation-only copy for the status pill. Does not change the underlying stored status
+  // value or any `request.status === '...'` comparison used elsewhere in this file (e.g. button/menu
+  // gating for cancel/delete) — those must keep comparing against the real value ('cancelled', etc.).
+  const statusLabel: Record<string, string> = { paid: 'Paid', sent: 'Sent', overdue: 'Overdue', cancelled: 'Void', pending: 'Pending' };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -313,6 +328,20 @@ const PaymentRequestsGrid: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['payment-requests'].label}</h1>
           <p className="request-grid-summary">{filteredRequests.filter(request => ['pending', 'sent', 'overdue'].includes(request.status || 'pending')).length} awaiting payment · {filteredRequests.length} total{hasFilters ? ' · filtered results' : ''}</p>
         </div>
+        <Dropdown trigger={['click']} menu={{ items: [
+          { key: 'booking-review', label: <Link to="/admin/payment-requests/booking-review">Booking link review</Link> },
+          { key: 'new-standalone', label: <Link to="/admin/payment-requests/services/new"><div>New standalone service request<div className="text-xs font-normal text-gray-500">Itemized · no booking required</div></div></Link> },
+          { key: 'service-settings', label: <Link to="/admin/payment-requests/services/settings">Service & policy settings</Link> },
+        ] }}>
+          <button
+            type="button"
+            className="inline-flex w-auto shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white p-2.5 text-gray-700 hover:bg-gray-50"
+            aria-label="More payment request actions"
+            title="Booking link review, standalone requests and settings"
+          >
+            <Icon icon={MoreVertical} className="w-4 h-4" />
+          </button>
+        </Dropdown>
         <button
           onClick={() => navigate('/admin/payment-requests/types')}
           className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -330,69 +359,88 @@ const PaymentRequestsGrid: React.FC = () => {
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-3"><Link className="px-4 py-2 rounded-md border border-blue-600 text-blue-700" to="/admin/payment-requests/booking-review">Booking link review</Link><Link className="px-4 py-2 rounded-md bg-teal-700 text-white" to="/admin/payment-requests/services/new">New standalone service request</Link><span className="text-sm text-gray-600 self-center">Itemized · no booking required</span><Link className="px-4 py-2 rounded-md border border-gray-300" to="/admin/payment-requests/services/settings">Service & policy settings</Link></div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="text-sm font-medium">Document kind<select aria-label="Document kind" value={documentKind} onChange={e=>setDocumentKind(e.target.value)} className="ml-2 rounded-md border border-gray-300 px-3 py-2"><option value="all">All documents</option><option value="booking">Booking payment requests</option><option value="itemized">Itemized requests / invoices</option></select></label>
-        <label className="text-sm font-medium">Payment status
-          <select aria-label="Payment status" value={paymentFilter} onChange={event => setPaymentFilter(event.target.value)} className="ml-2 rounded-md border border-gray-300 px-3 py-2">
+      <div ref={filterBarRef} className="relative mb-4">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-white p-3">
+          <div className="relative min-w-[220px] flex-1 sm:flex-none sm:w-64">
+            <Icon icon={SearchIcon} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search payment requests"
+              placeholder="Search client, retreat, amount or invoice…"
+              className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <select aria-label="Payment status" value={paymentFilter} onChange={event => setPaymentFilter(event.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
             <option value="all">All payment requests</option>
             <option value="unpaid">Unpaid</option>
             <option value="paid">Paid</option>
             <option value="paid-unbooked">Paid without bookings</option>
           </select>
-        </label>
-        <div className="flex w-full max-w-md min-w-0 items-end gap-2 sm:w-80">
-          <div className="min-w-0 flex-1">
-            <label htmlFor="request-retreat-filter" className="mb-1 block text-sm font-medium">Retreat</label>
-            <Select id="request-retreat-filter" aria-label="Retreat" className="w-full" size="large"
-              showSearch optionFilterProp="label" placeholder="All retreats"
+          <div className="flex min-w-[200px] max-w-xs flex-1 items-center gap-1 sm:flex-none">
+            <Select id="request-retreat-filter" aria-label="Retreat" className="w-full"
+              virtual={false} showSearch optionFilterProp="label" placeholder="All retreats"
               value={details.retreatId || undefined}
               options={[{ value: '', label: 'All retreats' }, ...retreatOptions]}
               optionRender={option => <div className="whitespace-normal break-words">{option.label}</div>}
               notFoundContent="No retreats found"
               onChange={retreatId => setDetails(current => ({ ...current, retreatId }))} />
+            {details.retreatId && <button type="button" className="shrink-0 text-sm text-blue-700 underline" onClick={() => setDetails(current => ({ ...current, retreatId: '' }))}>Clear retreat</button>}
           </div>
-          {details.retreatId && <button type="button" className="shrink-0 px-1 py-2 text-sm text-blue-700 underline" onClick={() => setDetails(current => ({ ...current, retreatId: '' }))}>Clear retreat</button>}
+          <button
+            type="button"
+            aria-pressed={filtersPopoverOpen}
+            aria-expanded={filtersPopoverOpen}
+            aria-controls="payment-request-filters"
+            onClick={() => setFiltersPopoverOpen(value => !value)}
+            className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-semibold ${filtersPopoverOpen ? 'border-gray-400 bg-gray-100 text-gray-900' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}`}
+          >
+            <Icon icon={SlidersHorizontal} className="h-4 w-4" />
+            More filters
+          </button>
+          <div className="ml-auto flex items-center gap-3 whitespace-nowrap text-sm">
+            <span className="text-gray-600" role="status">{filteredRequests.length} of {paymentRequests.length} requests</span>
+            {hasFilters && <button type="button" onClick={() => { setDocumentKind('all'); setPaymentFilter('all'); setSearchTerm(''); setDetails(emptyRequestFilters); }} className="font-semibold text-blue-700 hover:underline">Clear filters</button>}
+          </div>
         </div>
-        <span className="text-sm text-gray-600" role="status">{filteredRequests.length} of {paymentRequests.length} requests</span>
-        {paymentFilter === 'paid-unbooked' && <p className="text-sm text-gray-600">This filter checks saved request links. Use <Link className="text-blue-700 underline" to="/admin/payment-requests/booking-review">Booking link review</Link> to find existing bookings and repair missing links.</p>}
-        {hasFilters && <button type="button" onClick={() => { setDocumentKind('all'); setPaymentFilter('all'); setSearchTerm(''); setDetails(emptyRequestFilters); }} className="text-sm text-blue-700 underline">Clear filters</button>}
-      </div>
-      <div className="mb-4 relative max-w-xl">
-        <Icon icon={SearchIcon} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          aria-label="Search payment requests"
-          placeholder="Search client, retreat, amount or invoice…"
-          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
 
-      <fieldset className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
-        <legend className="px-1 text-sm font-semibold">Detailed filters</legend>
-        <p className="mb-3 text-sm text-gray-600">All filters apply together. Amounts use the requested amount in the selected currency. Dates include both days in the Request Date column.</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {([
-            ['clientName', 'Client name', 'text'],
-            ['amountMin', 'Requested amount from', 'number'],
-            ['amountMax', 'Requested amount to', 'number'],
-            ['dateFrom', 'Request date from', 'date'],
-            ['dateTo', 'Request date to', 'date'],
-          ] as const).map(([key, label, type]) => <label key={key} className="min-w-0 text-sm font-medium">{label}
-            <input type={type} value={details[key]} onChange={event => setDetails(current => ({ ...current, [key]: event.target.value }))}
-              {...(type === 'number' ? { min: 0, step: '0.01' } : {})}
-              className="mt-1 block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2" />
-          </label>)}
-          <label className="min-w-0 text-sm font-medium">Currency
-            <select aria-label="Currency" value={details.currency} onChange={event => setDetails(current => ({ ...current, currency: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
-              <option value="">All currencies</option>{currencies.map(currency => <option key={currency} value={currency}>{currency}</option>)}
-            </select>
-          </label>
-        </div>
-        {filterError && <p role="alert" className="mt-3 text-sm text-red-700">{filterError}</p>}
-      </fieldset>
+        {paymentFilter === 'paid-unbooked' && <p className="mt-2 text-sm text-gray-600">This filter checks saved request links. Use <Link className="text-blue-700 underline" to="/admin/payment-requests/booking-review">Booking link review</Link> to find existing bookings and repair missing links.</p>}
+
+        {filtersPopoverOpen && (
+          <div id="payment-request-filters" role="region" aria-label="More payment request filters" className="absolute left-0 top-full z-30 mt-2 w-full max-w-2xl rounded-md border border-gray-200 bg-white p-4 shadow-lg">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-900">More filters</span>
+              <button type="button" aria-label="Close filters" onClick={() => setFiltersPopoverOpen(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+                <Icon icon={X} className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="min-w-0 text-sm font-medium">Document kind
+                <select aria-label="Document kind" value={documentKind} onChange={e=>setDocumentKind(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="all">All documents</option><option value="booking">Booking payment requests</option><option value="itemized">Itemized requests / invoices</option></select>
+              </label>
+              {([
+                ['clientName', 'Client name', 'text'],
+                ['amountMin', 'Requested amount from', 'number'],
+                ['amountMax', 'Requested amount to', 'number'],
+                ['dateFrom', 'Request date from', 'date'],
+                ['dateTo', 'Request date to', 'date'],
+              ] as const).map(([key, label, type]) => <label key={key} className="min-w-0 text-sm font-medium">{label}
+                <input type={type} value={details[key]} onChange={event => setDetails(current => ({ ...current, [key]: event.target.value }))}
+                  {...(type === 'number' ? { min: 0, step: '0.01' } : {})}
+                  className="mt-1 block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2" />
+              </label>)}
+              <label className="min-w-0 text-sm font-medium">Currency
+                <select aria-label="Currency" value={details.currency} onChange={event => setDetails(current => ({ ...current, currency: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+                  <option value="">All currencies</option>{currencies.map(currency => <option key={currency} value={currency}>{currency}</option>)}
+                </select>
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-gray-500">All filters apply together. Amounts use the requested amount in the selected currency. Dates include both days in the Request Date column.</p>
+            {filterError && <p role="alert" className="mt-3 text-sm text-red-700">{filterError}</p>}
+          </div>
+        )}
+      </div>
 
       <div className="workspace-mobile-sort"><label htmlFor="mobile-request-sort">Sort by</label><select id="mobile-request-sort" value={sortKey} onChange={event => setSortKey(event.target.value as PaymentRequestSortKey)}><option value="invoice">Invoice number</option><option value="client">Client</option><option value="retreat">Retreat</option><option value="date">Request date</option><option value="paidDate">Paid date</option><option value="requested">Amount</option><option value="usd">USD amount</option><option value="currency">Currency</option><option value="status">Status</option></select><button type="button" onClick={() => setSortDirection(value => value === 'asc' ? 'desc' : 'asc')} aria-label="Reverse request sort order">{sortDirection === 'asc' ? '↑' : '↓'}</button></div>
       {sortedRequests.length === 0 && <div role="status" className="workspace-empty-state">{hasFilters ? 'No payment requests match your filters. Adjust or clear the filters.' : 'No payment requests yet. Create a request to start tracking client payments.'}</div>}
@@ -479,7 +527,7 @@ const PaymentRequestsGrid: React.FC = () => {
                         {request.status === 'pending' && <Icon icon={Clock} className="w-3 h-3" />}
                         {request.status === 'overdue' && <Icon icon={AlertTriangle} className="w-3 h-3" />}
                         {request.status === 'cancelled' && <Icon icon={Slash} className="w-3 h-3" />}
-                        {request.status}
+                        {statusLabel[request.status] || request.status}
                       </span>
                     </td>
                     <td data-label="Actions" className="request-grid-actions whitespace-nowrap bg-white px-2 py-4">
