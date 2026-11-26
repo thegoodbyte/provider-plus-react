@@ -15,7 +15,7 @@ const PADDING: Record<NonNullable<CardProps['padding']>, string> = {
 
 /** The one surface every page should build sections from, instead of a bespoke bordered div. */
 const Card: React.FC<CardProps> = ({ children, padding = 'md', className = '' }) => (
-  <div className={`rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm ${PADDING[padding]} ${className}`}>
+  <div data-re-card="" className={`rounded-apple-lg border border-apple-gray-200 bg-apple-surface shadow-apple-sm ${PADDING[padding]} ${className}`}>
     {children}
   </div>
 );

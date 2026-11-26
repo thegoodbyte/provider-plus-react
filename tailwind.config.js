@@ -1,3 +1,4 @@
+const tokens = require('./src/design/tokens.json');
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -7,37 +8,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Apple-inspired color system
+        gray: tokens.gray, slate: tokens.gray, zinc: tokens.gray, neutral: tokens.gray, stone: tokens.gray,
+        // Existing Apple names are compatibility aliases for the one approved palette.
         apple: {
-          bg: '#fbfbfd',        // Light background
-          surface: '#ffffff',   // Card/surface white
-          gray: {
-            50: '#f5f5f7',      // Lightest gray (Apple's bg)
-            100: '#e8e8ed',     // Light gray
-            200: '#d2d2d7',     // Border gray
-            300: '#b0b0b6',     // Muted text
-            400: '#8e8e93',     // Secondary text
-            500: '#636366',     // Primary text light
-            600: '#48484a',     // Primary text
-            700: '#363638',     // Dark text
-            800: '#242426',     // Darker text
-            900: '#1c1c1e',     // Almost black
-          },
-          blue: '#007AFF',      // Apple system blue
-          teal: '#5AC8FA',      // Apple system teal
-          green: '#34C759',     // Success green
-          yellow: '#FFCC00',    // Warning yellow
-          orange: '#FF9500',    // Orange accent
-          red: '#FF3B30',       // Error red
-          purple: '#AF52DE',    // Purple accent
-          pink: '#FF2D55',      // Pink accent
+          bg: tokens.colors.canvas, surface: tokens.colors.surface, gray: tokens.gray,
+          blue: tokens.colors.primary, teal: tokens.colors.info, green: tokens.colors.success,
+          yellow: tokens.colors.warning, orange: tokens.colors.warning, red: tokens.colors.critical,
+          purple: '#7950a8', pink: '#b73f73',
         },
-        // Semantic colors
-        primary: '#007AFF',
-        secondary: '#5AC8FA',
-        success: '#34C759',
-        warning: '#FFCC00',
-        danger: '#FF3B30',
+        primary: tokens.colors.primary, secondary: tokens.colors.info,
+        success: tokens.colors.success, warning: tokens.colors.warning, danger: tokens.colors.critical,
       },
       fontFamily: {
         sans: [
@@ -72,20 +52,18 @@ module.exports = {
         '128': '32rem',
       },
       borderRadius: {
-        'apple': '0.75rem',     // 12px - Apple's standard
-        'apple-sm': '0.5rem',   // 8px
-        'apple-lg': '1rem',     // 16px
-        'apple-xl': '1.25rem',  // 20px
+        'apple': tokens.radius.control,     // 12px - Apple's standard
+        'apple-sm': tokens.radius.small,   // 8px
+        'apple-lg': tokens.radius.card,     // 16px
+        'apple-xl': tokens.radius.dialog,  // 20px
       },
       backdropBlur: {
         'apple': '20px',
       },
       boxShadow: {
-        'apple-sm': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        'apple': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        'apple-lg': '0 10px 40px rgba(0, 0, 0, 0.15)',
-        'apple-xl': '0 20px 60px rgba(0, 0, 0, 0.15)',
-        'apple-inner': 'inset 0 1px 3px 0 rgba(0, 0, 0, 0.08)',
+        'apple-sm': tokens.shadow.card, 'apple': tokens.shadow.raised,
+        'apple-lg': tokens.shadow.raised, 'apple-xl': tokens.shadow.dialog,
+        'apple-inner': 'inset 0 1px 3px rgb(36 35 33 / 0.06)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in',

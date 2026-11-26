@@ -643,7 +643,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                           padding: '8px 12px',
                           borderRadius: 6,
                           border: 'none',
-                          background: '#1d4ed8',
+                          background: 'var(--re-colors-primary)',
                           color: 'white',
                           cursor: 'pointer',
                         }}
@@ -759,7 +759,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                         }}
                         style={{
                           padding: '8px 12px',
-                          backgroundColor: '#374151',
+                          backgroundColor: 'var(--re-colors-primary)',
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
@@ -1211,7 +1211,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                   onClick={handleCreateDepositPaymentRequest}
                   style={{
                     padding: '10px 16px',
-                    backgroundColor: '#374151',
+                    backgroundColor: 'var(--re-colors-primary)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
@@ -1262,7 +1262,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                 navigator.clipboard.writeText(paymentUrl);
                                 showSuccess('Payment link copied to clipboard.');
                               }}
-                              style={{ padding: '8px 12px', backgroundColor: '#374151', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              style={{ padding: '8px 12px', backgroundColor: 'var(--re-colors-primary)', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                             >
                               Copy
                             </button>
@@ -1505,7 +1505,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                       disabled={generatingPDF === booking._id}
                       style={{
                         padding: '8px 16px',
-                        backgroundColor: generatingPDF === booking._id ? '#ccc' : '#374151',
+                        backgroundColor: generatingPDF === booking._id ? 'var(--re-colors-line)' : 'var(--re-colors-primary)',
                         color: 'white',
                         border: 'none',
                         borderRadius: '6px',

@@ -27,7 +27,7 @@ interface BadgeProps {
 
 /** The one pill every status in the app should render through, whatever its color mapping. */
 const Badge: React.FC<BadgeProps> = ({ children, tone = 'neutral', colorClassName, dot = false, className = '' }) => (
-  <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${colorClassName || TONE_STYLES[tone]} ${className}`}>
+  <span data-re-badge="" data-tone={colorClassName ? undefined : tone} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${colorClassName || TONE_STYLES[tone]} ${className}`}>
     {dot && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />}
     {children}
   </span>

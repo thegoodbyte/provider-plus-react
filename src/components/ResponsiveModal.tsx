@@ -74,7 +74,7 @@ const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
 
         {/* Modal Content */}
         <div
-          role="dialog" aria-modal="true" aria-label={title || 'Dialog'}
+          data-re-modal="" role="dialog" aria-modal="true" aria-label={title || 'Dialog'}
           className={`relative bg-white w-full h-screen flex flex-col animate-slide-up ${className}`}
           style={{ animation: 'slideUp 0.3s ease-out' }}
         >
@@ -122,7 +122,7 @@ const ResponsiveModal: React.FC<ResponsiveModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div role="dialog" aria-modal="true" aria-label={title || 'Dialog'}
+      <div data-re-modal="" role="dialog" aria-modal="true" aria-label={title || 'Dialog'}
         className={`
           relative bg-white rounded-xl shadow-2xl
           animate-modal-in

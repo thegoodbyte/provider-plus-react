@@ -57,6 +57,7 @@ const AppleInput: React.FC<AppleInputProps> = ({
         )}
 
         <input
+          data-re-input=""
           id={inputId}
           aria-invalid={Boolean(error)}
           aria-describedby={error || hint ? descriptionId : undefined}

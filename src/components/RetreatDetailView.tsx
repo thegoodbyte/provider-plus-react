@@ -2019,7 +2019,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 type="primary"
                 htmlType="submit"
                 loading={quickBookingLoading}
-                style={{ background: '#28a745', borderColor: '#28a745' }}
               >
                 Book Client
               </Button>

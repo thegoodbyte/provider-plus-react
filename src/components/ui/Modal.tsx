@@ -35,6 +35,7 @@ const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, footer, s
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div
+        data-re-modal=""
         ref={dialogRef}
         role="dialog"
         aria-modal="true"

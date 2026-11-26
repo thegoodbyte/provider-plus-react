@@ -15,6 +15,7 @@ jobs:
           node-version: '22.20.0'
           cache: npm
       - run: npm ci
+      - run: npm run design:check
       - run: npm run check:contracts
       - run: npm run test:contracts
       - run: npm test -- --watch=false --runInBand src/services/contracts.test.ts

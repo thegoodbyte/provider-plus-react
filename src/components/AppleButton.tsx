@@ -71,6 +71,8 @@ const AppleButton: React.FC<AppleButtonProps> = ({
   return (
     <button
       {...buttonProps}
+      data-re-button={variant}
+      data-size={size}
       aria-busy={loading}
       type={type}
       onClick={onClick}

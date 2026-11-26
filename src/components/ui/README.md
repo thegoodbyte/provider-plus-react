@@ -1,3 +1,7 @@
+> Current visual contract: [the app-wide design system](../../design/README.md) (PPVC-1071).
+> Existing components below now consume canonical warm-neutral/blue tokens. Historical audit counts
+> describe the pre-PPVC-1002 app; use `npm run design:inventory` for current remaining adoption debt.
+
 # Shared UI kit (PPVC-1002)
 
 Every page in the admin app should build its sections, lists, and status indicators from these

@@ -166,34 +166,13 @@ const getNavigationRole = (userRole?: string) => {
 export const SIMPLE_NAV_SECTION_IDS = ['home', 'clients', 'bookings-group', 'payments', 'retreats', 'medical'];
 
 const getTextColor = (isActive: boolean = false): string => {
-  return isActive ? 'rgb(17, 24, 39)' : 'rgb(55, 65, 81)';
+  return isActive ? 'var(--re-colors-ink)' : 'var(--re-colors-muted)';
 };
 
-const BOOKING_STEP_NAV_ACCENTS: Record<string, { border: string; background: string; activeBackground: string; color: string }> = {
-  'retreat-flow': {
-    border: 'rgb(125, 211, 252)',
-    background: 'rgba(219, 234, 254, 0.9)',
-    activeBackground: 'rgba(191, 219, 254, 1)',
-    color: 'rgb(30, 64, 175)',
-  },
-  'retreat-flow-library': {
-    border: 'rgb(196, 181, 253)',
-    background: 'rgba(237, 233, 254, 0.92)',
-    activeBackground: 'rgba(221, 214, 254, 1)',
-    color: 'rgb(91, 33, 182)',
-  },
-  'booking-flow': {
-    border: 'rgb(134, 239, 172)',
-    background: 'rgba(220, 252, 231, 0.92)',
-    activeBackground: 'rgba(187, 247, 208, 1)',
-    color: 'rgb(22, 101, 52)',
-  },
-  'booking-step-deadlines': {
-    border: 'rgb(134, 239, 172)',
-    background: 'rgba(220, 252, 231, 0.92)',
-    activeBackground: 'rgba(187, 247, 208, 1)',
-    color: 'rgb(22, 101, 52)',
-  },
+const navigationAccent = { border:'var(--re-colors-line)', background:'var(--re-colors-primarySoft)', activeBackground:'var(--re-colors-primarySoft)', color:'var(--re-colors-primary)' };
+const BOOKING_STEP_NAV_ACCENTS: Record<string, typeof navigationAccent> = {
+  'retreat-flow':navigationAccent, 'retreat-flow-library':navigationAccent,
+  'booking-flow':navigationAccent, 'booking-step-deadlines':navigationAccent,
 };
 
 const AppleSidebar: React.FC<AppleSidebarProps> = ({

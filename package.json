@@ -55,7 +55,10 @@
     "check:contracts": "node scripts/contracts/generate.mjs --check",
     "test:contracts": "node --test scripts/contracts/*.test.mjs",
     "test:booking-reconciliation": "node scripts/test-booking-reconciliation.cjs",
-    "test:tooling": "node scripts/check-shared-tooling.cjs && node scripts/test-shared-tooling.cjs"
+    "test:tooling": "node scripts/check-shared-tooling.cjs && node scripts/test-shared-tooling.cjs",
+    "design:generate": "node scripts/design/generate.cjs",
+    "design:check": "node scripts/design/generate.cjs --check && node scripts/design/audit.cjs",
+    "design:inventory": "node scripts/design/audit.cjs --report"
   },
   "browserslist": {
     "production": [

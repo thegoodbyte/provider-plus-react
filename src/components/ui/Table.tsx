@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 
 /** Wraps a table in its own horizontal-scroll container so the page body never scrolls sideways. */
 export const Table: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className="overflow-x-auto">
+  <div data-re-table="" className="overflow-x-auto">
     <table className={`min-w-full divide-y divide-apple-gray-200 ${className}`}>{children}</table>
   </div>
 );
