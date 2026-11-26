@@ -12,6 +12,7 @@ for(const width of [430,820])test(`single-record medical quick review persists w
   const r=route.request(),url=new URL(r.url());
   if(!['xhr','fetch'].includes(r.resourceType()))return route.continue();
   if(url.pathname.startsWith('/medical-review-quick-access/')){
+   expect(r.headers().authorization).toBeUndefined();
    const response=await request.fetch(fixture.url+url.pathname,{method:r.method(),headers:{...r.headers(),'X-Client-Timezone':'Europe/Warsaw'},data:r.postData()||undefined});return route.fulfill({response});
   }
   return route.fulfill({json:url.pathname==='/environment/status'?{environment:'local',production:false}:[]});
@@ -25,10 +26,12 @@ for(const width of [430,820])test(`single-record medical quick review persists w
   const [popup]=await Promise.all([page.waitForEvent('popup'),document.click()]);await popup.waitForLoadState();await expect(popup.locator('svg')).toBeVisible();await popup.close();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:info.outputPath('quick-review.png'),fullPage:true});
+  expect(await page.evaluate(()=>localStorage.getItem('token'))).toBeNull();
+  await page.evaluate(()=>localStorage.setItem('token','expired-unrelated-session'));
   await page.getByRole('button',{name:'Approved — clear to proceed',exact:true}).click();await page.getByLabel('Notes',{exact:true}).fill('Synthetic medical review accepted');
   await page.getByRole('button',{name:'Submit review',exact:true}).click();await expect(page.getByRole('heading',{name:/Thank you/i})).toBeVisible();
   let state=await(await request.get(fixture.url+'/fixture/quick-state')).json();const saved=state.reviews.find((x:any)=>x._id===seed.alpha._id);expect(saved.reviewDecision).toBe('OK');expect(saved.decisionHistory.at(-1).timezone).toBe('Europe/Warsaw');expect(saved.decisionHistory.at(-1).accessType).toBe('medical_review_quick_link');expect(state.reviews.find((x:any)=>x._id===seed.beta._id).status).toBe('pending');
-  expect(await page.evaluate(()=>localStorage.getItem('token'))).toBeNull();
+  expect(await page.evaluate(()=>localStorage.getItem('token'))).toBe('expired-unrelated-session');
   await page.reload();await expect(page.getByText('Synthetic Client',{exact:true})).toBeVisible();
   await page.goto(`/medical-reviews/mrr-${seed.beta.display_id}/${seed.token}`);await expect(page.getByRole('heading',{name:"This link can't be opened"})).toBeVisible();await expect(page.getByText('Synthetic Client',{exact:true})).toHaveCount(0);
  }finally{await page.unrouteAll({behavior:'wait'})}

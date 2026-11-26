@@ -32,6 +32,11 @@ api.interceptors.request.use(
     if (!['get', 'head', 'options'].includes(String(config.method || 'get').toLowerCase()) && (config as ReadOptions).suppressGlobalError === undefined) {
       (config as ReadOptions).suppressGlobalError = true;
     }
+    if ((config as any).publicQuickAccess) {
+      delete config.headers.Authorization;
+      delete config.headers['X-Work-Mode'];
+      return config;
+    }
     if (isFinanceWorkspace()) config.headers['X-Work-Mode'] = 'payments';
     const token = authService.getToken();
     if (token) {
@@ -1591,12 +1596,12 @@ export const medicalReviewRequestsApi = {
   // server's audit trail record the reviewer's own local time alongside IP.
   getQuickAccess: (displayId: string | number, token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(
     `/medical-review-quick-access/mrr-${encodeURIComponent(String(displayId))}/${encodeURIComponent(token)}`,
-    { headers: { 'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone }, suppressAuthRedirect: true, suppressGlobalError: true } as any,
+    { headers: { 'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone }, publicQuickAccess: true, suppressAuthRedirect: true, suppressGlobalError: true } as any,
   ),
   submitQuickAccessDecision: (displayId: string | number, token: string, data: { reviewDecision: string; medicalStaffNotes?: string; overallNotes?: string; reviewNotes?: string }) => api.post<MedicalReviewRequest>(
     `/medical-review-quick-access/mrr-${encodeURIComponent(String(displayId))}/${encodeURIComponent(token)}/decision`,
     data,
-    { headers: { 'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone }, suppressAuthRedirect: true, suppressGlobalError: true } as any,
+    { headers: { 'X-Client-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone }, publicQuickAccess: true, suppressAuthRedirect: true, suppressGlobalError: true } as any,
   ),
   getAccessLinks: (id: string) => api.get<any[]>(`/medical-review-requests/${id}/access-links`),
   createAccessLink: (id: string) => api.post<any>(`/medical-review-requests/${id}/access-links`, {}),
