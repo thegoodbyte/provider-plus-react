@@ -788,6 +788,16 @@ export type PreviousFoodFormDto = {
     formId: string | null;
 };
 
+export type QuickAccessDecisionDto = {
+    fileReviews?: Array<MedicalReviewFileReviewDto>;
+    medicalStaffNotes?: string;
+    overallNotes?: string;
+    reviewDecision?: 'caution' | 'OK' | 'NOT OK' | 'more_info_needed' | 'WONT_DO';
+    reviewNotes?: string;
+    wontDoNote?: string;
+    wontDoReason?: 'other' | 'duplicate' | 'not_relevant' | 'mistake' | 'no_longer_needed' | 'test_request';
+};
+
 export type RecordBookingConfirmationHistoryDto = {
     action?: 'created' | 'updated' | 'sent';
     language?: string;
@@ -9894,6 +9904,40 @@ export type MedicalReviewPublicControllerFindByTokenResponses = {
 };
 
 export type MedicalReviewPublicControllerFindByTokenResponse = MedicalReviewPublicControllerFindByTokenResponses[keyof MedicalReviewPublicControllerFindByTokenResponses];
+
+export type MedicalReviewQuickAccessControllerGetByLinkData = {
+    body?: never;
+    path: {
+        displayId: string;
+        token: string;
+    };
+    query?: never;
+    url: '/medical-review-quick-access/mrr-{displayId}/{token}';
+};
+
+export type MedicalReviewQuickAccessControllerGetByLinkResponses = {
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type MedicalReviewQuickAccessControllerGetByLinkResponse = MedicalReviewQuickAccessControllerGetByLinkResponses[keyof MedicalReviewQuickAccessControllerGetByLinkResponses];
+
+export type MedicalReviewQuickAccessControllerSubmitDecisionData = {
+    body: QuickAccessDecisionDto;
+    path: {
+        displayId: string;
+        token: string;
+    };
+    query?: never;
+    url: '/medical-review-quick-access/mrr-{displayId}/{token}/decision';
+};
+
+export type MedicalReviewQuickAccessControllerSubmitDecisionResponses = {
+    201: MedicalReviewRequest;
+};
+
+export type MedicalReviewQuickAccessControllerSubmitDecisionResponse = MedicalReviewQuickAccessControllerSubmitDecisionResponses[keyof MedicalReviewQuickAccessControllerSubmitDecisionResponses];
 
 export type MedicalReviewRequestsControllerFindAllData = {
     body?: never;

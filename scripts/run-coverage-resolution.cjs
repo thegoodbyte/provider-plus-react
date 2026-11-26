@@ -266,6 +266,7 @@ const smoke = [
         ["medical-preparation-calendar", "PPVC922_FIXTURE"],
         ["guided-scratchpad", "GUIDED_SCRATCHPAD_FIXTURE"],
         ["non-cash-settlement", "NON_CASH_FIXTURE", null, "factory"],
+        ["medical-review-quick-access", "MEDICAL_QUICK_FIXTURE"],
         ["booking-payment-reconciliation", "BOOKING_RECONCILIATION_FIXTURE"],
         ["preparation-workspace", "PREPARATION_FIXTURE"],
         ["screening-print", "SCREENING_PRINT_FIXTURE"],

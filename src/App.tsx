@@ -72,7 +72,7 @@ function AppContent() {
         <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
         <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
         <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
-        <Route path="/medical-reviews/mrr-:displayId/:token" element={<MedicalReviewQuickAccessPage />} />
+        <Route path="/medical-reviews/:reviewLabel/:token" element={<MedicalReviewQuickAccessPage />} />
         <Route path="/clients/contracts/jotform/link/:bookingId" element={<ContractRedirectPage />} />
         <Route path="/users/forgot-password" element={<ForgotPassword />} />
         <Route path="/users/forgot-pasword" element={<ForgotPassword />} />

@@ -2466,6 +2466,50 @@
         ],
         "type": "object"
       },
+      "QuickAccessDecisionDto": {
+        "properties": {
+          "fileReviews": {
+            "items": {
+              "$ref": "#/components/schemas/MedicalReviewFileReviewDto"
+            },
+            "type": "array"
+          },
+          "medicalStaffNotes": {
+            "type": "string"
+          },
+          "overallNotes": {
+            "type": "string"
+          },
+          "reviewDecision": {
+            "enum": [
+              "caution",
+              "OK",
+              "NOT OK",
+              "more_info_needed",
+              "WONT_DO"
+            ],
+            "type": "string"
+          },
+          "reviewNotes": {
+            "type": "string"
+          },
+          "wontDoNote": {
+            "type": "string"
+          },
+          "wontDoReason": {
+            "enum": [
+              "other",
+              "duplicate",
+              "not_relevant",
+              "mistake",
+              "no_longer_needed",
+              "test_request"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RecordBookingConfirmationHistoryDto": {
         "properties": {
           "action": {
@@ -19331,6 +19375,92 @@
         },
         "tags": [
           "MedicalReviewPublic"
+        ]
+      }
+    },
+    "/medical-review-quick-access/mrr-{displayId}/{token}": {
+      "get": {
+        "operationId": "MedicalReviewQuickAccessController_getByLink",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "displayId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalReviewQuickAccess"
+        ]
+      }
+    },
+    "/medical-review-quick-access/mrr-{displayId}/{token}/decision": {
+      "post": {
+        "operationId": "MedicalReviewQuickAccessController_submitDecision",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "displayId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickAccessDecisionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MedicalReviewRequest"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": [
+          "MedicalReviewQuickAccess"
         ]
       }
     },

@@ -12,7 +12,7 @@ jest.mock('../services/api', () => ({
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useParams: () => ({ displayId: '1245', token: 'synthetic-token' }),
+  useParams: () => ({ reviewLabel: 'mrr-1245', token: 'synthetic-token' }),
 }));
 
 const api = medicalReviewRequestsApi as jest.Mocked<typeof medicalReviewRequestsApi>;

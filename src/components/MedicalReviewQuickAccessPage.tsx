@@ -34,7 +34,8 @@ const getRetreatLabel = (retreatId: any) => {
 };
 
 const MedicalReviewQuickAccessPage: React.FC = () => {
-  const { displayId = '', token = '' } = useParams();
+  const { reviewLabel = '', token = '' } = useParams();
+  const displayId = /^mrr-(\d+)$/.exec(reviewLabel)?.[1] || '';
   const [loading, setLoading] = useState(true);
   const [request, setRequest] = useState<MedicalReviewRequest | null>(null);
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
