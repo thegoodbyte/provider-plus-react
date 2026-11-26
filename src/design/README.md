@@ -1,7 +1,7 @@
 # Retreat Engine design system — PPVC-1071
 
 `tokens.json` is the source of truth. `tokens.css` is generated (`npm run design:generate`);
-Tailwind's existing `apple.*` aliases and the Ant Design ConfigProvider consume the same tokens.
+Tailwind's standard neutral families and existing `apple.*` aliases and the Ant Design ConfigProvider consume the same tokens.
 The existing PPVC-1002 `components/ui` kit is canonical; do not add another kit or copy a demo.
 
 Use AppleButton (primary/secondary/ghost/danger), AppleInput, ui/Card, ui/Table, ui/Badge,
@@ -30,3 +30,8 @@ real shared components, real theme and stylesheet, including a keyboard-accessib
 third-party controls. It is test tooling, not a production navigation item. Playwright also checks
 representative actual administrative routes at desktop/mobile sizes; the full browser gate
 continues to cover live API persistence journeys and permissions.
+
+Legacy stylesheet adoption also aliases common neutral literals in 57 stylesheets to the same
+surface/text/border tokens. Clinical/status/event hues remain separate. Design checks parse
+stylesheets and reject unresolved design-token references. Named Tasks selections and legacy
+action adapters use the primary tone without altering their routing or state logic.

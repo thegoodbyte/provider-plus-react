@@ -1,23 +1,23 @@
 .booking-medical-upload {
     padding: 20px;
-    background: #f8f9fa;
+    background: var(--re-colors-canvas);
     border-radius: 8px;
     margin: 20px 0;
 }
 
 .booking-medical-upload h3 {
     margin-bottom: 20px;
-    color: #333;
+    color: var(--re-colors-ink);
 }
 
-.booking-bp-readings { margin-bottom: 16px; padding: 14px; border: 1px solid #dbe3ef; border-radius: 8px; background: #fff; }
+.booking-bp-readings { margin-bottom: 16px; padding: 14px; border: 1px solid #dbe3ef; border-radius: 8px; background: var(--re-colors-surface); }
 .booking-bp-readings-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.booking-bp-readings-header h4 { margin: 0 0 3px; color: #1f2937; }
-.booking-bp-readings-header p { margin: 0; color: #64748b; font-size: 13px; }
+.booking-bp-readings-header h4 { margin: 0 0 3px; color: var(--re-colors-ink); }
+.booking-bp-readings-header p { margin: 0; color: var(--re-colors-muted); font-size: 13px; }
 .booking-bp-table-wrap { overflow-x: auto; }
 .booking-bp-table-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.booking-bp-table-wrap th,.booking-bp-table-wrap td { padding: 8px 10px; border-top: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
-.booking-bp-table-wrap th { color: #64748b; font-size: 11px; text-transform: uppercase; }
+.booking-bp-table-wrap th,.booking-bp-table-wrap td { padding: 8px 10px; border-top: 1px solid var(--re-colors-line); text-align: left; vertical-align: top; }
+.booking-bp-table-wrap th { color: var(--re-colors-muted); font-size: 11px; text-transform: uppercase; }
 @media(max-width:640px){.booking-bp-readings{padding:10px}.booking-bp-table-wrap th,.booking-bp-table-wrap td{padding:7px;font-size:12px}}
 
 .booking-documents-header {
@@ -35,7 +35,7 @@
 .booking-documents-header p,
 .booking-document-card-header p {
     margin: 0;
-    color: #666;
+    color: var(--re-colors-muted);
     font-size: 14px;
 }
 
@@ -59,7 +59,7 @@
 
 .booking-document-card-header h4 {
     margin: 0 0 4px;
-    color: #333;
+    color: var(--re-colors-ink);
     font-size: 16px;
 }
 
@@ -73,7 +73,7 @@
 .booking-document-empty {
     padding: 12px;
     border-radius: 6px;
-    background: #f8f9fa;
+    background: var(--re-colors-canvas);
     color: #777;
     font-size: 14px;
 }
@@ -83,7 +83,7 @@
     align-items: center;
     gap: 8px;
     min-height: 32px;
-    color: #475569;
+    color: var(--re-colors-muted);
     font-size: 14px;
     font-weight: 600;
 }
@@ -104,7 +104,7 @@
     width: 100%;
     height: 10px;
     border-radius: 999px;
-    background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+    background: linear-gradient(90deg, var(--re-colors-line) 25%, var(--re-colors-canvas) 50%, var(--re-colors-line) 75%);
     background-size: 200% 100%;
     animation: booking-medical-shimmer 1.2s ease-in-out infinite;
 }
@@ -132,7 +132,7 @@
     padding: 10px;
     border: 1px solid #edf0f2;
     border-radius: 6px;
-    background: #fafafa;
+    background: var(--re-colors-canvas);
     font-size: 14px;
 }
 
@@ -159,10 +159,10 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--re-colors-line);
     border-radius: 6px;
     background: white;
-    color: #64748b;
+    color: var(--re-colors-muted);
     cursor: pointer;
 }
 
@@ -213,9 +213,9 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
     padding: 12px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--re-colors-line);
     border-radius: 6px;
-    background: #f9fafb;
+    background: var(--re-colors-canvas);
     font-size: 13px;
 }
 
@@ -227,7 +227,7 @@
 }
 
 .booking-medical-required-label {
-    color: #6b7280;
+    color: var(--re-colors-muted);
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0;
@@ -240,7 +240,7 @@
     border: 0;
     padding: 0;
     background: transparent;
-    color: #111827;
+    color: var(--re-colors-ink);
     font: inherit;
     font-weight: 600;
     text-align: left;
@@ -258,12 +258,12 @@
     padding: 12px;
     border: 1px solid #dbeafe;
     border-radius: 6px;
-    background: #f3f4f6;
+    background: var(--re-colors-subtle);
 }
 
 .booking-medical-result-editor label {
     margin: 0;
-    color: #1f2937;
+    color: var(--re-colors-ink);
     font-size: 13px;
     font-weight: 600;
 }
@@ -272,18 +272,18 @@
     width: 100%;
     min-height: 88px;
     resize: vertical;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--re-colors-line);
     border-radius: 6px;
     padding: 8px 10px;
-    color: #111827;
+    color: var(--re-colors-ink);
     font-size: 14px;
     line-height: 1.4;
-    background: #fff;
+    background: var(--re-colors-surface);
 }
 
 .booking-medical-result-editor textarea:focus {
     outline: none;
-    border-color: #374151;
+    border-color: var(--re-colors-ink);
     box-shadow: 0 0 0 2px rgba(55, 65, 81, 0.15);
 }
 
@@ -317,19 +317,19 @@
 }
 
 .booking-medical-upload-modal-header {
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--re-colors-line);
 }
 
 .booking-medical-upload-modal-header h4 {
     margin: 0 0 4px;
-    color: #111827;
+    color: var(--re-colors-ink);
     font-size: 18px;
 }
 
 .booking-medical-upload-modal-header p,
 .booking-medical-upload-help {
     margin: 0;
-    color: #6b7280;
+    color: var(--re-colors-muted);
     font-size: 13px;
 }
 
@@ -337,7 +337,7 @@
     border: 0;
     padding: 4px;
     background: transparent;
-    color: #64748b;
+    color: var(--re-colors-muted);
     cursor: pointer;
 }
 
@@ -354,7 +354,7 @@
     gap: 10px;
     padding: 12px;
     border-radius: 8px;
-    background: #f8fafc;
+    background: var(--re-colors-canvas);
 }
 
 .booking-medical-upload-context > div {
@@ -366,7 +366,7 @@
 
 .booking-medical-upload-context span,
 .booking-medical-upload-field-label {
-    color: #64748b;
+    color: var(--re-colors-muted);
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
@@ -374,7 +374,7 @@
 
 .booking-medical-upload-context strong {
     overflow-wrap: anywhere;
-    color: #1f2937;
+    color: var(--re-colors-ink);
     font-size: 13px;
 }
 
@@ -385,11 +385,11 @@
 
 .booking-medical-upload-field {
     width: 100%;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--re-colors-line);
     border-radius: 6px;
     padding: 9px 10px;
     background: white;
-    color: #111827;
+    color: var(--re-colors-ink);
     font-size: 14px;
 }
 
@@ -402,14 +402,14 @@
     flex-direction: column;
     gap: 4px;
     margin-top: 8px;
-    color: #475569;
+    color: var(--re-colors-muted);
     font-size: 12px;
 }
 
 .booking-medical-upload-modal-footer {
     align-items: center;
     justify-content: flex-end;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--re-colors-line);
 }
 
 @media (max-width: 640px) {
@@ -430,13 +430,13 @@
 }
 
 .booking-medical-file-heading span {
-    color: #666;
+    color: var(--re-colors-muted);
     font-size: 12px;
 }
 
 .booking-medical-file-title {
     margin-top: 4px;
-    color: #374151;
+    color: var(--re-colors-ink);
     font-weight: 600;
 }
 
@@ -449,8 +449,8 @@
     margin-top: 8px;
     padding: 8px;
     border-radius: 6px;
-    background: #fff;
-    color: #374151;
+    background: var(--re-colors-surface);
+    color: var(--re-colors-ink);
 }
 
 .booking-medical-actions {
@@ -463,12 +463,12 @@
 .booking-medical-advisor-select {
     width: 100%;
     min-width: 160px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--re-colors-line);
     border-radius: 6px;
-    background: #fff;
+    background: var(--re-colors-surface);
     padding: 6px 8px;
     font-size: 13px;
-    color: #111827;
+    color: var(--re-colors-ink);
 }
 
 @media (max-width: 720px) {

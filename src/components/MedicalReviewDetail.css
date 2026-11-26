@@ -1,6 +1,6 @@
 .medical-review-detail {
   padding: 24px;
-  background-color: #f8f9fa;
+  background-color: var(--re-colors-canvas);
   min-height: 100vh;
 }
 
@@ -27,9 +27,9 @@
 }
 
 .back-button:hover {
-  background: #f9fafb;
-  border-color: #374151;
-  color: #374151;
+  background: var(--re-colors-canvas);
+  border-color: var(--re-colors-ink);
+  color: var(--re-colors-ink);
 }
 
 .header-actions {
@@ -93,9 +93,9 @@
   align-items: center;
   gap: 8px;
   padding: 12px 20px;
-  background: #f9fafb;
+  background: var(--re-colors-canvas);
   border-radius: 8px;
-  color: #374151;
+  color: var(--re-colors-ink);
 }
 
 .retreat-date {
@@ -149,7 +149,7 @@
 }
 
 .record-header svg {
-  color: #374151;
+  color: var(--re-colors-ink);
 }
 
 .record-header h3 {
@@ -197,7 +197,7 @@
 .previous-notes {
   margin-top: 16px;
   padding: 12px;
-  background: #f8f9fa;
+  background: var(--re-colors-canvas);
   border-radius: 8px;
 }
 
@@ -220,7 +220,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #374151;
+  background: var(--re-colors-ink);
   color: white;
   border-radius: 8px;
   text-decoration: none;
@@ -230,7 +230,7 @@
 }
 
 .view-document-btn:hover {
-  background: #111827;
+  background: var(--re-colors-ink);
   transform: translateY(-1px);
 }
 
@@ -306,7 +306,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #f8f9fa;
+  background: var(--re-colors-canvas);
   border-radius: 8px;
 }
 
@@ -357,8 +357,8 @@
 }
 
 .decision-option:hover {
-  border-color: #374151;
-  background: #f9fafb;
+  border-color: var(--re-colors-ink);
+  background: var(--re-colors-canvas);
 }
 
 .decision-option input[type="radio"] {
@@ -368,7 +368,7 @@
 }
 
 .decision-option input[type="radio"]:checked + svg {
-  color: #374151;
+  color: var(--re-colors-ink);
 }
 
 .decision-option span {
@@ -402,7 +402,7 @@
 
 .review-notes textarea:focus {
   outline: none;
-  border-color: #374151;
+  border-color: var(--re-colors-ink);
 }
 
 .review-actions {
@@ -429,17 +429,17 @@
 }
 
 .cancel-btn:hover {
-  background: #f8f9fa;
+  background: var(--re-colors-canvas);
   border-color: #bdc3c7;
 }
 
 .submit-review-btn {
-  background: #374151;
+  background: var(--re-colors-ink);
   color: white;
 }
 
 .submit-review-btn:hover:not(:disabled) {
-  background: #111827;
+  background: var(--re-colors-ink);
   transform: translateY(-1px);
 }
 

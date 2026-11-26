@@ -6,7 +6,7 @@
   padding: 20px;
   border: 1.5px solid var(--tone-edge);
   border-radius: 20px;
-  background: linear-gradient(180deg, var(--tone-wash) 0%, #ffffff 120px);
+  background: linear-gradient(180deg, var(--tone-wash) 0%, var(--re-colors-surface) 120px);
 }
 
 .booking-medical-redesign .medical-item-card[data-state='missing'] {
@@ -61,7 +61,7 @@
   height: 16px;
   border-radius: 999px;
   background: var(--tone-dot);
-  color: #fff;
+  color: var(--re-colors-surface);
 }
 
 .booking-medical-redesign .medical-item-card-steps {
@@ -153,7 +153,7 @@
   padding: 7px 13px;
   border: 1px solid #cfd2d6;
   border-radius: 999px;
-  background: #fff;
+  background: var(--re-colors-surface);
   color: var(--medical-ink);
   font-size: 12px;
   font-weight: 650;
@@ -163,7 +163,7 @@
 .booking-medical-redesign .medical-item-card-actions button.is-primary {
   border-color: #252525;
   background: #252525;
-  color: #fff;
+  color: var(--re-colors-surface);
 }
 
 @media (max-width: 720px) {

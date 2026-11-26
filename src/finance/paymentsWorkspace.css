@@ -16,7 +16,7 @@
   font-size: 24px;
 }
 .payments-workspace > header p {
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 13px;
 }
 .payments-workspace button,
@@ -43,7 +43,7 @@
   margin-bottom: 6px;
 }
 .finance-context > p {
-  color: #64748b;
+  color: var(--re-colors-muted);
   margin-bottom: 16px;
 }
 .finance-context label {
@@ -99,7 +99,7 @@
 }
 .finance-booking-row dt {
   font-size: 12px;
-  color: #64748b;
+  color: var(--re-colors-muted);
 }
 .finance-booking-row dd {
   font-weight: 700;

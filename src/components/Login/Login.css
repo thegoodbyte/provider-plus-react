@@ -1,12 +1,12 @@
 .login-container { display:flex; align-items:center; justify-content:center; min-height:100dvh; height:100%; overflow:auto; padding:32px 20px; background:#f4f6f5; color:#20332f; }
-.login-box { width:100%; max-width:440px; padding:40px; border:1px solid #dfe7e3; border-radius:24px; background:#fff; box-shadow:0 16px 60px #20332f08; }
+.login-box { width:100%; max-width:440px; padding:40px; border:1px solid #dfe7e3; border-radius:24px; background:var(--re-colors-surface); box-shadow:0 16px 60px #20332f08; }
 .login-box h2 { margin:12px 0; font-size:32px; line-height:1.2; letter-spacing:-.045em; font-weight:650; color:#20332f; }
 .login-box .form-group { margin-bottom:20px; }
 .login-box .form-group label { display:block; margin-bottom:8px; color:#40574c; font-size:13px; font-weight:600; }
 .login-box .form-group input { width:100%; height:50px; padding:12px 14px; border:1px solid #dce5df; border-radius:10px; background:#fbfcfb; font-size:15px; transition:border-color 160ms,box-shadow 160ms; }
 .login-box .form-group input::placeholder { color:#89978e; }
-.login-box .form-group input:focus { outline:none; border-color:#176b5b; box-shadow:0 0 0 3px #176b5b12; background:#fff; }
-.login-box button[type=submit] { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; min-height:50px; border:0; border-radius:10px; background:#176b5b; color:#fff; font-size:14px; font-weight:600; cursor:pointer; }
+.login-box .form-group input:focus { outline:none; border-color:#176b5b; box-shadow:0 0 0 3px #176b5b12; background:var(--re-colors-surface); }
+.login-box button[type=submit] { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; min-height:50px; border:0; border-radius:10px; background:#176b5b; color:var(--re-colors-surface); font-size:14px; font-weight:600; cursor:pointer; }
 .login-box button[type=submit]:hover:not(:disabled) { background:#115748; box-shadow:0 4px 12px #176b5b20; }
 .login-box button:disabled { opacity:.6; cursor:not-allowed; }
 .login-password-field { position:relative; }

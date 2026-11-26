@@ -41,7 +41,7 @@
 }
 .support-inbox .selected {
   background: #205b47;
-  color: #fff;
+  color: var(--re-colors-surface);
 }
 .support-box {
   border: 1px solid #dce5df;

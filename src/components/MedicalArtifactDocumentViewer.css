@@ -29,7 +29,7 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  background: #fff;
+  background: var(--re-colors-surface);
 }
 .medical-document-viewer-toolbar {
   display: flex;
@@ -67,7 +67,7 @@
   border: 1px solid #b6c9ca;
   border-radius: 8px;
   color: #145c5a;
-  background: #fff;
+  background: var(--re-colors-surface);
 }
 .medical-document-viewer-version {
   flex: 1 1 360px;
@@ -84,7 +84,7 @@
   border: 1px solid #b6c9ca;
   border-radius: 8px;
   font-size: 14px;
-  color: #111827;
+  color: var(--re-colors-ink);
   background: white;
 }
 .medical-document-viewer-links {
@@ -96,7 +96,7 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: #e5e7eb;
+  background: var(--re-colors-line);
 }
 .medical-document-viewer-content iframe {
   display: block;
@@ -119,7 +119,7 @@
 }
 .medical-document-viewer-message {
   padding: 24px;
-  color: #334155;
+  color: var(--re-colors-ink);
 }
 .medical-document-viewer :is(button, a, select):focus-visible {
   outline: 2px solid #0f766e;

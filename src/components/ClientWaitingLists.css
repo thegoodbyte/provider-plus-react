@@ -12,12 +12,12 @@
   margin: 0 0 8px 0;
   font-size: 28px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--re-colors-ink);
 }
 
 .page-subtitle {
   margin: 0;
-  color: #6b7280;
+  color: var(--re-colors-muted);
   font-size: 16px;
 }
 
@@ -26,7 +26,7 @@
   margin-bottom: 32px;
   padding: 24px;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
@@ -35,7 +35,7 @@
   margin: 0 0 16px 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--re-colors-ink);
 }
 
 .search-container {
@@ -55,7 +55,7 @@
 .client-search-input {
   width: 100%;
   padding: 12px 16px 12px 48px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--re-colors-line);
   border-radius: 8px;
   font-size: 16px;
   outline: none;
@@ -69,7 +69,7 @@
 
 .client-search-results {
   background: white;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--re-colors-line);
   border-radius: 8px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   max-height: 300px;
@@ -81,13 +81,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--re-colors-subtle);
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .client-search-result:hover {
-  background-color: #f9fafb;
+  background-color: var(--re-colors-canvas);
 }
 
 .client-search-result:last-child {
@@ -103,7 +103,7 @@
 .client-name {
   font-weight: 500;
   font-size: 16px;
-  color: #1f2937;
+  color: var(--re-colors-ink);
 }
 
 .client-email {
@@ -113,7 +113,7 @@
 
 .client-phone {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .selected-client {
@@ -121,7 +121,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: #f9fafb;
+  background: var(--re-colors-canvas);
   border: 1px solid #bae6fd;
   border-radius: 8px;
   margin-top: 16px;
@@ -153,14 +153,14 @@
 }
 
 .change-client-btn:hover {
-  background: #374151;
+  background: var(--re-colors-ink);
 }
 
 /* Retreat Options Section */
 .retreat-options-section {
   padding: 24px;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
@@ -169,7 +169,7 @@
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--re-colors-ink);
 }
 
 .waiting-list-toolbar {
@@ -182,7 +182,7 @@
 
 .waiting-list-toolbar p {
   margin: 4px 0 0 0;
-  color: #6b7280;
+  color: var(--re-colors-muted);
   font-size: 14px;
 }
 
@@ -209,25 +209,25 @@
 }
 
 .reset-selections-btn {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--re-colors-line);
   background: white;
-  color: #374151;
+  color: var(--re-colors-ink);
 }
 
 .reset-selections-btn:hover:not(:disabled) {
-  background: #f9fafb;
+  background: var(--re-colors-canvas);
   border-color: #9ca3af;
 }
 
 .save-selections-btn {
-  border: 1px solid #111827;
-  background: #111827;
+  border: 1px solid var(--re-colors-ink);
+  background: var(--re-colors-ink);
   color: white;
 }
 
 .save-selections-btn:hover:not(:disabled) {
-  background: #374151;
-  border-color: #374151;
+  background: var(--re-colors-ink);
+  border-color: var(--re-colors-ink);
 }
 
 .reset-selections-btn:disabled,
@@ -239,11 +239,11 @@
 .empty-state {
   text-align: center;
   padding: 64px 24px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .empty-state svg {
-  color: #d1d5db;
+  color: var(--re-colors-line);
   margin-bottom: 16px;
 }
 
@@ -264,7 +264,7 @@
 }
 
 .retreat-selection-table {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 10px;
   overflow: hidden;
   background: white;
@@ -280,24 +280,24 @@
 
 .retreat-selection-header {
   padding: 12px 16px;
-  background: #f9fafb;
-  color: #6b7280;
+  background: var(--re-colors-canvas);
+  color: var(--re-colors-muted);
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--re-colors-line);
 }
 
 .retreat-selection-row {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--re-colors-subtle);
   background: white;
   padding: 14px 16px;
   text-align: left;
   cursor: pointer;
-  color: #1f2937;
+  color: var(--re-colors-ink);
   transition: background-color 0.2s;
 }
 
@@ -306,7 +306,7 @@
 }
 
 .retreat-selection-row:hover {
-  background: #f9fafb;
+  background: var(--re-colors-canvas);
 }
 
 .retreat-selection-row.selected {
@@ -337,12 +337,12 @@
 }
 
 .retreat-main strong {
-  color: #111827;
+  color: var(--re-colors-ink);
 }
 
 .retreat-main span {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .retreat-table-meta {
@@ -361,12 +361,12 @@
 }
 
 .not-listed {
-  color: #6b7280;
+  color: var(--re-colors-muted);
   font-size: 12px;
 }
 
 .retreat-option {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.2s;
@@ -393,7 +393,7 @@
   margin: 0 0 12px 0;
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--re-colors-ink);
 }
 
 .retreat-details {
@@ -407,7 +407,7 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .available-spots {
@@ -425,10 +425,10 @@
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--re-colors-line);
   border-radius: 8px;
   background: white;
-  color: #374151;
+  color: var(--re-colors-ink);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -438,7 +438,7 @@
 }
 
 .toggle-btn:hover {
-  background: #f9fafb;
+  background: var(--re-colors-canvas);
   border-color: #9ca3af;
 }
 
@@ -485,7 +485,7 @@
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .status-priority {
@@ -565,14 +565,14 @@
 .entry-notes {
   font-size: 12px;
   color: #4b5563;
-  background: #f9fafb;
+  background: var(--re-colors-canvas);
   padding: 8px 12px;
   border-radius: 6px;
-  border-left: 3px solid #e5e7eb;
+  border-left: 3px solid var(--re-colors-line);
 }
 
 .entry-notes strong {
-  color: #374151;
+  color: var(--re-colors-ink);
 }
 
 .full-notice {

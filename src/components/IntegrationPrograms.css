@@ -1,7 +1,7 @@
 .integration-programs {
-  background: #fff;
+  background: var(--re-colors-surface);
   padding: 24px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
   color: #243b35;
 }
@@ -58,7 +58,7 @@
   padding: 9px 10px;
   border: 1px solid #a5b7af;
   border-radius: 5px;
-  background: #fff;
+  background: var(--re-colors-surface);
   color: #243b35;
   margin-top: 4px;
 }

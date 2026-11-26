@@ -24,7 +24,7 @@
 .filter-item label {
   font-weight: 600;
   font-size: 12px;
-  color: #6c757d;
+  color: var(--re-colors-muted);
   text-transform: uppercase;
 }
 
@@ -32,7 +32,7 @@
 .filter-item input[type="text"],
 .filter-item input[type="date"] {
   padding: 6px 10px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--re-colors-line);
   border-radius: 4px;
   font-size: 13px;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -43,7 +43,7 @@
 .filter-item select:focus,
 .filter-item input:focus {
   outline: none;
-  border-color: #374151;
+  border-color: var(--re-colors-ink);
   box-shadow: 0 0 0 0.15rem rgba(0, 123, 255, 0.25);
 }
 
@@ -63,12 +63,12 @@
 }
 
 .date-separator {
-  color: #6c757d;
+  color: var(--re-colors-muted);
   font-size: 12px;
 }
 
 .btn-today {
-  background-color: #374151;
+  background-color: var(--re-colors-ink);
   color: white;
   border: none;
   padding: 6px 12px;
@@ -81,7 +81,7 @@
 }
 
 .btn-today:hover {
-  background-color: #111827;
+  background-color: var(--re-colors-ink);
 }
 
 /* Sort controls */
@@ -130,7 +130,7 @@
 }
 
 .btn-secondary {
-  background-color: #6c757d;
+  background-color: var(--re-colors-muted);
   color: white;
   border: none;
   padding: 6px 14px;
@@ -215,8 +215,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #dee2e6;
-  background-color: #f8f9fa;
+  border-bottom: 1px solid var(--re-colors-line);
+  background-color: var(--re-colors-canvas);
   border-radius: 8px 8px 0 0;
 }
 

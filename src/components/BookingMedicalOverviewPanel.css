@@ -71,7 +71,7 @@
 .booking-medical-stage-actions button {
   min-height: 34px;
   border: 1px solid #cfd2d6;
-  background: #fff;
+  background: var(--re-colors-surface);
   color: #21252b;
   padding: 7px 13px;
   font-size: 12px;
@@ -83,7 +83,7 @@
 .booking-medical-record-actions .is-primary {
   border-color: #252525;
   background: #252525;
-  color: #fff;
+  color: var(--re-colors-surface);
 }
 
 .booking-medical-button:disabled { cursor: wait; opacity: .6; }
@@ -145,7 +145,7 @@ button.booking-medical-review-reference {
   margin: 18px 26px;
   border: 1px solid var(--medical-line);
   border-left: 3px solid #ad6d00;
-  background: #fff;
+  background: var(--re-colors-surface);
 }
 
 .booking-medical-stop-plan.is-clear { border-left-color: #18854b; }
@@ -168,7 +168,7 @@ button.booking-medical-review-reference {
 
 .booking-medical-redesign .booking-medical-stage-list { gap: 10px; }
 .booking-medical-redesign .booking-medical-stage { border: 1px solid var(--medical-line); border-radius: 20px; background: #fdfdfc; }
-.booking-medical-redesign .booking-medical-stage.has-records { background: #fff; box-shadow: 0 1px 2px rgba(20, 20, 20, .04), 0 6px 20px rgba(20, 20, 20, .05); }
+.booking-medical-redesign .booking-medical-stage.has-records { background: var(--re-colors-surface); box-shadow: 0 1px 2px rgba(20, 20, 20, .04), 0 6px 20px rgba(20, 20, 20, .05); }
 
 .booking-medical-stage-header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; min-height: 48px; padding: 14px 16px 14px 18px; }
 

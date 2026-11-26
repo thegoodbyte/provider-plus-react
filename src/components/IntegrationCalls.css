@@ -68,7 +68,7 @@
   border: 1px solid #bed0ca;
   border-radius: 8px;
   padding: 9px;
-  background: #fff;
+  background: var(--re-colors-surface);
   color: #253e38;
   max-width: 100%;
   box-sizing: border-box;
@@ -93,7 +93,7 @@
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  background: #fff;
+  background: var(--re-colors-surface);
 }
 .call-card.group {
   border-left-color: #873650;
@@ -152,7 +152,7 @@
 .integration-calls form {
   border: 1px solid #d7e3dc;
   border-radius: 14px;
-  background: #fff;
+  background: var(--re-colors-surface);
   padding: 22px;
 }
 .call-client-results {

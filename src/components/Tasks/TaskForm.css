@@ -33,7 +33,7 @@
 .task-form-header h2 {
   margin: 0;
   font-size: 24px;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .close-btn {
@@ -52,7 +52,7 @@
 }
 
 .close-btn:hover {
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .task-form {
@@ -64,7 +64,7 @@
   background: #eef2ff;
   border: 1px solid #c7d2fe;
   border-radius: 8px;
-  color: #1f2937;
+  color: var(--re-colors-ink);
   display: flex;
   gap: 10px;
   justify-content: space-between;
@@ -80,7 +80,7 @@
 }
 
 .task-context-banner strong {
-  color: #111827;
+  color: var(--re-colors-ink);
   font-size: 14px;
 }
 
@@ -111,7 +111,7 @@
 .form-group select,
 .form-group textarea {
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--re-colors-line);
   border-radius: 6px;
   font-size: 14px;
   transition: border-color 0.2s;
@@ -121,7 +121,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #374151;
+  border-color: var(--re-colors-ink);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -163,7 +163,7 @@
 }
 
 .tag {
-  background: #f0f0f0;
+  background: var(--re-colors-subtle);
   padding: 4px 10px;
   border-radius: 16px;
   font-size: 12px;
@@ -187,7 +187,7 @@
 }
 
 .tag-remove:hover {
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .task-form-advanced {
@@ -222,7 +222,7 @@
 }
 
 .task-form-advanced summary:hover {
-  color: #111827;
+  color: var(--re-colors-ink);
 }
 
 .form-actions {
@@ -235,7 +235,7 @@
 
 .save-btn,
 .form-actions .btn-primary {
-  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
+  background: linear-gradient(135deg, var(--re-colors-ink) 0%, var(--re-colors-muted) 100%);
   color: white;
   padding: 10px 30px;
   border: none;
@@ -254,10 +254,10 @@
 
 .cancel-btn,
 .form-actions .btn-secondary {
-  background: #f5f5f5;
-  color: #333;
+  background: var(--re-colors-subtle);
+  color: var(--re-colors-ink);
   padding: 10px 30px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--re-colors-line);
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;

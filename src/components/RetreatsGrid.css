@@ -16,17 +16,17 @@
 
 .retreats-header h2 {
   margin: 0;
-  color: #333;
+  color: var(--re-colors-ink);
   font-size: 32px;
   font-weight: 700;
-  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
+  background: linear-gradient(135deg, var(--re-colors-ink) 0%, var(--re-colors-muted) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
+  background: linear-gradient(135deg, var(--re-colors-ink) 0%, var(--re-colors-muted) 100%);
   color: white;
   padding: 12px 24px;
   border: none;
@@ -74,7 +74,7 @@
 }
 
 .edit-btn:hover {
-  background-color: #374151;
+  background-color: var(--re-colors-ink);
 }
 
 .delete-btn {
@@ -112,7 +112,7 @@
 .modal h3 {
   margin-top: 0;
   margin-bottom: 20px;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .form-group {
@@ -131,7 +131,7 @@
 .form-group textarea {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--re-colors-line);
   border-radius: 4px;
   font-size: 14px;
 }
@@ -168,7 +168,7 @@
 }
 
 .cancel-btn {
-  background-color: #6c757d;
+  background-color: var(--re-colors-muted);
   color: white;
 }
 

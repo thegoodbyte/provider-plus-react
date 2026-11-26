@@ -1,6 +1,6 @@
 .workflow-dashboard {
   padding: 24px;
-  background: #f8fafc;
+  background: var(--re-colors-canvas);
   min-height: 100%;
 }
 
@@ -28,7 +28,7 @@
 
 .workflow-header p {
   margin: 6px 0 0;
-  color: #475569;
+  color: var(--re-colors-muted);
   font-size: 14px;
 }
 
@@ -46,7 +46,7 @@
   padding: 10px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  background: #fff;
+  background: var(--re-colors-surface);
   color: #0f172a;
   font-size: 14px;
 }
@@ -81,7 +81,7 @@
 
 .workflow-stat-label {
   display: block;
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -96,7 +96,7 @@
 
 .workflow-stat-hint {
   margin-top: 6px;
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 13px;
 }
 
@@ -132,7 +132,7 @@
 
 .workflow-list-header span,
 .workflow-detail-header span {
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 13px;
 }
 
@@ -148,7 +148,7 @@
   gap: 12px;
   align-items: center;
   padding: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
@@ -161,13 +161,13 @@
 }
 
 .workflow-booking-row.active {
-  border-color: #374151;
+  border-color: var(--re-colors-ink);
   box-shadow: 0 0 0 1px rgba(55, 65, 81, 0.15);
 }
 
 .workflow-booking-number {
   font-weight: 700;
-  color: #374151;
+  color: var(--re-colors-ink);
 }
 
 .workflow-booking-client {
@@ -182,13 +182,13 @@
 
 .workflow-booking-client span,
 .workflow-booking-sub {
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 13px;
 }
 
 .workflow-progress {
   height: 8px;
-  background: #e2e8f0;
+  background: var(--re-colors-line);
   border-radius: 999px;
   overflow: hidden;
   margin-top: 8px;
@@ -208,8 +208,8 @@
 
 .workflow-tab {
   border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #334155;
+  background: var(--re-colors-surface);
+  color: var(--re-colors-ink);
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 13px;
@@ -218,9 +218,9 @@
 }
 
 .workflow-tab.active {
-  background: #374151;
-  color: #fff;
-  border-color: #374151;
+  background: var(--re-colors-ink);
+  color: var(--re-colors-surface);
+  border-color: var(--re-colors-ink);
 }
 
 .workflow-detail-grid {
@@ -230,7 +230,7 @@
 }
 
 .workflow-detail-item {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
   padding: 12px;
   min-width: 0;
@@ -244,7 +244,7 @@
 
 .workflow-detail-item p {
   margin: 0;
-  color: #475569;
+  color: var(--re-colors-muted);
   font-size: 13px;
   line-height: 1.45;
   word-break: break-word;
@@ -270,7 +270,7 @@
 .workflow-empty {
   padding: 24px;
   text-align: center;
-  color: #64748b;
+  color: var(--re-colors-muted);
 }
 
 .workflow-task-list,
@@ -282,7 +282,7 @@
 
 .workflow-task,
 .workflow-message {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
   padding: 12px 14px;
   display: flex;
@@ -304,7 +304,7 @@
 
 .workflow-task-meta,
 .workflow-message-meta {
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 13px;
   margin-top: 4px;
 }
@@ -365,5 +365,5 @@
   }
 }
 
-.workflow-load-warning { padding: 14px; margin: 12px 0; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #334155; }
+.workflow-load-warning { padding: 14px; margin: 12px 0; border: 1px solid #cbd5e1; border-radius: 8px; background: var(--re-colors-canvas); color: var(--re-colors-ink); }
 .workflow-load-warning button { margin-left: 12px; }

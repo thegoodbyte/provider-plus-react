@@ -12,7 +12,7 @@
 .searchable-select-input {
   width: 100%;
   padding: 8px 40px 8px 10px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--re-colors-line);
   border-radius: 4px;
   font-size: 13px;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -22,7 +22,7 @@
 
 .searchable-select-input:focus {
   outline: none;
-  border-color: #374151;
+  border-color: var(--re-colors-ink);
   box-shadow: 0 0 0 0.15rem rgba(0, 123, 255, 0.25);
 }
 
@@ -33,7 +33,7 @@
 .searchable-select-spinner {
   position: absolute;
   right: 30px;
-  color: #6c757d;
+  color: var(--re-colors-muted);
   animation: spin 1s linear infinite;
 }
 
@@ -42,7 +42,7 @@
   right: 30px;
   background: none;
   border: none;
-  color: #6c757d;
+  color: var(--re-colors-muted);
   cursor: pointer;
   font-size: 16px;
   font-weight: bold;
@@ -62,7 +62,7 @@
 .searchable-select-arrow {
   position: absolute;
   right: 8px;
-  color: #6c757d;
+  color: var(--re-colors-muted);
   font-size: 10px;
   pointer-events: none;
 }
@@ -73,7 +73,7 @@
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--re-colors-line);
   border-top: none;
   border-radius: 0 0 4px 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -84,7 +84,7 @@
 
 .searchable-select-no-options {
   padding: 12px 10px;
-  color: #6c757d;
+  color: var(--re-colors-muted);
   font-size: 12px;
   text-align: center;
   font-style: italic;
@@ -99,7 +99,7 @@
 .searchable-select-option {
   padding: 10px;
   cursor: pointer;
-  border-bottom: 1px solid #f8f9fa;
+  border-bottom: 1px solid var(--re-colors-canvas);
   transition: background-color 0.2s;
 }
 
@@ -108,23 +108,23 @@
 }
 
 .searchable-select-option:hover {
-  background-color: #f8f9fa;
+  background-color: var(--re-colors-canvas);
 }
 
 .searchable-select-option.selected {
-  background-color: #e9ecef;
+  background-color: var(--re-colors-subtle);
   font-weight: 500;
 }
 
 .option-label {
   font-size: 13px;
-  color: #333;
+  color: var(--re-colors-ink);
   margin-bottom: 2px;
 }
 
 .option-sublabel {
   font-size: 11px;
-  color: #6c757d;
+  color: var(--re-colors-muted);
   line-height: 1.3;
 }
 

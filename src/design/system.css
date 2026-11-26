@@ -51,3 +51,7 @@ input[data-re-input] { min-height:var(--re-controlHeight); border-radius:var(--r
 /* Named action adapters for older domain styles; status/event classes are excluded. */
 :is(.admin-workspace,.re-shell) :is(button,a):is(.btn-primary,.primary-button,.button-primary,.food-action.primary) { background:var(--re-colors-primary); border-color:var(--re-colors-primary); color:white; border-radius:var(--re-radius-control); }
 :is(.admin-workspace,.re-shell) :is(button,a):is(.btn-primary,.primary-button,.button-primary,.food-action.primary):hover:not(:disabled) { background:var(--re-colors-primaryHover); }
+:is(.admin-workspace,.re-shell) .task-workspace-tabs a[aria-current=page],
+:is(.admin-workspace,.re-shell) .tasks-view-toggle button.active,
+:is(.admin-workspace,.re-shell) .task-origin-bar button.active { background:var(--re-colors-primary); border-color:var(--re-colors-primary); color:white; }
+:is(.admin-workspace,.re-shell) .task-workspace-tabs a:not([aria-current]) { border-color:var(--re-colors-line); color:var(--re-colors-muted); }

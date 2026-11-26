@@ -14,17 +14,17 @@
   gap: 8px;
   padding: 10px 20px;
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid var(--re-colors-line);
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: #333;
+  color: var(--re-colors-ink);
   transition: all 0.2s;
 }
 
 .back-button:hover {
-  background: #f5f5f5;
-  border-color: #ccc;
+  background: var(--re-colors-subtle);
+  border-color: var(--re-colors-line);
 }
 
 .profile-content {
@@ -39,14 +39,14 @@
   align-items: center;
   gap: 20px;
   padding-bottom: 20px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--re-colors-subtle);
   margin-bottom: 30px;
 }
 
 .client-avatar {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
+  background: linear-gradient(135deg, var(--re-colors-ink) 0%, var(--re-colors-muted) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -61,11 +61,11 @@
 .client-info h1 {
   margin: 0 0 5px 0;
   font-size: 28px;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .client-number {
-  color: #666;
+  color: var(--re-colors-muted);
   font-size: 14px;
 }
 
@@ -90,13 +90,13 @@
 .stat-value {
   font-size: 20px;
   font-weight: 600;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .retreat-selector {
   margin-bottom: 30px;
   padding: 15px;
-  background: #f9f9f9;
+  background: var(--re-colors-canvas);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -112,7 +112,7 @@
   flex: 1;
   max-width: 400px;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--re-colors-line);
   border-radius: 6px;
   background: white;
   font-size: 14px;
@@ -124,7 +124,7 @@
 
 .medical-documents h2 {
   margin-bottom: 20px;
-  color: #333;
+  color: var(--re-colors-ink);
   font-size: 20px;
 }
 
@@ -135,7 +135,7 @@
 }
 
 .document-card {
-  background: #f9f9f9;
+  background: var(--re-colors-canvas);
   border: 1px solid #e0e0e0;
   border-radius: 10px;
   overflow: hidden;
@@ -154,7 +154,7 @@
   flex: 1;
   margin: 0;
   font-size: 16px;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .status-badge {
@@ -171,12 +171,12 @@
 }
 
 .status-badge.status-received {
-  background: #e5e7eb;
+  background: var(--re-colors-line);
   color: #004085;
 }
 
 .status-badge.status-reviewed {
-  background: #e5e7eb;
+  background: var(--re-colors-line);
   color: #0c5460;
 }
 
@@ -203,7 +203,7 @@
 
 .upload-date {
   margin: 0 0 10px 0;
-  color: #666;
+  color: var(--re-colors-muted);
   font-size: 14px;
 }
 
@@ -223,7 +223,7 @@
   padding: 12px;
   background: white;
   border-radius: 6px;
-  border-left: 3px solid #374151;
+  border-left: 3px solid var(--re-colors-ink);
 }
 
 .advisor-notes strong {
@@ -236,7 +236,7 @@
 
 .advisor-notes p {
   margin: 0;
-  color: #333;
+  color: var(--re-colors-ink);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -246,7 +246,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #374151;
+  background: var(--re-colors-ink);
   color: white;
   text-decoration: none;
   border-radius: 6px;
@@ -257,19 +257,19 @@
 }
 
 .view-document-btn:hover {
-  background: #111827;
+  background: var(--re-colors-ink);
 }
 
 .medical-info-section {
   margin-bottom: 40px;
   padding: 25px;
-  background: #f9f9f9;
+  background: var(--re-colors-canvas);
   border-radius: 10px;
 }
 
 .medical-info-section h2 {
   margin-bottom: 20px;
-  color: #333;
+  color: var(--re-colors-ink);
   font-size: 20px;
 }
 
@@ -294,7 +294,7 @@
 
 .info-block p {
   margin: 0;
-  color: #333;
+  color: var(--re-colors-ink);
   line-height: 1.6;
 }
 
@@ -307,19 +307,19 @@
 .medication-list li,
 .allergy-list li {
   margin: 5px 0;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .clearance-section {
   margin-bottom: 40px;
   padding: 25px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  background: linear-gradient(135deg, #f5f7fa 0%, var(--re-colors-subtle) 100%);
   border-radius: 10px;
 }
 
 .clearance-section h2 {
   margin-bottom: 20px;
-  color: #333;
+  color: var(--re-colors-ink);
   font-size: 20px;
 }
 
@@ -360,14 +360,14 @@
 
 .clearance-notes p {
   margin: 5px 0;
-  color: #333;
+  color: var(--re-colors-ink);
   line-height: 1.6;
 }
 
 .clearance-date {
   margin-top: 10px !important;
   font-size: 13px;
-  color: #666;
+  color: var(--re-colors-muted);
   font-style: italic;
 }
 
@@ -379,7 +379,7 @@
 
 .review-section h2 {
   margin-bottom: 20px;
-  color: #333;
+  color: var(--re-colors-ink);
   font-size: 20px;
 }
 
@@ -396,15 +396,15 @@
   gap: 8px;
   padding: 15px;
   background: white;
-  border: 2px solid #ddd;
+  border: 2px solid var(--re-colors-line);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .decision-option:hover {
-  border-color: #374151;
-  background: #f9fafb;
+  border-color: var(--re-colors-ink);
+  background: var(--re-colors-canvas);
 }
 
 .decision-option input[type="radio"] {
@@ -416,7 +416,7 @@
 }
 
 .decision-option input[type="radio"]:checked ~ svg {
-  color: #374151;
+  color: var(--re-colors-ink);
 }
 
 .review-notes {
@@ -433,7 +433,7 @@
 .review-notes textarea {
   width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--re-colors-line);
   border-radius: 6px;
   font-size: 14px;
   resize: vertical;
@@ -442,7 +442,7 @@
 
 .review-notes textarea:focus {
   outline: none;
-  border-color: #374151;
+  border-color: var(--re-colors-ink);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -453,7 +453,7 @@
 
 .submit-review-btn {
   padding: 12px 30px;
-  background: #374151;
+  background: var(--re-colors-ink);
   color: white;
   border: none;
   border-radius: 8px;
@@ -464,7 +464,7 @@
 }
 
 .submit-review-btn:hover:not(:disabled) {
-  background: #111827;
+  background: var(--re-colors-ink);
 }
 
 .submit-review-btn:disabled {
@@ -477,7 +477,7 @@
   text-align: center;
   padding: 60px 20px;
   font-size: 16px;
-  color: #666;
+  color: var(--re-colors-muted);
 }
 
 .error {

@@ -12,13 +12,13 @@
 
 .booking-document-types-header h1 {
   margin: 0 0 6px;
-  color: #111827;
+  color: var(--re-colors-ink);
   font-size: 28px;
 }
 
 .booking-document-types-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .booking-document-types-actions {
@@ -35,9 +35,9 @@
 
 .booking-document-type-row {
   padding: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--re-colors-surface);
   overflow: hidden;
 }
 
@@ -47,12 +47,12 @@
   justify-content: space-between;
   gap: 16px;
   padding: 14px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid var(--re-colors-line);
+  background: var(--re-colors-canvas);
 }
 
 .booking-document-type-title {
-  color: #111827;
+  color: var(--re-colors-ink);
   font-size: 17px;
   font-weight: 700;
 }
@@ -62,7 +62,7 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 6px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
   font-size: 12px;
   font-weight: 600;
 }
@@ -90,7 +90,7 @@
 
 .type-section {
   padding: 16px;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--re-colors-line);
 }
 
 .type-section:last-child {
@@ -102,12 +102,12 @@
 }
 
 .type-section:nth-child(-n + 2) {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--re-colors-line);
 }
 
 .type-section h2 {
   margin: 0 0 12px;
-  color: #374151;
+  color: var(--re-colors-ink);
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0;
@@ -138,10 +138,10 @@
 .booking-document-type-row select,
 .booking-document-type-row textarea {
   width: 100%;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--re-colors-line);
   border-radius: 6px;
   padding: 9px 10px;
-  color: #111827;
+  color: var(--re-colors-ink);
   font: inherit;
   font-size: 14px;
   font-weight: 400;
@@ -184,7 +184,7 @@
   flex-direction: row;
   align-items: center;
   width: fit-content;
-  color: #374151;
+  color: var(--re-colors-ink);
   font-size: 14px;
   font-weight: 600;
   text-transform: none;
@@ -196,9 +196,9 @@
 
 .empty-state {
   padding: 24px;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--re-colors-line);
   border-radius: 8px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
   text-align: center;
 }
 
@@ -216,7 +216,7 @@
 
   .type-section {
     border-right: 0;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--re-colors-line);
   }
 
   .type-section:last-child {

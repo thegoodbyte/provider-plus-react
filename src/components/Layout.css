@@ -2,7 +2,7 @@
 .layout {
   display: flex;
   height: 100vh;
-  background-color: #f8f9fa;
+  background-color: var(--re-colors-canvas);
   position: relative;
 }
 
@@ -34,13 +34,13 @@
   align-items: center;
   padding: 1rem 2rem;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--re-colors-line);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .app-header h1 {
   font-size: 1.5rem;
-  color: #333;
+  color: var(--re-colors-ink);
   margin: 0;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .currency-settings-btn {
-  background: #374151;
+  background: var(--re-colors-ink);
   color: white;
   border: none;
   padding: 8px 16px;
@@ -66,7 +66,7 @@
 }
 
 .currency-settings-btn:hover {
-  background: #111827;
+  background: var(--re-colors-ink);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
 }
@@ -78,7 +78,7 @@
 }
 
 .user-info span {
-  color: #666;
+  color: var(--re-colors-muted);
   font-size: 0.9rem;
 }
 
@@ -111,9 +111,9 @@
 .coming-soon h2 {
   font-size: 32px;
   font-weight: 700;
-  color: #333;
+  color: var(--re-colors-ink);
   margin-bottom: 16px;
-  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
+  background: linear-gradient(135deg, var(--re-colors-ink) 0%, var(--re-colors-muted) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -121,7 +121,7 @@
 
 .coming-soon p {
   font-size: 18px;
-  color: #666;
+  color: var(--re-colors-muted);
   margin: 0;
 }
 
@@ -207,7 +207,7 @@
 
 /* Focus management for accessibility */
 .main-content:focus-within {
-  outline: 2px solid #374151;
+  outline: 2px solid var(--re-colors-ink);
   outline-offset: -2px;
 }
 

@@ -164,7 +164,7 @@
 .medical-print-green { color: #166534; }
 .medical-print-yellow { color: #92400e; background: #fef3c7; }
 .medical-print-red { color: #b91c1c; background: #fee2e2; }
-.medical-print-neutral { color: #475569; }
+.medical-print-neutral { color: var(--re-colors-muted); }
 .medical-print-ekg { color: #b91c1c; }
 .medical-print-liver { color: #166534; }
 .medical-print-meds { color: #7e22ce; }

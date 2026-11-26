@@ -96,6 +96,14 @@ for (const width of [1440, 390])
       expect(
         await main.evaluate((x) => x.scrollWidth <= x.clientWidth + 1),
       ).toBe(true);
+      if (path === "tasks") {
+        await expect(
+          page.getByRole("link", { name: "Operational tasks", exact: true }),
+        ).toHaveCSS("background-color", "rgb(57, 78, 216)");
+        await expect(
+          page.getByRole("button", { name: "List", exact: true }),
+        ).toHaveCSS("background-color", "rgb(57, 78, 216)");
+      }
       await page.screenshot({
         path: info.outputPath(`${path}-${width}.png`),
         fullPage: true,

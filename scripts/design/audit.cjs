@@ -23,6 +23,23 @@ if (process.argv.includes("--baseline")) {
   fs.writeFileSync(baselinePath, JSON.stringify(rows, null, 2) + "\n");
   process.exit(0);
 }
+const postcss = require("postcss");
+const styles = scan(path.join(root, "src")).filter((f) => f.endsWith(".css"));
+const definitions = new Set();
+const references = [];
+for (const file of styles) {
+  const css = postcss.parse(fs.readFileSync(file, "utf8"), { from: file });
+  css.walkDecls((decl) => {
+    if (decl.prop.startsWith("--re-")) definitions.add(decl.prop);
+    for (const match of decl.value.matchAll(/var\((--re-[\w-]+)/g))
+      references.push({ file: path.relative(root, file), token: match[1] });
+  });
+}
+const unresolved = references.filter((ref) => !definitions.has(ref.token));
+if (unresolved.length) {
+  console.error("Undefined design tokens:", unresolved);
+  process.exitCode = 1;
+}
 const baseline = JSON.parse(fs.readFileSync(baselinePath, "utf8"));
 const growth = Object.entries(rows).filter(([f, n]) => n > (baseline[f] || 0));
 console.log(
@@ -31,6 +48,7 @@ console.log(
       legacyNativeButtons: Object.values(rows).reduce((a, b) => a + b, 0),
       files: Object.keys(rows).length,
       newOneOffButtons: growth,
+      unresolvedDesignTokens: unresolved,
     },
     null,
     2,

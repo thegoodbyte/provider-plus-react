@@ -30,7 +30,7 @@
 
 .booking-step-deadlines-header p {
   margin: 8px 0 0;
-  color: #64748b;
+  color: var(--re-colors-muted);
   max-width: 52rem;
 }
 
@@ -38,7 +38,7 @@
 .deadline-clear-btn,
 .deadline-link-button {
   border: 1px solid rgba(148, 163, 184, 0.35);
-  background: #fff;
+  background: var(--re-colors-surface);
   color: #0f172a;
   border-radius: 14px;
   display: inline-flex;
@@ -78,7 +78,7 @@
   border: 1px solid rgba(148, 163, 184, 0.25);
   border-radius: 18px;
   padding: 16px 18px;
-  background: #fff;
+  background: var(--re-colors-surface);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -95,7 +95,7 @@
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--re-colors-muted);
 }
 
 .booking-step-deadlines-filters {
@@ -123,7 +123,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #64748b;
+  color: var(--re-colors-muted);
 }
 
 .deadline-search {
@@ -133,7 +133,7 @@
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 14px;
   padding: 0 14px;
-  background: #fff;
+  background: var(--re-colors-surface);
   min-height: 48px;
 }
 
@@ -154,14 +154,14 @@
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 14px;
   padding: 0 14px;
-  background: #fff;
+  background: var(--re-colors-surface);
 }
 
 .booking-step-deadlines-table-shell {
   overflow: auto;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 18px;
-  background: #fff;
+  background: var(--re-colors-surface);
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
 }
 
@@ -183,8 +183,8 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--re-colors-canvas);
+  color: var(--re-colors-muted);
   font-size: 0.76rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -208,7 +208,7 @@
 .deadline-date-key,
 .deadline-step-meta {
   margin-top: 4px;
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 0.82rem;
 }
 
@@ -237,7 +237,7 @@
 .deadline-link-button:disabled {
   cursor: default;
   opacity: 0.7;
-  color: #64748b;
+  color: var(--re-colors-muted);
 }
 
 .deadline-link-button span,
@@ -251,12 +251,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #334155;
+  color: var(--re-colors-ink);
 }
 
 .deadline-notes {
   max-width: 280px;
-  color: #334155;
+  color: var(--re-colors-ink);
 }
 
 .deadline-status {
@@ -268,7 +268,7 @@
   font-size: 0.82rem;
   font-weight: 800;
   text-transform: capitalize;
-  background: #f8fafc;
+  background: var(--re-colors-canvas);
   color: #0f172a;
   border: 1px solid rgba(148, 163, 184, 0.18);
 }
@@ -308,7 +308,7 @@
 .deadline-loading {
   padding: 42px 20px;
   text-align: center;
-  color: #64748b;
+  color: var(--re-colors-muted);
 }
 
 .deadline-error {

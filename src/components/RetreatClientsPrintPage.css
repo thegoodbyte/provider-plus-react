@@ -1,6 +1,6 @@
 .retreat-client-print-page {
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--re-colors-subtle);
   padding: 24px;
 }
 
@@ -39,12 +39,12 @@
 
 .retreat-client-print-sheet:last-child { page-break-after: auto; }
 .retreat-client-print-sheet h1 { display: flex; align-items: baseline; gap: 12px; margin: 0 0 18px; text-align: left; font-size: 24px; font-weight: 800; letter-spacing: .04em; }
-.retreat-client-print-sheet h1::after { content: ''; flex: 1; border-bottom: 2px solid #111827; }
-.retreat-client-print-page-number { position: absolute; top: 30px; right: 24px; color: #64748b; font-size: 12px; }
+.retreat-client-print-sheet h1::after { content: ''; flex: 1; border-bottom: 2px solid var(--re-colors-ink); }
+.retreat-client-print-page-number { position: absolute; top: 30px; right: 24px; color: var(--re-colors-muted); font-size: 12px; }
 .retreat-client-print-sheet table { width: 100%; height: 680px; table-layout: fixed; border-collapse: collapse; }
 .retreat-client-print-sheet th,
-.retreat-client-print-sheet td { border: 1.5px solid #111827; padding: 8px; vertical-align: top; overflow-wrap: anywhere; }
-.retreat-client-print-sheet th { width: 13%; background: #f1f5f9; text-align: left; font-size: 13px; }
+.retreat-client-print-sheet td { border: 1.5px solid var(--re-colors-ink); padding: 8px; vertical-align: top; overflow-wrap: anywhere; }
+.retreat-client-print-sheet th { width: 13%; background: var(--re-colors-subtle); text-align: left; font-size: 13px; }
 .retreat-client-print-sheet td { font-size: 12px; }
 .retreat-client-print-name-row,
 .retreat-client-print-id-row { height: 1%; }

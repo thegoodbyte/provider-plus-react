@@ -9,7 +9,7 @@
 .client-edit-page label {
   display: block;
   margin-bottom: 6px;
-  color: #475569;
+  color: var(--re-colors-muted);
   font-size: 0.875rem;
   font-weight: 600;
 }
@@ -20,7 +20,7 @@
   width: 100%;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
-  background: #ffffff;
+  background: var(--re-colors-surface);
   color: #0f172a;
   font-size: 0.95rem;
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
@@ -29,7 +29,7 @@
 .client-edit-page input:focus,
 .client-edit-page select:focus,
 .client-edit-page textarea:focus {
-  border-color: #374151;
+  border-color: var(--re-colors-ink);
   box-shadow: 0 0 0 3px rgba(55, 65, 81, 0.12);
   outline: none;
 }

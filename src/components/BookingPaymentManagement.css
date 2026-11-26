@@ -16,14 +16,14 @@
 
 .payment-summary-header h3 {
   margin: 0;
-  color: #333;
+  color: var(--re-colors-ink);
   font-size: 20px;
 }
 
 .booking-payment-state { display:inline-flex; align-items:center; border-radius:999px; padding:7px 13px; font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
 .booking-payment-state.paid-in-full { background:#dcfce7; color:#166534; border:1px solid #86efac; }
 .booking-payment-state.partially-paid { background:#fef3c7; color:#92400e; border:1px solid #fcd34d; }
-.booking-payment-state.unpaid { background:#f3f4f6; color:#4b5563; border:1px solid #d1d5db; }
+.booking-payment-state.unpaid { background:var(--re-colors-subtle); color:#4b5563; border:1px solid var(--re-colors-line); }
 
 .add-payment-btn {
   width: 40px;
@@ -53,15 +53,15 @@
 }
 
 .summary-card {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: var(--re-colors-canvas);
+  border: 1px solid var(--re-colors-subtle);
   border-radius: 8px;
   padding: 16px;
   text-align: center;
 }
 
 .summary-card.total {
-  border-left: 4px solid #374151;
+  border-left: 4px solid var(--re-colors-ink);
 }
 
 .summary-card.paid {
@@ -82,7 +82,7 @@
 
 .card-label {
   font-size: 12px;
-  color: #6c757d;
+  color: var(--re-colors-muted);
   text-transform: uppercase;
   font-weight: 600;
   margin-bottom: 8px;
@@ -91,14 +91,14 @@
 .card-amount {
   font-size: 18px;
   font-weight: 700;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .card-subamount {
   margin-top: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .booking-currency-equivalent {
@@ -110,7 +110,7 @@
 
 .booking-currency-equivalent span {
   display: block;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .booking-currency-equivalent.missing {
@@ -119,8 +119,8 @@
 }
 
 .add-payment-form {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background: var(--re-colors-canvas);
+  border: 1px solid var(--re-colors-subtle);
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 24px;
@@ -129,7 +129,7 @@
 .add-payment-form h4 {
   margin-top: 0;
   margin-bottom: 20px;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .form-row {
@@ -146,7 +146,7 @@
 
 .form-group label {
   font-weight: 600;
-  color: #495057;
+  color: var(--re-colors-ink);
   margin-bottom: 6px;
   font-size: 14px;
 }
@@ -155,7 +155,7 @@
 .form-group select,
 .form-group textarea {
   padding: 10px 12px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--re-colors-line);
   border-radius: 4px;
   font-size: 14px;
   transition: border-color 0.15s ease-in-out;
@@ -170,7 +170,7 @@
 }
 
 .form-group input:disabled {
-  background-color: #e9ecef;
+  background-color: var(--re-colors-subtle);
   opacity: 1;
 }
 
@@ -182,7 +182,7 @@
 
 .usd-preview-info {
   margin: 8px 0 0;
-  color: #374151;
+  color: var(--re-colors-ink);
   font-size: 13px;
 }
 
@@ -209,7 +209,7 @@
 
 .cancel-btn {
   padding: 10px 20px;
-  background: #6c757d;
+  background: var(--re-colors-muted);
   color: white;
   border: none;
   border-radius: 4px;
@@ -236,13 +236,13 @@
 
 .payments-list h4 {
   margin: 0;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .no-payments {
   text-align: center;
   padding: 40px;
-  color: #6c757d;
+  color: var(--re-colors-muted);
 }
 
 .payments-table-container {
@@ -252,36 +252,36 @@
 .payments-table {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--re-colors-subtle);
   border-radius: 8px;
   overflow: hidden;
 }
 
 .payments-table th {
-  background: #f8f9fa;
+  background: var(--re-colors-canvas);
   padding: 10px;
   text-align: left;
   font-weight: 600;
-  color: #495057;
-  border-bottom: 1px solid #e9ecef;
+  color: var(--re-colors-ink);
+  border-bottom: 1px solid var(--re-colors-subtle);
   font-size: 13px;
   text-transform: uppercase;
 }
 
 .payments-table td {
   padding: 10px;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--re-colors-subtle);
   vertical-align: middle;
   white-space: nowrap;
 }
 
 .payments-table tr:hover {
-  background: #f8f9fa;
+  background: var(--re-colors-canvas);
 }
 
 .amount-cell {
   font-weight: 600;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .refunded-amount {
@@ -318,7 +318,7 @@
 
 .status-pending {
   background: #ffc107;
-  color: #333;
+  color: var(--re-colors-ink);
 }
 
 .status-failed {
@@ -327,7 +327,7 @@
 }
 
 .status-refunded {
-  background: #6c757d;
+  background: var(--re-colors-muted);
   color: white;
 }
 
@@ -340,7 +340,7 @@
 .refund-btn {
   padding: 6px 10px;
   background: #ffc107;
-  color: #333;
+  color: var(--re-colors-ink);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -355,8 +355,8 @@
 
 .edit-payment-btn {
   padding: 6px 10px;
-  background: #e5e7eb;
-  color: #111827;
+  background: var(--re-colors-line);
+  color: var(--re-colors-ink);
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -381,7 +381,7 @@
 }
 
 .edit-payment-btn:hover {
-  background: #d1d5db;
+  background: var(--re-colors-line);
 }
 
 .booking-payments-loading {
@@ -433,28 +433,28 @@
     grid-template-columns: 1fr;
   }
 }
-.booking-payment-requests { margin:18px 0; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; background:#fff; }
-.payment-requests-heading { display:flex; align-items:end; justify-content:space-between; gap:16px; padding:16px 18px; background:#f8fafc; border-bottom:1px solid #e2e8f0; }
+.booking-payment-requests { margin:18px 0; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; background:var(--re-colors-surface); }
+.payment-requests-heading { display:flex; align-items:end; justify-content:space-between; gap:16px; padding:16px 18px; background:var(--re-colors-canvas); border-bottom:1px solid var(--re-colors-line); }
 .payment-requests-heading h4,.payment-requests-heading p { margin:0; }
-.payment-requests-heading p,.payment-requests-empty { margin-top:5px; color:#64748b; }
+.payment-requests-heading p,.payment-requests-empty { margin-top:5px; color:var(--re-colors-muted); }
 .payment-request-create { display:flex; align-items:end; gap:8px; }
-.payment-request-create label,.booking-payment-request-row label { display:grid; gap:5px; color:#64748b; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+.payment-request-create label,.booking-payment-request-row label { display:grid; gap:5px; color:var(--re-colors-muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
 .booking-payment-requests input { padding:8px 10px; border:1px solid #cbd5e1; border-radius:7px; background:white; }
-.booking-payment-requests button { padding:8px 11px; border:1px solid #cbd5e1; border-radius:7px; background:white; color:#334155; font-weight:650; cursor:pointer; }
-.booking-payment-requests button:hover { border-color:#334155; }
+.booking-payment-requests button { padding:8px 11px; border:1px solid #cbd5e1; border-radius:7px; background:white; color:var(--re-colors-ink); font-weight:650; cursor:pointer; }
+.booking-payment-requests button:hover { border-color:var(--re-colors-ink); }
 .booking-payment-requests button:disabled { opacity:.55; cursor:not-allowed; }
-.payment-request-create button,.payment-request-actions button:first-child { background:#334155; border-color:#334155; color:white; }
-.payment-requests-empty { display:grid; gap:5px; padding:18px; border:1px dashed #d1d5db; color:#111827; }
+.payment-request-create button,.payment-request-actions button:first-child { background:var(--re-colors-ink); border-color:var(--re-colors-ink); color:white; }
+.payment-requests-empty { display:grid; gap:5px; padding:18px; border:1px dashed var(--re-colors-line); color:var(--re-colors-ink); }
 .payment-requests-empty span { color:#4b5563; font-size:12px; }
 .mobile-balance-request { display:none; }
-.booking-payment-request-row { display:grid; grid-template-columns:minmax(150px,1.2fr) minmax(110px,.7fr) minmax(145px,.8fr) minmax(100px,.7fr) minmax(100px,.7fr); gap:14px; align-items:center; padding:16px 18px; border-top:1px solid #e2e8f0; }
+.booking-payment-request-row { display:grid; grid-template-columns:minmax(150px,1.2fr) minmax(110px,.7fr) minmax(145px,.8fr) minmax(100px,.7fr) minmax(100px,.7fr); gap:14px; align-items:center; padding:16px 18px; border-top:1px solid var(--re-colors-line); }
 .booking-payment-request-row:first-of-type { border-top:0; }
 .booking-payment-request-row > div:not(.payment-request-actions):not(.payment-request-identity) { display:grid; gap:4px; }
-.booking-payment-request-row > div > span { color:#64748b; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+.booking-payment-request-row > div > span { color:var(--re-colors-muted); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
 .payment-request-identity { display:flex; flex-wrap:wrap; align-items:center; gap:7px; }
-.payment-request-identity small { flex-basis:100%; color:#64748b; text-transform:capitalize; }
-.payment-request-status { padding:3px 7px; border-radius:999px; background:#e2e8f0; font-size:10px; font-weight:800; text-transform:uppercase; }
-.payment-request-status.paid { background:#dcfce7; color:#166534; }.payment-request-status.overdue { background:#fee2e2; color:#b91c1c; }.payment-request-status.sent { background:#dbeafe; color:#1d4ed8; }.payment-request-status.cancelled { color:#64748b; }
+.payment-request-identity small { flex-basis:100%; color:var(--re-colors-muted); text-transform:capitalize; }
+.payment-request-status { padding:3px 7px; border-radius:999px; background:var(--re-colors-line); font-size:10px; font-weight:800; text-transform:uppercase; }
+.payment-request-status.paid { background:#dcfce7; color:#166534; }.payment-request-status.overdue { background:#fee2e2; color:#b91c1c; }.payment-request-status.sent { background:#dbeafe; color:#1d4ed8; }.payment-request-status.cancelled { color:var(--re-colors-muted); }
 .payment-request-actions { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:7px; padding-top:2px; }
 .payment-request-actions .cancel-request { color:#b91c1c; border-color:#fecaca; }
 @media (max-width: 900px) { .booking-payment-request-row { grid-template-columns:repeat(2,minmax(0,1fr)); }.payment-request-identity { grid-column:1/-1; } }
@@ -462,39 +462,39 @@
 
 /* Condensed booking payments workspace */
 .booking-payment-management { padding: 0; margin: 0; border-radius: 0; box-shadow: none; }
-.payment-summary-header { min-height: 82px; margin: 0; padding: 0 22px; border-bottom: 1px solid #111827; }
+.payment-summary-header { min-height: 82px; margin: 0; padding: 0 22px; border-bottom: 1px solid var(--re-colors-ink); }
 .payment-summary-title { display:grid; gap:7px; }
 .payment-summary-title > span { color:#4b5563; font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
-.payment-summary-header h3 { font-size: 22px; line-height:1; color: #111827; }
+.payment-summary-header h3 { font-size: 22px; line-height:1; color: var(--re-colors-ink); }
 .payment-header-actions { display:flex; align-items:center; gap:10px; }
-.record-payment-button { min-height:36px; padding:0 15px; border:1px solid #211f20; background:#211f20; color:#fff; font-weight:700; cursor:pointer; }
-.refresh-payments-button { min-height:36px; padding:0 14px; border:1px solid #d1d5db; background:#fff; color:#211f20; cursor:pointer; }
+.record-payment-button { min-height:36px; padding:0 15px; border:1px solid #211f20; background:#211f20; color:var(--re-colors-surface); font-weight:700; cursor:pointer; }
+.refresh-payments-button { min-height:36px; padding:0 14px; border:1px solid var(--re-colors-line); background:var(--re-colors-surface); color:#211f20; cursor:pointer; }
 .refresh-payments-button:disabled { opacity:.55; cursor:wait; }
-.booking-balance-summary { position: relative; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; margin: 18px 22px 22px; padding: 14px 18px 12px; border: 1px solid #d1d5db; border-left: 2px solid #dc2626; background: #fff; }
+.booking-balance-summary { position: relative; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; margin: 18px 22px 22px; padding: 14px 18px 12px; border: 1px solid var(--re-colors-line); border-left: 2px solid #dc2626; background: var(--re-colors-surface); }
 .booking-balance-summary.is-paid { border-left-color: #15803d; }
 .change-booking-price { align-self: flex-start; margin-top: 8px; border: 0; padding: 0; background: transparent; color: #075985; font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .booking-price-editor { display: grid; grid-template-columns: 1.5fr .7fr .55fr 1.3fr auto; align-items: end; gap: 14px; margin: -8px 22px 22px; padding: 16px 18px; border: 1px solid #7dd3fc; border-left: 3px solid #0284c7; background: #f0f9ff; }
 .booking-price-items { grid-column: 1 / -1; display: grid; gap: 9px; padding-top: 12px; border-top: 1px solid #bae6fd; }
 .booking-price-item { display: grid; grid-template-columns: 150px minmax(220px,1fr) 150px auto; gap: 8px; align-items: end; }
 .booking-price-item input,.booking-price-item select { margin-top: 0; }
-.booking-price-item button,.booking-price-add-actions button { min-height: 37px; border: 1px solid #94a3b8; padding: 8px 11px; background: white; color: #334155; font-weight: 700; }
+.booking-price-item button,.booking-price-add-actions button { min-height: 37px; border: 1px solid #94a3b8; padding: 8px 11px; background: white; color: var(--re-colors-ink); font-weight: 700; }
 .booking-price-add-actions { display: flex; gap: 8px; }
-.booking-price-editor p { margin: 4px 0 0; color: #475569; font-size: 12px; }
-.booking-price-editor label { color: #334155; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-.booking-price-editor input,.booking-price-editor select { display: block; width: 100%; margin-top: 5px; border: 1px solid #cbd5e1; padding: 9px 10px; background: white; color: #111827; font-size: 14px; font-weight: 400; text-transform: none; }
+.booking-price-editor p { margin: 4px 0 0; color: var(--re-colors-muted); font-size: 12px; }
+.booking-price-editor label { color: var(--re-colors-ink); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.booking-price-editor input,.booking-price-editor select { display: block; width: 100%; margin-top: 5px; border: 1px solid #cbd5e1; padding: 9px 10px; background: white; color: var(--re-colors-ink); font-size: 14px; font-weight: 400; text-transform: none; }
 .booking-price-actions { display: flex; gap: 8px; }
 .booking-price-actions button { border: 1px solid #94a3b8; padding: 9px 12px; background: white; font-weight: 700; white-space: nowrap; }
 .booking-price-actions button:last-child { border-color: #075985; background: #075985; color: white; }
-.booking-balance-metric { display: grid; gap: 6px; min-width: 0; padding: 0 22px; border-left: 1px solid #d1d5db; }
+.booking-balance-metric { display: grid; gap: 6px; min-width: 0; padding: 0 22px; border-left: 1px solid var(--re-colors-line); }
 .booking-balance-metric:first-child { padding-left: 0; border-left: 0; }
-.booking-balance-metric span { color: #6b7280; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
-.booking-balance-metric strong { color: #111827; font-size: 22px; line-height: 1.1; }
+.booking-balance-metric span { color: var(--re-colors-muted); font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.booking-balance-metric strong { color: var(--re-colors-ink); font-size: 22px; line-height: 1.1; }
 .booking-balance-metric.total strong { font-size: 34px; }
-.booking-balance-metric small { color: #6b7280; font-size: 12px; }
+.booking-balance-metric small { color: var(--re-colors-muted); font-size: 12px; }
 .booking-balance-summary.has-balance .booking-balance-metric.outstanding span,.booking-balance-summary.has-balance .booking-balance-metric.outstanding strong,.booking-balance-summary.has-balance .booking-balance-metric.outstanding small { color: #b91c1c; }
 .booking-balance-summary.is-paid .booking-balance-metric.outstanding span,.booking-balance-summary.is-paid .booking-balance-metric.outstanding strong,.booking-balance-summary.is-paid .booking-balance-metric.outstanding small { color: #166534; }
-.booking-payment-progress { grid-column: 1/-1; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 14px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; color: #374151; font-size: 12px; }
-.booking-payment-progress > div { height: 6px; overflow: hidden; background: #e5e7eb; }
+.booking-payment-progress { grid-column: 1/-1; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 14px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--re-colors-line); color: var(--re-colors-ink); font-size: 12px; }
+.booking-payment-progress > div { height: 6px; overflow: hidden; background: var(--re-colors-line); }
 .booking-payment-progress i { display: block; height: 100%; background: #166534; }
 .booking-payment-progress strong { white-space:nowrap; }
 .mobile-record-payment { display:none; }
@@ -503,16 +503,16 @@
 .payment-requests-heading { padding: 0 0 12px; border: 0; background: transparent; }
 .payment-requests-heading p { font-size: 12px; }
 .new-payment-request-link { margin-left: auto; padding: 0 !important; border: 0 !important; background: transparent !important; color: #075985 !important; text-decoration: underline; }
-.booking-payment-request-row { grid-template-columns: minmax(200px,1.3fr) minmax(125px,.75fr) minmax(105px,.65fr) minmax(105px,.65fr) auto; gap:10px; min-height:68px; padding: 9px 14px; border: 1px solid #d1d5db !important; border-left: 2px solid #a16207 !important; }
+.booking-payment-request-row { grid-template-columns: minmax(200px,1.3fr) minmax(125px,.75fr) minmax(105px,.65fr) minmax(105px,.65fr) auto; gap:10px; min-height:68px; padding: 9px 14px; border: 1px solid var(--re-colors-line) !important; border-left: 2px solid #a16207 !important; }
 .booking-payment-request-row + .booking-payment-request-row { margin-top: 10px; }
 .booking-payment-request-row input { width: 100%; min-width: 0; }
 .booking-payment-request-row label input { min-height: 34px; padding-top: 6px; padding-bottom: 6px; }
 .payment-request-actions { grid-column:auto; display:flex; flex-wrap:nowrap; justify-content:flex-end; align-items:center; margin:0; }
-.payment-request-actions .primary-request-action { margin-right: 2px; background: #211f20; border-color: #211f20; color: #fff; }
+.payment-request-actions .primary-request-action { margin-right: 2px; background: #211f20; border-color: #211f20; color: var(--re-colors-surface); }
 .payment-request-more { position:relative; }
 .payment-request-more summary { display:flex; align-items:center; justify-content:center; min-width:38px; min-height:36px; border:1px solid #cbd5e1; cursor:pointer; list-style:none; }
 .payment-request-more summary::-webkit-details-marker { display:none; }
-.payment-request-more > div { position:absolute; z-index:20; top:42px; right:0; display:grid; min-width:170px; padding:6px; border:1px solid #cbd5e1; background:#fff; box-shadow:0 8px 24px rgba(15,23,42,.15); }
+.payment-request-more > div { position:absolute; z-index:20; top:42px; right:0; display:grid; min-width:170px; padding:6px; border:1px solid #cbd5e1; background:var(--re-colors-surface); box-shadow:0 8px 24px rgba(15,23,42,.15); }
 .payment-request-more > div button { border:0; text-align:left; white-space:nowrap; }
 .payments-list { margin: 0 22px 20px; }
 .payment-history-header { padding-top: 2px; margin-bottom: 10px; }
@@ -521,7 +521,7 @@
 .mobile-history-add { display:none; padding:0; border:0; background:transparent; color:#075985; font-size:12px; text-decoration:underline; cursor:pointer; }
 .payments-table { border: 0; border-radius: 0; }
 .payments-table { table-layout:auto; font-size:12px; }
-.payments-table th { padding: 9px 7px; border-top: 1px solid #d1d5db; border-bottom-color: #9ca3af; background: transparent; font-size: 9px; letter-spacing: .1em; white-space:nowrap; }
+.payments-table th { padding: 9px 7px; border-top: 1px solid var(--re-colors-line); border-bottom-color: #9ca3af; background: transparent; font-size: 9px; letter-spacing: .1em; white-space:nowrap; }
 .payments-table td { padding: 12px 7px; font-size:12px; }
 .payments-table th:nth-child(8),.payments-table td:nth-child(8) { display:none; }
 .payments-table th:nth-child(1) { width:54px; }
@@ -533,7 +533,7 @@
 .payments-table th:nth-child(9) { width:142px; }
 .payment-actions { gap:6px; justify-content:flex-end; }
 .refund-btn,.edit-payment-btn,.delete-payment-btn,.view-payment-btn { min-height:32px; padding:5px 9px; font-size:11px; border-radius:0; }
-.view-payment-btn { border:1px solid #211f20; background:#211f20; color:#fff; font-weight:700; cursor:pointer; }
+.view-payment-btn { border:1px solid #211f20; background:#211f20; color:var(--re-colors-surface); font-weight:700; cursor:pointer; }
 
 @media (max-width: 760px) {
   .booking-payment-management { width:100%; }
@@ -556,7 +556,7 @@
   .booking-balance-metric strong { font-size: 16px; }
   .booking-payment-progress { grid-column:1/-1; grid-row:2; grid-template-columns:auto 1fr auto; margin-top:0; padding:10px 0; }
   .booking-payment-progress strong span { display:none; }
-  .mobile-record-payment { display:block; grid-column:1/-1; grid-row:4; min-height:38px; margin-top:12px; border:0; background:#211f20; color:#fff; font-weight:700; }
+  .mobile-record-payment { display:block; grid-column:1/-1; grid-row:4; min-height:38px; margin-top:12px; border:0; background:#211f20; color:var(--re-colors-surface); font-weight:700; }
   .booking-payment-requests,.payments-list { margin: 0 12px 20px; }
   .payment-requests-heading { align-items: center; flex-direction: row; }
   .payment-requests-heading p,.payment-request-create,.new-payment-request-link { display: none; }
@@ -571,7 +571,7 @@
   .payments-table-container { overflow: visible; }
   .payments-table,.payments-table tbody,.payments-table tr,.payments-table td { display: block; width: 100%; }
   .payments-table thead { display: none; }
-  .payments-table tr { position: relative; padding: 12px 10px; border: 1px solid #d1d5db; border-left:2px solid #15803d; }
+  .payments-table tr { position: relative; padding: 12px 10px; border: 1px solid var(--re-colors-line); border-left:2px solid #15803d; }
   .payments-table td { padding: 2px 0; border: 0; white-space: normal; font-size: 11px; }
   .payments-table td:nth-child(1),.payments-table td:nth-child(2),.payments-table td:nth-child(3),.payments-table td:nth-child(5),.payments-table td:nth-child(6) { display: inline; margin-right: 4px; }
   .payments-table td:nth-child(4),.payments-table td:nth-child(8) { display: none; }
@@ -590,7 +590,7 @@
 .authoritative-financial-summary { gap: 18px; }
 .authoritative-financial-summary .booking-balance-metric { grid-column: auto; grid-row: auto; padding: 0; border: 0; }
 .authoritative-financial-summary .booking-balance-metric strong,
-.authoritative-financial-summary .booking-balance-metric strong span { font-size: 22px; line-height: 1.3; letter-spacing: normal; text-transform: none; color: #111827; }
+.authoritative-financial-summary .booking-balance-metric strong span { font-size: 22px; line-height: 1.3; letter-spacing: normal; text-transform: none; color: var(--re-colors-ink); }
 .authoritative-financial-summary .financial-summary-state,
 .authoritative-financial-summary .financial-summary-reconciliation,
 .authoritative-financial-summary .mobile-record-payment { grid-column: 1 / -1; grid-row: auto; }
@@ -605,14 +605,14 @@
 }
 
 /* Request and transaction roles stay distinct without duplicating totals. */
-.booking-payment-explainer { margin: 16px 22px; padding: 12px 16px; border-radius: 10px; background: #f0f7f5; color: #334155; font-size: 13px; line-height: 1.6; }
+.booking-payment-explainer { margin: 16px 22px; padding: 12px 16px; border-radius: 10px; background: #f0f7f5; color: var(--re-colors-ink); font-size: 13px; line-height: 1.6; }
 .booking-payment-management .booking-balance-summary { border-left-color: #16736a; border-radius: 12px; }
 .booking-payment-management .booking-balance-metric.outstanding { text-align: left; }
-.booking-payment-management .booking-payment-request-row { border-left-color: #64748b !important; border-radius: 10px; grid-template-columns: minmax(170px,1.2fr) minmax(110px,.7fr) minmax(140px,.8fr) minmax(120px,.7fr) auto; }
+.booking-payment-management .booking-payment-request-row { border-left-color: var(--re-colors-muted) !important; border-radius: 10px; grid-template-columns: minmax(170px,1.2fr) minmax(110px,.7fr) minmax(140px,.8fr) minmax(120px,.7fr) auto; }
 .payment-record-link { color: #075985; text-decoration: underline; font-weight: 650; overflow-wrap: anywhere; }
 .payment-history-header > .payment-history-title { display: block !important; }
 .payment-history-title h4 { margin: 0; }
-.payment-history-title p { margin: 5px 0 0; color: #64748b; font-size: 12px; }
+.payment-history-title p { margin: 5px 0 0; color: var(--re-colors-muted); font-size: 12px; }
 .payment-record-more { position: relative; }
 .payment-record-more summary { display: flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; list-style: none; }
 .payment-record-more summary::-webkit-details-marker { display: none; }
@@ -651,12 +651,12 @@
 .booking-payment-management .payment-request-create { display: block; flex: 0 0 auto; }
 .payment-request-create summary { min-height: 40px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; color: #075985; font-size: 13px; font-weight: 650; cursor: pointer; }
 .payment-request-create[open] label { margin: 12px 0 8px; }
-.request-due-date time { color: #334155; font-size: 13px; }
+.request-due-date time { color: var(--re-colors-ink); font-size: 13px; }
 @media (max-width: 1150px) {
  .booking-payment-management .payments-table-container { overflow: visible; }
  .booking-payment-management .payments-table,.booking-payment-management .payments-table tbody,.booking-payment-management .payments-table tr,.booking-payment-management .payments-table td { display: block; width: 100%; }
  .booking-payment-management .payments-table thead { display: none; }
- .booking-payment-management .payments-table tr { position: relative; padding: 14px; margin-bottom: 12px; border: 1px solid #d1d5db; border-radius: 10px; }
+ .booking-payment-management .payments-table tr { position: relative; padding: 14px; margin-bottom: 12px; border: 1px solid var(--re-colors-line); border-radius: 10px; }
  .booking-payment-management .payments-table td { padding: 3px 0; border: 0; white-space: normal; }
  .booking-payment-management .payments-table td:nth-child(1) { display: block; padding-right: 115px; font-weight: 700; }
  .booking-payment-management .payments-table td:nth-child(2),.booking-payment-management .payments-table td:nth-child(3),.booking-payment-management .payments-table td:nth-child(5),.booking-payment-management .payments-table td:nth-child(6) { display: inline; margin-right: 6px; }

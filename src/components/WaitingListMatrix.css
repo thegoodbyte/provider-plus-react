@@ -1,11 +1,11 @@
 .empty-state {
   text-align: center;
   padding: 64px 24px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .empty-state svg {
-  color: #d1d5db;
+  color: var(--re-colors-line);
   margin-bottom: 16px;
 }
 
@@ -44,7 +44,7 @@
 }
 
 .waiting-list-client-cell small {
-  color: #6b7280;
+  color: var(--re-colors-muted);
   font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -94,17 +94,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--re-colors-line);
   border-radius: 4px;
   background: none;
   padding: 4px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .waiting-list-actions button:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--re-colors-subtle);
   border-color: #9ca3af;
 }
 
@@ -141,7 +141,7 @@
 .waiting-list-add-input input {
   width: 100%;
   padding: 10px 12px 10px 36px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--re-colors-line);
   border-radius: 8px;
   font-size: 14px;
   outline: none;
@@ -160,7 +160,7 @@
   z-index: 10;
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--re-colors-line);
   border-radius: 8px;
   background: white;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -170,7 +170,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--re-colors-subtle);
   padding: 12px 16px;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -181,7 +181,7 @@
 }
 
 .waiting-list-add-result:hover {
-  background-color: #f9fafb;
+  background-color: var(--re-colors-canvas);
 }
 
 .waiting-list-add-result > div {
@@ -193,17 +193,17 @@
 .waiting-list-add-name {
   font-weight: 500;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--re-colors-ink);
 }
 
 .waiting-list-add-email {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .waiting-list-add-loading {
   padding: 10px 0 0;
-  color: #6b7280;
+  color: var(--re-colors-muted);
   font-size: 13px;
   font-style: italic;
 }

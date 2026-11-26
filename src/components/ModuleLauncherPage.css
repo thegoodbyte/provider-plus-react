@@ -1,13 +1,13 @@
-.module-launcher-page { min-height: 100%; padding: 24px; background: #fff; }
+.module-launcher-page { min-height: 100%; padding: 24px; background: var(--re-colors-surface); }
 .module-launcher-header, .module-launcher-brand, .module-launcher-header-actions { display: flex; align-items: center; gap: 12px; }
 .module-launcher-header { justify-content: space-between; flex-wrap: wrap; margin-bottom: 24px; }
 .module-launcher-mark { width: 44px; height: 44px; flex-shrink: 0; }
 .module-launcher-mark img { width: 100%; height: 100%; object-fit: contain; }
 .module-launcher-brand h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
-.module-launcher-brand p, .launcher-area > p { margin: 4px 0 16px; color: #64748b; font-size: .9rem; }
-.module-launcher-role { font-size: .8rem; color: #64748b; }
-.module-launcher-edit-button, .module-launcher-save-button { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; background: #fff; color: #334155; font-weight: 600; }
-.module-launcher-editor { margin-bottom: 24px; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; background: #f8fafc; }
+.module-launcher-brand p, .launcher-area > p { margin: 4px 0 16px; color: var(--re-colors-muted); font-size: .9rem; }
+.module-launcher-role { font-size: .8rem; color: var(--re-colors-muted); }
+.module-launcher-edit-button, .module-launcher-save-button { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; background: var(--re-colors-surface); color: var(--re-colors-ink); font-weight: 600; }
+.module-launcher-editor { margin-bottom: 24px; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; background: var(--re-colors-canvas); }
 .module-launcher-editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 16px 0; }
 .module-launcher-editor-grid label { display: grid; gap: 4px; }
 .module-launcher-editor-grid select { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
@@ -15,12 +15,12 @@
 .launcher-area h2 { font-size: 1.15rem; font-weight: 700; color: #0f172a; }
 .launcher-setup { border-top: 1px solid #cbd5e1; padding-top: 24px; }
 .launcher-shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
-.launcher-shortcut { display: flex; align-items: flex-start; gap: 12px; min-height: 96px; min-width: 0; padding: 16px; text-align: left; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; color: #0f172a; }
-.launcher-shortcut:hover { border-color: #64748b; background: #f8fafc; }
+.launcher-shortcut { display: flex; align-items: flex-start; gap: 12px; min-height: 96px; min-width: 0; padding: 16px; text-align: left; border: 1px solid var(--re-colors-line); border-radius: 10px; background: var(--re-colors-surface); color: #0f172a; }
+.launcher-shortcut:hover { border-color: var(--re-colors-muted); background: var(--re-colors-canvas); }
 .launcher-shortcut:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
 .launcher-shortcut-icon { width: 22px; height: 22px; flex-shrink: 0; color: #0f766e; }
 .launcher-shortcut strong { display: block; font-size: .95rem; }
-.launcher-shortcut small { display: block; margin-top: 4px; color: #64748b; font-size: .8rem; line-height: 1.5; }
+.launcher-shortcut small { display: block; margin-top: 4px; color: var(--re-colors-muted); font-size: .8rem; line-height: 1.5; }
 @media (max-width: 600px) {
   .module-launcher-page { padding: 16px; }
   .module-launcher-header-actions { flex-wrap: wrap; }
@@ -33,7 +33,7 @@
   padding: 16px 18px;
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 16px;
-  background: #fff;
+  background: var(--re-colors-surface);
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
 }
 
@@ -64,11 +64,11 @@
 }
 
 .tasks-today-retreats button {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--re-colors-line);
   border-radius: 999px;
-  background: #f8fafc;
+  background: var(--re-colors-canvas);
   padding: 5px 11px;
-  color: #334155;
+  color: var(--re-colors-ink);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -157,7 +157,7 @@
 .tasks-today-item-retreat {
   flex-shrink: 0;
   margin-left: auto;
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
@@ -167,7 +167,7 @@
 
 .tasks-today-more {
   margin-top: 8px;
-  color: #64748b;
+  color: var(--re-colors-muted);
   font-size: 12px;
   font-weight: 600;
 }
@@ -179,13 +179,13 @@
 .launcher-eyebrow { display:block; color:#71867a; font-size:10px; font-weight:650; letter-spacing:.14em; margin-bottom:9px; }
 .module-launcher-brand h1 { font-size:36px; font-weight:650; letter-spacing:-.05em; line-height:1.2; }
 .module-launcher-brand p { margin:10px 0 0; font-size:14px; color:#65756f; }
-.module-launcher-role { padding:5px 10px; border:1px solid #dfe7e3; border-radius:7px; text-transform:capitalize; font-size:11px; background:#fff; }
+.module-launcher-role { padding:5px 10px; border:1px solid #dfe7e3; border-radius:7px; text-transform:capitalize; font-size:11px; background:var(--re-colors-surface); }
 .module-launcher-edit-button { background:transparent; border-color:#d9e3dc; border-radius:10px; font-size:12px; color:#52655a; font-weight:500; }
-.module-launcher-edit-button:hover { background:#fff; border-color:#a6beb0; }
+.module-launcher-edit-button:hover { background:var(--re-colors-surface); border-color:#a6beb0; }
 .launcher-directory-header { display:flex; align-items:center; justify-content:space-between; gap:20px; margin:32px 0 24px; }
 .launcher-directory-header h2 { font-size:21px; font-weight:600; color:#20332f; letter-spacing:-.035em; }
 .launcher-directory-header p { margin-top:5px; font-size:13px; color:#65756f; }
-.launcher-search { display:flex; align-items:center; gap:9px; padding:0 13px; border:1px solid #dfe7e3; border-radius:10px; background:#fff; width:260px; color:#7a8a80; }
+.launcher-search { display:flex; align-items:center; gap:9px; padding:0 13px; border:1px solid #dfe7e3; border-radius:10px; background:var(--re-colors-surface); width:260px; color:#7a8a80; }
 .launcher-search input { width:100%; min-width:0; border:0; outline:0; height:42px; background:transparent; font-size:13px; color:#20332f; }
 .launcher-search:focus-within { border-color:#176b5b; box-shadow:0 0 0 3px #176b5b12; }
 .launcher-area { margin:0; }
@@ -193,7 +193,7 @@
 .launcher-group > h3 { margin-bottom:12px; color:#6a7e71; font-size:11px; font-weight:650; text-transform:uppercase; letter-spacing:.09em; }
 .launcher-shortcuts { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
 .launcher-shortcut { position:relative; align-items:center; min-height:110px; padding:20px 16px; gap:14px; border-radius:14px; border-color:#dfe7e3; color:#20332f; box-shadow:0 2px 4px #20332f02; transition:transform 180ms ease,border-color 180ms ease,box-shadow 180ms ease,background-color 180ms ease; }
-.launcher-shortcut:hover { background:#fff; border-color:#a4c4b2; transform:translateY(-2px); box-shadow:0 8px 24px #20332f08; }
+.launcher-shortcut:hover { background:var(--re-colors-surface); border-color:#a4c4b2; transform:translateY(-2px); box-shadow:0 8px 24px #20332f08; }
 .launcher-shortcut:focus-visible { outline-color:#176b5b; }
 .launcher-shortcut > span:not(.launcher-icon-wrap) { min-width:0; padding-right:7px; }
 .launcher-shortcut strong { font-size:14px; line-height:1.4; font-weight:600; letter-spacing:-.02em; }
@@ -208,15 +208,15 @@
 .launcher-setup { padding-top:24px; margin-top:8px; border-color:#dfe7e3; }
 .launcher-setup > h2 { font-size:20px; font-weight:600; letter-spacing:-.03em; color:#20332f; }
 .launcher-setup > p { font-size:13px; color:#65756f; }
-.launcher-empty { padding:24px; border:1px dashed #bccdc2; border-radius:12px; color:#65756f; font-size:14px; background:#fff; }
+.launcher-empty { padding:24px; border:1px dashed #bccdc2; border-radius:12px; color:#65756f; font-size:14px; background:var(--re-colors-surface); }
 .tasks-today-panel { padding:20px 22px; border:1px solid #d5e6db; border-radius:16px; background:#edf5ef; box-shadow:none; }
 .tasks-today-title { font-size:12px; font-weight:600; color:#2d6851; letter-spacing:.035em; text-transform:none; }
 .tasks-today-clear { font-size:13px; font-weight:400; color:#4f7661; }
-.module-launcher-editor { border-color:#dfe7e3; border-radius:16px; background:#fff; }
+.module-launcher-editor { border-color:#dfe7e3; border-radius:16px; background:var(--re-colors-surface); }
 .module-launcher-editor h2 { font-size:18px; font-weight:600; }
 .module-launcher-editor p { font-size:13px; color:#65756f; }
 .module-launcher-editor label { font-size:13px; }
-.module-launcher-save-button { border-color:#176b5b; background:#176b5b; color:#fff; }
+.module-launcher-save-button { border-color:#176b5b; background:#176b5b; color:var(--re-colors-surface); }
 @media(min-width:1600px) { .launcher-shortcuts { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media(max-width:1199px) { .launcher-shortcuts { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:767px) {

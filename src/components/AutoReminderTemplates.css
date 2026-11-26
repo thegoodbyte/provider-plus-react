@@ -56,12 +56,12 @@
 }
 
 .refresh-btn {
-  background: #374151;
+  background: var(--re-colors-ink);
   color: white;
 }
 
 .refresh-btn:hover {
-  background: #111827;
+  background: var(--re-colors-ink);
   transform: translateY(-1px);
 }
 
@@ -129,7 +129,7 @@
 .template-form-grid select:focus,
 .template-form-grid textarea:focus {
   outline: none;
-  border-color: #374151;
+  border-color: var(--re-colors-ink);
 }
 
 .template-form-grid input[type="checkbox"] {
@@ -170,7 +170,7 @@
 }
 
 .action-buttons .toggle-btn:hover {
-  background: #374151;
+  background: var(--re-colors-ink);
 }
 
 .action-buttons .delete-btn:hover {

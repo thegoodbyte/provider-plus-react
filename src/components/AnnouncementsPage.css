@@ -129,7 +129,7 @@
   position: relative;
   border: 1px solid #dce5e9;
   border-radius: 12px;
-  background: #fff;
+  background: var(--re-colors-surface);
   padding: 20px;
 }
 .announcement-timeline article:before {
@@ -137,7 +137,7 @@
   position: absolute;
   left: -21px;
   top: 20px;
-  border: 4px solid #fff;
+  border: 4px solid var(--re-colors-surface);
   border-radius: 50%;
   width: 12px;
   height: 12px;
@@ -159,7 +159,7 @@
 }
 .announcement-paused .announcement-badge {
   background: #f1f3f5;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 .announcement-actions {
   display: flex;
@@ -256,7 +256,7 @@
   padding: 11px;
   border: 1px solid #becbd4;
   border-radius: 7px;
-  background: #fff;
+  background: var(--re-colors-surface);
   min-width: 0;
   width: 100%;
   box-sizing: border-box;

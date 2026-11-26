@@ -1,7 +1,7 @@
 .integration-calendar {
   padding: 20px;
   color: #263238;
-  background: #fff;
+  background: var(--re-colors-surface);
   border-radius: 16px;
 }
 .integration-calendar > header {

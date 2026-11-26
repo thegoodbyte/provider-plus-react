@@ -12,7 +12,7 @@
   box-sizing: border-box;
   overflow: hidden;
   padding: 16px;
-  background: #f3f4f6;
+  background: var(--re-colors-subtle);
 }
 
 .medical-grid-fullscreen .medical-grid-table-wrap {
@@ -31,21 +31,21 @@
   justify-content: space-between;
   gap: 16px;
   padding: 16px 18px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--re-colors-surface);
 }
 
 .medical-grid-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  color: var(--re-colors-ink);
 }
 
 .medical-grid-header p {
   margin: 4px 0 0;
-  color: #6b7280;
+  color: var(--re-colors-muted);
   font-size: 13px;
 }
 
@@ -53,9 +53,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #111827;
+  border: 1px solid var(--re-colors-line);
+  background: var(--re-colors-surface);
+  color: var(--re-colors-ink);
   border-radius: 10px;
   padding: 10px 14px;
   font-size: 14px;
@@ -64,7 +64,7 @@
 }
 
 .medical-grid-refresh-btn:hover {
-  background: #f9fafb;
+  background: var(--re-colors-canvas);
 }
 
 .medical-grid-summary {
@@ -74,16 +74,16 @@
 }
 
 .medical-grid-summary-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 12px;
-  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  background: linear-gradient(180deg, var(--re-colors-surface) 0%, var(--re-colors-canvas) 100%);
   padding: 14px 16px;
 }
 
 .medical-grid-summary-value {
   font-size: 24px;
   font-weight: 800;
-  color: #111827;
+  color: var(--re-colors-ink);
   line-height: 1.1;
 }
 
@@ -92,7 +92,7 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .medical-grid-desktop {
@@ -101,9 +101,9 @@
 
 .medical-grid-table-wrap {
   overflow: auto;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--re-colors-surface);
 }
 
 .medical-grid-table {
@@ -117,8 +117,8 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--re-colors-canvas);
+  border-bottom: 1px solid var(--re-colors-line);
 }
 
 .medical-row-header {
@@ -129,7 +129,7 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .medical-client-header {
@@ -201,7 +201,7 @@
   min-width: 180px;
   padding: 16px;
   border-right: 1px solid #eef2f7;
-  background: #f9fafb;
+  background: var(--re-colors-canvas);
   vertical-align: top;
 }
 
@@ -226,27 +226,27 @@
 .medical-row-title {
   font-size: 15px;
   font-weight: 800;
-  color: #111827;
+  color: var(--re-colors-ink);
 }
 
 .medical-row-subtitle {
   margin-top: 2px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .medical-grid-cell-td {
   vertical-align: top;
   padding: 12px;
   border-left: 1px solid #eef2f7;
-  background: #ffffff;
+  background: var(--re-colors-surface);
 }
 
 .medical-cell {
   height: 100%;
   min-height: 162px;
   border-radius: 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -266,7 +266,7 @@
   flex: 1 1 auto;
   font-size: 14px;
   font-weight: 800;
-  color: #111827;
+  color: var(--re-colors-ink);
 }
 
 .medical-cell-empty {
@@ -307,8 +307,8 @@
 }
 
 .medical-cell-neutral {
-  border-color: #e5e7eb;
-  background: #f8fafc;
+  border-color: var(--re-colors-line);
+  background: var(--re-colors-canvas);
 }
 
 .medical-cell-green .medical-status-pill {
@@ -334,13 +334,13 @@
 
 .medical-cell-subline {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
 }
 
 .medical-cell-notes {
   min-height: 54px;
   font-size: 13px;
-  color: #111827;
+  color: var(--re-colors-ink);
   line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -367,7 +367,7 @@
   padding: 7px 11px;
   border-radius: 8px;
   background: #1d4ed8;
-  color: #ffffff;
+  color: var(--re-colors-surface);
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
@@ -376,7 +376,7 @@
 
 .medical-cell-create-mrr:hover {
   background: #1e40af;
-  color: #ffffff;
+  color: var(--re-colors-surface);
   text-decoration: none;
 }
 
@@ -404,11 +404,11 @@
 }
 
 .medical-grid-empty {
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--re-colors-line);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--re-colors-surface);
   padding: 32px;
-  color: #6b7280;
+  color: var(--re-colors-muted);
   text-align: center;
 }
 
@@ -419,9 +419,9 @@
 }
 
 .medical-mobile-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--re-colors-line);
   border-radius: 16px;
-  background: #ffffff;
+  background: var(--re-colors-surface);
   padding: 14px;
   overflow: hidden;
 }
@@ -458,7 +458,7 @@
   gap: 8px;
   font-size: 13px;
   font-weight: 800;
-  color: #111827;
+  color: var(--re-colors-ink);
 }
 
 @media (max-width: 900px) {
