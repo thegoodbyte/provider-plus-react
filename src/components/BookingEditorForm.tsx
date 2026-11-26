@@ -183,6 +183,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
+  const initializedCreateSeed = useRef<string | null>(null);
   const [bookingNumberError, setBookingNumberError] = useState('');
   const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | undefined>();
   const [cancellationReason, setCancellationReason] = useState('');
@@ -256,6 +257,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       setCancellationNotes(currentBooking?.cancellationNotes || '');
 
       if (currentBooking) {
+        initializedCreateSeed.current = null;
         setFormData({
           referralAttribution: (currentBooking.referralAttribution || 'inherit') as BookingFormData['referralAttribution'],
           referralPartnerId: currentBooking.referralPartnerId || '',
@@ -286,7 +288,16 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         const initial = { ...emptyForm(), ...initialBookingData };
         const schedule = initial.bookingType === BookingType.BOOSTER
           ? {checkInDate:'',checkOutDate:''} : retreatBookingDateTimes((retreatsResponse.data || []).find((retreat: Retreat) => retreat._id === initial.retreatId));
-        setFormData({
+        const seed = JSON.stringify(initial);
+        const sameContext = initializedCreateSeed.current === seed;
+        initializedCreateSeed.current = seed;
+        // Equivalent prop references can refresh while a staff member edits.
+        // Preserve their agreement; a real client/request/prefill change gets a new seed.
+        setFormData(prev => sameContext ? {
+          ...prev,
+          checkInDate: prev.checkInDate || schedule.checkInDate || '',
+          checkOutDate: prev.checkOutDate || schedule.checkOutDate || '',
+        } : {
           ...initial,
           checkInDate: initial.checkInDate || schedule.checkInDate || '',
           checkOutDate: initial.checkOutDate || schedule.checkOutDate || '',
@@ -331,6 +342,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   }, [formData.retreatId, mode]);
 
   useEffect(() => {
+    // Initialization can rerun with the same linked request. Wait until its
+    // client/context is committed, then fill only its still-empty agreement.
+    if (loading) return;
     if (!formData.paymentRequestId) {
       setSelectedRequest(undefined);
       return;
@@ -355,7 +369,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       })
       .catch(() => { if (active) setSelectedRequest(undefined); });
     return () => { active = false; };
-  }, [formData.paymentRequestId, mode]);
+  }, [loading, formData.paymentRequestId, mode]);
 
   const resolveId = (value: any) => {
     if (!value) return '';

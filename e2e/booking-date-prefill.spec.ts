@@ -7,6 +7,8 @@ test.skip(
   "Use scripts/run-paid-request-booking-e2e.cjs for the required no-skip real Mongo/API journey.",
 );
 test.describe.configure({ mode: "serial" });
+// This real API/Mongo journey includes two bookings, multiple page loads and teardown.
+test.setTimeout(90_000);
 test.use({ timezoneId: "America/Los_Angeles" });
 for (const width of [1440, 390])
   for (const entry of ["request", "scratchpad"])
@@ -29,6 +31,12 @@ for (const width of [1440, 390])
         );
       }, f.tokens.admin);
       const writes: string[] = [];
+      const goto = async (url: string) => {
+        // Finish current proxy reads before replacing their document/context.
+        if (page.url() !== "about:blank")
+          await page.waitForLoadState("networkidle");
+        await page.goto(url);
+      };
       await page.route("**/*", async (route) => {
         const req = route.request(),
           url = new URL(req.url());
@@ -52,7 +60,20 @@ for (const width of [1440, 390])
           const response = await route.fetch({
             url: f.url + url.pathname + url.search,
           });
-          return route.fulfill({ response });
+          try {
+            return await route.fulfill({ response });
+          } catch (error) {
+            console.error(
+              "BOOKING_PROXY_DIAGNOSTIC",
+              JSON.stringify({
+                url: url.pathname,
+                method: req.method(),
+                failure: req.failure(),
+                pageClosed: page.isClosed(),
+              }),
+            );
+            throw error;
+          }
         }
         if (req.method() !== "GET") return route.abort();
         if (url.pathname === "/room-inventory/options")
@@ -85,9 +106,7 @@ for (const width of [1440, 390])
           return route.fulfill({ json: {} });
         return route.fulfill({ json: [] });
       });
-      await page.goto(
-        "/admin/payments/scratchpad/" + ids.receipts[0] + "?match=1",
-      );
+      await goto("/admin/payments/scratchpad/" + ids.receipts[0] + "?match=1");
       await expect(
         page.getByRole("button", { name: "Confirm payment from scratchpad" }),
       ).toBeEnabled();
@@ -106,6 +125,7 @@ for (const width of [1440, 390])
       expect(saved.bookings).toHaveLength(0);
       expect(saved.payments).toHaveLength(before.payments.length + 1);
       expect(saved.requests).toHaveLength(before.requests.length);
+      await page.waitForLoadState("networkidle");
       await page.reload();
       await expect(
         next.getByRole("link", { name: "Create booking", exact: true }),
@@ -114,7 +134,7 @@ for (const width of [1440, 390])
         path: `${process.env.PAID_BOOKING_ARTIFACT_DIR || "test-results"}/next-${width}.png`,
       });
       if (entry === "request") {
-        await page.goto("/admin/payment-requests/" + ids.requests[0]);
+        await goto("/admin/payment-requests/" + ids.requests[0]);
         await page
           .getByRole("link", { name: "Create booking", exact: true })
           .click();
@@ -149,6 +169,7 @@ for (const width of [1440, 390])
       await page.screenshot({
         path: `${process.env.PAID_BOOKING_ARTIFACT_DIR || "test-results"}/dates-${entry}-${width}.png`,
       });
+      await page.waitForLoadState("networkidle");
       const room = page.getByRole("combobox", { name: /^Accommodation/ });
       await expect(room).toHaveValue("shared");
       if (width === 390) await room.selectOption("private");
@@ -156,9 +177,15 @@ for (const width of [1440, 390])
         .getByRole("button", { name: "Add Booking", exact: true })
         .click();
       await expect.poll(async () => (await snapshot()).bookings.length).toBe(1);
-    await expect(page).toHaveURL(/bookings\/[a-f\d]{24}$/);
+      await expect(page).toHaveURL(/bookings\/[a-f\d]{24}$/);
       saved = await snapshot();
       let booking = saved.bookings[0];
+      await expect(
+        page.getByRole("heading", {
+          name: `Booking #${booking.bookingNumber}`,
+          exact: true,
+        }),
+      ).toBeVisible();
       expect(booking.roomType).toBe(width === 390 ? "private" : "shared");
       expect(booking.totalAmount).toBe(2500);
       expect(booking.checkInDate).toBe(expectedDates.start);
@@ -170,10 +197,14 @@ for (const width of [1440, 390])
       expect(persisted.checkOutDate).toBe(expectedDates.end);
       expect(booking.amountPaid).toBe(1000);
       expect(booking.paymentPlanEnabled).toBe(true);
-      await expect.poll(async () => (await snapshot()).requests.length).toBe(before.requests.length + 1);
+      await expect
+        .poll(async () => (await snapshot()).requests.length)
+        .toBe(before.requests.length + 1);
       saved = await snapshot();
       booking = saved.bookings.find((b: any) => b._id === booking._id);
-      const balance = saved.requests.find((r: any) => r.requestType === "balance");
+      const balance = saved.requests.find(
+        (r: any) => r.requestType === "balance",
+      );
       expect(balance.bookingId).toBe(booking._id);
       expect(balance.requestedAmount).toBe(1500);
       expect(saved.payments).toHaveLength(before.payments.length + 1);
@@ -189,7 +220,7 @@ for (const width of [1440, 390])
       await expect(page).toHaveURL(
         new RegExp("/bookings/" + booking._id + "$"),
       );
-      await page.goto("/admin/payments/scratchpad/" + ids.receipts[0]);
+      await goto("/admin/payments/scratchpad/" + ids.receipts[0]);
       await expect(
         next.getByRole("link", { name: "Open booking", exact: true }),
       ).toHaveAttribute("href", "/admin/bookings/" + booking._id);
@@ -208,7 +239,7 @@ for (const width of [1440, 390])
         totalAmount: "2500",
         paymentPlanEnabled: "false",
       });
-      await page.goto("/admin/bookings/new?" + siblingQuery);
+      await goto("/admin/bookings/new?" + siblingQuery);
       await expect(page.getByLabel("Arrival", { exact: true })).toHaveValue(
         "2099-01-01T00:00",
       );
@@ -237,9 +268,12 @@ for (const width of [1440, 390])
       expect(siblings.emails).toEqual([]);
       expect(writes.filter((v) => v === "POST /bookings")).toHaveLength(2);
       expect(writes.filter((v) => /^POST \/payments/.test(v))).toHaveLength(0);
+      await expect(page).toHaveURL(/bookings\/[a-f\d]{24}$/);
+      await page.waitForLoadState("networkidle");
     });
 
 // Drain real API proxy requests before Playwright disposes its HTTP context.
 test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: "wait" });
+  await page.close();
 });

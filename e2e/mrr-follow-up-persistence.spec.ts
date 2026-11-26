@@ -5,6 +5,9 @@ test("follow-up persists through the real local API, MongoDB and Home", async ({
   page,
   request,
 }) => {
+  // Include real Mongo/Nest setup, several navigations and drained proxy teardown.
+  // Keep every permission, isolation and immutable-state assertion unchanged.
+  test.setTimeout(90_000);
   const root = path.resolve(process.env.TEST_API_CHECKOUT || "../api");
   const f = await require(
     path.join(root, "test/medical-review-workspace.fixture.cjs"),
@@ -49,6 +52,10 @@ test("follow-up persists through the real local API, MongoDB and Home", async ({
       const q = route.request(),
         u = new URL(q.url());
       if (!["xhr", "fetch"].includes(q.resourceType())) return route.continue();
+      // Outbound notifications are captured, so this fixture has no sent-message
+      // history. Follow-up/queue/assistant/audit persistence stays on the real API.
+      if (q.method() === 'GET' && u.pathname.endsWith('/client-messages'))
+        return route.fulfill({json:{messages:[],skippedNotifications:[]}});
       if (
         u.pathname.startsWith("/medical-review-requests") ||
         u.pathname.startsWith("/assistant/")
@@ -129,6 +136,7 @@ test("follow-up persists through the real local API, MongoDB and Home", async ({
   } finally {
     // Drain pending proxy responses before their real local API closes.
     await page.unrouteAll({ behavior: "wait" });
+    await page.close();
     await f.close();
   }
 });

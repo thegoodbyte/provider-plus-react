@@ -84,3 +84,31 @@ it('keeps custom departure while filling arrival and resolves a number-only boos
  const view=createWithDates({checkOutDate:'2028-03-08T10:00'});expect(await screen.findByLabelText('Arrival')).toHaveValue('2028-02-29T18:30');expect(screen.getByLabelText('Departure')).toHaveValue('2028-03-08T10:00');view.unmount();
  (ceremoniesApi.getByRetreat as jest.Mock).mockResolvedValue({data:[{_id:'ceremony',date:'2028-03-03'}]});createWithDates({bookingType:'booster',ceremonyNumber:'1'});await waitFor(()=>expect(screen.getByLabelText('Arrival')).toHaveValue('2028-03-02T00:00'));expect(screen.queryByText(/doesn't have a ceremony record/)).not.toBeInTheDocument();
 });
+
+it('restores its own request accommodation after same-context initialization completes again',async()=>{
+ (roomInventoryApi.options as jest.Mock).mockResolvedValue({data:roomOptions});
+ (paymentRequestsApi.getOne as jest.Mock).mockResolvedValue({data:{_id:'old-request',clientId:'client',roomType:'shared',accommodationKey:'shared'}});
+ const initial={clientId:'client',retreatId:'retreat',paymentRequestId:'old-request',totalAmount:2500};
+ const retreats=[{_id:'retreat',name:'Current Retreat'} as any];
+ const view=render(<BookingEditorForm mode="create" initialBookingData={initial} initialRetreats={retreats} onSaved={jest.fn()} onCancel={jest.fn()}/>);
+ await waitFor(()=>expect(screen.getByRole('combobox',{name:/^Accommodation/})).toHaveValue('shared'));
+ view.rerender(<BookingEditorForm mode="create" initialBookingData={{...initial}} initialRetreats={retreats} onSaved={jest.fn()} onCancel={jest.fn()}/>);
+ await waitFor(()=>expect(screen.getByRole('combobox',{name:/^Accommodation/})).toHaveValue('shared'));
+});
+it('preserves an explicit staff agreement when equivalent create props refresh',async()=>{
+ (roomInventoryApi.options as jest.Mock).mockResolvedValue({data:roomOptions});
+ (paymentRequestsApi.getOne as jest.Mock).mockResolvedValue({data:{_id:'old-request',clientId:'client',roomType:'shared',accommodationKey:'shared'}});
+ const initial={clientId:'client',retreatId:'retreat',paymentRequestId:'old-request',totalAmount:2500};const retreats=[{_id:'retreat',name:'Current Retreat'} as any];
+ const props={mode:'create' as const,initialBookingData:initial,initialRetreats:retreats,onSaved:jest.fn(),onCancel:jest.fn()};
+ const view=render(<BookingEditorForm {...props}/>);const field=await screen.findByRole('combobox',{name:/^Accommodation/});await waitFor(()=>expect(field).toHaveValue('shared'));fireEvent.change(field,{target:{value:'private'}});
+ fireEvent.change(screen.getByLabelText('Departure'),{target:{value:'2099-01-09T10:00'}});
+ view.rerender(<BookingEditorForm {...props} initialBookingData={{...initial}}/>);await screen.findByRole('button',{name:'Add Booking'});
+ await waitFor(()=>expect(screen.getByRole('combobox',{name:/^Accommodation/})).toHaveValue('private'));expect(screen.getByLabelText('Departure')).toHaveValue('2099-01-09T10:00');
+});
+it('resets the agreement for an actual client/request context change instead of carrying a sibling choice',async()=>{
+ (roomInventoryApi.options as jest.Mock).mockResolvedValue({data:roomOptions});
+ (paymentRequestsApi.getOne as jest.Mock).mockImplementation(id=>Promise.resolve({data:{_id:id,clientId:id==='new-request'?'second-client':'client',roomType:'shared',accommodationKey:'shared'}}));
+ const initial={clientId:'client',retreatId:'retreat',paymentRequestId:'old-request',totalAmount:2500};const retreats=[{_id:'retreat',name:'Current Retreat'} as any];const props={mode:'create' as const,initialBookingData:initial,initialRetreats:retreats,onSaved:jest.fn(),onCancel:jest.fn()};
+ const view=render(<BookingEditorForm {...props}/>);const field=await screen.findByRole('combobox',{name:/^Accommodation/});await waitFor(()=>expect(field).toHaveValue('shared'));fireEvent.change(field,{target:{value:'private'}});
+ view.rerender(<BookingEditorForm {...props} initialBookingData={{...initial,clientId:'second-client',paymentRequestId:'new-request'}}/>);await waitFor(()=>expect(screen.getByRole('combobox',{name:/^Accommodation/})).toHaveValue('shared'));
+});
