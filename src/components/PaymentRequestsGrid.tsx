@@ -379,7 +379,7 @@ const PaymentRequestsGrid: React.FC = () => {
             <option value="paid-unbooked">Paid without bookings</option>
           </select>
           <div className="flex min-w-[200px] max-w-xs flex-1 items-center gap-1 sm:flex-none">
-            <Select id="request-retreat-filter" aria-label="Retreat" className="w-full"
+            <Select id="request-retreat-filter" aria-label="Retreat" className="min-w-0 flex-1"
               virtual={false} showSearch optionFilterProp="label" placeholder="All retreats"
               value={details.retreatId || undefined}
               options={[{ value: '', label: 'All retreats' }, ...retreatOptions]}
