@@ -165,7 +165,7 @@ describe('AppleSidebar "Simple view" nav preference (PPVC-1036)', () => {
     userRole: 'admin',
   };
 
-  it('renders exactly the 5 simple-view sections and no Settings & Setup when navPreference is simple', () => {
+  it('renders exactly the 6 simple-view sections (incl. Medical, PPVC-1070) and no Settings & Setup when navPreference is simple', () => {
     render(
       <AppleSidebar
         {...baseProps}
@@ -173,16 +173,16 @@ describe('AppleSidebar "Simple view" nav preference (PPVC-1036)', () => {
       />
     );
 
-    // The 5 permitted sections are present.
+    // The 6 permitted sections are present.
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Clients')).toBeInTheDocument();
     expect(screen.getByText('Bookings')).toBeInTheDocument();
     expect(screen.getByText('Payments')).toBeInTheDocument();
     expect(screen.getByText('Retreat Operations')).toBeInTheDocument();
+    expect(screen.getByText('Medical')).toBeInTheDocument();
 
-    // Nothing else -- no Settings & Setup, no other sections/items that only exist outside the 5.
+    // Nothing else -- no Settings & Setup, no other sections/items that only exist outside the 6.
     expect(screen.queryByText('Settings & Setup')).not.toBeInTheDocument();
-    expect(screen.queryByText('Medical')).not.toBeInTheDocument();
     expect(screen.queryByText('Client Forms')).not.toBeInTheDocument();
     expect(screen.queryByText('Operations')).not.toBeInTheDocument();
     expect(screen.queryByText('Files & Reports')).not.toBeInTheDocument();
@@ -194,11 +194,16 @@ describe('AppleSidebar "Simple view" nav preference (PPVC-1036)', () => {
     expect(screen.queryByText('Data Backup')).not.toBeInTheDocument();
     expect(screen.queryByText('Languages')).not.toBeInTheDocument();
 
-    // Exactly 5 top-level section buttons were rendered.
+    // Exactly 6 top-level section buttons were rendered.
     const sectionButtons = screen.getAllByRole('button').filter((button) =>
-      ['Home', 'Clients', 'Bookings', 'Payments', 'Retreat Operations'].includes(button.textContent?.trim() || '')
+      ['Home', 'Clients', 'Bookings', 'Payments', 'Retreat Operations', 'Medical'].includes(button.textContent?.trim() || '')
     );
-    expect(sectionButtons).toHaveLength(5);
+    expect(sectionButtons).toHaveLength(6);
+
+    // Medical expands to its two daily-work items, matching the full view's same section.
+    fireEvent.click(screen.getByText('Medical'));
+    expect(screen.getByText('Medical Artifacts')).toBeInTheDocument();
+    expect(screen.getByText('Review Requests')).toBeInTheDocument();
   });
 
   it('renders the full current section set when navPreference is "full" (regression guard)', () => {

@@ -158,11 +158,12 @@ const getNavigationRole = (userRole?: string) => {
   return userRole;
 };
 
-// "Simple view" (PPVC-1036) is a per-user, backend-persisted preference (User.navPreference) that
-// narrows the sidebar to these 5 sections only. It is UI density only -- it must never gate route
-// access (see ProtectedRoute/App.tsx), and it is intentionally independent of the StaffFocus work-mode
-// system below (focusedWorkMode / staffFocus), which is a separate, opt-in, localStorage-backed feature.
-export const SIMPLE_NAV_SECTION_IDS = ['home', 'clients', 'bookings-group', 'payments', 'retreats'];
+// "Simple view" (PPVC-1036, extended by PPVC-1070 to include Medical) is a per-user, backend-persisted
+// preference (User.navPreference) that narrows the sidebar to these sections only. It is UI density
+// only -- it must never gate route access (see ProtectedRoute/App.tsx), and it is intentionally
+// independent of the StaffFocus work-mode system below (focusedWorkMode / staffFocus), which is a
+// separate, opt-in, localStorage-backed feature.
+export const SIMPLE_NAV_SECTION_IDS = ['home', 'clients', 'bookings-group', 'payments', 'retreats', 'medical'];
 
 const getTextColor = (isActive: boolean = false): string => {
   return isActive ? 'rgb(17, 24, 39)' : 'rgb(55, 65, 81)';
