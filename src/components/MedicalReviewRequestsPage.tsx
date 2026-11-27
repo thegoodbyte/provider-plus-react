@@ -547,7 +547,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
   const isAdminUser = ['admin', 'administrator'].includes(String(user?.role || '').toLowerCase());
   const isMagicReviewSession = user?.accessType === 'medical_review_magic_link';
-  const canManageAccessLinks = user?.role === 'admin';
+  const canManageAccessLinks = user?.role === 'admin' && !isMagicReviewSession;
   // PPVC-643: the reviewing advisor's preferred language, defaulting to
   // English when unset -- drives which language translated documents are
   // shown/generated in below.
@@ -603,6 +603,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [captureMode, setCaptureMode] = useState(false);
   const [relatedRecordsOpen, setRelatedRecordsOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const advisorAccessRef = useRef<HTMLDetailsElement>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!moreMenuOpen) return;
@@ -1765,6 +1766,118 @@ const MedicalReviewRequestsPage: React.FC = () => {
   ) : null;
   const queuePosition = selectedRequestIndex >= 0 ? `${selectedRequestIndex + 1} of ${navigationRequests.length}` : '';
 
+  const renderAdvisorAccess = () => canManageAccessLinks && selected?._id ? (
+    <details id="mrr-advisor-access" ref={advisorAccessRef} className="rounded-md border border-gray-200 bg-white">
+      <summary className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-gray-900">
+        <span>Advisor review link access</span>
+        <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
+          {accessLinks.length} link{accessLinks.length === 1 ? '' : 's'}
+        </span>
+      </summary>
+      <div className="border-t border-gray-200 p-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-gray-900">WhatsApp reviewer access</div>
+            <div className="text-xs text-gray-500">Magic links open only this medical review and require full login for any other page.</div>
+          </div>
+          <button
+            type="button"
+            disabled={accessLinkBusy}
+            onClick={handleGenerateAccessLink}
+            className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            Generate advisor link
+          </button>
+        </div>
+        {generatedAccessUrl && (
+          <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2">
+            <div className="mb-1 text-xs font-semibold text-blue-900">New access link</div>
+            <div className="break-all text-xs text-blue-900">{generatedAccessUrl}</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleCopyAccessLink(generatedAccessUrl)}
+                className="rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+              >
+                Copy for WhatsApp
+              </button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`Medical review link: ${generatedAccessUrl}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-md border border-green-300 bg-white px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50"
+              >
+                Share via WhatsApp
+              </a>
+            </div>
+          </div>
+        )}
+        <div className="mt-3 space-y-2">
+          {accessLinks.length ? accessLinks.map((link) => (
+            <div key={link._id} className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="font-semibold text-gray-900">
+                  {link.reviewerName || link.reviewerEmail || 'Assigned reviewer'} · {link.label || 'review'}
+                </div>
+                <span className="rounded-full bg-white px-2 py-1 font-semibold text-gray-700">{link.status || 'not_accessed'}</span>
+              </div>
+              <div className="mt-1 grid gap-1 text-gray-600 sm:grid-cols-2">
+                <div>Created: {formatDateTime(link.createdAt)}</div>
+                <div>First access: {link.firstAccessedAt ? formatDateTime(link.firstAccessedAt) : 'Not accessed yet'}</div>
+                <div>
+                  Expires: {link.expiresAt
+                    ? formatDateTime(link.expiresAt)
+                    : 'One hour after first successful access'}
+                </div>
+                <div>Access count: {link.accessCount || 0}</div>
+                <div>First IP: {link.firstAccessIp || '-'}</div>
+                <div>Last IP: {link.lastAccessIp || '-'}</div>
+              </div>
+              {link.url ? (
+                <div className="mt-2 rounded-md border border-blue-100 bg-white p-2">
+                  <div className="break-all text-[11px] font-medium text-blue-900">{link.url}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyAccessLink(link.url!)}
+                      className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                    >
+                      Copy link
+                    </button>
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(`Medical review link: ${link.url}`)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-100"
+                    >
+                      Share via WhatsApp
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800">
+                  This older link was stored as a hash only. Generate a new one if you need to copy it again.
+                </div>
+              )}
+              {!link.revokedAt && (
+                <button
+                  type="button"
+                  disabled={accessLinkBusy}
+                  onClick={() => handleRevokeAccessLink(link._id)}
+                  className="mt-2 rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Revoke
+                </button>
+              )}
+            </div>
+          )) : (
+            <div className="text-xs text-gray-500">No WhatsApp access links generated yet.</div>
+          )}
+        </div>
+      </div>
+    </details>
+  ) : null;
+
   return (
     <MedicalReviewDownloadContext.Provider value={selected?._id || ''}>
     <div className={`medical-review-page overflow-x-hidden p-0 sm:p-6 ${!isDetailView ? 'mrr-index-page' : ''}`}>
@@ -1842,6 +1955,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
               </div>
               <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
                 <MrrWhatsappDownloadButton requestId={selected._id!} requestNumber={selected.display_id} onError={showError} />
+                {canManageAccessLinks && selected._id && (
+                  <button type="button" aria-controls="mrr-advisor-access" onClick={() => {
+                    const access = advisorAccessRef.current;
+                    if (!access) return;
+                    access.open = true;
+                    access.querySelector('summary')?.focus();
+                  }} className="rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50">
+                    Advisor review link
+                  </button>
+                )}
                 <MedicalReviewFollowUpButton request={selected} onSaved={changes => {
                   setSelected(current => current ? { ...current, ...changes } : current);
                   setRequests(current => current.map(item => item._id === selected._id ? { ...item, ...changes } : item));
@@ -1863,6 +1986,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               </div>
             </div>
+            {canManageAccessLinks && selected._id && (
+              <div className="border-t border-gray-100 px-4 py-2 sm:px-5">{renderAdvisorAccess()}</div>
+            )}
             {['admin', 'medical_staff'].includes(user?.role || '') && (
               <div className="border-t border-gray-100 px-4 py-2 sm:px-5">
                 <MedicalReviewBookingLink key={selected._id} requestId={selected._id!} prefix={isMedicalRoute ? '/medical' : '/admin'} onLinked={async () => {
@@ -2406,117 +2532,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               )}
 
-              {canManageAccessLinks && selected._id && (
-                <details className="rounded-md border border-gray-200 bg-white">
-                  <summary className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-gray-900">
-                    <span>Admin access codes</span>
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
-                      {accessLinks.length} link{accessLinks.length === 1 ? '' : 's'}
-                    </span>
-                  </summary>
-                  <div className="border-t border-gray-200 p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900">WhatsApp reviewer access</div>
-                        <div className="text-xs text-gray-500">Magic links open only this medical review and require full login for any other page.</div>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={accessLinkBusy}
-                        onClick={handleGenerateAccessLink}
-                        className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                      >
-                        Generate Link
-                      </button>
-                    </div>
-                    {generatedAccessUrl && (
-                      <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2">
-                        <div className="mb-1 text-xs font-semibold text-blue-900">New access link</div>
-                        <div className="break-all text-xs text-blue-900">{generatedAccessUrl}</div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleCopyAccessLink(generatedAccessUrl)}
-                            className="rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
-                          >
-                            Copy for WhatsApp
-                          </button>
-                          <a
-                            href={`https://wa.me/?text=${encodeURIComponent(`Medical review link: ${generatedAccessUrl}`)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-md border border-green-300 bg-white px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50"
-                          >
-                            Share via WhatsApp
-                          </a>
-                        </div>
-                      </div>
-                    )}
-                    <div className="mt-3 space-y-2">
-                      {accessLinks.length ? accessLinks.map((link) => (
-                        <div key={link._id} className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="font-semibold text-gray-900">
-                              {link.reviewerName || link.reviewerEmail || 'Assigned reviewer'} · {link.label || 'review'}
-                            </div>
-                            <span className="rounded-full bg-white px-2 py-1 font-semibold text-gray-700">{link.status || 'not_accessed'}</span>
-                          </div>
-                          <div className="mt-1 grid gap-1 text-gray-600 sm:grid-cols-2">
-                            <div>Created: {formatDateTime(link.createdAt)}</div>
-                            <div>First access: {link.firstAccessedAt ? formatDateTime(link.firstAccessedAt) : 'Not accessed yet'}</div>
-                            <div>
-                              Expires: {link.expiresAt
-                                ? formatDateTime(link.expiresAt)
-                                : 'One hour after first successful access'}
-                            </div>
-                            <div>Access count: {link.accessCount || 0}</div>
-                            <div>First IP: {link.firstAccessIp || '-'}</div>
-                            <div>Last IP: {link.lastAccessIp || '-'}</div>
-                          </div>
-                          {link.url ? (
-                            <div className="mt-2 rounded-md border border-blue-100 bg-white p-2">
-                              <div className="break-all text-[11px] font-medium text-blue-900">{link.url}</div>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyAccessLink(link.url!)}
-                                  className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
-                                >
-                                  Copy link
-                                </button>
-                                <a
-                                  href={`https://wa.me/?text=${encodeURIComponent(`Medical review link: ${link.url}`)}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-100"
-                                >
-                                  Share via WhatsApp
-                                </a>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800">
-                              This older link was stored as a hash only. Generate a new one if you need to copy it again.
-                            </div>
-                          )}
-                          {!link.revokedAt && (
-                            <button
-                              type="button"
-                              disabled={accessLinkBusy}
-                              onClick={() => handleRevokeAccessLink(link._id)}
-                              className="mt-2 rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                            >
-                              Revoke
-                            </button>
-                          )}
-                        </div>
-                      )) : (
-                        <div className="text-xs text-gray-500">No WhatsApp access links generated yet.</div>
-                      )}
-                    </div>
-                  </div>
-                </details>
-              )}
+              {!isDetailView && renderAdvisorAccess()}
 
               {isDetailView && renderMedicalSummary()}
 

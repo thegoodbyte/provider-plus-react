@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 jest.mock('../context/AuthContext', () => ({ useAuth: jest.fn() }));
 jest.mock('../services/api', () => ({
   medicalArtifactsApi: {},
-  medicalReviewRequestsApi: { update: jest.fn(), getAll: jest.fn(), getQueue: jest.fn(), getContext: jest.fn(), getAccessLinks: jest.fn(), getClientMessages: jest.fn() },
+  medicalReviewRequestsApi: { update: jest.fn(), getAll: jest.fn(), getQueue: jest.fn(), getContext: jest.fn(), getAccessLinks: jest.fn(), createAccessLink: jest.fn(), getClientMessages: jest.fn() },
   usersApi: { findAll: jest.fn() },
 }));
 
@@ -26,6 +26,20 @@ it.each(['admin', 'medical_advisor'])('renders saved translated messages at the 
   expect(await screen.findByText('Proszę przesłać nowe zdjęcie.')).toBeInTheDocument();
   expect(screen.getByRole('link', {name:'Client ID: 1201'})).toHaveAttribute('href', role === 'admin' ? '/admin/clients/client-1' : '/medical/client/client-1');
   expect(screen.queryByText('ID: client-1')).not.toBeInTheDocument();
+  const advisorLink = screen.queryByRole('button', { name: 'Advisor review link', exact: true });
+  if (role === 'admin') {
+    expect(advisorLink).toBeInTheDocument();
+    const access = document.getElementById('mrr-advisor-access');
+    expect(access?.closest('.mrr-desktop-legacy')).toBeNull();
+    expect(access).not.toHaveAttribute('open');
+    fireEvent.click(advisorLink!);
+    expect(access).toHaveAttribute('open');
+    expect(access?.querySelector('summary')).toHaveFocus();
+    expect(medicalReviewRequestsApi.createAccessLink).not.toHaveBeenCalled();
+  } else {
+    expect(advisorLink).not.toBeInTheDocument();
+    expect(document.getElementById('mrr-advisor-access')).toBeNull();
+  }
   const history = screen.getByRole('region', { name: 'Client message history' });
   expect(history.closest('.mrr-desktop-legacy')).toBeNull();
   expect(history.closest('.md\\:hidden')).toBeNull();
