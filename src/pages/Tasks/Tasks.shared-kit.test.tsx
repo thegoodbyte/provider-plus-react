@@ -1,6 +1,6 @@
 jest.mock('../../context/AuthContext', () => ({ useAuth: () => ({ user: { role: 'admin' } }) }));
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Tasks } from './Tasks';
 import { taskService } from '../../services/taskService';
@@ -39,19 +39,31 @@ describe('Tasks page', () => {
     flowApi.getItems.mockResolvedValue({ data: [] } as any);
   });
 
-  it('renders the summary stat tiles with correct counts once tasks load', async () => {
+  it('renders truthful status counts and switches the visible scoped rows', async () => {
     render(<MemoryRouter><Tasks /></MemoryRouter>);
-    expect(await screen.findByText('4')).toBeInTheDocument();
-    const total = screen.getByText('Total').closest('.stat-item') as HTMLElement;
-    expect(total).not.toBeNull();
-    expect(screen.getByText('Pending').parentElement!.textContent).toContain('2');
-    expect(screen.getByText('Urgent').parentElement!.textContent).toContain('1');
+    expect(await screen.findByRole('tab', {name:'Open 3',exact:true})).toHaveAttribute('aria-selected','true');
+    expect(screen.getByRole('tab',{name:'Done 1',exact:true})).toBeInTheDocument();
+    expect(screen.getByRole('tab',{name:'All 4',exact:true})).toBeInTheDocument();
+    expect(document.querySelectorAll('.task-row')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('tab',{name:'Done 1',exact:true}));
+    expect(document.querySelectorAll('.task-row')).toHaveLength(1);
+    expect(screen.getByLabelText('Task completed')).toBeChecked();
   });
 
-  it('renders the create-task action as an AppleButton', async () => {
+  it('renders the shared New task action', async () => {
     render(<MemoryRouter><Tasks /></MemoryRouter>);
-    await screen.findByText('4');
-    expect(screen.getByRole('button', { name: /\+ Client task/ })).toBeInTheDocument();
+    await screen.findByRole('tab', {name:'All 4',exact:true});
+    expect(screen.getByRole('button', { name: '+ New task',exact:true })).toHaveAttribute('data-re-button','primary');
+  });
+
+  it('treats manually sourced tasks as staff-created, not automated', async () => {
+    api.getTasks.mockResolvedValue([makeTask({sourceType:'manual',name:'Staff follow-up'}),makeTask({id:'automatic',sourceType:'medical_submission',name:'Review upload'})] as any);
+    render(<MemoryRouter><Tasks /></MemoryRouter>);
+    await screen.findByRole('tab',{name:'Open 2',exact:true});
+    fireEvent.click(screen.getByText('More filters'));
+    fireEvent.click(screen.getByRole('button',{name:'Staff-created',exact:true}));
+    expect(screen.getByRole('button',{name:'Staff follow-up',exact:true})).toBeInTheDocument();
+    expect(screen.queryByRole('button',{name:'Review upload',exact:true})).not.toBeInTheDocument();
   });
 
   it('renders the client-support inbox workspace instead of the grid when ?support is present', async () => {
