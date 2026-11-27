@@ -25,11 +25,11 @@ for (const width of [1440, 390]) test(`MRR retreat filter searches location, sel
   await expect(page.getByText('Showing 3 of 3 review requests')).toBeVisible();
   await page.getByLabel('Search', { exact: true }).fill('Bob');
   await expect(page.getByText('Showing 1 of 3 review requests')).toBeVisible();
-  await page.getByLabel('Status', { exact: true }).selectOption('approved');
+  await page.locator('#review-request-status-filter').selectOption('approved');
   await expect(page.getByText('Showing 0 of 3 review requests')).toBeVisible();
-  await page.getByLabel('Status', { exact: true }).selectOption('all');
+  await page.locator('#review-request-status-filter').selectOption('all');
   await page.getByLabel('Search', { exact: true }).fill('');
-  await expect(page.getByLabel('Request type', { exact: true })).toBeVisible();
+  await expect(page.locator('#review-request-type-filter')).toBeVisible();
   await expect(page.getByLabel('Pending only', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath(`mrr-filters-${width}.png`), fullPage: true });
   expect(writes).toEqual([]);
