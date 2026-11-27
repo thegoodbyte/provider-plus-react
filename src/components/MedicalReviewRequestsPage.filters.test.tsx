@@ -18,7 +18,7 @@ jest.mock('../services/api', () => ({
 // PaymentRequestsGrid's retreat filter) that matches by exact retreat id
 // rather than a substring of its code/name/location text.
 const retreatOne = { _id: 'retreat-1', name: 'Jungle Retreat', retreatCode: 'JR1', startDate: '2027-01-05' };
-const retreatTwo = { _id: 'retreat-2', name: 'Mountain Retreat', retreatCode: 'MR2', startDate: '2027-02-10' };
+const retreatTwo = { _id: 'retreat-2', name: 'Mountain Retreat', location_town: 'Liberec', retreatCode: 'MR2', startDate: '2027-02-10' };
 
 const requestA: any = { _id: 'req-a', display_id: 1, status: 'pending', requestType: 'ekg_review', retreatId: retreatOne, clientId: { _id: 'c1', firstName: 'Ann', lastName: 'A' }, artifactIds: [] };
 const requestB: any = { _id: 'req-b', display_id: 2, status: 'pending', requestType: 'ekg_review', retreatId: { ...retreatOne }, clientId: { _id: 'c2', firstName: 'Bob', lastName: 'B' }, artifactIds: [] };
@@ -93,4 +93,10 @@ it('PPVC-1080: the other filters (type/status/pending-only/search) still work al
   await waitFor(() => expect(screen.getByText('Showing 3 of 3 review requests')).toBeInTheDocument());
   fireEvent.change(screen.getByPlaceholderText('Search client, request, artifact...'), { target: { value: 'Bob' } });
   await waitFor(() => expect(screen.getByText('Showing 1 of 3 review requests')).toBeInTheDocument());
+});
+
+it('PPVC-1080: retreat search includes location without changing identity matching', async () => {
+  await mountList();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Retreat' }), { target: { value: 'Liberec' } });
+  expect(await retreatDropdownLabels()).toEqual(['MR2 · Mountain Retreat · 2027-02-10']);
 });

@@ -779,7 +779,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
     }
   };
 
-  const retreatOptions = useMemo(() => requestRetreatOptions(requests), [requests]);
+  const retreatOptions = useMemo(() => requestRetreatOptions(requests).map(option => ({
+    ...option,
+    searchText: [option.label, ...requests.filter(request => requestRetreatId(request) === option.value).map(request => getRetreatSearchText(request.retreatId))].join(' ').toLowerCase(),
+  })), [requests]);
 
   const filteredRequests = useMemo(() => {
     const requestSearch = requestSearchFilter.trim().toLowerCase();
@@ -1941,11 +1944,12 @@ const MedicalReviewRequestsPage: React.FC = () => {
               Retreat
               <Select
                 id="review-request-retreat-filter"
+                allowClear
                 aria-label="Retreat"
                 className="mt-1 block w-full"
                 virtual={false}
                 showSearch
-                optionFilterProp="label"
+                filterOption={(input, option) => String(option?.searchText || option?.label || '').includes(input.toLowerCase())}
                 placeholder="All retreats"
                 value={retreatFilter || undefined}
                 options={[{ value: '', label: 'All retreats' }, ...retreatOptions]}

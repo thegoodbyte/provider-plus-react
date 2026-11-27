@@ -1,0 +1,37 @@
+import { test, expect } from '@playwright/test';
+for (const width of [1440, 390]) test(`MRR retreat filter searches location, selects exact retreat and clears at ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const retreats = [{ _id: 'r1', name: 'Jungle Retreat', retreatCode: 'JR1', startDate: '2027-01-05', location_town: 'Prague' }, { _id: 'r2', name: 'Mountain Retreat', retreatCode: 'MR2', startDate: '2027-02-10', location_town: 'Liberec' }];
+  const requests = [0, 0, 1].map((r, i) => ({ _id: 'request-' + i, display_id: i + 1, status: 'pending', requestType: 'ekg_review', retreatId: retreats[r], clientId: { _id: 'c' + i, firstName: ['Ann', 'Bob', 'Cid'][i], lastName: 'Fixture' }, artifactIds: [] }));
+  const writes: string[] = [];
+  await page.route('**/*', route => {
+    const q = route.request(); if (!['xhr', 'fetch'].includes(q.resourceType())) return route.continue();
+    const path = new URL(q.url()).pathname.replace(/^\/api/, '');
+    if (q.method() !== 'GET') { writes.push(q.method() + ' ' + path); return route.fulfill({ status: 405, json: {} }); }
+    if (path === '/medical-review-requests' || path === '/medical-review-requests/queue') return route.fulfill({ json: requests });
+    if (path.endsWith('/context')) return route.fulfill({ json: { artifacts: { all: [] } } });
+    if (path.endsWith('/client-messages')) return route.fulfill({ json: { messages: [], skippedNotifications: [] } });
+    if (path === '/environment/status') return route.fulfill({ json: { environment: 'local', production: false, enabledJobs: [] } });
+    return route.fulfill({ json: [] });
+  });
+  await page.goto('/medical/review-requests');
+  await expect(page.getByText('Showing 3 of 3 review requests')).toBeVisible();
+  const retreat = page.getByRole('combobox', { name: 'Retreat', exact: true });
+  await retreat.fill('Liberec');
+  await page.getByRole('option', { name: 'MR2 · Mountain Retreat · 2027-02-10' }).click();
+  await expect(page.getByText('Showing 1 of 3 review requests')).toBeVisible();
+  await retreat.click(); await retreat.fill('');
+  await page.getByRole('option', { name: 'All retreats', exact: true }).click();
+  await expect(page.getByText('Showing 3 of 3 review requests')).toBeVisible();
+  await page.getByLabel('Search', { exact: true }).fill('Bob');
+  await expect(page.getByText('Showing 1 of 3 review requests')).toBeVisible();
+  await page.getByLabel('Status', { exact: true }).selectOption('approved');
+  await expect(page.getByText('Showing 0 of 3 review requests')).toBeVisible();
+  await page.getByLabel('Status', { exact: true }).selectOption('all');
+  await page.getByLabel('Search', { exact: true }).fill('');
+  await expect(page.getByLabel('Request type', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Pending only', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath(`mrr-filters-${width}.png`), fullPage: true });
+  expect(writes).toEqual([]);
+  await page.unrouteAll({ behavior: 'wait' });
+});
