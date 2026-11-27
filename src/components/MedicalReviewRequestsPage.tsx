@@ -8,6 +8,7 @@ import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import { MedicalReviewAuditTrail } from './MedicalReviewAuditTrail';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Select } from 'antd';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi, usersApi } from '../services/api';
@@ -38,6 +39,7 @@ import { Badge } from './ui';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import { useToast } from '../hooks/useToast';
 import Toast from './Toast';
+import { requestRetreatId, requestRetreatOptions } from './paymentRequestFilters';
 
 const reviewStatusStyle = Object.fromEntries(Object.entries(medicalReviewStatusPresentation).map(([status, value]) => [status, value.badgeClass]));
 
@@ -777,14 +779,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
     }
   };
 
+  const retreatOptions = useMemo(() => requestRetreatOptions(requests), [requests]);
+
   const filteredRequests = useMemo(() => {
-    const retreatSearch = retreatFilter.trim().toLowerCase();
     const requestSearch = requestSearchFilter.trim().toLowerCase();
     const filtered = requests.filter((request) => {
       if (statusFilter !== 'all' && normalizeReviewStatus(request.status) !== statusFilter) return false;
       if (pendingOnly && !isPendingReview(request)) return false;
       if (!requestMatchesTypeFilter(request, typeFilter)) return false;
-      if (retreatSearch && !getRetreatSearchText(request.retreatId).toLowerCase().includes(retreatSearch)) return false;
+      if (retreatFilter && requestRetreatId(request) !== retreatFilter) return false;
       if (requestSearch) {
         const text = [
           request.display_id,
@@ -1908,38 +1911,57 @@ const MedicalReviewRequestsPage: React.FC = () => {
       {!isDetailView && (
         <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3">
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-            <select
-              id="review-request-type-filter"
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as MedicalReviewTypeFilter)}
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {medicalReviewTypeFilters.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <select
-              id="review-request-status-filter"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-            <input
-              value={retreatFilter}
-              onChange={(event) => setRetreatFilter(event.target.value)}
-              placeholder="Retreat code or name"
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <input
-              value={requestSearchFilter}
-              onChange={(event) => setRequestSearchFilter(event.target.value)}
-              placeholder="Search client, request, artifact..."
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+            <label htmlFor="review-request-type-filter" className="min-w-0 text-sm font-medium text-gray-700">
+              Request type
+              <select
+                id="review-request-type-filter"
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value as MedicalReviewTypeFilter)}
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {medicalReviewTypeFilters.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="review-request-status-filter" className="min-w-0 text-sm font-medium text-gray-700">
+              Status
+              <select
+                id="review-request-status-filter"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-0 text-sm font-medium text-gray-700">
+              Retreat
+              <Select
+                id="review-request-retreat-filter"
+                aria-label="Retreat"
+                className="mt-1 block w-full"
+                virtual={false}
+                showSearch
+                optionFilterProp="label"
+                placeholder="All retreats"
+                value={retreatFilter || undefined}
+                options={[{ value: '', label: 'All retreats' }, ...retreatOptions]}
+                onChange={(value) => setRetreatFilter(value || '')}
+              />
+            </label>
+            <label htmlFor="review-request-search-filter" className="min-w-0 text-sm font-medium text-gray-700">
+              Search
+              <input
+                id="review-request-search-filter"
+                value={requestSearchFilter}
+                onChange={(event) => setRequestSearchFilter(event.target.value)}
+                placeholder="Search client, request, artifact..."
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </label>
             <label className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700">
               <input
                 type="checkbox"
