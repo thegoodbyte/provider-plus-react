@@ -1952,7 +1952,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 filterOption={(input, option) => String(option?.searchText || option?.label || '').includes(input.toLowerCase())}
                 placeholder="All retreats"
                 value={retreatFilter || undefined}
-                options={[{ value: '', label: 'All retreats' }, ...retreatOptions]}
+                options={[{ value: '', label: 'All retreats', searchText: 'all retreats' }, ...retreatOptions]}
                 onChange={(value) => setRetreatFilter(value || '')}
               />
             </label>
