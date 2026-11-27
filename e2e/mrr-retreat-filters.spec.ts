@@ -9,6 +9,7 @@ for (const routePath of ['/medical/review-requests', '/admin/medical-review-requ
     const path = new URL(q.url()).pathname.replace(/^\/api/, '');
     if (q.method() !== 'GET') { writes.push(q.method() + ' ' + path); return route.fulfill({ status: 405, json: {} }); }
     if (path === '/medical-review-requests' || path === '/medical-review-requests/queue') return route.fulfill({ json: requests });
+    if (path === '/clients') return route.fulfill({ json: requests.map(request => request.clientId) });
     if (path === '/retreats') return route.fulfill({ json: retreats });
     if (path.endsWith('/context')) return route.fulfill({ json: { artifacts: { all: [] } } });
     if (path.endsWith('/client-messages')) return route.fulfill({ json: { messages: [], skippedNotifications: [] } });
