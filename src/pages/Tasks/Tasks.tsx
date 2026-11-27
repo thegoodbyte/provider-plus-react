@@ -515,7 +515,7 @@ export const Tasks: React.FC = () => {
 
       <div className="tasks-main-content">
         {viewMode === "list" ? (
-          <TaskList
+          <TaskList onTaskUpdated={loadTasks}
             workspacePath={supportLocation.pathname}
             tasks={gridTasks}
             totalCount={visibleTasks.length}

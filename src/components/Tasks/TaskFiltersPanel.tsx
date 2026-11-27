@@ -61,6 +61,7 @@ export const TaskFiltersPanel: React.FC<TaskFiltersPanelProps> = ({
             <option value="">All Statuses</option>
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
+            <option value="on_hold">On hold</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>

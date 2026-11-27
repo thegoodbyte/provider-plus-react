@@ -10,7 +10,7 @@ export interface Task {
   type: 'client' | 'booking' | 'retreat' | 'generic';
   category?: 'medical' | 'documents' | 'financial' | 'communication' | 'operations';
   urgency: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled';
   dueDate?: string;
   clientId?: string | {
     _id?: string;
@@ -50,6 +50,7 @@ export interface Task {
     email?: string;
     role?: string;
   };
+  resolvedAssignee?: { _id?: string; id?: string; firstName?: string; lastName?: string; email?: string; role?: string } | null;
   completedAt?: string;
   completedBy?: string;
   tags: string[];
@@ -342,7 +343,7 @@ class TaskService {
   }
 
   isOverdue(dueDate: string, status: string): boolean {
-    if (status === 'completed') return false;
+    if (['completed', 'cancelled'].includes(status)) return false;
     const date = new Date(dueDate);
     return date < new Date();
   }

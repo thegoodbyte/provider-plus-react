@@ -191,7 +191,7 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
             )}
           </div>
         ) : (
-          <TaskList
+          <TaskList onTaskUpdated={loadTasks}
             tasks={tasks}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}

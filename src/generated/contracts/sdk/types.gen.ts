@@ -646,7 +646,7 @@ export type CreateTaskDto = {
     sourceId?: string;
     sourceRoute?: string;
     sourceType?: string;
-    status?: 'cancelled' | 'pending' | 'completed' | 'in_progress';
+    status?: 'cancelled' | 'pending' | 'completed' | 'in_progress' | 'on_hold';
     tags?: Array<string>;
     type: 'booking' | 'retreat' | 'client' | 'generic';
     urgency: 'high' | 'low' | 'medium' | 'urgent';

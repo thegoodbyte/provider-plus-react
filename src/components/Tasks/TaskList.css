@@ -252,3 +252,11 @@
 /* Keep sticky table cells within this grid's scrolling/painting boundary. */
 .task-grid { contain: paint; }
 .task-table th { white-space: nowrap; }
+
+.task-inline-select { font: inherit; color: var(--re-colors-ink); background: var(--re-colors-surface); border: 1px solid var(--re-colors-line); border-radius: 8px; padding: 8px; min-height: 40px; max-width: 210px; cursor: pointer; }
+.task-inline-select:disabled { cursor: default; opacity: .7; }
+.task-days-remaining { display: block; margin-top: 4px; font-size: .8rem; font-weight: 400; }
+.task-assignee-select { min-width: 130px; }
+
+.task-table .task-assignee-cell { min-width: 240px; }
+.task-table .task-name { width: 30%; }

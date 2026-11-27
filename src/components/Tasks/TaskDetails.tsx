@@ -1,3 +1,4 @@
+import { assigneeName } from "./taskGrid";
 import React, { useEffect, useRef } from 'react';
 import { Task } from '../../services/taskService';
 
@@ -27,7 +28,7 @@ export function TaskDetails({ task, onClose, onEdit }: { task: Task; onClose: ()
         <dt>Description</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{task.description || 'No description'}</dd>
         {task.dueDate && <><dt>Due</dt><dd>{new Date(task.dueDate).toLocaleString()}</dd></>}
         {task.notes && <><dt>Notes</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{task.notes}</dd></>}
-        {task.assignedTo && <><dt>Assigned to</dt><dd>{task.assignedTo}</dd></>}
+        {assigneeName(task) && <><dt>Assigned to</dt><dd>{assigneeName(task)}</dd></>}
       </dl>
       {!task.supportReference && <button className="btn btn-primary" onClick={() => { onClose(); onEdit(task); }}>Edit task</button>}
     </section>

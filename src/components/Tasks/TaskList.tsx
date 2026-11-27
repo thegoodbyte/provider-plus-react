@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import type { Task } from "../../services/taskService";
+import { taskService, Task } from "../../services/taskService";
+import { usersApi, User } from "../../services/usersApi";
 import { MoreVertical, Zap } from "lucide-react";
 import { TaskDetails } from "./TaskDetails";
 import AppleButton from "../AppleButton";
@@ -17,7 +18,9 @@ import {
   assigneeName,
   clientName,
   clientNumber,
-  dueLabel,
+  assigneeId,
+  remainingDays,
+  statusLabels,
   isOpen,
   matchesView,
   taskClient,
@@ -32,6 +35,7 @@ interface TaskListProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   onCompleteTask: (id: string) => void;
+  onTaskUpdated?: () => Promise<void> | void;
 }
 export const TaskList: React.FC<TaskListProps> = ({
   workspacePath = "/admin/tasks",
@@ -40,12 +44,46 @@ export const TaskList: React.FC<TaskListProps> = ({
   onEditTask,
   onDeleteTask,
   onCompleteTask,
+  onTaskUpdated,
 }) => {
   const [viewingTask, setViewingTask] = useState<Task | null>(null),
     [sortField, setSortField] = useState("dueDate"),
     [direction, setDirection] = useState<"asc" | "desc">("asc"),
     [page, setPage] = useState(1);
   useEffect(() => setPage(1), [tasks, sortField, direction]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [directoryError, setDirectoryError] = useState("");
+  const [directoryLoading, setDirectoryLoading] = useState(true);
+  const [directoryAttempt, setDirectoryAttempt] = useState(0);
+  const [saving, setSaving] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [savedTasks, setSavedTasks] = useState<Record<string, Task>>({});
+  useEffect(() => setSavedTasks({}), [tasks]);
+  useEffect(() => {
+    let active = true;
+    setDirectoryLoading(true);
+    setDirectoryError("");
+    usersApi.getTaskAssignees().then(response => {
+      if (active) setUsers(response.data);
+    }).catch(() => {
+      if (active) setDirectoryError("Could not load assignees.");
+    }).finally(() => { if (active) setDirectoryLoading(false); });
+    return () => { active = false; };
+  }, [directoryAttempt]);
+  const update = async (task: Task, patch: { assignedToUserId?: string | null; status?: Task["status"] }) => {
+    if (saving) return;
+    setSaving(task.id);
+    setSaveError("");
+    try {
+      const saved = await taskService.updateTask(task.id, patch);
+      setSavedTasks(current => ({ ...current, [task.id]: saved }));
+      try { await onTaskUpdated?.(); }
+      catch { setSaveError("Saved, but tasks could not refresh. Reload to see the latest state."); }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save task. Please try again.");
+    } finally { setSaving(""); }
+  };
+
   const prefix = "/" + (workspacePath.split("/")[1] || "admin");
   const bookingNumber = (t: Task) =>
     typeof t.bookingId === "object"
@@ -65,7 +103,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             : sortField === "type"
               ? taskContext(t)
               : String(t[sortField as keyof Task] || "");
-  const sorted = [...tasks].sort((a, b) => {
+  const sorted = tasks.map(task => savedTasks[task.id] || task).sort((a, b) => {
     const x = value(a),
       y = value(b);
     return (x < y ? -1 : x > y ? 1 : 0) * (direction === "asc" ? 1 : -1);
@@ -98,6 +136,9 @@ export const TaskList: React.FC<TaskListProps> = ({
     );
   return (
     <div className="task-list">
+      {saveError && <div role="alert">{saveError}</div>}
+      {directoryError && <div role="alert">{directoryError} <AppleButton size="sm" variant="secondary" onClick={() => setDirectoryAttempt(x => x + 1)}>Retry assignees</AppleButton></div>}
+
       <Card padding="none" className="task-grid">
         <Table className="task-table">
           <caption className="sr-only">Tasks</caption>
@@ -110,6 +151,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               {header("Client ID", "clientNumber")}
               {header("Type", "type")}
               {header("Priority", "urgency")}
+              {header("Status", "status")}
               {header("Due", "dueDate")}
               {header("Assignee", "assigneeName")}
               <TableHeaderCell>
@@ -146,7 +188,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                         type="checkbox"
                         aria-label="Mark task as complete"
                         checked={false}
-                        disabled={support}
+                        disabled={support || Boolean(saving)}
                         onChange={() => onCompleteTask(task.id)}
                       />
                     ) : (
@@ -213,11 +255,6 @@ export const TaskList: React.FC<TaskListProps> = ({
                           Auto
                         </Badge>
                       )}
-                      {task.status !== "pending" && (
-                        <span className="task-status">
-                          {task.status.replace("_", " ")}
-                        </span>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell className="task-client-id">
@@ -247,33 +284,27 @@ export const TaskList: React.FC<TaskListProps> = ({
                       {task.urgency[0].toUpperCase() + task.urgency.slice(1)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="task-due">
-                    <span title={task.dueDate || ""}>{dueLabel(task)}</span>
-                  </TableCell>
                   <TableCell>
-                    {name ? (
-                      <div className="assignee-info">
-                        <span className="assignee-avatar" aria-hidden="true">
-                          {name
-                            .split(/\s+/)
-                            .map((x) => x[0])
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase()}
-                        </span>
-                        <span className="assignee-name" title={name}>
-                          {name}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="assignee-info">
-                        <span
-                          className="assignee-avatar unassigned"
-                          aria-hidden="true"
-                        />
-                        <span className="no-assignee">Unassigned</span>
-                      </div>
-                    )}
+                    <select className="task-inline-select" aria-label={`Status for ${task.name}`} value={task.status} disabled={support || Boolean(saving)} onChange={event => void update(task, { status: event.target.value as Task["status"] })}>
+                      {Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </TableCell>
+                  <TableCell className="task-due">
+                    <span>{taskDue(task)?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) || "No due date"}</span>
+                    <small className="task-days-remaining">{remainingDays(task)}</small>
+                  </TableCell>
+                  <TableCell className="task-assignee-cell">
+                    <div className="assignee-info">
+                      <span className={`assignee-avatar ${name ? "" : "unassigned"}`} aria-hidden="true">
+                        {name ? name.split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase() : ""}
+                      </span>
+                      <select className="task-inline-select task-assignee-select" aria-label={`Assignee for ${task.name}`} value={assigneeId(task) || (name ? "__legacy__" : "")} disabled={support || Boolean(saving) || directoryLoading || Boolean(directoryError)} onChange={event => void update(task, { assignedToUserId: event.target.value || null })}>
+                        <option value="">Unassigned</option>
+                        {name && !assigneeId(task) && <option value="__legacy__" disabled>{name}</option>}
+                        {assigneeId(task) && !users.some(u => u._id === assigneeId(task)) && <option value={assigneeId(task)} disabled>{name || "Assigned user unavailable"}</option>}
+                        {users.map(user => <option key={user._id} value={user._id}>{[user.firstName, user.lastName].filter(Boolean).join(" ") || user.email}</option>)}
+                      </select>
+                    </div>
                   </TableCell>
                   <TableCell className="task-actions">
                     <details

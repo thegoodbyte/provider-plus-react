@@ -271,3 +271,15 @@ test.each(['client','booking','retreat'] as const)('required %s association is v
  fireEvent.submit(screen.getByRole('button',{name:'Create Task'}).closest('form')!);
  expect(screen.getByRole('alert')).toHaveTextContent(`Choose a ${type} from the results`);expect(save).not.toHaveBeenCalled();
 });
+
+it('preserves an unresolved legacy assignment during an unrelated name edit', async () => {
+  (clients.getAll as jest.Mock).mockResolvedValue({data:[]});(retreats.getAll as jest.Mock).mockResolvedValue({data:[]});(bookings.getAll as jest.Mock).mockResolvedValue({data:[]});(users.getTaskAssignees as jest.Mock).mockResolvedValue({data:[]});
+  const onSubmit=jest.fn();
+  const task:any={id:'legacy',name:'Old task',description:'Legacy',type:'generic',urgency:'medium',status:'pending',assignedTo:'unknown@example.invalid',tags:[]};
+  render(<TaskForm task={task} onSubmit={onSubmit} onCancel={jest.fn()}/>);
+  await waitFor(()=>expect(users.getTaskAssignees).toHaveBeenCalled());
+  expect(screen.getByLabelText('Assigned to')).toHaveDisplayValue('unknown@example.invalid');
+  fireEvent.change(screen.getByLabelText('Task Name *'),{target:{value:'Renamed'}});
+  fireEvent.click(screen.getByRole('button',{name:'Update Task'}));
+  expect(onSubmit.mock.calls[0][0].assignedToUserId).toBeUndefined();
+});

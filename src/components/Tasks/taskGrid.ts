@@ -31,16 +31,30 @@ export const clientName = (task: Task): string => {
         .join(" ") || "Client"
     : "";
 };
+export const assigneeProfile = (task: Task) =>
+  typeof task.assignedToUserId === "object" && task.assignedToUserId
+    ? task.assignedToUserId : task.resolvedAssignee;
+export const assigneeId = (task: Task): string =>
+  typeof task.assignedToUserId === "string" ? task.assignedToUserId
+    : assigneeProfile(task)?._id || assigneeProfile(task)?.id || "";
 export const assigneeName = (task: Task): string => {
-  const a = task.assignedToUserId;
-  return a && typeof a === "object"
-    ? [a.firstName, a.lastName].filter(Boolean).join(" ").trim() ||
-        a.email ||
-        ""
-    : "";
+  const a = assigneeProfile(task);
+  if (a) return [a.firstName, a.lastName].filter(Boolean).join(" ").trim() || a.email || "Assigned user";
+  if (task.assignedToUserId || task.resolvedAssignee === null) return "Assigned user unavailable";
+  return task.assignedTo?.trim() || "";
+};
+export const statusLabels: Record<Task["status"], string> = {
+  pending: "To do", in_progress: "In progress", on_hold: "On hold", completed: "Done", cancelled: "Cancelled",
 };
 export const isOpen = (task: Task) =>
-  ["pending", "in_progress"].includes(task.status);
+  ["pending", "in_progress", "on_hold"].includes(task.status);
+export function remainingDays(task: Task, now = new Date()): string {
+  const due = taskDue(task);
+  if (!due) return "";
+  if (!isOpen(task)) return statusLabels[task.status];
+  const distance = Math.round((Date.UTC(due.getFullYear(), due.getMonth(), due.getDate()) - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+  return distance === 0 ? "Due today" : `${Math.abs(distance)} day${Math.abs(distance) === 1 ? "" : "s"} ${distance < 0 ? "overdue" : "remaining"}`;
+}
 export function taskDue(task: Task): Date | null {
   if (!task.dueDate) return null;
   const date = /^\d{4}-\d{2}-\d{2}$/.test(task.dueDate)

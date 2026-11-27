@@ -1,3 +1,4 @@
+import { assigneeId, assigneeName } from "./taskGrid";
 import React, { useState, useEffect } from 'react';
 import { Task, CreateTaskDto } from '../../services/taskService';
 import { bookingsApi, clientsApi, retreatsApi } from '../../services/api';
@@ -49,6 +50,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   // PPVC-868: quick task creation should default to collapsed -- staff just
   // wants to type a title and go. Editing an existing task defaults open
   // since the fields it's showing are already meaningfully filled in.
+  const [assignmentChanged, setAssignmentChanged] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(Boolean(task));
   const [tagInput, setTagInput] = useState('');
@@ -70,6 +72,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   };
 
   useEffect(() => {
+    setAssignmentChanged(false);
     if (task) {
       setFormData({
         name: task.name,
@@ -81,7 +84,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         clientId: typeof task.clientId === 'string' ? task.clientId : ((task.clientId as any)?._id || (task.clientId as any)?.id || clientId || ''),
         retreatId: typeof task.retreatId === 'string' ? task.retreatId : ((task.retreatId as any)?._id || (task.retreatId as any)?.id || retreatId || ''),
         bookingId: typeof task.bookingId === 'string' ? task.bookingId : (task.bookingId?._id || task.bookingId?.id || ''),
-        assignedToUserId: typeof task.assignedToUserId === 'string' ? task.assignedToUserId : ((task.assignedToUserId as any)?._id || (task.assignedToUserId as any)?.id || ''),
+        assignedToUserId: assigneeId(task),
         tags: task.tags,
         notes: task.notes || '',
         sourceType: task.sourceType || '',
@@ -280,9 +283,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       clientId: formData.clientId || undefined,
       retreatId: formData.retreatId || undefined,
       bookingId: formData.bookingId || undefined,
-      // Omit an unassigned create, but explicitly clear an edited assignment.
-      // JSON drops undefined, which would otherwise retain the old assignee.
-      assignedToUserId: formData.assignedToUserId || (task ? null : undefined),
+      // Preserve historical/inactive assignments on unrelated edits; clear only after an explicit selection.
+      assignedToUserId: task && !assignmentChanged ? undefined : formData.assignedToUserId || (task ? null : undefined),
       notes: formData.notes || undefined,
       sourceType: formData.sourceType || undefined,
     };
@@ -420,10 +422,12 @@ export const TaskForm: React.FC<TaskFormProps> = ({
               <select
                 id="assignedToUserId"
                 name="assignedToUserId"
-                value={formData.assignedToUserId || ''}
-                onChange={handleChange}
+                value={formData.assignedToUserId || (task && assigneeName(task) && !assignmentChanged ? '__legacy__' : '')}
+                onChange={event => { setAssignmentChanged(true); handleChange(event); }}
               >
                 <option value="">Unassigned</option>
+                {task && !assigneeId(task) && assigneeName(task) && !assignmentChanged && <option value="__legacy__" disabled>{assigneeName(task)}</option>}
+                {formData.assignedToUserId && !assignableUsers.some(user => user._id === formData.assignedToUserId) && <option value={formData.assignedToUserId} disabled>{task ? assigneeName(task) : 'Assigned user unavailable'}</option>}
                 {assignableUsers.map((candidate) => {
                   const name = [candidate.firstName, candidate.lastName].filter(Boolean).join(' ') || candidate.email;
                   return <option key={candidate._id} value={candidate._id}>{name}</option>;

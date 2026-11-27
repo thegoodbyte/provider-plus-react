@@ -2129,7 +2129,8 @@
               "cancelled",
               "pending",
               "completed",
-              "in_progress"
+              "in_progress",
+              "on_hold"
             ],
             "type": "string"
           },

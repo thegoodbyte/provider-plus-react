@@ -9,6 +9,7 @@ type Context = 'client' | 'booking' | 'retreat' | 'generic';
 const columns: Array<{ status: Status; label: string }> = [
   { status: 'pending', label: 'To do' },
   { status: 'in_progress', label: 'In progress' },
+  { status: 'on_hold', label: 'On hold' },
   { status: 'completed', label: 'Done' },
 ];
 

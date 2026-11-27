@@ -2044,7 +2044,7 @@ const ClientDetailsPage: React.FC = () => {
             )}
 
             {tasks.length > 0 ? (
-              <TaskList
+              <TaskList onTaskUpdated={loadClientTasks}
                 tasks={tasks}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}

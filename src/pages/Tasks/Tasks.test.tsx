@@ -79,6 +79,6 @@ describe('Tasks page', () => {
     renderTasks();
     expect(await screen.findByText('Assigned task')).toBeInTheDocument();
     expect(screen.getByText('Kasia Nowak')).toBeInTheDocument();
-    expect(screen.getByText('Unassigned')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Assignee for Unassigned task' })).toHaveDisplayValue('Unassigned');
   });
 });
