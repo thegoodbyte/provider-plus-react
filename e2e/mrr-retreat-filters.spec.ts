@@ -20,7 +20,7 @@ for (const width of [1440, 390]) test(`MRR retreat filter searches location, sel
   await retreat.fill('Liberec');
   await page.getByRole('option', { name: 'MR2 · Mountain Retreat · 2027-02-10' }).click();
   await expect(page.getByText('Showing 1 of 3 review requests')).toBeVisible();
-  await retreat.click(); await retreat.fill('');
+  await page.locator('.ant-select').filter({ has: retreat }).click(); await retreat.fill('');
   await page.getByRole('option', { name: 'All retreats', exact: true }).click();
   await expect(page.getByText('Showing 3 of 3 review requests')).toBeVisible();
   await page.getByLabel('Search', { exact: true }).fill('Bob');
