@@ -313,34 +313,49 @@ export const Tasks: React.FC = () => {
           <div>
             <TaskWorkspaceTabs support={false} />
             <h1>Tasks</h1>
-            <p className="tasks-subtitle">
-              {statusCounts.open} open ·{" "}
-              <span className="task-overdue-count">
-                {statusCounts.overdue} overdue
-              </span>{" "}
-              · {statusCounts.week} due this week
-            </p>
+            {viewMode === "list" ? (
+              <p className="tasks-subtitle">
+                {statusCounts.open} open ·{" "}
+                <span className="task-overdue-count">
+                  {statusCounts.overdue} overdue
+                </span>{" "}
+                · {statusCounts.week} due this week
+              </p>
+            ) : (
+              <p className="tasks-subtitle">
+                One clear place for what needs your attention.
+              </p>
+            )}
           </div>
           <div className="task-header-actions">
             <div className="tasks-view-toggle" aria-label="Task view">
               <button
                 type="button"
                 className={viewMode === "list" ? "active" : ""}
-                onClick={() => setViewMode("list")}
+                onClick={() => {
+                  setSearch("");
+                  setViewMode("list");
+                }}
               >
                 List
               </button>
               <button
                 type="button"
                 className={viewMode === "board" ? "active" : ""}
-                onClick={() => setViewMode("board")}
+                onClick={() => {
+                  setSearch("");
+                  setViewMode("board");
+                }}
               >
                 Sprints
               </button>
               <button
                 type="button"
                 className={viewMode === "calendar" ? "active" : ""}
-                onClick={() => setViewMode("calendar")}
+                onClick={() => {
+                  setSearch("");
+                  setViewMode("calendar");
+                }}
               >
                 Calendar
               </button>
@@ -364,17 +379,19 @@ export const Tasks: React.FC = () => {
         </div>
       )}
 
-      <label className="task-grid-search">
-        <Search size={22} aria-hidden="true" />
-        <span className="sr-only">Search tasks, clients, bookings or ID</span>
-        <input
-          type="search"
-          data-re-unstyled=""
-          placeholder="Search tasks, clients, bookings or #ID"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </label>
+      {viewMode === "list" && (
+        <label className="task-grid-search">
+          <Search size={22} aria-hidden="true" />
+          <span className="sr-only">Search tasks, clients, bookings or ID</span>
+          <input
+            type="search"
+            data-re-unstyled=""
+            placeholder="Search tasks, clients, bookings or #ID"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+      )}
       <div className="task-grid-controls">
         {viewMode === "list" && (
           <div
