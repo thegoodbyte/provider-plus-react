@@ -57,12 +57,12 @@ for (const width of [1440, 390])
     });
     await expect(title).toBeVisible();
     const row = title.locator(
-      'xpath=ancestor::div[contains(@class,"task-row")]',
+      'xpath=ancestor::tr[contains(@class,"task-row")]',
     );
     const ref = await row.locator(".task-reference").innerText();
     expect(ref).toMatch(/^Task #\d+$/);
     await expect(
-      row.getByRole("link", { name: "Ewa Synthetic #1333" }),
+      row.getByRole("link", { name: "Client Ewa Synthetic #1333" }),
     ).toHaveAttribute("href", "/admin/clients/" + f.ids.client);
     const snapshot = async () =>
       (await request.get(f.url + "/fixture/snapshot")).json();
@@ -72,6 +72,7 @@ for (const width of [1440, 390])
     await expect(dialog.getByRole("heading")).toContainText(ref);
     await dialog.getByRole("button", { name: "Close task details" }).click();
     expect(await snapshot()).toEqual(before);
+    await row.getByLabel("Actions for Screening follow-up " + width).click();
     await row.getByRole("button", { name: "View task", exact: true }).click();
     await dialog
       .getByRole("button", { name: "Edit task", exact: true })
@@ -91,7 +92,7 @@ for (const width of [1440, 390])
     });
     await expect(edited).toBeVisible();
     const editedRow = edited.locator(
-      'xpath=ancestor::div[contains(@class,"task-row")]',
+      'xpath=ancestor::tr[contains(@class,"task-row")]',
     );
     await expect(editedRow.locator(".task-reference")).toHaveText(ref);
     if (process.env.TASK_IDENTITY_ARTIFACT_DIR) {

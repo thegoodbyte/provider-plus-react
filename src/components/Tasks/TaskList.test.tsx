@@ -1,130 +1,192 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { Task, taskService } from '../../services/taskService';
-import { TaskList } from './TaskList';
-
-jest.mock('../../services/taskService', () => ({ taskService: { isOverdue: jest.fn((date: string, status: string) => status !== 'completed' && date.startsWith('2020')) } }));
-
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import type { Task } from "../../services/taskService";
+import { TaskList } from "./TaskList";
 const makeTask = (overrides: Partial<Task> = {}): Task => ({
-  id: 'one', name: 'Upload EKG', description: 'Tonight', type: 'client', urgency: 'high', status: 'pending',
-  dueDate: '2020-01-02', tags: [], createdAt: '2026-08-29', updatedAt: '2026-08-29', ...overrides,
+  id: "one",
+  name: "Upload EKG",
+  description: "Tonight",
+  type: "client",
+  urgency: "high",
+  status: "pending",
+  dueDate: "2020-01-02",
+  tags: [],
+  createdAt: "2026-08-29",
+  updatedAt: "2026-08-29",
+  ...overrides,
 });
-const rowNames = () => Array.from(document.querySelectorAll('.task-row .task-title')).map((node) => node.textContent);
-
-describe('TaskList', () => {
-  beforeEach(() => { (taskService.isOverdue as jest.Mock).mockImplementation((date: string, status: string) => status !== 'completed' && date.startsWith('2020')); });
-  it('renders a useful empty state', () => {
-    render(<TaskList tasks={[]} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
-    expect(screen.getByText('No tasks found. Create your first task to get started!')).toBeInTheDocument();
+const callbacks = () => ({
+  onEditTask: jest.fn(),
+  onDeleteTask: jest.fn(),
+  onCompleteTask: jest.fn(),
+});
+const names = () =>
+  Array.from(document.querySelectorAll(".task-row .task-title")).map(
+    (x) => x.textContent,
+  );
+describe("searchable Tasks table", () => {
+  it("renders a useful empty state", () => {
+    render(<TaskList tasks={[]} {...callbacks()} />);
+    expect(
+      screen.getByText(
+        "No tasks found. Create your first task to get started!",
+      ),
+    ).toBeInTheDocument();
   });
-
-  it('shows relationship details, origins, badges, dates and overdue state', () => {
-    const tasks = [
-      makeTask({
-        clientId: { firstName: 'Eva', lastName: 'Novak', email: 'eva@example.com', display_id: 1201 },
-        retreatId: { name: 'September', code: 'SEP-26', startDate: '', endDate: '' },
-        bookingId: { bookingNumber: 1267 }, sourceType: 'booking_flow', status: 'in_progress',
-      }),
-      makeTask({ id: 'two', name: 'Generic note', type: 'generic', urgency: 'low', status: 'completed', dueDate: undefined, bookingId: '507f1f77bcf86cd799439011', clientId: 'client', retreatId: 'retreat' }),
-    ];
-    render(<TaskList tasks={tasks} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
-    expect(screen.getByText('System')).toBeInTheDocument();
-    expect(screen.getByText('Custom')).toBeInTheDocument();
-    expect(screen.getByText('Eva Novak #1201')).toHaveAttribute('title', 'Eva Novak #1201');
-    expect(screen.getByText('SEP-26')).toHaveAttribute('title', 'September SEP-26');
-    expect(screen.getByText('#1267')).toBeInTheDocument();
-    expect(screen.getByText('#439011')).toBeInTheDocument();
-    expect(screen.getByText('IN PROGRESS')).toBeInTheDocument();
-    expect(screen.getByText('No due date')).toBeInTheDocument();
-    expect(screen.getByText('Upload EKG').closest('.task-row')).toHaveClass('overdue');
-    expect(screen.getByText('Generic note').closest('.task-row')).not.toHaveClass('overdue');
+  it("separates exact client ID from task and booking IDs, links current workspace and retains readable context", () => {
+    render(
+      <TaskList
+        workspacePath="/user/tasks"
+        tasks={[
+          makeTask({
+            taskNumber: 968,
+            clientId: {
+              _id: "client-ewa",
+              firstName: "Ewa",
+              lastName: "Synthetic",
+              email: "",
+              display_id: 1333,
+            },
+            bookingId: { bookingNumber: 1267 },
+            sourceType: "manual",
+            assignedToUserId: { firstName: "Kasia", lastName: "Nowak" },
+          }),
+        ]}
+        {...callbacks()}
+      />,
+    );
+    expect(
+      screen.getByRole("columnheader", { name: /Client ID/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Task #968")).toBeInTheDocument();
+    expect(screen.getByText("Booking #1267")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Client Ewa Synthetic #1333" }),
+    ).toHaveAttribute("href", "/user/clients/client-ewa");
+    expect(screen.getByText("Kasia Nowak")).toBeInTheDocument();
+    expect(screen.getByText("KN")).toBeInTheDocument();
+    expect(screen.queryByText("Auto")).not.toBeInTheDocument();
   });
-
-  it('invokes complete, edit and delete actions and hides completion for completed tasks', () => {
-    const onComplete = jest.fn(); const onEdit = jest.fn(); const onDelete = jest.fn();
-    const pending = makeTask(); const completed = makeTask({ id: 'two', name: 'Done', status: 'completed' });
-    render(<TaskList tasks={[pending, completed]} onEditTask={onEdit} onDeleteTask={onDelete} onCompleteTask={onComplete} />);
-    const pendingRow = screen.getByText('Upload EKG').closest('.task-row') as HTMLElement;
-    fireEvent.click(within(pendingRow).getByLabelText('Mark task as complete'));
-    fireEvent.click(within(pendingRow).getByLabelText('Edit task'));
-    fireEvent.click(within(pendingRow).getByLabelText('Delete task'));
-    expect(onComplete).toHaveBeenCalledWith('one'); expect(onEdit).toHaveBeenCalledWith(pending); expect(onDelete).toHaveBeenCalledWith('one');
-    expect(within(screen.getByText('Done').closest('.task-row')!).queryByLabelText('Mark task as complete')).not.toBeInTheDocument();
+  it("does not invent client or booking numbers from bare Mongo IDs and handles legacy names", () => {
+    render(
+      <TaskList
+        tasks={[
+          makeTask({
+            clientId: "507f1f77bcf86cd799439011",
+            bookingId: "507f1f77bcf86cd799439012",
+          }),
+          makeTask({
+            id: "legacy",
+            name: "Legacy task",
+            clientId: {
+              _id: "actual",
+              firstName: "",
+              lastName: "",
+              fname: "Legacy",
+              lname: "Person",
+              displayId: 88,
+            } as any,
+          }),
+        ]}
+        {...callbacks()}
+      />,
+    );
+    expect(screen.queryByText(/43901/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Client Legacy Person #88" }),
+    ).toHaveAttribute("href", "/admin/clients/actual");
+    expect(screen.getAllByText("Unassigned")).toHaveLength(2);
   });
-
-  it('sorts due dates ascending and descending with missing dates last/first', () => {
-    render(<TaskList tasks={[
-      makeTask({ id: 'late', name: 'Late', dueDate: '2026-09-10' }),
-      makeTask({ id: 'none', name: 'None', dueDate: undefined }),
-      makeTask({ id: 'early', name: 'Early', dueDate: '2026-09-01' }),
-    ]} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
-    expect(rowNames()).toEqual(['Early', 'Late', 'None']);
-    fireEvent.click(screen.getByText(/Due Date ↑/));
-    expect(rowNames()).toEqual(['None', 'Late', 'Early']);
-    expect(screen.getByText(/Due Date ↓/)).toBeInTheDocument();
-  });
-
   it.each([
-    ['Task Name', ['Alpha', 'Beta']],
-    ['Type', ['Alpha', 'Beta']],
-    ['Urgency', ['Alpha', 'Beta']],
-    ['Status', ['Beta', 'Alpha']],
-    ['Booking', ['Alpha', 'Beta']],
-    ['Client', ['Alpha', 'Beta']],
-    ['Retreat', ['Alpha', 'Beta']],
-  ])('sorts by %s and reverses on a second click', (header, ascending) => {
-    const alpha = makeTask({ id: 'a', name: 'Alpha', type: 'client', urgency: 'low', status: 'pending', bookingId: { bookingHash: 'A' }, clientId: { firstName: 'A', lastName: 'Client', email: '' }, retreatId: { name: 'A retreat', code: '', startDate: '', endDate: '' } });
-    const beta = makeTask({ id: 'b', name: 'Beta', type: 'retreat', urgency: 'urgent', status: 'completed', bookingId: { _id: 'B' }, clientId: { firstName: 'B', lastName: 'Client', email: '' }, retreatId: { name: 'B retreat', code: '', startDate: '', endDate: '' } });
-    render(<TaskList tasks={[beta, alpha]} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
-    const cell = Array.from(document.querySelectorAll('.task-grid-header .sortable')).find((node) => node.textContent?.startsWith(header))!;
-    fireEvent.click(cell);
-    expect(rowNames()).toEqual(ascending);
-    fireEvent.click(cell);
-    expect(rowNames()).toEqual([...ascending].reverse());
+    ["Task", "name"],
+    ["Client ID", "client"],
+    ["Type", "type"],
+    ["Priority", "urgency"],
+    ["Due", "due"],
+    ["Assignee", "assignee"],
+  ])("sorts %s with an accessible direction", (header) => {
+    const a = makeTask({
+        name: "Alpha",
+        clientId: { firstName: "A", lastName: "", email: "", display_id: 1001 },
+        type: "client",
+        urgency: "low",
+        dueDate: "2026-09-01",
+        assignedToUserId: { firstName: "A" },
+      }),
+      b = makeTask({
+        id: "two",
+        name: "Beta",
+        clientId: { firstName: "B", lastName: "", email: "", display_id: 1002 },
+        type: "booking",
+        urgency: "high",
+        dueDate: "2026-09-10",
+        assignedToUserId: { firstName: "B" },
+      });
+    render(<TaskList tasks={[b, a]} {...callbacks()} />);
+    const button = screen.getByRole("button", { name: header, exact: true });
+    fireEvent.click(button);
+    const first = names();
+    fireEvent.click(button);
+    expect(names()).toEqual([...first].reverse());
+    expect(button.closest("th")).toHaveAttribute("aria-sort");
   });
-
-  it('shows the populated assignee and an Unassigned state when absent (PPVC-1047)', () => {
-    const tasks = [
-      makeTask({ assignedToUserId: { _id: 'user-1', firstName: 'Kasia', lastName: 'Nowak', email: 'kasia@example.com', role: 'user' } }),
-      makeTask({ id: 'two', name: 'No assignee yet' }),
-    ];
-    render(<TaskList tasks={tasks} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
-    expect(screen.getByText('Kasia Nowak')).toHaveAttribute('title', 'Kasia Nowak');
-    expect(screen.getByText('KN')).toBeInTheDocument();
-    expect(screen.getByText('Unassigned')).toBeInTheDocument();
+  it("runs only supported mutations and preserves view/details focus behavior", () => {
+    const task = makeTask({ taskNumber: 968 }),
+      actions = callbacks();
+    render(<TaskList tasks={[task]} {...actions} />);
+    fireEvent.click(screen.getByLabelText("Mark task as complete"));
+    expect(actions.onCompleteTask).toHaveBeenCalledWith("one");
+    const title = screen.getByRole("button", { name: "Upload EKG" });
+    title.focus();
+    fireEvent.click(title);
+    expect(screen.getByRole("dialog")).toHaveTextContent("Tonight");
+    fireEvent.click(screen.getByLabelText("Close task details"));
+    expect(title).toHaveFocus();
+    const summary = screen.getByLabelText("Actions for Upload EKG");
+    fireEvent.click(summary);
+    fireEvent.click(screen.getByLabelText("Edit task"));
+    expect(actions.onEditTask).toHaveBeenCalledWith(task);
+    fireEvent.click(screen.getByLabelText("Delete task"));
+    expect(actions.onDeleteTask).toHaveBeenCalledWith("one");
   });
-
-  it('sorts by Assignee and reverses on a second click (PPVC-1047)', () => {
-    const alpha = makeTask({ id: 'a', name: 'Alpha', assignedToUserId: { firstName: 'A', lastName: 'Staff', email: '' } });
-    const beta = makeTask({ id: 'b', name: 'Beta', assignedToUserId: { firstName: 'B', lastName: 'Staff', email: '' } });
-    render(<TaskList tasks={[beta, alpha]} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
-    const cell = Array.from(document.querySelectorAll('.task-grid-header .sortable')).find((node) => node.textContent?.startsWith('Assignee'))!;
-    fireEvent.click(cell);
-    expect(rowNames()).toEqual(['Alpha', 'Beta']);
-    fireEvent.click(cell);
-    expect(rowNames()).toEqual(['Beta', 'Alpha']);
+  it("never completes cancelled/completed or specialist support cases", () => {
+    render(
+      <TaskList
+        tasks={[
+          makeTask({ status: "completed" }),
+          makeTask({ id: "cancelled", name: "Cancelled", status: "cancelled" }),
+          makeTask({
+            id: "support",
+            name: "Request",
+            supportReference: "SUP-1001",
+          }),
+        ]}
+        {...callbacks()}
+      />,
+    );
+    expect(screen.getByLabelText("Task completed")).toBeChecked();
+    expect(screen.getByLabelText("Task cancelled")).toBeDisabled();
+    expect(screen.getByLabelText("Mark task as complete")).toBeDisabled();
+    expect(
+      within(screen.getByText("SUP-1001 · Request").closest("tr")!).queryByRole(
+        "button",
+        { name: "Edit task" },
+      ),
+    ).not.toBeInTheDocument();
   });
-
-  it('handles legacy names and relationship identifiers safely', () => {
-    render(<TaskList tasks={[
-      makeTask({ clientId: { firstName: '', lastName: '', fname: 'Legacy', lname: 'Person', email: '', displayId: 88 } as any, bookingId: { id: 'booking-id' }, retreatId: { name: 'Named retreat', code: '', startDate: '', endDate: '' } }),
-      makeTask({ id: 'empty', name: 'Fallbacks', clientId: {} as any, bookingId: {} as any, retreatId: undefined }),
-    ]} onEditTask={jest.fn()} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
-    expect(screen.getByText('Legacy Person #88')).toBeInTheDocument();
-    expect(screen.getByText('#booking-id')).toBeInTheDocument();
-    expect(screen.getByText('Named retreat')).toBeInTheDocument();
-    expect(screen.getByText('Client No client #')).toBeInTheDocument();
+  it("paginates real tasks and changes sorting without losing any record", () => {
+    render(
+      <TaskList
+        tasks={Array.from({ length: 17 }, (_, i) =>
+          makeTask({ id: String(i), name: `Task ${i}` }),
+        )}
+        {...callbacks()}
+      />,
+    );
+    expect(document.querySelectorAll(".task-row")).toHaveLength(15);
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(document.querySelectorAll(".task-row")).toHaveLength(2);
+    expect(screen.getByText("Showing 16–17 of 17 tasks")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Previous" }));
+    expect(document.querySelectorAll(".task-row")).toHaveLength(15);
   });
-});
-
-it('opens numbered task details without editing, links the exact client and preserves the task on edit', () => {
-  const task = makeTask({taskNumber: 968, clientId: {_id:'client-ewa',firstName:'Ewa',lastName:'Synthetic',email:'ewa@example.invalid',display_id:1333}}), edit = jest.fn();
-  render(<TaskList tasks={[task]} onEditTask={edit} onDeleteTask={jest.fn()} onCompleteTask={jest.fn()} />);
-  expect(screen.getByText('Task #968')).toBeInTheDocument();
-  expect(screen.getByRole('link', {name:'Ewa Synthetic #1333'})).toHaveAttribute('href','/admin/clients/client-ewa');
-  const opener=screen.getByRole('button',{name:'Upload EKG'}); opener.focus();
-  fireEvent.click(opener);
-  const dialog=screen.getByRole('dialog',{name:'Task details'});
-  expect(within(dialog).getByText('Tonight')).toBeInTheDocument();expect(edit).not.toHaveBeenCalled();
-  fireEvent.click(within(dialog).getByRole('button',{name:'Edit task'}));expect(edit).toHaveBeenCalledWith(task);expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByLabelText('View task'));fireEvent.click(screen.getByLabelText('Close task details'));expect(screen.queryByRole('dialog')).not.toBeInTheDocument();expect(opener).toHaveFocus();
 });

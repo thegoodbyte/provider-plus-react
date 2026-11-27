@@ -1,351 +1,372 @@
-import React, { useState } from 'react';
-import { Task, taskService } from '../../services/taskService';
-import './TaskList.css';
-import { Eye } from 'lucide-react';
-import { TaskDetails } from './TaskDetails';
-import { Badge, Card } from '../ui';
-import type { BadgeTone } from '../ui';
-
-const URGENCY_COLOR: Record<string, string> = {
-  low: 'bg-apple-gray-100 text-apple-gray-700',
-  medium: 'bg-amber-100 text-amber-800',
-  high: 'bg-orange-100 text-orange-800',
-  urgent: 'bg-red-100 text-red-800',
-};
-
-const STATUS_TONE: Record<string, BadgeTone> = {
-  pending: 'neutral',
-  in_progress: 'info',
-  completed: 'success',
-};
-
-const TYPE_TONE: Record<string, BadgeTone> = {
-  generic: 'neutral',
-  client: 'info',
-  retreat: 'success',
-};
-
-const ORIGIN_COLOR: Record<string, string> = {
-  custom: 'bg-emerald-100 text-emerald-800',
-  system: 'bg-violet-100 text-violet-800',
-  request: 'bg-indigo-100 text-indigo-800',
-};
-
+import React, { useEffect, useState } from "react";
+import type { Task } from "../../services/taskService";
+import { MoreVertical, Zap } from "lucide-react";
+import { TaskDetails } from "./TaskDetails";
+import AppleButton from "../AppleButton";
+import {
+  Badge,
+  Card,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableHeaderCell,
+  TableCell,
+} from "../ui";
+import {
+  assigneeName,
+  clientName,
+  clientNumber,
+  dueLabel,
+  isOpen,
+  matchesView,
+  taskClient,
+  taskContext,
+  taskDue,
+} from "./taskGrid";
+import "./TaskList.css";
 interface TaskListProps {
   workspacePath?: string;
   tasks: Task[];
+  totalCount?: number;
   onEditTask: (task: Task) => void;
-  onDeleteTask: (taskId: string) => void;
-  onCompleteTask: (taskId: string) => void;
+  onDeleteTask: (id: string) => void;
+  onCompleteTask: (id: string) => void;
 }
-
 export const TaskList: React.FC<TaskListProps> = ({
-  workspacePath = '/admin/tasks',
+  workspacePath = "/admin/tasks",
   tasks,
+  totalCount = tasks.length,
   onEditTask,
   onDeleteTask,
   onCompleteTask,
 }) => {
-  const [viewingTask, setViewingTask] = useState<Task | null>(null);
-  const [sortField, setSortField] = useState<string>('dueDate');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-
-  const handleSort = (field: string) => {
-    if (field === sortField) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  // PPVC-1047: assignedToUserId is only ever a populated object (or absent)
-  // coming from the API -- a bare string would mean the caller constructed
-  // it client-side, which doesn't happen on this read path.
-  const getAssigneeName = (assignee: Task['assignedToUserId']) => {
-    if (!assignee || typeof assignee === 'string') return '';
-    return [assignee.firstName, assignee.lastName].filter(Boolean).join(' ').trim() || assignee.email || '';
-  };
-
-  const getAssigneeInitials = (name: string) => {
-    const initials = name.split(/\s+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2);
-    return (initials || '?').toUpperCase();
-  };
-
-  const sortedTasks = [...tasks].sort((a, b) => {
-    let aVal: any = a[sortField as keyof Task];
-    let bVal: any = b[sortField as keyof Task];
-
-    // Handle special cases
-    if (sortField === 'dueDate') {
-      aVal = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
-      bVal = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-    } else if (sortField === 'urgency') {
-      const urgencyOrder = { 'urgent': 4, 'high': 3, 'medium': 2, 'low': 1 };
-      aVal = urgencyOrder[a.urgency as keyof typeof urgencyOrder] || 0;
-      bVal = urgencyOrder[b.urgency as keyof typeof urgencyOrder] || 0;
-    } else if (sortField === 'clientName') {
-      aVal = a.clientId && typeof a.clientId === 'object' ?
-        `${(a.clientId as any).firstName} ${(a.clientId as any).lastName}` : '';
-      bVal = b.clientId && typeof b.clientId === 'object' ?
-        `${(b.clientId as any).firstName} ${(b.clientId as any).lastName}` : '';
-    } else if (sortField === 'retreatName') {
-      aVal = a.retreatId && typeof a.retreatId === 'object' ? (a.retreatId as any).name : '';
-      bVal = b.retreatId && typeof b.retreatId === 'object' ? (b.retreatId as any).name : '';
-    } else if (sortField === 'bookingNumber') {
-      aVal = getBookingSortValue(a.bookingId);
-      bVal = getBookingSortValue(b.bookingId);
-    } else if (sortField === 'assigneeName') {
-      aVal = getAssigneeName(a.assignedToUserId);
-      bVal = getAssigneeName(b.assignedToUserId);
-    }
-
-    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
+  const [viewingTask, setViewingTask] = useState<Task | null>(null),
+    [sortField, setSortField] = useState("dueDate"),
+    [direction, setDirection] = useState<"asc" | "desc">("asc"),
+    [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [tasks, sortField, direction]);
+  const prefix = "/" + (workspacePath.split("/")[1] || "admin");
+  const bookingNumber = (t: Task) =>
+    typeof t.bookingId === "object"
+      ? String(t.bookingId.bookingNumber || "")
+      : "";
+  const retreatName = (t: Task) =>
+    typeof t.retreatId === "object" ? t.retreatId.code || t.retreatId.name : "";
+  const value = (t: Task): string | number =>
+    sortField === "dueDate"
+      ? (taskDue(t)?.getTime() ?? Infinity)
+      : sortField === "urgency"
+        ? { low: 1, medium: 2, high: 3, urgent: 4 }[t.urgency] || 0
+        : sortField === "clientNumber"
+          ? Number(clientNumber(t)) || Infinity
+          : sortField === "assigneeName"
+            ? assigneeName(t)
+            : sortField === "type"
+              ? taskContext(t)
+              : String(t[sortField as keyof Task] || "");
+  const sorted = [...tasks].sort((a, b) => {
+    const x = value(a),
+      y = value(b);
+    return (x < y ? -1 : x > y ? 1 : 0) * (direction === "asc" ? 1 : -1);
   });
-
-  const getSortIcon = (field: string) => {
-    if (field !== sortField) return '↕';
-    return sortDirection === 'asc' ? '↑' : '↓';
+  const size = 15,
+    pages = Math.max(1, Math.ceil(sorted.length / size)),
+    current = Math.min(page, pages),
+    shown = sorted.slice((current - 1) * size, current * size);
+  const sort = (field: string) => {
+    if (sortField === field) setDirection(direction === "asc" ? "desc" : "asc");
+    else {
+      setSortField(field);
+      setDirection("asc");
+    }
   };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const getClientDisplayName = (client: any) => {
-    const firstName = client?.firstName || client?.fname || '';
-    const lastName = client?.lastName || client?.lname || '';
-    return `${firstName} ${lastName}`.trim() || 'Client';
-  };
-
-  const getClientNumber = (client: any) => {
-    const displayId = client?.display_id || client?.displayId || client?.clientNumber;
-    return displayId ? `#${displayId}` : 'No client #';
-  };
-
-  function getBookingSortValue(booking: Task['bookingId']) {
-    if (!booking) return '';
-    if (typeof booking === 'string') return booking;
-    return booking.bookingNumber || booking.bookingHash || booking._id || booking.id || '';
-  }
-
-  const getBookingNumber = (booking: Task['bookingId']) => {
-    if (!booking) return '-';
-    if (typeof booking === 'string') return `#${booking.slice(-6)}`;
-    const value = booking.bookingNumber || booking.bookingHash || booking._id || booking.id;
-    return value ? `#${value}` : '-';
-  };
-
-  const getUrgencyBadge = (urgency: string) => (
-    <Badge colorClassName={URGENCY_COLOR[urgency]}>{urgency.toUpperCase()}</Badge>
+  const header = (name: string, field: string) => (
+    <TableHeaderCell
+      className="sortable"
+      onSort={() => sort(field)}
+      sortDirection={sortField === field ? direction : undefined}
+    >
+      {name}
+    </TableHeaderCell>
   );
-
-  const getStatusBadge = (status: string) => (
-    <Badge tone={STATUS_TONE[status] || 'neutral'}>{status.replace('_', ' ').toUpperCase()}</Badge>
-  );
-
-  const isSystemTask = (task: Task) => Boolean(task.sourceType && !['client_support', 'client_portal_request'].includes(task.sourceType) || task.sourceId || task.bookingFlowItemId);
-
-  if (tasks.length === 0) {
+  if (!tasks.length)
     return (
       <div className="task-list-empty">
         <p>No tasks found. Create your first task to get started!</p>
       </div>
     );
-  }
-
   return (
     <div className="task-list">
       <Card padding="none" className="task-grid">
-        <div className="task-grid-header">
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('name')}
-          >
-            Task Name {getSortIcon('name')}
-          </div>
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('type')}
-          >
-            Type {getSortIcon('type')}
-          </div>
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('urgency')}
-          >
-            Urgency {getSortIcon('urgency')}
-          </div>
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('status')}
-          >
-            Status {getSortIcon('status')}
-          </div>
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('assigneeName')}
-          >
-            Assignee {getSortIcon('assigneeName')}
-          </div>
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('dueDate')}
-          >
-            Due Date {getSortIcon('dueDate')}
-          </div>
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('bookingNumber')}
-          >
-            Booking {getSortIcon('bookingNumber')}
-          </div>
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('clientName')}
-          >
-            Client {getSortIcon('clientName')}
-          </div>
-          <div
-            className="header-cell sortable"
-            onClick={() => handleSort('retreatName')}
-          >
-            Retreat {getSortIcon('retreatName')}
-          </div>
-          <div className="header-cell">Actions</div>
-        </div>
-
-        {sortedTasks.map((task) => (
-          <div
-            key={task.id}
-            className={`task-row ${task.status} ${
-              task.dueDate && taskService.isOverdue(task.dueDate, task.status) ? 'overdue' : ''
-            }`}
-          >
-            <div className="task-cell task-name">
-              <span className="task-cell-label">Task</span>
-              <span className="task-reference">{task.taskNumber ? `Task #${task.taskNumber}` : 'Reference pending'}</span>
-              <div className="task-title-row"><div className="task-title">{task.supportReference ? <a href={workspacePath+'?support='+encodeURIComponent(task.supportReference)}>{task.supportReference} · {task.name}</a> : <button className="task-title-link" onClick={() => setViewingTask(task)}>{task.name}</button>}</div><Badge colorClassName={task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? ORIGIN_COLOR.request : isSystemTask(task) ? ORIGIN_COLOR.system : ORIGIN_COLOR.custom}>{task.sourceType === 'client_support' || task.sourceType === 'client_portal_request' ? 'Client request' : isSystemTask(task) ? 'System' : 'Custom'}</Badge></div>
-            </div>
-
-            <div className="task-cell">
-              <span className="task-cell-label">Type</span>
-              <Badge tone={TYPE_TONE[task.type] || 'neutral'}>{task.type.toUpperCase()}</Badge>
-              <Badge tone="neutral">{(task.category || 'operations').toUpperCase()}</Badge>
-            </div>
-
-            <div className="task-cell">
-              <span className="task-cell-label">Urgency</span>
-              {getUrgencyBadge(task.urgency)}
-            </div>
-
-            <div className="task-cell">
-              <span className="task-cell-label">Status</span>
-              {getStatusBadge(task.status)}
-            </div>
-
-            <div className="task-cell">
-              <span className="task-cell-label">Assignee</span>
-              {task.assignedToUserId && typeof task.assignedToUserId === 'object' ? (
-                <div className="assignee-info">
-                  <span className="assignee-avatar" aria-hidden="true">{getAssigneeInitials(getAssigneeName(task.assignedToUserId))}</span>
-                  <span className="assignee-name" title={getAssigneeName(task.assignedToUserId)}>{getAssigneeName(task.assignedToUserId)}</span>
-                </div>
-              ) : (
-                <span className="no-assignee">Unassigned</span>
-              )}
-            </div>
-
-            <div className="task-cell due-date">
-              <span className="task-cell-label">Due</span>
-              {task.dueDate ? (
-                <div>
-                  <div className="due-date-text">
-                    {formatDate(task.dueDate)}
-                  </div>
-                </div>
-              ) : (
-                <span className="no-due-date">No due date</span>
-              )}
-            </div>
-
-            <div className="task-cell">
-              <span className="task-cell-label">Booking</span>
-              {task.bookingId ? (
-                <div className="booking-info">
-                  <div className="booking-number">{getBookingNumber(task.bookingId)}</div>
-                </div>
-              ) : (
-                <span className="no-booking">-</span>
-              )}
-            </div>
-
-            <div className="task-cell">
-              <span className="task-cell-label">Client</span>
-              {task.clientId && typeof task.clientId === 'object' ? (
-                <div className="client-info">
-                  <div className="client-name" title={`${getClientDisplayName(task.clientId)} ${getClientNumber(task.clientId)}`}>
-                    {task.clientId._id || task.clientId.id ? <a href={'/admin/clients/' + encodeURIComponent(task.clientId._id || task.clientId.id!)}>{getClientDisplayName(task.clientId)} {getClientNumber(task.clientId)}</a> : <>{getClientDisplayName(task.clientId)} {getClientNumber(task.clientId)}</>}
-                  </div>
-                </div>
-              ) : (
-                <span className="no-client">-</span>
-              )}
-            </div>
-
-            <div className="task-cell">
-              <span className="task-cell-label">Retreat</span>
-              {task.retreatId && typeof task.retreatId === 'object' ? (
-                <div className="retreat-info">
-                  <div className="retreat-name" title={`${(task.retreatId as any).name} ${(task.retreatId as any).code || ''}`}>{(task.retreatId as any).code || (task.retreatId as any).name}</div>
-                </div>
-              ) : (
-                <span className="no-retreat">-</span>
-              )}
-            </div>
-
-            <div className="task-cell actions">
-              <span className="task-cell-label">Actions</span>
-              <div className="action-buttons">
-                {task.supportReference ? <a className="task-action-btn" href={workspacePath+'?support='+encodeURIComponent(task.supportReference)} aria-label="View support request" title="View support request"><Eye size={16} aria-hidden="true" /></a> : <button className="task-action-btn" onClick={() => setViewingTask(task)} aria-label="View task" title="View task"><Eye size={16} aria-hidden="true" /></button>}
-                {task.status !== 'completed' && (
-                  <button
-                    className="task-action-btn task-action-complete"
-                    disabled={Boolean(task.supportReference)} onClick={() => onCompleteTask(task.id)}
-                    title="Mark as complete"
-                    aria-label="Mark task as complete"
-                  >
-                    ✓
-                  </button>
-                )}
-                <button
-                  className="task-action-btn task-action-edit"
-                  disabled={Boolean(task.supportReference)} onClick={() => onEditTask(task)}
-                  title="Edit task"
-                  aria-label="Edit task"
+        <Table className="task-table">
+          <caption className="sr-only">Tasks</caption>
+          <TableHead>
+            <TableRow className="task-grid-header">
+              <TableHeaderCell>
+                <span className="sr-only">Completion</span>
+              </TableHeaderCell>
+              {header("Task", "name")}
+              {header("Client ID", "clientNumber")}
+              {header("Type", "type")}
+              {header("Priority", "urgency")}
+              {header("Due", "dueDate")}
+              {header("Assignee", "assigneeName")}
+              <TableHeaderCell>
+                <span className="sr-only">Actions</span>
+              </TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {shown.map((task) => {
+              const client = taskClient(task),
+                number = clientNumber(task),
+                clientId = client?._id || client?.id,
+                name = assigneeName(task),
+                context = taskContext(task),
+                support = Boolean(task.supportReference),
+                auto = Boolean(
+                  (task.sourceType &&
+                    ![
+                      "manual",
+                      "client_support",
+                      "client_portal_request",
+                    ].includes(task.sourceType)) ||
+                    task.sourceId ||
+                    task.bookingFlowItemId,
+                );
+              return (
+                <TableRow
+                  key={task.id}
+                  className={`task-row ${task.status} ${matchesView(task, "overdue") ? "overdue" : ""}`}
                 >
-                  ✎
-                </button>
-                <button
-                  className="task-action-btn task-action-delete"
-                  disabled={Boolean(task.supportReference)} onClick={() => onDeleteTask(task.id)}
-                  title="Delete task"
-                  aria-label="Delete task"
-                >
-                  ✗
-                </button>
-              </div>
-            </div>
+                  <TableCell className="task-check-cell">
+                    {isOpen(task) ? (
+                      <input
+                        type="checkbox"
+                        aria-label="Mark task as complete"
+                        checked={false}
+                        disabled={support}
+                        onChange={() => onCompleteTask(task.id)}
+                      />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        aria-label={
+                          task.status === "completed"
+                            ? "Task completed"
+                            : "Task cancelled"
+                        }
+                        checked={task.status === "completed"}
+                        disabled
+                        readOnly
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell className="task-name">
+                    <div className="task-title">
+                      {support ? (
+                        <a
+                          href={
+                            workspacePath +
+                            "?support=" +
+                            encodeURIComponent(task.supportReference!)
+                          }
+                        >
+                          {task.supportReference} · {task.name}
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          className="task-title-link"
+                          onClick={() => setViewingTask(task)}
+                        >
+                          {task.name}
+                        </button>
+                      )}
+                    </div>
+                    <div className="task-subtitle">
+                      <span className="task-reference">
+                        {task.taskNumber
+                          ? `Task #${task.taskNumber}`
+                          : "Reference pending"}
+                      </span>
+                      {clientName(task) && <span>{clientName(task)}</span>}
+                      {bookingNumber(task) && (
+                        <span>Booking #{bookingNumber(task)}</span>
+                      )}
+                      {retreatName(task) && (
+                        <span
+                          title={
+                            typeof task.retreatId === "object"
+                              ? `${task.retreatId.name} ${task.retreatId.code || ""}`
+                              : ""
+                          }
+                        >
+                          {retreatName(task)}
+                        </span>
+                      )}
+                      <span>{task.category || "operations"}</span>
+                      {auto && (
+                        <Badge tone="neutral">
+                          <Zap size={12} aria-hidden="true" />
+                          Auto
+                        </Badge>
+                      )}
+                      {task.status !== "pending" && (
+                        <span className="task-status">
+                          {task.status.replace("_", " ")}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="task-client-id">
+                    {number ? (
+                      clientId ? (
+                        <a
+                          aria-label={`Client ${clientName(task)} #${number}`}
+                          href={`${prefix}/clients/${encodeURIComponent(clientId)}`}
+                        >
+                          #{number}
+                        </a>
+                      ) : (
+                        <span>#{number}</span>
+                      )
+                    ) : (
+                      <span className="task-muted">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge colorClassName={`task-type-${context}`}>
+                      {context[0].toUpperCase() + context.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge colorClassName={`task-priority-${task.urgency}`}>
+                      <span aria-hidden="true">●</span>{" "}
+                      {task.urgency[0].toUpperCase() + task.urgency.slice(1)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="task-due">
+                    <span title={task.dueDate || ""}>{dueLabel(task)}</span>
+                  </TableCell>
+                  <TableCell>
+                    {name ? (
+                      <div className="assignee-info">
+                        <span className="assignee-avatar" aria-hidden="true">
+                          {name
+                            .split(/\s+/)
+                            .map((x) => x[0])
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </span>
+                        <span className="assignee-name" title={name}>
+                          {name}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="assignee-info">
+                        <span
+                          className="assignee-avatar unassigned"
+                          aria-hidden="true"
+                        />
+                        <span className="no-assignee">Unassigned</span>
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="task-actions">
+                    <details
+                      className="task-row-menu"
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                          event.currentTarget.open = false;
+                          event.currentTarget.querySelector("summary")?.focus();
+                        }
+                      }}
+                    >
+                      <summary aria-label={`Actions for ${task.name}`}>
+                        <MoreVertical size={20} />
+                      </summary>
+                      <div className="task-action-buttons">
+                        {support ? (
+                          <a
+                            href={
+                              workspacePath +
+                              "?support=" +
+                              encodeURIComponent(task.supportReference!)
+                            }
+                          >
+                            View support request
+                          </a>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              aria-label="View task"
+                              onClick={() => setViewingTask(task)}
+                            >
+                              View task
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Edit task"
+                              onClick={() => onEditTask(task)}
+                            >
+                              Edit / assign task
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Delete task"
+                              onClick={() => onDeleteTask(task.id)}
+                            >
+                              Delete task
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </details>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        <footer className="task-grid-footer">
+          <span>
+            Showing {(current - 1) * size + 1}–
+            {Math.min(current * size, tasks.length)} of {tasks.length} tasks
+            {totalCount !== tasks.length
+              ? ` · ${totalCount} in this scope`
+              : ""}
+          </span>
+          <div>
+            <AppleButton
+              size="sm"
+              variant="secondary"
+              disabled={current === 1}
+              onClick={() => setPage(current - 1)}
+            >
+              Previous
+            </AppleButton>
+            <AppleButton
+              size="sm"
+              variant="secondary"
+              disabled={current === pages}
+              onClick={() => setPage(current + 1)}
+            >
+              Next
+            </AppleButton>
           </div>
-        ))}
+        </footer>
       </Card>
-      {viewingTask && <TaskDetails task={viewingTask} onClose={() => setViewingTask(null)} onEdit={onEditTask} />}
+      {viewingTask && (
+        <TaskDetails
+          task={viewingTask}
+          onClose={() => setViewingTask(null)}
+          onEdit={onEditTask}
+        />
+      )}
     </div>
   );
 };

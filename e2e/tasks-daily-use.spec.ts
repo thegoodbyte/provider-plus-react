@@ -19,7 +19,7 @@ for(const width of [1440,390])test(`daily task create/edit/status/sprint/reload 
   return route.fulfill({json:[]});
  });
  await page.goto('/admin/tasks');
- await page.getByRole('button',{name:'+ Client task',exact:true}).click();
+ await page.getByRole('button',{name:'+ New task',exact:true}).click();
  await expect(page.getByLabel('Select Client *',{exact:true})).toBeVisible();
  await page.getByLabel('Task Name *',{exact:true}).fill('Request EKG tonight');
  await page.getByLabel('Select Client *',{exact:true}).fill('Unselected person');
@@ -32,7 +32,7 @@ for(const width of [1440,390])test(`daily task create/edit/status/sprint/reload 
  const allAfterClient=await(await request.get(f.url+'/tasks',{headers})).json();expect(allAfterClient.filter((r:any)=>r.name==='Request EKG tonight')).toHaveLength(1);const clientTask=allAfterClient.find((r:any)=>r.name==='Request EKG tonight');expect(typeof clientTask.clientId==='object'?clientTask.clientId._id:clientTask.clientId).toBe(f.ids.alice);
  await page.locator('.task-context-tabs').getByRole('button',{name:/Generic/}).click();
  await expect(page.getByText('Sibling task',{exact:true})).toBeVisible();await expect(page.getByText('Support stays in its own inbox')).toHaveCount(0);
- await page.getByRole('button',{name:'+ Generic task',exact:true}).click();await page.getByLabel('Task Name *',{exact:true}).fill('Call supplier');await page.getByRole('button',{name:'Create Task',exact:true}).click();
+ await page.getByRole('button',{name:'+ New task',exact:true}).click();await page.getByLabel('Task Name *',{exact:true}).fill('Call supplier');await page.getByRole('button',{name:'Create Task',exact:true}).click();
  await expect(page.getByText('Call supplier',{exact:true})).toBeVisible();
  const read=async()=>await(await request.get(f.url+'/tasks',{headers})).json();let rows=await read();const created=rows.find((r:any)=>r.name==='Call supplier');expect(created).toBeTruthy();
  await page.getByRole('button',{name:'Sprints',exact:true}).click();
