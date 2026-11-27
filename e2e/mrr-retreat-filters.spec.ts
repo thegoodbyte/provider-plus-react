@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-for (const width of [1440, 390]) test(`MRR retreat filter searches location, selects exact retreat and clears at ${width}px`, async ({ page }, info) => {
+for (const routePath of ['/medical/review-requests', '/admin/medical-review-requests']) for (const width of [1440, 390]) test(`MRR retreat filter searches location, selects exact retreat and clears on ${routePath} at ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 1000 });
   const retreats = [{ _id: 'r1', name: 'Jungle Retreat', retreatCode: 'JR1', startDate: '2027-01-05', location_town: 'Prague' }, { _id: 'r2', name: 'Mountain Retreat', retreatCode: 'MR2', startDate: '2027-02-10', location_town: 'Liberec' }];
   const requests = [0, 0, 1].map((r, i) => ({ _id: 'request-' + i, display_id: i + 1, status: 'pending', requestType: 'ekg_review', retreatId: retreats[r], clientId: { _id: 'c' + i, firstName: ['Ann', 'Bob', 'Cid'][i], lastName: 'Fixture' }, artifactIds: [] }));
@@ -9,28 +9,33 @@ for (const width of [1440, 390]) test(`MRR retreat filter searches location, sel
     const path = new URL(q.url()).pathname.replace(/^\/api/, '');
     if (q.method() !== 'GET') { writes.push(q.method() + ' ' + path); return route.fulfill({ status: 405, json: {} }); }
     if (path === '/medical-review-requests' || path === '/medical-review-requests/queue') return route.fulfill({ json: requests });
+    if (path === '/retreats') return route.fulfill({ json: retreats });
     if (path.endsWith('/context')) return route.fulfill({ json: { artifacts: { all: [] } } });
     if (path.endsWith('/client-messages')) return route.fulfill({ json: { messages: [], skippedNotifications: [] } });
     if (path === '/environment/status') return route.fulfill({ json: { environment: 'local', production: false, enabledJobs: [] } });
     return route.fulfill({ json: [] });
   });
-  await page.goto('/medical/review-requests');
-  await expect(page.getByText('Showing 3 of 3 review requests')).toBeVisible();
+  await page.goto(routePath);
+  const legacy = routePath === '/medical/review-requests';
+  const assertCount = async (count: number) => legacy ? expect(page.getByText(`Showing ${count} of 3 review requests`)).toBeVisible() : expect(page.locator('.mrr-list-row')).toHaveCount(count);
+  const search = legacy ? page.getByLabel('Search', { exact: true }) : page.getByRole('textbox', { name: 'Search review requests' });
+  const status = page.locator(legacy ? '#review-request-status-filter' : '#review-status-filter');
+  await assertCount(3);
   const retreat = page.getByRole('combobox', { name: 'Retreat', exact: true });
   await expect(page.locator('.ant-select').filter({ has: retreat })).toHaveCSS('display', 'inline-flex');
   await retreat.fill('Liberec');
   await page.getByRole('option', { name: 'MR2 · Mountain Retreat · 2027-02-10' }).click();
-  await expect(page.getByText('Showing 1 of 3 review requests')).toBeVisible();
+  await assertCount(1);
   await page.locator('.ant-select').filter({ has: retreat }).click(); await retreat.fill('');
   await page.getByRole('option', { name: 'All retreats', exact: true }).click();
-  await expect(page.getByText('Showing 3 of 3 review requests')).toBeVisible();
-  await page.getByLabel('Search', { exact: true }).fill('Bob');
-  await expect(page.getByText('Showing 1 of 3 review requests')).toBeVisible();
-  await page.locator('#review-request-status-filter').selectOption('approved');
-  await expect(page.getByText('Showing 0 of 3 review requests')).toBeVisible();
-  await page.locator('#review-request-status-filter').selectOption('all');
-  await page.getByLabel('Search', { exact: true }).fill('');
-  await expect(page.locator('#review-request-type-filter')).toBeVisible();
+  await assertCount(3);
+  await search.fill('Bob');
+  await assertCount(1);
+  await status.selectOption('approved');
+  await assertCount(0);
+  await status.selectOption('all');
+  await search.fill('');
+  await expect(page.locator(legacy ? '#review-request-type-filter' : 'select[aria-label="Review type"]')).toBeVisible();
   await expect(page.getByLabel('Pending only', { exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath(`mrr-filters-${width}.png`), fullPage: true });
   expect(writes).toEqual([]);

@@ -1,4 +1,5 @@
-import { Dropdown } from 'antd';
+import { Dropdown, Select } from 'antd';
+import { requestRetreatOptions } from './paymentRequestFilters';
 import MedicalReviewQueueTable, { QueueDate, WhatsAppMark } from './MedicalReviewQueueTable';
 import { displayWhatsappReviewNotes } from './MedicalReviewRequestsPage.helpers';
 import { Bell, CircleHelp, Flag, MoreHorizontal, AlertTriangle, Check, ChevronDown, ChevronRight, Clock, Copy as CopyIcon, Download as DownloadIcon, Edit2, Eye, Folder, Link as LinkIcon, Lock as LockIcon, Menu, Plus as PlusIcon, RefreshCw, Search as SearchIcon, Send as SendIcon, ThumbsDown, ThumbsUp, Trash2, Unlock as UnlockIcon, X, Zap } from 'lucide-react';
@@ -155,6 +156,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [groups, setGroups] = useState<MedicalReviewGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterRetreatId, setFilterRetreatId] = useState('');
   const [typeFilter, setTypeFilter] = useState<MedicalReviewTypeFilter>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -408,9 +410,18 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       .catch(() => setAdvisors([]));
   }, [canManageRequests]);
 
+  const queueRetreatOptions = useMemo(() => requestRetreatOptions(requests).map(option => ({
+    ...option,
+    searchText: [option.label, ...requests.filter(request => getRequestRetreatId(request) === option.value).map(request => {
+      const retreat = request.retreatId;
+      return typeof retreat === 'object' && retreat ? [retreat.name, retreat.code, retreat.retreatCode, retreat.location_town, retreat.location].filter(Boolean).join(' ') : retreat;
+    })].join(' ').toLowerCase(),
+  })), [requests]);
+
   const filteredRequests = useMemo(() => {
     const filtered = requests.filter((request) => {
       if (followUpOnly && !request.followUpRequired) return false;
+      if (filterRetreatId && getRequestRetreatId(request) !== filterRetreatId) return false;
       if (!matchesReviewRequestFilters(request, { searchTerm, typeFilter, dateFrom, dateTo })) return false;
       if (filterStatus !== 'all' && normalizeReviewStatus(request.status) !== filterStatus) return false;
       const pending = isPendingReview(request) || (activeView === 'whatsapp' && request.whatsappStatus !== 'responded');
@@ -425,7 +436,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         || date(b) - date(a)
         || Number(b.display_id || 0) - Number(a.display_id || 0);
     });
-  }, [activeView, dateFrom, dateTo, filterAdvisorId, filterStatus, followUpOnly, pendingOnly, requests, searchTerm, typeFilter]);
+  }, [activeView, dateFrom, dateTo, filterAdvisorId, filterRetreatId, filterStatus, followUpOnly, pendingOnly, requests, searchTerm, typeFilter]);
 
   useEffect(() => {
     const followUp = new URLSearchParams(location.search).get('followUp') === '1';
@@ -1019,39 +1030,27 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       </div>
 
       <div className="mb-4 flex items-center justify-end gap-2">
-        <div className="mrr-queue-filters grid min-w-0 w-full flex-1 grid-cols-2 gap-2 xl:grid-cols-[minmax(0,1fr)_160px_170px_170px]">
-          <input
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search client, retreat, request #, type, notes..."
-            aria-label="Search review requests"
-            className="col-span-2 xl:col-span-1 min-w-0 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <select
-            aria-label="Review type"
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value as MedicalReviewTypeFilter)}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="all">All types</option>
-            <option value="ekg">EKG</option>
-            <option value="liver">Liver</option>
-            <option value="both">EKG + Liver</option>
-            <option value="questionnaire">Questionnaire</option>
-            <option value="general">General</option>
-          </select>
-          <input
-            type="date" aria-label="Created from"
-            value={dateFrom}
-            onChange={(event) => setDateFrom(event.target.value)}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          <input
-            type="date" aria-label="Created to"
-            value={dateTo}
-            onChange={(event) => setDateTo(event.target.value)}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+        <div className="mrr-queue-filters grid min-w-0 w-full flex-1 grid-cols-2 gap-2 xl:grid-cols-[minmax(0,1fr)_220px_150px_150px_150px]">
+          <label className="col-span-2 xl:col-span-1 min-w-0 text-sm font-medium">Search
+            <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Search client, retreat, request #, type, notes..." aria-label="Search review requests" className="mt-1 block min-w-0 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" />
+          </label>
+          <label className="min-w-0 text-sm font-medium">Retreat
+            <Select aria-label="Retreat" className="mt-1 w-full" showSearch allowClear virtual={false} placeholder="All retreats" value={filterRetreatId || undefined}
+              options={[{ value: '', label: 'All retreats', searchText: 'all retreats' }, ...queueRetreatOptions]}
+              filterOption={(input, option) => String(option?.searchText || option?.label || '').includes(input.toLowerCase())}
+              onChange={value => setFilterRetreatId(value || '')} />
+          </label>
+          <label className="min-w-0 text-sm font-medium">Request type
+            <select aria-label="Review type" value={typeFilter} onChange={event => setTypeFilter(event.target.value as MedicalReviewTypeFilter)} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+              <option value="all">All types</option><option value="ekg">EKG</option><option value="liver">Liver</option><option value="both">EKG + Liver</option><option value="questionnaire">Questionnaire</option><option value="general">General</option>
+            </select>
+          </label>
+          <label className="min-w-0 text-sm font-medium">Created from
+            <input type="date" aria-label="Created from" value={dateFrom} onChange={event => setDateFrom(event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" />
+          </label>
+          <label className="min-w-0 text-sm font-medium">Created to
+            <input type="date" aria-label="Created to" value={dateTo} onChange={event => setDateTo(event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" />
+          </label>
         </div>
       </div>
 
