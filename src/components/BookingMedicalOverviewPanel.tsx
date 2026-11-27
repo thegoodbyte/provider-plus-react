@@ -1,3 +1,4 @@
+import AppleButton from './AppleButton';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { bookingFlowApi } from '../services/api';
@@ -192,7 +193,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
     return <div className="booking-medical-panel booking-medical-redesign">
       {loading ? <p role="status">Loading medical records…</p> : <>
         <div className="alert alert-danger" role="alert">{error}</div>
-        <button type="button" onClick={load}>Refresh</button>
+        <AppleButton variant="secondary" onClick={() => void load()}>Refresh</AppleButton>
       </>}
     </div>;
   }

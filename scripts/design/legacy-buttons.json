@@ -164,7 +164,7 @@
   "src/components/PaymentRequestForm.tsx": 10,
   "src/components/PaymentRequestInvoicePreview.tsx": 5,
   "src/components/PaymentRequestTypesSettings.tsx": 2,
-  "src/components/PaymentRequestsGrid.tsx": 19,
+  "src/components/PaymentRequestsGrid.tsx": 22,
   "src/components/PaymentScratchpadPage.tsx": 16,
   "src/components/PaymentsPage.tsx": 10,
   "src/components/PaymentsTab.tsx": 9,

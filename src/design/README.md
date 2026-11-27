@@ -36,3 +36,5 @@ Legacy stylesheet adoption also aliases common neutral literals in 57 stylesheet
 surface/text/border tokens. Clinical/status/event hues remain separate. Design checks parse
 stylesheets and reject unresolved design-token references. Named Tasks selections and legacy
 action adapters use the primary tone without altering their routing or state logic.
+
+Release integration note (PPVC-1071/1077): the PaymentRequestsGrid inventory includes the 22 native buttons already present in production commit 5949429 (including deployed PPVC-1072 filters). This reconciles the independently branched foundation with deployed controls; no new release buttons are added to that inventory. PPVC-1077 new actions use AppleButton.

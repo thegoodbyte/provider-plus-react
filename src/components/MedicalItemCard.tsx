@@ -1,3 +1,4 @@
+import AppleButton from './AppleButton';
 import React from 'react';
 import { MEDICAL_ITEM_ICON_PATHS, MEDICAL_ITEM_TONES, MedicalItemState } from './medicalItemStatus';
 import './MedicalItemCard.css';
@@ -108,7 +109,7 @@ const MedicalItemCard: React.FC<MedicalItemCardProps> = ({
       {previousReview && (
         <div className="medical-item-card-actions">
           <span className="medical-item-card-meta">Earlier review · {previousReview.artifactRef}</span>
-          <button type="button" onClick={previousReview.onOpen}>{previousReview.reference}</button>
+          <AppleButton variant="ghost" size="sm" onClick={previousReview.onOpen}>{previousReview.reference}</AppleButton>
         </div>
       )}
 
