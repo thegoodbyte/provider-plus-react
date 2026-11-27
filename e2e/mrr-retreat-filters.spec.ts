@@ -17,6 +17,7 @@ for (const width of [1440, 390]) test(`MRR retreat filter searches location, sel
   await page.goto('/medical/review-requests');
   await expect(page.getByText('Showing 3 of 3 review requests')).toBeVisible();
   const retreat = page.getByRole('combobox', { name: 'Retreat', exact: true });
+  await expect(page.locator('.ant-select').filter({ has: retreat })).toHaveCSS('display', 'inline-flex');
   await retreat.fill('Liberec');
   await page.getByRole('option', { name: 'MR2 · Mountain Retreat · 2027-02-10' }).click();
   await expect(page.getByText('Showing 1 of 3 review requests')).toBeVisible();

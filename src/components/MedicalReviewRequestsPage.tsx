@@ -1946,7 +1946,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 id="review-request-retreat-filter"
                 allowClear
                 aria-label="Retreat"
-                className="mt-1 block w-full"
+                className="mt-1 w-full"
                 virtual={false}
                 showSearch
                 filterOption={(input, option) => String(option?.searchText || option?.label || '').includes(input.toLowerCase())}
