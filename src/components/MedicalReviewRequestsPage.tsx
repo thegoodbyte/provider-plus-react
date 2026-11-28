@@ -1,3 +1,4 @@
+import AppleButton from './AppleButton';
 import MrrWhatsappDownloadButton from './MrrWhatsappDownloadButton';
 import MedicalReviewBookingLink from './MedicalReviewBookingLink';
 import WhatsappDownloadNames, { WhatsappDownloadNameData } from './WhatsappDownloadNames';
@@ -1956,14 +1957,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
               <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
                 <MrrWhatsappDownloadButton requestId={selected._id!} requestNumber={selected.display_id} onError={showError} />
                 {canManageAccessLinks && selected._id && (
-                  <button type="button" aria-controls="mrr-advisor-access" onClick={() => {
+                  <AppleButton variant="secondary" size="sm" aria-controls="mrr-advisor-access" onClick={() => {
                     const access = advisorAccessRef.current;
                     if (!access) return;
                     access.open = true;
                     access.querySelector('summary')?.focus();
                   }} className="rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50">
                     Advisor review link
-                  </button>
+                  </AppleButton>
                 )}
                 <MedicalReviewFollowUpButton request={selected} onSaved={changes => {
                   setSelected(current => current ? { ...current, ...changes } : current);
